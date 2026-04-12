@@ -1,0 +1,57 @@
+[tools]
+python = "3.13"
+uv = "latest"
+node = "25"
+gh = "latest"
+docker-compose = "latest"
+
+[env]
+UV_PROJECT_ENVIRONMENT = "fungal-cv-qdrant/.venv"
+
+[tasks.sync]
+description = "Install fungal-cv-qdrant dependencies"
+run = "uv --directory fungal-cv-qdrant sync"
+
+[tasks.qdrant-up]
+description = "Start local Qdrant"
+run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f fungal-cv-qdrant/docker-compose.yml up -d"
+
+[tasks.qdrant-down]
+description = "Stop local Qdrant"
+run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f fungal-cv-qdrant/docker-compose.yml down"
+
+[tasks.threshold]
+description = "Run threshold experiment prepare flow"
+run = "uv --directory fungal-cv-qdrant run python src/prepare.py --experiment threshold"
+
+[tasks.experiment-list]
+description = "List available experiments"
+run = "uv --directory fungal-cv-qdrant run python src/run.py --experiment-list"
+
+[tasks.backend-sync]
+description = "Install backend dependencies"
+run = "uv --directory mycoai_retrieval_backend sync --all-groups"
+
+[tasks.frontend-install]
+description = "Install frontend dependencies"
+run = "npm --prefix mycoai_retrieval_frontend install"
+
+[tasks.backend-lint]
+description = "Run backend lint, typecheck, and tests"
+run = "uv --directory mycoai_retrieval_backend run ruff check . && uv --directory mycoai_retrieval_backend run mypy src && uv --directory mycoai_retrieval_backend run pytest"
+
+[tasks.frontend-lint]
+description = "Run frontend lint and build checks"
+run = "npm --prefix mycoai_retrieval_frontend run lint && npm --prefix mycoai_retrieval_frontend run typecheck && npm --prefix mycoai_retrieval_frontend run build"
+
+[tasks.install-spec-kit]
+description = "Install the Specify CLI"
+run = "uv tool install --force specify-cli --from git+https://github.com/github/spec-kit.git@v0.6.1"
+
+[tasks.specify-check]
+description = "Verify Spec Kit prerequisites"
+run = "specify check"
+
+[tasks.specify-init-opencode]
+description = "Initialize Spec Kit for OpenCode"
+run = "specify init --here --ai opencode --no-git --force"
