@@ -1,6 +1,6 @@
 # Implementation Plan: [FEATURE]
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Branch**: `[###-feature-name|autoresearch/<experiment-name>/<N>-<summary>]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
@@ -19,6 +19,7 @@
 
 **Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
 **Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Package / Command Tooling**: [e.g., `uv` + `uvx` for Python, `pnpm` for frontend, or NEEDS CLARIFICATION]  
 **Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
 **Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
@@ -31,7 +32,23 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] Ownership is explicit: each touched path belongs to the correct repo
+      (`fungal-cv-qdrant`, backend, frontend, or shared root assets).
+- [ ] Traceability is explicit: any dependency on `retrieval` or
+      `kmeans_segmentation` names the producer command, artifact, and consumer.
+- [ ] Reimplementation is explicit: backend or frontend work may inspect
+      `fungal-cv-qdrant` as reference only and MUST NOT import code from it.
+- [ ] Canonical toolchains are explicit: Python work uses `uv`/`uvx`, frontend
+      work uses `pnpm`, and GitHub automation uses `gh`; any exception is
+      documented.
+- [ ] Validation is explicit: list the exact commands or checks that will run
+      in every touched repo.
+- [ ] Definition of done is explicit: name the required unit, integration,
+      e2e, manual, and workflow checks for the touched surface.
+- [ ] Contract sync is explicit: identify README, agent, or schema updates
+      required for producer and consumer alignment.
+- [ ] Minimality is justified: any new shared schema, compatibility layer, or
+      cross-repo coupling is called out and defended.
 
 ## Project Structure
 
@@ -48,51 +65,29 @@ specs/[###-feature]/
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+fungal-cv-qdrant/
+├── src/experiments/
+├── src/analysis/
+└── report/
 
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
+mycoai_retrieval_backend/
 ├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
 └── tests/
 
-frontend/
+mycoai_retrieval_frontend/
 ├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
+└── [tests or app-specific validation paths]
 
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+Dataset/
+results/
+weights/
+species_weights.json
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: [Name the touched repo(s), the exact directories to be
+edited, and any artifact boundary crossed between experiment and product code]
 
 ## Complexity Tracking
 

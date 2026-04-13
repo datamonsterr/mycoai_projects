@@ -1,18 +1,16 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "minimax-coding-plan/MiniMax-M2.7",
-  "default_agent": "autoresearch",
+  "default_agent": "superagent",
   "autoupdate": true,
   "mcp": {
-    "serena": {
+    "markitdown": {
       "type": "local",
       "command": [
         "uvx",
         "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server",
-        "."
+        "markitdown-mcp",
+        "markitdown-mcp"
       ],
       "enabled": true
     },
@@ -23,6 +21,13 @@
     }
   },
   "agent": {
+    "superagent": {
+      "description": "Primary autonomous delivery agent for MycoAI product and research workflows",
+      "mode": "primary",
+      "model": "minimax-coding-plan/MiniMax-M2.7",
+      "temperature": 0.1,
+      "steps": 40
+    },
     "autoresearch": {
       "description": "Autoresearch loop agent for fungal classification experiments",
       "mode": "primary",
@@ -36,6 +41,34 @@
       "model": "minimax-coding-plan/MiniMax-M2.7",
       "temperature": 0.1,
       "steps": 10
+    },
+    "test-writer": {
+      "description": "Writes focused backend/frontend tests and small harness updates when needed",
+      "mode": "subagent",
+      "model": "minimax-coding-plan/MiniMax-M2.7",
+      "temperature": 0.1,
+      "steps": 16
+    },
+    "test-runner": {
+      "description": "Runs repo-specific checks, groups failures, and returns actionable summaries",
+      "mode": "subagent",
+      "model": "minimax-coding-plan/MiniMax-M2.7",
+      "temperature": 0.1,
+      "steps": 12
+    },
+    "manual-browser-tester": {
+      "description": "Performs manual browser or API validation and records definition-of-done evidence",
+      "mode": "subagent",
+      "model": "minimax-coding-plan/MiniMax-M2.7",
+      "temperature": 0.1,
+      "steps": 16
+    },
+    "e2e-writer": {
+      "description": "Authors or updates end-to-end tests for scientist-facing user journeys",
+      "mode": "subagent",
+      "model": "minimax-coding-plan/MiniMax-M2.7",
+      "temperature": 0.1,
+      "steps": 20
     },
     "explore": {
       "description": "Fast read-only agent for exploring codebases",
@@ -53,7 +86,12 @@
   "permission": "allow",
   "instructions": [
     ".opencode/rules/experiment-visualization.md",
-    ".opencode/rules/branch-naming.md"
+    ".opencode/rules/branch-naming.md",
+    ".opencode/rules/frontend-react-skills.md",
+    ".opencode/rules/backend-reimplementation.md",
+    ".opencode/rules/document-markdown-reading.md",
+    ".opencode/rules/typescript-conventions.md",
+    ".opencode/rules/testing-delivery.md"
   ],
   "watcher": {
     "ignore": [

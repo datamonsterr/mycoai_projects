@@ -1,9 +1,30 @@
 # Feature Specification: [FEATURE NAME]
 
-**Feature Branch**: `[###-feature-name]`  
+**Feature Branch**: `[###-feature-name|autoresearch/<experiment-name>/<N>-<summary>]`  
 **Created**: [DATE]  
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
+
+## Affected Contexts *(mandatory)*
+
+<!--
+  ACTION REQUIRED: Identify the owning repo and any cross-boundary consumers or
+  producers before writing detailed requirements.
+-->
+
+- **Primary Repo**: [e.g., fungal-cv-qdrant, mycoai_retrieval_backend,
+  mycoai_retrieval_frontend]
+- **Additional Touched Repos**: [None or list]
+- **Shared Artifacts**: [e.g., Dataset/, results/, weights/,
+  species_weights.json, or N/A]
+- **Execution Tooling**: [e.g., `uv`/`uvx` for Python contexts, `pnpm` for
+  frontend contexts, `gh` for workflow/PR checks, or N/A]
+- **Experiment Dependency**: [If this feature depends on retrieval or
+  kmeans_segmentation outputs, name the source command, artifact, and consumer;
+  otherwise N/A]
+- **Reimplementation Boundary**: [If product code is derived from
+  `fungal-cv-qdrant`, list the experiment paths reviewed, the artifact/schema
+  consumed, and confirm there are no direct imports; otherwise N/A]
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -113,6 +134,15 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+
+## Definition of Done *(mandatory)*
+
+### Verification Evidence
+
+- **Local Checks**: [Exact commands or checks that MUST pass before the change is considered done]
+- **Workflow Checks**: [Relevant GitHub workflow, job, or PR checks, or N/A]
+- **Manual Validation**: [Scientist-facing browser flow, API journey, or N/A]
+- **PR Evidence**: [What summary, screenshots, logs, or linked artifacts must appear in the PR]
 
 ## Assumptions
 

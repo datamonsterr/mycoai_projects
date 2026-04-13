@@ -24,7 +24,10 @@ This file provides guidance for working in the MycoAI monorepo.
 - `mycoai_retrieval_backend/` is an independent FastAPI service repo.
 - `mycoai_retrieval_frontend/` is an independent React frontend repo.
 - `Dataset/`, `results/`, `weights/`, and `species_weights.json` live at the monorepo root.
+- Python workflows use `uv`/`uvx`; frontend package workflows use `pnpm`.
+- GitHub workflow, checks, and PR automation use `gh`.
 - Agent configuration is shared at the monorepo root.
+- Product repos may inspect `fungal-cv-qdrant` experiments for reference, but they must reimplement locally and must not import from that repo directly.
 
 ## Core Workflow
 
@@ -47,8 +50,8 @@ uv --directory fungal-cv-qdrant run python -m src.prepare.init --collection myco
 
 # Backend and frontend
 uv --directory mycoai_retrieval_backend sync --all-groups
-npm --prefix mycoai_retrieval_frontend install
-npm --prefix mycoai_retrieval_frontend run dev
+pnpm --dir mycoai_retrieval_frontend install
+pnpm --dir mycoai_retrieval_frontend run dev
 
 # Upload features from the shared dataset root
 uv --directory fungal-cv-qdrant run python -m src.utils.upload_qdrant \
@@ -62,4 +65,5 @@ uv --directory fungal-cv-qdrant run python -m src.utils.upload_qdrant \
 - `fungal-cv-qdrant/src/config.py` auto-detects this monorepo layout and resolves shared paths from the parent workspace.
 - Threshold autoresearch artifacts are written to `results/autoresearch/` at the monorepo root.
 - Qdrant storage remains inside `fungal-cv-qdrant/qdrant_storage/`.
+- User-facing backend and frontend work is expected to carry local validation, relevant workflow checks, and a manual browser or API journey check before PR handoff.
 - Detailed project-specific docs remain in `fungal-cv-qdrant/README.md` and `fungal-cv-qdrant/docs/`.

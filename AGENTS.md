@@ -20,7 +20,11 @@
 
 - Code paths like `src/`, `docs/`, and `report/` refer to `fungal-cv-qdrant/` unless the backend/frontend repo is explicitly named.
 - Shared runtime data lives at the monorepo root in `Dataset/`, `results/`, `weights/`, and `species_weights.json`.
+- Python workflows in this monorepo use `uv`/`uvx`; frontend package workflows use `pnpm`.
+- GitHub workflow, checks, and PR automation use `gh`.
 - Agent configuration lives at the monorepo root in `.agents/`, `.claude/`, `.opencode/`, `AGENTS.md`, and `CLAUDE.md`.
+- `mycoai_retrieval_backend/` and `mycoai_retrieval_frontend/` consume validated outputs from `fungal-cv-qdrant/src/experiments/retrieval/` and `fungal-cv-qdrant/src/experiments/kmeans_segmentation/`; keep producer and consumer docs in sync when those contracts change.
+- Product repos MAY inspect experiment code to understand behavior, but they MUST reimplement that behavior locally and MUST NOT import directly from `fungal-cv-qdrant/`.
 
 ## Common Commands
 
@@ -36,7 +40,7 @@ uv --directory fungal-cv-qdrant run python src/run.py --experiment-list
 
 # Install backend and frontend dependencies
 uv --directory mycoai_retrieval_backend sync --all-groups
-npm --prefix mycoai_retrieval_frontend install
+pnpm --dir mycoai_retrieval_frontend install
 
 # Install toolchain and start local Qdrant
 mise install
@@ -48,4 +52,5 @@ mise run qdrant-up
 - `fungal-cv-qdrant/src/config.py` resolves the monorepo root automatically when the submodule is used inside this workspace.
 - The threshold staircase chart still writes to `results/autoresearch/{experiment}.csv` and `.png` at the monorepo root.
 - The backend and frontend repos are standalone deployable projects but live in this monorepo as sibling submodules.
+- User-facing product changes are only done after local checks, relevant workflow checks, and manual browser or API validation are recorded.
 - Detailed project guidance remains in `CLAUDE.md` and `fungal-cv-qdrant/README.md`.
