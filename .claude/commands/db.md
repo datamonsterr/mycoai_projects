@@ -16,4 +16,4 @@ docker compose ps
 ```
 
 Qdrant UI is available at http://localhost:6333/dashboard after starting.
-Data persists in `./qdrant_storage/` across restarts.
+Data persists in `../.qdrant_storage/` (relative to `fungal-cv-qdrant/`) across restarts.

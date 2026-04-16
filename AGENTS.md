@@ -19,7 +19,7 @@
 ## Working Rules
 
 - Code paths like `src/`, `docs/`, and `report/` refer to `fungal-cv-qdrant/` unless the backend/frontend repo is explicitly named.
-- Shared runtime data lives at the monorepo root in `Dataset/`, `results/`, `weights/`, and `species_weights.json`.
+- Shared runtime data lives at the monorepo root in `Dataset/`, `results/`, `weights/`, `.qdrant_storage/`, and `species_weights.json`.
 - Python workflows in this monorepo use `uv`/`uvx`; frontend package workflows use `pnpm`.
 - GitHub workflow, checks, and PR automation use `gh`.
 - Agent configuration lives at the monorepo root in `.agents/`, `.claude/`, `.opencode/`, `AGENTS.md`, and `CLAUDE.md`.

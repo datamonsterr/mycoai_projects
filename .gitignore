@@ -1,6 +1,7 @@
 Dataset/
 results/
 weights/
+.qdrant_storage/
 .venv/
 .mypy_cache/
 .pytest_cache/

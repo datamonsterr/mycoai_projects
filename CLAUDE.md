@@ -64,6 +64,6 @@ uv --directory fungal-cv-qdrant run python -m src.utils.upload_qdrant \
 
 - `fungal-cv-qdrant/src/config.py` auto-detects this monorepo layout and resolves shared paths from the parent workspace.
 - Threshold autoresearch artifacts are written to `results/autoresearch/` at the monorepo root.
-- Qdrant storage remains inside `fungal-cv-qdrant/qdrant_storage/`.
+- Qdrant storage persists at the monorepo root in `.qdrant_storage/`.
 - User-facing backend and frontend work is expected to carry local validation, relevant workflow checks, and a manual browser or API journey check before PR handoff.
 - Detailed project-specific docs remain in `fungal-cv-qdrant/README.md` and `fungal-cv-qdrant/docs/`.
