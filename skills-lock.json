@@ -621,6 +621,11 @@
       "sourceType": "github",
       "computedHash": "9cf1c3bd3dedcec6a5bc77035ee69fe2a3421cf80d0be87c9bebe0f82ee26c42"
     },
+    "autoresearch": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "8bfae087ef27eb37092d94caf1da3406b500aa908756772bb1349a1ac70823dd"
+    },
     "avalonia-layout-zafiro": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -2921,6 +2926,11 @@
       "sourceType": "github",
       "computedHash": "85b9721e5f6d28df8da34568b8d241f7424f0b0fa62b67c88a5ee0521daf1884"
     },
+    "fastapi": {
+      "source": "fastapi/fastapi",
+      "sourceType": "github",
+      "computedHash": "ee23d5285caf055cf164ff45dd34888d381143564666baacab8aa786f22e413a"
+    },
     "fastapi-microservices-serverless": {
       "source": "mindrally/skills",
       "sourceType": "github",
@@ -2951,6 +2961,11 @@
       "sourceType": "github",
       "computedHash": "37205646b49c0f8221fd6c9c9ff8fb8073c964c0e330a00ee87c17d3496a99af"
     },
+    "fastmcp-server": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "computedHash": "6ad9e167e7c073c337d2724f84c64fc811bdf21ea79bd93d557acbd3b7c04384"
+    },
     "favicon": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -2975,6 +2990,16 @@
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
       "computedHash": "0492384018d3a5e0e3a4a0f2f16a33cb35de41f86135b830508229279e43a546"
+    },
+    "fiftyone-dataset-export": {
+      "source": "voxel51/fiftyone-skills",
+      "sourceType": "github",
+      "computedHash": "13cde794a3f33b8d7402f8b91fe5fb405fae6a9d49a67cd0ba1698ff1858f62e"
+    },
+    "fiftyone-dataset-import": {
+      "source": "voxel51/fiftyone-skills",
+      "sourceType": "github",
+      "computedHash": "fff00a1fe51a74c567a8a55102817bffd17002a515466829c2b947be672888f5"
     },
     "figma-automation": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -3012,9 +3037,9 @@
       "computedHash": "e6f6c13074b40acc35f9a3fba171e04ccac28abe137a4c6077669e95e10de026"
     },
     "find-skills": {
-      "source": "vercel-labs/skills",
+      "source": "bytedance/deer-flow",
       "sourceType": "github",
-      "computedHash": "d31e234f0c90694a670222cdd1dafa853e051d7066beda389f1097c22dadd461"
+      "computedHash": "202da6ad9e3c65949fa70371e89b1f55a1f5bd6d11b20b4491af17de495a0caf"
     },
     "finishing-a-development-branch": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -3045,6 +3070,11 @@
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
       "computedHash": "d748b3024b173627fd1d8582a3e638e6d83c0dc380936a9bde525626fe654978"
+    },
+    "fix-bug": {
+      "source": "willbooster/agent-skills",
+      "sourceType": "github",
+      "computedHash": "8a77a820ed5359791c1deac10ef41bfff4e58efb034c36d72f743e5786fc1001"
     },
     "fix-review": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -3212,9 +3242,9 @@
       "computedHash": "c33c2e51eac1a90e094407dfd61457ec7c3ba3fa9587e7389b747ea90c7bb0eb"
     },
     "frontend-design": {
-      "source": "sickn33/antigravity-awesome-skills",
+      "source": "anthropics/skills",
       "sourceType": "github",
-      "computedHash": "175bb7ce2b0b1883c9ea072066a3bf6e11454c27cd8a273b6e44bd967101b922"
+      "computedHash": "063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67"
     },
     "frontend-dev-guidelines": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -3761,6 +3791,11 @@
       "sourceType": "github",
       "computedHash": "05c4dbc4fbd4e112a8684905c377409d0e833f6d57393686d44e9ffb09f6ebe5"
     },
+    "huggingface-vision-trainer": {
+      "source": "huggingface/skills",
+      "sourceType": "github",
+      "computedHash": "bf5eff3c692372a798f1763f975ed2725794a55af4f0ba4de58492e7d83b8d75"
+    },
     "humanize-chinese": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -3809,7 +3844,7 @@
     "image-processing": {
       "source": "jezweb/claude-skills",
       "sourceType": "github",
-      "computedHash": "09b2d9cdf83b2ff713f85e5545d351b6e261a1f473ca553a73fe599ef3aefb92"
+      "computedHash": "249258ab63a60f89411f6e2d60da45ecf1675022e4f6f565d0efeea6b978d2b0"
     },
     "image-studio": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -4547,9 +4582,9 @@
       "computedHash": "66efb98a4d2980a2332c8b9ab4605be53df2403017f162002864a63d99b7a86f"
     },
     "mcp-builder": {
-      "source": "sickn33/antigravity-awesome-skills",
+      "source": "anthropics/skills",
       "sourceType": "github",
-      "computedHash": "b85de5d747895dae6a113988328d30f6143f5ec81e8e3984ceb9258dba257aea"
+      "computedHash": "fc68038c900eb801f73ff96130c9f9dba533cc94212ed8435833242f196dedcf"
     },
     "mcp-builder-ms": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -5772,9 +5807,9 @@
       "computedHash": "cfbc14bb9f2a95abdd54a464c2fdd066dc01628efcc931b863ed60b5316002f5"
     },
     "python-testing-patterns": {
-      "source": "sickn33/antigravity-awesome-skills",
+      "source": "wshobson/agents",
       "sourceType": "github",
-      "computedHash": "94abe6f228b988de25f676b1004a99708274b2234d86e1fb7f2276e30c96ccdf"
+      "computedHash": "69915bb276b6aec61fe5b283a933f96584f66d14b616ce2060d95757629c6866"
     },
     "python-uv": {
       "source": "mindrally/skills",
@@ -6311,6 +6346,11 @@
       "sourceType": "github",
       "computedHash": "3ce5051f8edd2418660656bd82e8e4d3859bf5f1dc393345387657a3dc207a4d"
     },
+    "segment-anything-model": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "computedHash": "1937f78c5b4ba376c447d51880780f6cb51784f90b8600696b78ef909ccf24d6"
+    },
     "segment-automation": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -6652,9 +6692,9 @@
       "computedHash": "a708ec15862dcf212011b804b46c6f62d4cdfc4ed4c1075cb7365311523f8972"
     },
     "skill-creator": {
-      "source": "sickn33/antigravity-awesome-skills",
+      "source": "anthropics/skills",
       "sourceType": "github",
-      "computedHash": "a8a24ae0d79b290f633f9df9c3e81121164e510a31f4c7f001a34d5548f6476c"
+      "computedHash": "b122f4d1e91aa1d83027e050b5b37c3156203ee85458d7b1360bc48167c9e02a"
     },
     "skill-creator-ms": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -6795,6 +6835,26 @@
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
       "computedHash": "b1f4015eab0874a71e763b8479d9c7898626cfbb90456498d76c62691dd1eb7c"
+    },
+    "speckit-checklist": {
+      "source": "dceoy/speckit-agent-skills",
+      "sourceType": "github",
+      "computedHash": "7e36d2d85e1c08d5e33911b273f6629c1859a3e0999f520f9badf21e01bb43e9"
+    },
+    "speckit-plan": {
+      "source": "dceoy/speckit-agent-skills",
+      "sourceType": "github",
+      "computedHash": "66ce4262b7fa6e22faabb123bc75ec68b8e496396e75a219b8add33587ed1407"
+    },
+    "speckit-specify": {
+      "source": "dceoy/speckit-agent-skills",
+      "sourceType": "github",
+      "computedHash": "38ef8cf58ce94df2100ab547bff3dbe3c57761a4c9d5e53d8f44ab0b0f416cd2"
+    },
+    "speckit-tasks": {
+      "source": "dceoy/speckit-agent-skills",
+      "sourceType": "github",
+      "computedHash": "59889b43cbec42a81dcf9a514d0a56a1fb80be9f82497cb6a5f282f9a0d1be9a"
     },
     "speckit-updater": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -7581,6 +7641,11 @@
       "sourceType": "github",
       "computedHash": "2d199e36f3a6c6fdb5ca68be55df108d23ecb579365c4208cb80ce52de3078a0"
     },
+    "uv": {
+      "source": "astral-sh/claude-code-plugins",
+      "sourceType": "github",
+      "computedHash": "b1ca9e9826d906f6ee6ea172da50018ec13bb622ac9ba7204bda8b10e7fc8d0a"
+    },
     "uv-package-manager": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -7636,6 +7701,11 @@
       "sourceType": "github",
       "computedHash": "34e488497c1e29d9032a36a07c0a6f2b50ad6e4135fb0f80a8942148e536606e"
     },
+    "vastai-api": {
+      "source": "rawveg/skillsforge-marketplace",
+      "sourceType": "github",
+      "computedHash": "96b025a3e968ce0e5cbcee518025330b1c2e087fcae05602b9a353dbcd9abc54"
+    },
     "vector-database-engineer": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -7669,7 +7739,7 @@
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
-      "computedHash": "43ca6c197f8ec13055079da7053232d477068b03ca443f9ac1bc819b95cdd432"
+      "computedHash": "ca7b0c0c6e5f2750043f7f0cd72d16ac4e2abc48f9b5500d047a4b77a2506212"
     },
     "vercel-react-view-transitions": {
       "source": "vercel-labs/agent-skills",
@@ -7732,9 +7802,9 @@
       "computedHash": "533a3ac6f5f494298442047410051598b567bcf0d7142b1ab80bed7116d49e61"
     },
     "vite": {
-      "source": "mindrally/skills",
+      "source": "antfu/skills",
       "sourceType": "github",
-      "computedHash": "5d3925481f1f9a00e1646a1250defdda114f7b83cfacff293f0582942b08ae07"
+      "computedHash": "867ff66238f3152e9c494339ad08dc432dd0df5bcf5cc7a00b61a72b580eb908"
     },
     "voice-agents": {
       "source": "sickn33/antigravity-awesome-skills",
@@ -7787,9 +7857,9 @@
       "computedHash": "36658e3dc7ff19722e066aba88f6738b65c721680358b1ef3f75ff7581c33590"
     },
     "web-design-guidelines": {
-      "source": "sickn33/antigravity-awesome-skills",
+      "source": "vercel-labs/agent-skills",
       "sourceType": "github",
-      "computedHash": "b24ec5d3303d0630b6824d135b212f4088fab1bcf104aced13126c19f5b87507"
+      "computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
     },
     "web-development": {
       "source": "mindrally/skills",
@@ -7822,9 +7892,9 @@
       "computedHash": "2cc252a58d551986bf476abce5a49a3e48270c552de4b6f045c30e0952cf9b20"
     },
     "webapp-testing": {
-      "source": "sickn33/antigravity-awesome-skills",
+      "source": "anthropics/skills",
       "sourceType": "github",
-      "computedHash": "17bcddca17ace32773b0fc86421b6ddc4d6b93d3f10e0e8b522593cc469dc029"
+      "computedHash": "cf8e5916d474886bd67b09691247f43f331523008b7d366064bc607ab42d6302"
     },
     "webflow-automation": {
       "source": "sickn33/antigravity-awesome-skills",
