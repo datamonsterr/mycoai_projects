@@ -1,6 +1,6 @@
 # Feature Specification: [FEATURE NAME]
 
-**Feature Branch**: `[###-feature-name|autoresearch/<experiment-name>/<N>-<summary>]`  
+**Feature Branch**: `[###-feature-name]` or `[autoresearch/<experiment-name>/<N>-<summary>]` for `fungal-cv-qdrant` autoresearch only  
 **Created**: [DATE]  
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"

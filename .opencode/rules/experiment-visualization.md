@@ -1,4 +1,10 @@
-# Rule: Experiment Visualization — Staircase Chart
+# Rule: fungal-cv-qdrant Autoresearch Visualization - Staircase Chart
+
+## Scope
+
+This rule applies only to staircase charts produced by
+`fungal-cv-qdrant` autoresearch experiments. It does not apply to backend,
+frontend, or general monorepo visualization work.
 
 ## Core Principle
 
@@ -8,7 +14,8 @@ Each experiment's F1 score determines its height. A running best is tracked as w
 
 ## Staircase Chart Rules
 
-When plotting the autoresearch accuracy chart (`results/autoresearch/{experiment}.png`):
+When plotting a `fungal-cv-qdrant` autoresearch accuracy chart
+(`results/autoresearch/{experiment}.png`):
 
 1. **X axis**: experiment index (0, 1, 2, ..., N-1) — each individual experiment gets one x position
 2. **Gray dots**: experiments whose F1 falls **at or below** the current running best staircase line
