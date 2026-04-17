@@ -75,9 +75,10 @@ parse_workspace_root_option() {
       *)
         break
         ;;
-    esac
+      esac
   done
 
+  require_command realpath
   set_workspace_root "$(realpath -m "$workspace_root")"
   REMAINING_ARGS=("$@")
 }

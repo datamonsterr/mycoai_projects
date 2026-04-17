@@ -17,6 +17,22 @@ class SyncError(RuntimeError):
     """Raised when a dataset sync command cannot continue safely."""
 
 
+class TransferExecutionError(SyncError):
+    """Raised when a transfer fails after command execution has started."""
+
+    def __init__(
+        self,
+        scope: str,
+        message: str,
+        *,
+        transferred_count: int,
+        error_count: int,
+    ) -> None:
+        super().__init__(f"rclone copy failed for {scope}: {message}")
+        self.transferred_count = transferred_count
+        self.error_count = error_count
+
+
 @dataclass(frozen=True)
 class TransferSpec:
     direction: str
@@ -292,12 +308,14 @@ def append_log(log_path: Path, content: str) -> None:
             handle.write("\n")
 
 
-def write_summary(summary: dict[str, object]) -> Path:
+def summary_path_for(command_name: str) -> Path:
     summary_dir = results_root()
     summary_dir.mkdir(parents=True, exist_ok=True)
-    summary_path = summary_dir / f"{timestamp_slug()}_{summary['command']}.json"
+    return summary_dir / f"{timestamp_slug()}_{command_name}.json"
+
+
+def write_summary(summary: dict[str, object], summary_path: Path) -> None:
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
-    return summary_path
 
 
 def print_summary(summary: dict[str, object]) -> None:
@@ -338,6 +356,7 @@ def create_summary(
     failed_count: int,
     log_path: Path | None,
 ) -> dict[str, object]:
+    summary_path = summary_path_for(command_name)
     summary = {
         "command": command_name,
         "direction": direction,
@@ -350,29 +369,81 @@ def create_summary(
         "failed_count": failed_count,
         "entries": [asdict(entry) for entry in entries],
         "log_path": str(log_path) if log_path else None,
+        "summary_path": str(summary_path),
     }
-    summary_path = write_summary(summary)
-    summary["summary_path"] = str(summary_path)
-    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    write_summary(summary, summary_path)
     return summary
+
+
+def run_streaming_command(command: list[str], log_path: Path) -> tuple[int, str, str]:
+    append_log(log_path, f"$ {' '.join(command)}\n")
+
+    recent_lines: list[str] = []
+    stats_lines: list[str] = []
+    max_recent_lines = 50
+
+    try:
+        with subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        ) as process:
+            if process.stdout is None:
+                raise SyncError(
+                    f"rclone copy failed for {command[2]}: no output stream available"
+                )
+
+            for line in process.stdout:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                append_log(log_path, line)
+
+                recent_lines.append(line)
+                if len(recent_lines) > max_recent_lines:
+                    recent_lines = recent_lines[-max_recent_lines:]
+
+                if "Transferred:" in line or "Errors:" in line:
+                    stats_lines.append(line)
+
+            returncode = process.wait()
+    except OSError as exc:
+        raise SyncError(f"Failed to execute {' '.join(command)}: {exc}") from exc
+
+    combined_output = "".join(stats_lines) or "".join(recent_lines)
+    recent_output = "".join(recent_lines).strip()
+    return returncode, combined_output, recent_output
 
 
 def execute_copy_command(
     spec: TransferSpec, include_patterns: list[str], log_path: Path
 ) -> tuple[int, int]:
     ensure_sufficient_disk(spec, include_patterns)
-    command = [resolve_rclone_binary(), "copy", spec.source, spec.destination, "-P"]
+    command = [
+        resolve_rclone_binary(),
+        "copy",
+        spec.source,
+        spec.destination,
+        "-P",
+        "--stats",
+        "30s",
+    ]
     command.extend(build_include_args(include_patterns))
 
-    result = run_command(command)
-    combined_output = (result.stdout or "") + (result.stderr or "")
-    append_log(log_path, f"$ {' '.join(command)}\n{combined_output}")
-
-    if result.returncode != 0:
-        message = combined_output.strip() or "unknown error"
-        raise SyncError(f"rclone copy failed for {spec.scope or '.'}: {message}")
-
+    returncode, combined_output, recent_output = run_streaming_command(
+        command, log_path
+    )
     transferred_count, error_count = parse_rclone_stats(combined_output)
+
+    if returncode != 0:
+        raise TransferExecutionError(
+            spec.scope or ".",
+            recent_output or combined_output.strip() or "unknown error",
+            transferred_count=transferred_count or 0,
+            error_count=max(error_count, 1),
+        )
+
     return transferred_count or 0, error_count
 
 
@@ -427,17 +498,24 @@ def run_transfer(command_name: str, direction: str, args: argparse.Namespace) ->
 
     transferred_total = 0
     error_total = 0
+    failure: TransferExecutionError | None = None
     for spec in specs:
         scope_label = spec.scope or "."
         print(f"- Executing scope {scope_label}: {spec.source} -> {spec.destination}")
-        transferred_count, error_count = execute_copy_command(
-            spec, args.include, log_path
-        )
-        transferred_total += transferred_count
-        error_total += error_count
+        try:
+            transferred_count, error_count = execute_copy_command(
+                spec, args.include, log_path
+            )
+            transferred_total += transferred_count
+            error_total += error_count
+        except TransferExecutionError as exc:
+            transferred_total += exc.transferred_count
+            error_total += exc.error_count
+            failure = exc
+            break
 
     candidate_total = sum(entry.candidate_count for entry in entries)
-    skipped_total = max(candidate_total - transferred_total, 0)
+    skipped_total = max(candidate_total - transferred_total - error_total, 0)
 
     summary = create_summary(
         command_name=command_name,
@@ -452,6 +530,10 @@ def run_transfer(command_name: str, direction: str, args: argparse.Namespace) ->
         log_path=log_path,
     )
     print_summary(summary)
+
+    if failure is not None:
+        raise SyncError(f"{failure}\nSummary path: {summary['summary_path']}")
+
     return 0
 
 

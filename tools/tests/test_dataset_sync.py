@@ -117,19 +117,68 @@ def test_execute_copy_command_raises_on_rclone_failure(
         remote_path="mydrive:mycoai/original",
     )
 
-    def fake_run(command):
-        return dataset_sync.subprocess.CompletedProcess(
-            command,
-            returncode=1,
-            stdout="",
-            stderr="network outage",
-        )
-
-    monkeypatch.setattr(dataset_sync, "run_command", fake_run)
+    monkeypatch.setattr(
+        dataset_sync, "ensure_sufficient_disk", lambda spec, include: None
+    )
+    monkeypatch.setattr(
+        dataset_sync, "resolve_rclone_binary", lambda: "/usr/bin/rclone"
+    )
+    monkeypatch.setattr(
+        dataset_sync,
+        "run_streaming_command",
+        lambda command, log_path: (
+            1,
+            "Transferred:            1 / 2, 50%\nErrors:               1\n",
+            "network outage",
+        ),
+    )
     log_path = tmp_path / "results" / "dataset_sync.log"
 
-    with pytest.raises(dataset_sync.SyncError):
+    with pytest.raises(dataset_sync.TransferExecutionError) as exc_info:
         dataset_sync.execute_copy_command(spec, [], log_path)
+
+    assert exc_info.value.transferred_count == 1
+    assert exc_info.value.error_count == 1
+
+
+def test_run_streaming_command_streams_output_to_log(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys
+) -> None:
+    class FakeProcess:
+        def __init__(self) -> None:
+            self.stdout = iter(
+                [
+                    "Transferred:            1 / 1, 100%\n",
+                    "Errors:               0\n",
+                ]
+            )
+
+        def __enter__(self) -> "FakeProcess":
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> bool:
+            return False
+
+        def wait(self) -> int:
+            return 0
+
+    def fake_popen(*args, **kwargs):
+        return FakeProcess()
+
+    monkeypatch.setattr(dataset_sync.subprocess, "Popen", fake_popen)
+
+    log_path = tmp_path / "results" / "stream.log"
+    returncode, combined_output, recent_output = dataset_sync.run_streaming_command(
+        ["rclone", "copy", "src", "dst", "-P"],
+        log_path,
+    )
+
+    assert returncode == 0
+    assert "Transferred:" in combined_output
+    assert "Errors:" in combined_output
+    assert "Errors:" in recent_output
+    assert "$ rclone copy src dst -P" in log_path.read_text()
+    assert "Transferred:            1 / 1, 100%" in capsys.readouterr().out
 
 
 def test_count_local_candidates_respects_include_patterns(tmp_path: Path) -> None:
@@ -450,3 +499,86 @@ def test_run_plan_exit_zero_on_success(
     output = capsys.readouterr().out
     assert "Direction: import" in output
     assert "Preview only: True" in output
+
+
+def test_run_transfer_writes_summary_when_scope_fails_mid_run(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    dataset_root = tmp_path / "Dataset"
+    dataset_root.mkdir()
+    summary_dir = tmp_path / "results" / "dataset_sync"
+
+    monkeypatch.setattr(dataset_sync, "ensure_rclone_available", lambda: None)
+    monkeypatch.setattr(dataset_sync, "ensure_external_rclone_config", lambda: None)
+    monkeypatch.setattr(dataset_sync, "resolve_dataset_root", lambda path: dataset_root)
+    monkeypatch.setattr(dataset_sync, "probe_remote_access", lambda remote: None)
+    monkeypatch.setattr(dataset_sync, "results_root", lambda: summary_dir)
+
+    specs = [
+        dataset_sync.TransferSpec(
+            direction="import",
+            scope="scope-a",
+            source="remote:scope-a",
+            destination=str(dataset_root / "scope-a"),
+            local_path=dataset_root / "scope-a",
+            remote_path="remote:scope-a",
+        ),
+        dataset_sync.TransferSpec(
+            direction="import",
+            scope="scope-b",
+            source="remote:scope-b",
+            destination=str(dataset_root / "scope-b"),
+            local_path=dataset_root / "scope-b",
+            remote_path="remote:scope-b",
+        ),
+    ]
+    entries = [
+        dataset_sync.PreviewEntry(
+            scope="scope-a",
+            source="remote:scope-a",
+            destination=str(dataset_root / "scope-a"),
+            candidate_count=2,
+        ),
+        dataset_sync.PreviewEntry(
+            scope="scope-b",
+            source="remote:scope-b",
+            destination=str(dataset_root / "scope-b"),
+            candidate_count=2,
+        ),
+    ]
+
+    monkeypatch.setattr(dataset_sync, "build_transfer_specs", lambda *args: specs)
+    monkeypatch.setattr(dataset_sync, "validate_transfer_spec", lambda spec: None)
+    monkeypatch.setattr(dataset_sync, "collect_preview_entries", lambda *args: entries)
+
+    def fake_execute(spec, include_patterns, log_path):
+        if spec.scope == "scope-a":
+            return 2, 0
+        raise dataset_sync.TransferExecutionError(
+            spec.scope,
+            "network outage",
+            transferred_count=1,
+            error_count=1,
+        )
+
+    monkeypatch.setattr(dataset_sync, "execute_copy_command", fake_execute)
+
+    import argparse
+    import json
+
+    args = argparse.Namespace(
+        remote="remote:",
+        dataset_root=str(dataset_root),
+        scope=["scope-a", "scope-b"],
+        include=[],
+    )
+
+    with pytest.raises(dataset_sync.SyncError, match="Summary path:"):
+        dataset_sync.run_transfer("import", "import", args)
+
+    summary_files = sorted(summary_dir.glob("*_import.json"))
+    assert len(summary_files) == 1
+    summary = json.loads(summary_files[0].read_text())
+    assert summary["transferred_count"] == 3
+    assert summary["failed_count"] == 1
+    assert summary["skipped_count"] == 0
