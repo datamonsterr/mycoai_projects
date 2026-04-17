@@ -1,11 +1,8 @@
 <!--
 Sync Impact Report
-Version change: 1.1.0 -> 1.2.0
+Version change: 1.2.0 -> 1.2.1
 Modified principles:
-- III. Pipeline-to-Product Traceability -> III. Pipeline-to-Product Traceability and Reimplementation
-- IV. Context-Specific Verification -> IV. Context-Specific Verification and Delivery Evidence
-- VI. Canonical Toolchains -> VI. Canonical Toolchains
-- Added: VII. Autonomous Delivery and Definition of Done
+- II. Experiment Contract Discipline (scope clarified to `fungal-cv-qdrant` autoresearch only)
 Added sections:
 - None
 Removed sections:
@@ -13,11 +10,12 @@ Removed sections:
 Templates requiring updates:
 - ✅ updated: .specify/templates/plan-template.md
 - ✅ updated: .specify/templates/spec-template.md
-- ✅ updated: .specify/templates/tasks-template.md
+- ✅ checked: .specify/templates/tasks-template.md
 - ✅ checked: .specify/templates/commands/ (no command templates present)
 - ✅ updated: AGENTS.md
 - ✅ updated: CLAUDE.md
-- ✅ updated: .opencode/command/speckit.implement.md
+- ✅ updated: .opencode/rules/branch-naming.md
+- ✅ updated: .opencode/rules/experiment-visualization.md
 Follow-up TODOs:
 - None
 -->
@@ -37,13 +35,18 @@ Rationale: clear ownership keeps research iteration and product delivery from
 drifting into each other.
 
 ### II. Experiment Contract Discipline
-Autoresearch work MUST start from the experiment `program.md`, preserve the
-established `fungal-cv-qdrant/src/prepare.py` invocation contract, keep attempt
-logging append-only, and follow the staircase visualization and branch naming
-rules defined in `.opencode/rules/`. Experiment attempts MUST favor
-qualitatively different strategies over repeated parameter churn. New best
-results MAY be merged to the canonical `autoresearch/{experiment-name}` branch;
-discarded attempts MUST remain historical record only.
+Autoresearch work inside `fungal-cv-qdrant/` MUST start from the experiment
+`program.md`, preserve the established
+`fungal-cv-qdrant/src/prepare.py` invocation contract, keep attempt logging
+append-only, and follow the staircase visualization and branch naming rules
+defined in `.opencode/rules/`. Those branch naming and visualization rules
+apply only to `fungal-cv-qdrant` autoresearch branches and charts. Backend,
+frontend, shared-contract, and general monorepo work MUST NOT inherit them
+unless the owning repo documents an explicit opt-in. Experiment attempts MUST
+favor qualitatively different strategies over repeated parameter churn. New
+best results MAY be merged to the canonical
+`autoresearch/{experiment-name}` branch; discarded attempts MUST remain
+historical record only.
 
 Rationale: experiment results are only useful when every run is reproducible,
 comparable, and traceable.
@@ -142,7 +145,9 @@ specification through validation and review handoff.
 2. Specs MUST identify touched repos, affected shared artifacts, the canonical
    package and command toolchain, any dependency on `retrieval` or
    `kmeans_segmentation` outputs, and any experiment source reviewed for
-   product-side reimplementation.
+   product-side reimplementation. Specs and plans MAY use the
+   `autoresearch/{experiment-name}/{N}-{summary}` branch format only for
+   `fungal-cv-qdrant` autoresearch work.
 3. Plans MUST pass a Constitution Check covering ownership boundaries,
    traceability, no direct cross-repo imports, canonical toolchains, required
    commands, test strategy, manual validation needs, and documentation updates.
@@ -191,4 +196,4 @@ Operational guidance in `AGENTS.md`, `CLAUDE.md`,
 `mycoai_retrieval_backend/README.md`, and `mycoai_retrieval_frontend/README.md`
 MAY elaborate workflow details but MUST NOT contradict this constitution.
 
-**Version**: 1.2.0 | **Ratified**: 2026-04-12 | **Last Amended**: 2026-04-13
+**Version**: 1.2.1 | **Ratified**: 2026-04-12 | **Last Amended**: 2026-04-16

@@ -1,8 +1,15 @@
-# Rule: Experiment Branch Naming (autoresearch)
+# Rule: fungal-cv-qdrant Autoresearch Branch Naming
+
+## Scope
+
+This rule applies only to autoresearch branches created for experiments inside
+`fungal-cv-qdrant/`. It does not apply to backend, frontend, shared-contract,
+or general monorepo feature branches.
 
 ## Branch Format
 
-All feature/experiment branches MUST follow this naming convention:
+All `fungal-cv-qdrant` autoresearch branches MUST follow this naming
+convention:
 
 ```
 autoresearch/{experiment-name}/{N}-{summary}
@@ -29,7 +36,8 @@ autoresearch/embedding-lr/1-triplet-loss-baseline
 
 ## Merging Best Results
 
-When an experiment run produces a **new best result** (higher accuracy than any previous attempt):
+When a `fungal-cv-qdrant` autoresearch run produces a **new best result**
+(higher accuracy than any previous attempt):
 
 1. Merge the winning branch to `autoresearch/{experiment-name}` (no attempt suffix — this is the canonical best).
 2. The `{experiment-name}` branch (e.g., `autoresearch/segmentation`) always holds the code that produced the best known result.
