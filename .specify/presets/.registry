@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "presets": {
+    "toc-navigation": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:ca4d3af1d9e17f116c88f4cc2912eb45d44bc6d4b9a70fd4cf107f22946c14b9",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.specify",
+          "speckit.plan",
+          "speckit.tasks"
+        ],
+        "opencode": [
+          "speckit.specify",
+          "speckit.plan",
+          "speckit.tasks"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-17T10:07:56.361274+00:00"
+    },
+    "explicit-task-dependencies": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:746498be0c0eb9dcef0345ad907ee8092a307e0241c428c394df5c44d7400a9c",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.tasks"
+        ],
+        "opencode": [
+          "speckit.tasks"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-17T10:07:57.430042+00:00"
+    },
+    "multi-repo-branching": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:610865ae47a9b3cf6d37dec09b489d63f8819286b008c6b60b75b557e8320173",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.plan",
+          "speckit.tasks"
+        ],
+        "opencode": [
+          "speckit.plan",
+          "speckit.tasks"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-17T10:08:07.650530+00:00"
+    }
+  }
+}

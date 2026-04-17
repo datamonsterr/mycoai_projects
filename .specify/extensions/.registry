@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "learn": {
+      "version": "1.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:1d78c414d8e71ffa163d3b3f2a0c94a02c6418e88577e68081123ebf892e704a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.learn.review",
+          "speckit.learn.clarify",
+          "speckit.learn.diagrams"
+        ],
+        "opencode": [
+          "speckit.learn.review",
+          "speckit.learn.clarify",
+          "speckit.learn.diagrams"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-17T10:08:26.163600+00:00"
+    }
+  }
+}
