@@ -23,6 +23,7 @@
 - Python workflows in this monorepo use `uv`/`uvx`; frontend package workflows use `pnpm`.
 - GitHub workflow, checks, and PR automation use `gh`.
 - Agent configuration lives at the monorepo root in `.agents/`, `.claude/`, `.opencode/`, `AGENTS.md`, and `CLAUDE.md`.
+- The `.opencode/rules/branch-naming.md` and `.opencode/rules/experiment-visualization.md` rules apply only to `fungal-cv-qdrant/` autoresearch work, not to backend, frontend, or general monorepo branches and charts.
 - `mycoai_retrieval_backend/` and `mycoai_retrieval_frontend/` consume validated outputs from `fungal-cv-qdrant/src/experiments/retrieval/` and `fungal-cv-qdrant/src/experiments/kmeans_segmentation/`; keep producer and consumer docs in sync when those contracts change.
 - Product repos MAY inspect experiment code to understand behavior, but they MUST reimplement that behavior locally and MUST NOT import directly from `fungal-cv-qdrant/`.
 
@@ -45,12 +46,24 @@ pnpm --dir mycoai_retrieval_frontend install
 # Install toolchain and start local Qdrant
 mise install
 mise run qdrant-up
+
+# Prepare and validate a remote-style workspace from the monorepo root
+bash tools/workspace_bootstrap.sh prepare
+bash tools/workspace_bootstrap.sh smoke-check
+bash tools/workspace_bootstrap.sh recover --instance-id <vast-instance-id>
+
+# Preview and run dataset sync commands
+uv run python tools/dataset_sync.py plan --direction import --remote mydrive:mycoai-dataset --scope original/sample
+uv run python tools/dataset_sync.py import --remote mydrive:mycoai-dataset --scope original/sample
+uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --scope segmented_image/new-batch
 ```
 
 ## Notes
 
 - `fungal-cv-qdrant/src/config.py` resolves the monorepo root automatically when the submodule is used inside this workspace.
 - The threshold staircase chart still writes to `results/autoresearch/{experiment}.csv` and `.png` at the monorepo root.
+- Shared remote-workspace bootstrap and dataset sync entrypoints live at `tools/workspace_bootstrap.sh` and `tools/dataset_sync.py`.
+- `mise install` now installs `rclone` for dataset sync, but the Google Drive remote configuration still lives outside the repo via `RCLONE_CONFIG` or the default `~/.config/rclone/rclone.conf`.
 - The backend and frontend repos are standalone deployable projects but live in this monorepo as sibling submodules.
 - User-facing product changes are only done after local checks, relevant workflow checks, and manual browser or API validation are recorded.
 - Detailed project guidance remains in `CLAUDE.md` and `fungal-cv-qdrant/README.md`.
@@ -58,6 +71,8 @@ mise run qdrant-up
 ## Active Technologies
 - Python 3.13 + OpenCV, NumPy, pandas, scikit-learn, pathlib (001-yolo-dataset-tools)
 - Local filesystem under `Dataset/original/` and a user-supplied export path (001-yolo-dataset-tools)
+- Bash + Python 3.13 + OpenSSH, git with submodules, `mise`, `uv`, `rclone`, optional `vastai` CLI for connection lookup (001-vastai-workspace-sync)
+- Monorepo root filesystem (`Dataset/`, `results/`, `weights/`, `species_weights.json`), Google Drive remote rooted to a dedicated dataset folder, ephemeral Vast.ai instance storage with optional external persistence (001-vastai-workspace-sync)
 
 ## Recent Changes
 - 001-yolo-dataset-tools: Added Python 3.13 + OpenCV, NumPy, pandas, scikit-learn, pathlib

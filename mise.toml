@@ -4,6 +4,7 @@ uv = "latest"
 node = "25"
 gh = "latest"
 docker-compose = "latest"
+rclone = "latest"
 
 [env]
 UV_PROJECT_ENVIRONMENT = "fungal-cv-qdrant/.venv"
@@ -34,7 +35,7 @@ run = "uv --directory mycoai_retrieval_backend sync --all-groups"
 
 [tasks.frontend-install]
 description = "Install frontend dependencies"
-run = "npm --prefix mycoai_retrieval_frontend install"
+run = "pnpm --dir mycoai_retrieval_frontend install"
 
 [tasks.backend-lint]
 description = "Run backend lint, typecheck, and tests"
@@ -42,7 +43,31 @@ run = "uv --directory mycoai_retrieval_backend run ruff check . && uv --director
 
 [tasks.frontend-lint]
 description = "Run frontend lint and build checks"
-run = "npm --prefix mycoai_retrieval_frontend run lint && npm --prefix mycoai_retrieval_frontend run typecheck && npm --prefix mycoai_retrieval_frontend run build"
+run = "pnpm --dir mycoai_retrieval_frontend lint && pnpm --dir mycoai_retrieval_frontend typecheck && pnpm --dir mycoai_retrieval_frontend build"
+
+[tasks.workspace-prepare]
+description = "Prepare a MycoAI remote workspace"
+run = "bash tools/workspace_bootstrap.sh prepare"
+
+[tasks.workspace-smoke-check]
+description = "Validate the MycoAI remote workspace"
+run = "bash tools/workspace_bootstrap.sh smoke-check"
+
+[tasks.workspace-recover]
+description = "Recover a MycoAI remote workspace"
+run = "bash tools/workspace_bootstrap.sh recover"
+
+[tasks.dataset-sync-plan]
+description = "Show dataset sync CLI help"
+run = "uv run python tools/dataset_sync.py plan --help"
+
+[tasks.dataset-sync-import]
+description = "Show dataset import CLI help"
+run = "uv run python tools/dataset_sync.py import --help"
+
+[tasks.dataset-sync-export]
+description = "Show dataset export CLI help"
+run = "uv run python tools/dataset_sync.py export --help"
 
 [tasks.install-spec-kit]
 description = "Install the Specify CLI"
