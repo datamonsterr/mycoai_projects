@@ -1,0 +1,24 @@
+# IDEs
+.vscode/
+.idea/
+.windsurf/
+.cursor/
+
+# Environment
+.env
+.venv/
+env/
+venv/
+bin/
+obj/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Spec Kit locals
+.specify/
+.claude/
+.gemini/
+.copilot/
+.agents/
