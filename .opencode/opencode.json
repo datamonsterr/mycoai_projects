@@ -1,6 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "minimax-coding-plan/MiniMax-M2.7",
   "default_agent": "build",
   "autoupdate": true,
   "mcp": {
@@ -120,10 +119,5 @@
       "**/*.npz"
     ]
   },
-  "snapshot": false,
-  "compaction": {
-    "auto": true,
-    "prune": true,
-    "reserved": 12000
-  }
+  "snapshot": false
 }
