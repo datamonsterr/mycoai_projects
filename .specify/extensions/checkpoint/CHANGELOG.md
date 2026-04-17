@@ -8,4 +8,4 @@ This is the very first version of this extension.
 - Commits the changes made after every pre-implementation step
 
 ### Added
-- ```speckit.checkpoint.commit``` - Performs both of the funcionalities above
+- ```speckit.checkpoint.commit``` - Performs both of the functionalities above

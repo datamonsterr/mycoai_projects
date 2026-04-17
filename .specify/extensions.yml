@@ -40,4 +40,3 @@ hooks:
     prompt: Generate task dependency diagram after task breakdown?
     description: Auto-generate dependency DAG after tasks are created
     condition: null
-ndition: null
