@@ -63,6 +63,7 @@ uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --sco
 - `fungal-cv-qdrant/src/config.py` resolves the monorepo root automatically when the submodule is used inside this workspace.
 - The threshold staircase chart still writes to `results/autoresearch/{experiment}.csv` and `.png` at the monorepo root.
 - Shared remote-workspace bootstrap and dataset sync entrypoints live at `tools/workspace_bootstrap.sh` and `tools/dataset_sync.py`.
+- For a fresh clone or a newly created git worktree, run `/init` before project work. The init flow updates submodules, refreshes from `origin`, fast-forwards `main` when applicable, prepares missing backend and frontend `.env` files, installs backend dependencies with `uv`, installs frontend dependencies with `pnpm`, runs `mise trust`, copies root `.env.example` when present, and reminds the user to enter credentials manually.
 - `mise install` now installs `rclone` for dataset sync, but the Google Drive remote configuration still lives outside the repo via `RCLONE_CONFIG` or the default `~/.config/rclone/rclone.conf`.
 - The backend and frontend repos are standalone deployable projects but live in this monorepo as sibling submodules.
 - User-facing product changes are only done after local checks, relevant workflow checks, and manual browser or API validation are recorded.
@@ -73,6 +74,8 @@ uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --sco
 - Local filesystem under `Dataset/original/` and a user-supplied export path (001-yolo-dataset-tools)
 - Bash + Python 3.13 + OpenSSH, git with submodules, `mise`, `uv`, `rclone`, optional `vastai` CLI for connection lookup (001-vastai-workspace-sync)
 - Monorepo root filesystem (`Dataset/`, `results/`, `weights/`, `species_weights.json`), Google Drive remote rooted to a dedicated dataset folder, ephemeral Vast.ai instance storage with optional external persistence (001-vastai-workspace-sync)
+- Bash + Python 3.13 + Markdown documentation + OpenSSH, git with submodules, `mise`, `uv`, optional `vastai` CLI for instance lookup, VS Code Remote-SSH, existing `tools/workspace_bootstrap.sh` and `tools/dataset_sync.py` (001-vastai-workspace-sync)
+- Monorepo root filesystem (`Dataset/`, `results/`, `weights/`, `species_weights.json`), local SSH config on the developer machine, optional external `rclone` config for dataset access (001-vastai-workspace-sync)
 
 ## Recent Changes
 - 001-yolo-dataset-tools: Added Python 3.13 + OpenCV, NumPy, pandas, scikit-learn, pathlib
