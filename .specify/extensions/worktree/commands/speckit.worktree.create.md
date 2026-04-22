@@ -29,14 +29,14 @@ You **MUST** consider the user input before proceeding (if not empty). The user 
    - Validate the branch exists in git
 
 2. **Choose worktree location**: Determine the worktree directory path:
-   - Default location: `.worktrees/{branch-name}/` relative to the repository root
-   - If `.worktrees/` directory does not exist, create it
-   - Add `.worktrees/` to `.gitignore` if not already present
+   - Default location: `worktrees/{branch-name}/` relative to the repository root
+   - If `worktrees/` directory does not exist, create it
+   - Add `worktrees/` to `.gitignore` if not already present
    - Verify the worktree does not already exist for this branch
 
 3. **Create the worktree**: Execute the git worktree command:
-   - Run `git worktree add .worktrees/{branch-name} {branch-name}`
-   - If the branch is remote-only, track it: `git worktree add .worktrees/{branch-name} -b {branch-name} origin/{branch-name}`
+   - Run `git worktree add worktrees/{branch-name} {branch-name}`
+   - If the branch is remote-only, track it: `git worktree add worktrees/{branch-name} -b {branch-name} origin/{branch-name}`
    - Verify the worktree was created successfully
 
 4. **Verify spec artifacts**: Check that the worktree has access to spec artifacts:
@@ -52,11 +52,11 @@ You **MUST** consider the user input before proceeding (if not empty). The user 
    | Field | Value |
    |-------|-------|
    | **Branch** | {branch-name} |
-   | **Worktree path** | .worktrees/{branch-name}/ |
+   | **Worktree path** | worktrees/{branch-name}/ |
    | **Spec artifacts** | spec.md ✅, plan.md ✅, tasks.md ❌ |
 
    ## Next Steps
-   - `cd .worktrees/{branch-name}/` to work in the isolated worktree
+   - `cd worktrees/{branch-name}/` to work in the isolated worktree
    - Run `/speckit.implement` inside the worktree to build the feature
    - Run `/speckit.worktree.list` to see all active worktrees
    - When done, run `/speckit.worktree.clean` to remove the worktree
@@ -64,8 +64,8 @@ You **MUST** consider the user input before proceeding (if not empty). The user 
 
 ## Rules
 
-- **Never modify the main working directory** — worktrees are created in `.worktrees/` only
-- **Always update .gitignore** — ensure `.worktrees/` is ignored to prevent accidental commits
+- **Never modify the main working directory** — worktrees are created in `worktrees/` only
+- **Always update .gitignore** — ensure `worktrees/` is ignored to prevent accidental commits
 - **One worktree per branch** — refuse to create a duplicate worktree for the same branch
 - **Validate branch exists** — do not create worktrees for non-existent branches
 - **Preserve existing worktrees** — never overwrite or remove an existing worktree
