@@ -1,23 +1,25 @@
 <!--
 Sync Impact Report
-Version change: 1.2.0 -> 1.2.1
+Version change: 1.2.1 -> 1.3.0
 Modified principles:
-- II. Experiment Contract Discipline (scope clarified to `fungal-cv-qdrant` autoresearch only)
+- IV. Context-Specific Verification and Delivery Evidence -> IV. Workspace Initialization and Context-Specific Verification
 Added sections:
-- None
+- Workspace bootstrap requirements for fresh clones and new worktrees
 Removed sections:
 - None
 Templates requiring updates:
-- ✅ updated: .specify/templates/plan-template.md
-- ✅ updated: .specify/templates/spec-template.md
+- ✅ checked: .specify/templates/plan-template.md
+- ✅ checked: .specify/templates/spec-template.md
 - ✅ checked: .specify/templates/tasks-template.md
 - ✅ checked: .specify/templates/commands/ (no command templates present)
 - ✅ updated: AGENTS.md
 - ✅ updated: CLAUDE.md
-- ✅ updated: .opencode/rules/branch-naming.md
-- ✅ updated: .opencode/rules/experiment-visualization.md
+- ✅ updated: .agents/skills/using-git-worktrees/SKILL.md
+- ✅ updated: .agents/skills/speckit-worktrees-create/SKILL.md
+- ✅ updated: .opencode/rules/worktree-init.md
+- ✅ updated: .opencode/tools/create-new-worktree.ts
 Follow-up TODOs:
-- None
+- TODO(ROOT_ENV_EXAMPLE): add or document the canonical root `.env.example` if root-level credentials become required
 -->
 # MycoAI Monorepo Constitution
 
@@ -68,7 +70,20 @@ Rationale: the system only stays trustworthy when scientist-facing behavior can
 be traced back to validated experiment outputs without creating hidden runtime
 coupling between research and product repos.
 
-### IV. Context-Specific Verification and Delivery Evidence
+### IV. Workspace Initialization and Context-Specific Verification
+Fresh clones and newly created git worktrees MUST run the project `/init` flow
+before feature work. The `/init` flow MUST initialize submodules, refresh from
+`origin`, fast-forward `main` when the current branch is `main`, run
+`mise trust`, prepare missing backend and frontend `.env` files from their local
+examples when available, install backend dependencies with
+`uv --directory mycoai_retrieval_backend sync --all-groups`, install frontend
+dependencies with `pnpm --dir mycoai_retrieval_frontend install`, copy the
+canonical root `.env.example` to `.env` when that file exists, and prompt the
+user to enter credentials manually instead of auto-filling secrets. The flow
+MUST skip missing optional paths without failing, MUST NOT overwrite existing
+`.env` files without explicit approval, and MUST report blockers such as local
+changes that prevent fetch or pull operations.
+
 Every change MUST include verification in each touched context and MUST name the
 exact commands or checks using the repo's canonical toolchain. Experiment
 changes MUST run the relevant `uv --directory fungal-cv-qdrant ...` command or
@@ -80,9 +95,10 @@ behavior changes or explicitly record why narrower validation is sufficient.
 User-facing changes MUST include a manual browser or API journey check and MUST
 record what path was exercised.
 
-Rationale: this monorepo crosses research, API, and UI boundaries, so
-validation must happen where the risk is introduced and must produce evidence
-that the final behavior matches the intended workflow.
+Rationale: reproducible initialization keeps fresh clones and worktrees aligned
+with the monorepo's submodule, toolchain, and credential expectations, and
+context-specific validation ensures the final behavior matches the intended
+workflow.
 
 ### V. Minimal Safe Change
 Changes MUST be the smallest correct change within the owning repo, preserve
@@ -152,10 +168,11 @@ specification through validation and review handoff.
    traceability, no direct cross-repo imports, canonical toolchains, required
    commands, test strategy, manual validation needs, and documentation updates.
 4. Tasks MUST include explicit verification work for every touched repo,
-   explicit contract-sync work for any cross-boundary change, and manual or
-   end-to-end verification tasks whenever user-facing behavior or external
-   contracts change. Command tasks MUST use `uv`/`uvx`, `pnpm`, or `gh` as
-   appropriate.
+   explicit contract-sync work for any cross-boundary change, workspace
+   initialization work whenever the change affects onboarding or worktree
+   creation, and manual or end-to-end verification tasks whenever user-facing
+   behavior or external contracts change. Command tasks MUST use `uv`/`uvx`,
+   `pnpm`, or `gh` as appropriate.
 5. Product-side implementations derived from experiments MUST translate logic
    into the backend or frontend repo, add local tests around the translation,
    and point back to the analyzed experiment path in docs or comments when the
@@ -196,4 +213,4 @@ Operational guidance in `AGENTS.md`, `CLAUDE.md`,
 `mycoai_retrieval_backend/README.md`, and `mycoai_retrieval_frontend/README.md`
 MAY elaborate workflow details but MUST NOT contradict this constitution.
 
-**Version**: 1.2.1 | **Ratified**: 2026-04-12 | **Last Amended**: 2026-04-16
+**Version**: 1.3.0 | **Ratified**: 2026-04-12 | **Last Amended**: 2026-04-22
