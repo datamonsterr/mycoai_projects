@@ -21,7 +21,7 @@
 - Code paths like `src/`, `docs/`, and `report/` refer to `fungal-cv-qdrant/` unless the backend/frontend repo is explicitly named.
 - Shared runtime data lives at the monorepo root in `Dataset/`, `results/`, `weights/`, `.qdrant_storage/`, and `species_weights.json`.
 - Python workflows in this monorepo use `uv`/`uvx`; frontend package workflows use `pnpm`.
-- GitHub workflow, checks, and PR automation use `gh`.
+- GitHub workflow, checks, and PR automation use `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh <args>`, authenticated as `datamonsterr`; do not use `gh auth switch` because it mutates shared state and can race with other project agents.
 - Agent configuration lives at the monorepo root in `.agents/`, `.claude/`, `.opencode/`, `AGENTS.md`, and `CLAUDE.md`.
 - The `.opencode/rules/branch-naming.md` and `.opencode/rules/experiment-visualization.md` rules apply only to `fungal-cv-qdrant/` autoresearch work, not to backend, frontend, or general monorepo branches and charts.
 - `mycoai_retrieval_backend/` and `mycoai_retrieval_frontend/` consume validated outputs from `fungal-cv-qdrant/src/experiments/retrieval/` and `fungal-cv-qdrant/src/experiments/kmeans_segmentation/`; keep producer and consumer docs in sync when those contracts change.
