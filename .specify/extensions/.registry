@@ -164,6 +164,77 @@
       },
       "registered_skills": [],
       "installed_at": "2026-04-17T10:08:00+00:00"
+    },
+    "memory-loader": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:d1caef45965accd4316d8aede0a4ac67f910017ea3c501814cfc7e2d8177ab0b",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.memory-loader.load"
+        ],
+        "opencode": [
+          "speckit.memory-loader.load"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-30T15:49:56.525931+00:00"
+    },
+    "ci-guard": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:ac1ea46bce4763ad014024565334a2a56b5c02cff048b5ae58ca39892177c36c",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.ci-guard.check",
+          "speckit.ci.check",
+          "speckit.ci-guard.report",
+          "speckit.ci.report",
+          "speckit.ci-guard.gate",
+          "speckit.ci.gate",
+          "speckit.ci-guard.drift",
+          "speckit.ci.drift"
+        ],
+        "opencode": [
+          "speckit.ci-guard.check",
+          "speckit.ci.check",
+          "speckit.ci-guard.report",
+          "speckit.ci.report",
+          "speckit.ci-guard.gate",
+          "speckit.ci.gate",
+          "speckit.ci-guard.drift",
+          "speckit.ci.drift"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-30T15:51:56.174931+00:00"
+    },
+    "tinyspec": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:1b14fe048beb100ece0c89858054d4af5672307a6f9735d1abcab3047f2bc426",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "codex": [
+          "speckit.tinyspec.create",
+          "speckit.tinyspec",
+          "speckit.tinyspec.implement",
+          "speckit.tinyspec.classify"
+        ],
+        "opencode": [
+          "speckit.tinyspec.create",
+          "speckit.tinyspec",
+          "speckit.tinyspec.implement",
+          "speckit.tinyspec.classify"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-30T15:51:56.241043+00:00"
     }
   }
 }

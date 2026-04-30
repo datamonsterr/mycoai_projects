@@ -24,6 +24,13 @@ hooks:
     prompt: Generate a learning guide from this implementation?
     description: ''
     condition: null
+  - extension: ci-guard
+    command: speckit.ci-guard.drift
+    enabled: true
+    optional: true
+    prompt: Check spec drift after implementation?
+    description: Detect divergence between spec and code
+    condition: null
   after_specify:
   - extension: worktree
     command: speckit.worktree.create
@@ -32,6 +39,13 @@ hooks:
     prompt: Create an isolated worktree for this new feature?
     description: Auto-spawn a worktree after a new feature is specified
     condition: null
+  - extension: speckit-utils
+    command: speckit.speckit-utils.doctor
+    enabled: true
+    optional: true
+    prompt: Run project health check?
+    description: Validate project health after specification generation
+    condition: null
   after_tasks:
   - extension: diagram
     command: speckit.diagram.dependencies
@@ -39,4 +53,82 @@ hooks:
     optional: true
     prompt: Generate task dependency diagram after task breakdown?
     description: Auto-generate dependency DAG after tasks are created
+    condition: null
+  after_plan:
+  - extension: speckit-utils
+    command: speckit.speckit-utils.validate
+    enabled: true
+    optional: true
+    prompt: Validate spec-to-task traceability?
+    description: Verify requirements map to planned tasks after planning
+    condition: null
+  before_specify:
+  - extension: memory-loader
+    command: speckit.memory-loader.load
+    enabled: true
+    optional: false
+    prompt: Execute speckit.memory-loader.load?
+    description: Load project memory files before specification
+    condition: null
+  - extension: tinyspec
+    command: speckit.tinyspec.classify
+    enabled: true
+    optional: true
+    prompt: Check if this task fits TinySpec?
+    description: Classify task complexity before full SDD
+    condition: null
+  before_plan:
+  - extension: memory-loader
+    command: speckit.memory-loader.load
+    enabled: true
+    optional: false
+    prompt: Execute speckit.memory-loader.load?
+    description: Load project memory files before planning
+    condition: null
+  before_tasks:
+  - extension: memory-loader
+    command: speckit.memory-loader.load
+    enabled: true
+    optional: false
+    prompt: Execute speckit.memory-loader.load?
+    description: Load project memory files before task generation
+    condition: null
+  before_implement:
+  - extension: memory-loader
+    command: speckit.memory-loader.load
+    enabled: true
+    optional: false
+    prompt: Execute speckit.memory-loader.load?
+    description: Load project memory files before implementation
+    condition: null
+  - extension: ci-guard
+    command: speckit.ci-guard.check
+    enabled: true
+    optional: true
+    prompt: Run spec compliance checks before implementation?
+    description: Verify spec artifacts before implementation
+    condition: null
+  before_clarify:
+  - extension: memory-loader
+    command: speckit.memory-loader.load
+    enabled: true
+    optional: false
+    prompt: Execute speckit.memory-loader.load?
+    description: Load project memory files before clarification
+    condition: null
+  before_checklist:
+  - extension: memory-loader
+    command: speckit.memory-loader.load
+    enabled: true
+    optional: false
+    prompt: Execute speckit.memory-loader.load?
+    description: Load project memory files before checklist generation
+    condition: null
+  before_analyze:
+  - extension: memory-loader
+    command: speckit.memory-loader.load
+    enabled: true
+    optional: false
+    prompt: Execute speckit.memory-loader.load?
+    description: Load project memory files before analysis
     condition: null

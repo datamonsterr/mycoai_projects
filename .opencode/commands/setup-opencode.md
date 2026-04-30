@@ -2,13 +2,18 @@
 description: Interactive setup for your local OpenCode model and TUI configuration
 ---
 
-You are helping the developer configure their local OpenCode for this NUOA project.
+You are helping the developer configure their local OpenCode for this MycoAI project.
 
 ## What this does
 
 Writes two files (does NOT touch shared project config):
 - `~/.config/opencode/opencode.json` — your model and provider preferences
 - `~/.config/opencode/tui.json` — your TUI preferences
+
+Also verifies the project GitHub CLI profile:
+- MyCoAI uses `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr"`
+- The profile must be authenticated as `datamonsterr`
+- Agents must run `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh <args>` and must not run `gh auth switch`
 
 Since the project config (`.opencode/opencode.json`) does NOT set any models, your global config takes full effect.
 
@@ -23,12 +28,18 @@ Since the project config (`.opencode/opencode.json`) does NOT set any models, yo
 1 (lowest)   Remote config             .well-known/opencode — organizational defaults
 ```
 
-## Step 1: Check available models
+## Step 1: Verify GitHub CLI profile
+
+Run `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh auth status -h github.com`.
+If not authenticated as `datamonsterr`, ask the developer to run `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh auth login -h github.com`.
+Never use `gh auth switch`.
+
+## Step 2: Check available models
 
 Run `opencode models` to list all available models.
 Show the output so the developer can pick valid models.
 
-## Step 2: Ask for 2 model choices
+## Step 3: Ask for 2 model choices
 
 OpenCode uses just **2 top-level model settings**:
 
@@ -44,7 +55,7 @@ Suggest these defaults if available on the developer's system:
 - `model` → `opencode-go/glm-5.1`
 - `small_model` → `opencode-go/minimax-m2.7`
 
-## Step 3: Write opencode.json
+## Step 4: Write opencode.json
 
 Write `~/.config/opencode/opencode.json`:
 
@@ -87,9 +98,9 @@ Only include the `provider` block if the developer requests it.
 
 Only add agent overrides if the developer explicitly requests them.
 
-## Step 4: Ask about TUI preferences
+## Step 5: Ask about TUI preferences
 
-Ask if they want to customize TUI settings. If no, skip to Step 5.
+Ask if they want to customize TUI settings. If no, skip to Step 6.
 
 If yes, ask:
 - **Theme:** `"opencode"` (default) or `"tokyonight"`
@@ -108,7 +119,7 @@ Write `~/.config/opencode/tui.json`:
 }
 ```
 
-## Step 5: Confirm and next steps
+## Step 6: Confirm and next steps
 
 Show the final configs and confirm. Then provide:
 
