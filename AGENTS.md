@@ -21,7 +21,7 @@
 - Code paths like `src/`, `docs/`, and `report/` refer to `fungal-cv-qdrant/` unless the backend/frontend repo is explicitly named.
 - Shared runtime data lives at the monorepo root in `Dataset/`, `results/`, `weights/`, `.qdrant_storage/`, and `species_weights.json`.
 - Python workflows in this monorepo use `uv`/`uvx`; frontend package workflows use `pnpm`.
-- GitHub workflow, checks, and PR automation use `gh`.
+- GitHub workflow, checks, and PR automation use `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh <args>`, authenticated as `datamonsterr`; do not use `gh auth switch` because it mutates shared state and can race with other project agents.
 - Agent configuration lives at the monorepo root in `.agents/`, `.claude/`, `.opencode/`, `AGENTS.md`, and `CLAUDE.md`.
 - The `.opencode/rules/branch-naming.md` and `.opencode/rules/experiment-visualization.md` rules apply only to `fungal-cv-qdrant/` autoresearch work, not to backend, frontend, or general monorepo branches and charts.
 - `mycoai_retrieval_backend/` and `mycoai_retrieval_frontend/` consume validated outputs from `fungal-cv-qdrant/src/experiments/retrieval/` and `fungal-cv-qdrant/src/experiments/kmeans_segmentation/`; keep producer and consumer docs in sync when those contracts change.
@@ -68,6 +68,7 @@ uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --sco
 - The backend and frontend repos are standalone deployable projects but live in this monorepo as sibling submodules.
 - User-facing product changes are only done after local checks, relevant workflow checks, and manual browser or API validation are recorded.
 - Detailed project guidance remains in `CLAUDE.md` and `fungal-cv-qdrant/README.md`.
+- Terse by default: keep agent output compact, load only needed repo context, and prefer codebase-memory MCP for broad code structure queries before file-by-file reads.
 
 ## Active Technologies
 - Python 3.13 + OpenCV, NumPy, pandas, scikit-learn, pathlib (001-yolo-dataset-tools)
