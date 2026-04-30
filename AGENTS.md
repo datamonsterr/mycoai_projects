@@ -68,6 +68,7 @@ uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --sco
 - The backend and frontend repos are standalone deployable projects but live in this monorepo as sibling submodules.
 - User-facing product changes are only done after local checks, relevant workflow checks, and manual browser or API validation are recorded.
 - Detailed project guidance remains in `CLAUDE.md` and `fungal-cv-qdrant/README.md`.
+- Terse by default: keep agent output compact, load only needed repo context, and prefer codebase-memory MCP for broad code structure queries before file-by-file reads.
 
 ## Active Technologies
 - Python 3.13 + OpenCV, NumPy, pandas, scikit-learn, pathlib (001-yolo-dataset-tools)
