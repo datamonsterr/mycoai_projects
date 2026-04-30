@@ -86,11 +86,11 @@ A researcher can run species classification cross validation where each fold hol
 - **FR-003**: The system MUST create a new derived dataset folder that preserves the source directory structure and image-label pairing while replacing the current generic colony label with the mapped species label for each colony annotation.
 - **FR-004**: The system MUST produce a species class manifest for the derived dataset so class names and class indices remain stable across dataset generation, training, and reporting.
 - **FR-005**: The system MUST record any skipped or failed samples, including missing strain mappings, missing labels, and unreadable files, in a machine-readable summary that researchers can review.
-- **FR-006**: The system MUST support a segmentation training workflow that uses the species-labeled colony dataset and treats the segmentation split as a random train/validation/test partition rather than a strain-held-out evaluation.
+- **FR-006**: The system MUST support a segmentation training workflow that uses the species-labeled colony dataset and treats the segmentation split as a random train/test partition with no validation split rather than a strain-held-out evaluation.
 - **FR-007**: The system MUST capture segmentation experiment outputs and summary metrics in a form that can be referenced from the experiment report.
 - **FR-008**: The system MUST support a species classification cross-validation workflow that ignores the existing `train`, `valid`, and `test` split folders in `Dataset/manual_labeled_data_roboflow/` when assigning cross-validation train/test membership.
 - **FR-009**: The system MUST construct each classification fold by selecting one strain per species for testing and assigning all remaining eligible strains for those species to training in that fold.
-- **FR-010**: The system MUST fail fast with a clear explanation when a species does not have enough distinct strains to satisfy the requested fold strategy.
+- **FR-010**: When a species has fewer distinct strains than the requested number of folds, the system MUST continue by reusing available strains in a deterministic round-robin assignment across folds and record that reuse in fold metadata.
 - **FR-011**: The system MUST store classification cross-validation outputs under `results/cross_validation_yolo/`.
 - **FR-012**: The system MUST write a CSV in `results/cross_validation_yolo/` containing, for every fold, the fold identifier, held-out strain per species, sample counts, metric values, and the metadata needed to analyze outcomes by fold, species, and strain.
 - **FR-013**: The system MUST generate visual summaries for the cross-validation results that allow researchers to compare fold performance and inspect train/test behavior.

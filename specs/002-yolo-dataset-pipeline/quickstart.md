@@ -4,6 +4,8 @@
 - Run the monorepo `/init` flow if this is a fresh clone or worktree.
 - Sync Python dependencies:
   - `uv --directory fungal-cv-qdrant sync`
+- Set the monorepo root for portable commands:
+  - `export MYCOAI_ROOT="$PWD"`
 - Confirm required inputs exist:
   - `Dataset/manual_labeled_data_roboflow/`
   - `Dataset/strain_to_specy.csv`
@@ -16,18 +18,18 @@ uv --directory fungal-cv-qdrant run python -m src.experiments.yolo_dataset.run
 
 Expected outputs:
 - `Dataset/manual_labeled_data_roboflow_species/`
-- `classes.txt`
-- `dataset.yaml`
-- `preparation_summary.csv`
+- `Dataset/manual_labeled_data_roboflow_species/classes.txt`
+- `Dataset/manual_labeled_data_roboflow_species/dataset.yaml`
+- `Dataset/manual_labeled_data_roboflow_species/preparation_summary.csv`
 
 ## Workflow B: Train YOLO segmentation normally
 
 ```bash
-uv --directory fungal-cv-qdrant run python -m src.experiments.yolo_segmentation.run --dataset-root "/home/dat/dev/mycoai/Dataset/manual_labeled_data_roboflow_species"
+uv --directory fungal-cv-qdrant run python -m src.experiments.yolo_segmentation.run --dataset-root "$MYCOAI_ROOT/Dataset/manual_labeled_data_roboflow_species"
 ```
 
 Expected outputs:
-- `train_test_manifest.json`
+- `Dataset/manual_labeled_data_roboflow_species/train_test_manifest.json`
 - `results/cross_validation_yolo/segmentation/segmentation_split_metadata.json`
 - `results/cross_validation_yolo/segmentation/segmentation_metrics.json`
 - `results/cross_validation_yolo/segmentation/yolo_segmentation/`
@@ -36,7 +38,7 @@ Expected outputs:
 ## Workflow C: Materialize 5-fold classification datasets
 
 ```bash
-uv --directory fungal-cv-qdrant run python -m src.experiments.yolo_cross_validation.run --dataset-root "/home/dat/dev/mycoai/Dataset/manual_labeled_data_roboflow_species" --folds 5
+uv --directory fungal-cv-qdrant run python -m src.experiments.yolo_cross_validation.run --dataset-root "$MYCOAI_ROOT/Dataset/manual_labeled_data_roboflow_species" --folds 5
 ```
 
 Expected outputs:
@@ -61,13 +63,13 @@ Crop datasets are created automatically by the fine-tuning workflow, or can be m
 
 Expected outputs:
 - crop dataset root(s) such as `Dataset/manual_labeled_data_roboflow_species_crops/`
-- `crop_assignment.csv`
+- `Dataset/manual_labeled_data_roboflow_species_crops/crop_assignment.csv`
 - `results/cross_validation_yolo/crop_dataset_summary.json`
 
 ## Workflow F: Fine-tune extractor backbones on crop datasets
 
 ```bash
-uv --directory fungal-cv-qdrant run python -m src.experiments.finetune_dl.train_yolo_crops --dataset-root "/home/dat/dev/mycoai/Dataset/manual_labeled_data_roboflow_species" --model-name ResNet50
+uv --directory fungal-cv-qdrant run python -m src.experiments.finetune_dl.train_yolo_crops --dataset-root "$MYCOAI_ROOT/Dataset/manual_labeled_data_roboflow_species" --model-name ResNet50
 ```
 
 Expected outputs:
@@ -79,9 +81,9 @@ Expected outputs:
 ## Verification Commands
 - `uv --directory fungal-cv-qdrant run pytest tests/test_yolo_dataset_pipeline.py tests/test_yolo_cross_validation.py tests/test_yolo_visualization.py tests/test_yolo_crop_dataset.py`
 - `uv --directory fungal-cv-qdrant run python -m src.experiments.yolo_dataset.run`
-- `uv --directory fungal-cv-qdrant run python -m src.experiments.yolo_segmentation.run --dataset-root "/home/dat/dev/mycoai/Dataset/manual_labeled_data_roboflow_species" --epochs 50`
+- `uv --directory fungal-cv-qdrant run python -m src.experiments.yolo_segmentation.run --dataset-root "$MYCOAI_ROOT/Dataset/manual_labeled_data_roboflow_species" --epochs 50`
 - `uv --directory fungal-cv-qdrant run python -m src.experiments.yolo_cross_validation.run`
-- `uv --directory fungal-cv-qdrant run python -m src.experiments.finetune_dl.train_yolo_crops --dataset-root "/home/dat/dev/mycoai/Dataset/manual_labeled_data_roboflow_species" --model-name ResNet50`
+- `uv --directory fungal-cv-qdrant run python -m src.experiments.finetune_dl.train_yolo_crops --dataset-root "$MYCOAI_ROOT/Dataset/manual_labeled_data_roboflow_species" --model-name ResNet50`
 
 ## Expected Deliverables
 - relabeled species dataset for segmentation
