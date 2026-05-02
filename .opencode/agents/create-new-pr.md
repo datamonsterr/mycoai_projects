@@ -50,8 +50,9 @@ You prepare pull requests for either the monorepo root or one git submodule.
    - Validation
    - Contract impact
    - Related PR links
-6. For submodule PRs, explicitly add the main-repo PR URL once known.
-7. For main-repo PRs that bump submodule refs, explicitly add the child PR URLs.
+6. Run GitHub CLI as `GH_CONFIG_DIR=\"$HOME/.config/gh-datamonsterr\" gh ...` and never use `gh auth switch`.
+7. For submodule PRs, explicitly add the main-repo PR URL once known.
+8. For main-repo PRs that bump submodule refs, explicitly add the child PR URLs.
 
 ## Output
 

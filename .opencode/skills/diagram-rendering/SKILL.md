@@ -1,5 +1,5 @@
 ---
-name: diagram-rendering
+name: diagram-renderer
 description: Create a diagram with Mermaid or Python, render it to an image inside the report output folder, and return the relative include path.
 ---
 

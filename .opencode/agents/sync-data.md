@@ -19,7 +19,7 @@ You handle shared artifact sync for MycoAI.
 1. Reuse `tools/dataset_sync.py` instead of inventing parallel sync logic.
 2. Keep sync non-destructive by default.
 3. Validate `rclone` and external credential state before sync.
-4. Support `Dataset/`, `results/`, and `weights/` scopes rooted at `Mydrive/mycoai_project/`.
+4. Support `Dataset/`, `results/`, and `weights/` scopes with a configured rclone remote path such as `mydrive:mycoai-dataset`.
 5. Help the developer set up or diagnose `RCLONE_CONFIG` and related credentials.
 
 ## Workflow

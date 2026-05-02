@@ -12,4 +12,4 @@ Use this when you need to set up or run shared storage sync.
 - reuse `tools/dataset_sync.py`
 - validate `rclone` and credential state
 - support `Dataset/`, `results/`, and `weights/` scopes
-- use the canonical remote root `Mydrive/mycoai_project/`
+- use a configured rclone remote root such as `mydrive:mycoai-dataset`

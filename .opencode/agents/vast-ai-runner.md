@@ -19,7 +19,7 @@ You run the canonical Vast.ai workflow for this monorepo.
 
 1. Keep the control plane local.
 2. Use the one canonical root-owned Vast.ai runner entrypoint.
-3. Sync `Dataset/`, `results/`, and `weights/` through `Mydrive/mycoai_project/`.
+3. Sync `Dataset/`, `results/`, and `weights/` through a configured rclone remote path such as `mydrive:mycoai-dataset`.
 4. Capture instance metadata, SSH readiness, command outcome, and artifact locations.
 5. Separate success cleanup from failure-path keep-vs-terminate decisions.
 

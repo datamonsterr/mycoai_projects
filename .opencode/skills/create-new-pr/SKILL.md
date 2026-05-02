@@ -12,7 +12,8 @@ Use this when you need a PR for the monorepo root or one submodule.
 - inspect git status, branch tracking, commit history, and base diff
 - read related spec, plan, tasks, contracts, and validation evidence
 - draft a concise PR title and body
-- create the PR with `gh pr create` when asked
+- create the PR with `GH_CONFIG_DIR=\"$HOME/.config/gh-datamonsterr\" gh pr create` when asked
+- never use `gh auth switch`
 - cross-link main-repo and submodule PRs
 
 ## Required PR Body Sections

@@ -12,4 +12,4 @@ Use this when you need to execute a project command on a Vast.ai machine.
 - use the one canonical repo-owned runner path
 - keep the control plane local
 - capture instance id, GPU, SSH details, command status, and artifact paths
-- sync `Dataset/`, `results/`, and `weights/` through `Mydrive/mycoai_project/`
+- sync `Dataset/`, `results/`, and `weights/` through a configured rclone remote path such as `mydrive:mycoai-dataset`
