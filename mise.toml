@@ -57,6 +57,18 @@ run = "bash tools/workspace_bootstrap.sh smoke-check"
 description = "Recover a MycoAI remote workspace"
 run = "bash tools/workspace_bootstrap.sh recover"
 
+[tasks.project-init]
+description = "Init full monorepo with submodules and deps"
+run = "git submodule update --init --recursive && mise install && uv --directory fungal-cv-qdrant sync && uv --directory mycoai_retrieval_backend sync --all-groups && pnpm --dir mycoai_retrieval_frontend install"
+
+[tasks.submodules-checkout-branch]
+description = "Checkout current root branch in all submodules"
+run = "branch=$(git branch --show-current) && [ -n \"$branch\" ] && for repo in fungal-cv-qdrant mycoai_retrieval_backend mycoai_retrieval_frontend; do if git -C \"$repo\" show-ref --verify --quiet \"refs/heads/$branch\"; then git -C \"$repo\" checkout \"$branch\"; else git -C \"$repo\" checkout -b \"$branch\"; fi; done"
+
+[tasks.project-init-branch]
+description = "Init full monorepo and align submodule branches"
+run = "git submodule update --init --recursive && mise install && uv --directory fungal-cv-qdrant sync && uv --directory mycoai_retrieval_backend sync --all-groups && pnpm --dir mycoai_retrieval_frontend install && branch=$(git branch --show-current) && [ -n \"$branch\" ] && for repo in fungal-cv-qdrant mycoai_retrieval_backend mycoai_retrieval_frontend; do if git -C \"$repo\" show-ref --verify --quiet \"refs/heads/$branch\"; then git -C \"$repo\" checkout \"$branch\"; else git -C \"$repo\" checkout -b \"$branch\"; fi; done"
+
 [tasks.dataset-sync-plan]
 description = "Show dataset sync CLI help"
 run = "uv run python tools/dataset_sync.py plan --help"
