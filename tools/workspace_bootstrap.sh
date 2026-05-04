@@ -5,8 +5,10 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_WORKSPACE_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
 WORKSPACE_ROOT="${MYCOAI_ROOT:-$DEFAULT_WORKSPACE_ROOT}"
-FUNGAL_DIR="${WORKSPACE_ROOT}/fungal-cv-qdrant"
-DATASET_ROOT="${WORKSPACE_ROOT}/Dataset"
+  REPOS_DIR="${WORKSPACE_ROOT}/repos"
+  FUNGAL_DIR="${REPOS_DIR}/fungal-cv-qdrant"
+  DATASET_ROOT="${WORKSPACE_ROOT}/Dataset"
+
 RESULTS_ROOT="${WORKSPACE_ROOT}/results"
 WEIGHTS_ROOT="${WORKSPACE_ROOT}/weights"
 NON_INTERACTIVE="false"
@@ -51,7 +53,9 @@ set_workspace_root() {
   local workspace_root="$1"
 
   WORKSPACE_ROOT="$workspace_root"
-  FUNGAL_DIR="${WORKSPACE_ROOT}/fungal-cv-qdrant"
+REPOS_DIR="${WORKSPACE_ROOT}/repos"
+FUNGAL_DIR="${REPOS_DIR}/fungal-cv-qdrant"
+
   DATASET_ROOT="${WORKSPACE_ROOT}/Dataset"
   RESULTS_ROOT="${WORKSPACE_ROOT}/results"
   WEIGHTS_ROOT="${WORKSPACE_ROOT}/weights"
@@ -97,6 +101,7 @@ has_mise_tool() {
 
 verify_repo_layout() {
   [[ -f "${WORKSPACE_ROOT}/mise.toml" ]] || fail "Expected mise.toml at ${WORKSPACE_ROOT}/mise.toml"
+  [[ -d "$REPOS_DIR" ]] || fail "Expected repos directory at $REPOS_DIR"
   [[ -d "$FUNGAL_DIR" ]] || fail "Expected fungal-cv-qdrant at $FUNGAL_DIR"
   [[ -f "${WORKSPACE_ROOT}/.gitmodules" ]] || warn "No .gitmodules found at ${WORKSPACE_ROOT}; submodule repair will be skipped"
 }

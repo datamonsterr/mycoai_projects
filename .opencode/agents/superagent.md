@@ -8,9 +8,9 @@ permission:
   edit: allow
   bash:
     "*": ask
-    "uv --directory fungal-cv-qdrant *": allow
-    "uv --directory mycoai_retrieval_backend *": allow
-    "pnpm --dir mycoai_retrieval_frontend *": allow
+    "uv --directory repos/fungal-cv-qdrant *": allow
+    "uv --directory repos/mycoai_retrieval_backend *": allow
+    "pnpm --dir repos/mycoai_retrieval_frontend *": allow
     "git status*": allow
     "git diff*": allow
     "git log*": allow
