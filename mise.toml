@@ -7,43 +7,43 @@ docker-compose = "latest"
 rclone = "latest"
 
 [env]
-UV_PROJECT_ENVIRONMENT = "fungal-cv-qdrant/.venv"
+UV_PROJECT_ENVIRONMENT = "repos/fungal-cv-qdrant/.venv"
 
 [tasks.sync]
-description = "Install fungal-cv-qdrant dependencies"
-run = "uv --directory fungal-cv-qdrant sync"
+description = "Install repos/fungal-cv-qdrant dependencies"
+run = "uv --directory repos/fungal-cv-qdrant sync"
 
 [tasks.qdrant-up]
 description = "Start local Qdrant"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f fungal-cv-qdrant/docker-compose.yml up -d"
+run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f repos/fungal-cv-qdrant/docker-compose.yml up -d"
 
 [tasks.qdrant-down]
 description = "Stop local Qdrant"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f fungal-cv-qdrant/docker-compose.yml down"
+run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f repos/fungal-cv-qdrant/docker-compose.yml down"
 
 [tasks.threshold]
 description = "Run threshold experiment prepare flow"
-run = "uv --directory fungal-cv-qdrant run python src/prepare.py --experiment threshold"
+run = "uv --directory repos/fungal-cv-qdrant run python src/prepare.py --experiment threshold"
 
 [tasks.experiment-list]
 description = "List available experiments"
-run = "uv --directory fungal-cv-qdrant run python src/run.py --experiment-list"
+run = "uv --directory repos/fungal-cv-qdrant run python src/run.py --experiment-list"
 
 [tasks.backend-sync]
 description = "Install backend dependencies"
-run = "uv --directory mycoai_retrieval_backend sync --all-groups"
+run = "uv --directory repos/mycoai_retrieval_backend sync --all-groups"
 
 [tasks.frontend-install]
 description = "Install frontend dependencies"
-run = "pnpm --dir mycoai_retrieval_frontend install"
+run = "pnpm --dir repos/mycoai_retrieval_frontend install"
 
 [tasks.backend-lint]
 description = "Run backend lint, typecheck, and tests"
-run = "uv --directory mycoai_retrieval_backend run ruff check . && uv --directory mycoai_retrieval_backend run mypy src && uv --directory mycoai_retrieval_backend run pytest"
+run = "uv --directory repos/mycoai_retrieval_backend run ruff check . && uv --directory repos/mycoai_retrieval_backend run mypy src && uv --directory repos/mycoai_retrieval_backend run pytest"
 
 [tasks.frontend-lint]
 description = "Run frontend lint and build checks"
-run = "pnpm --dir mycoai_retrieval_frontend lint && pnpm --dir mycoai_retrieval_frontend typecheck && pnpm --dir mycoai_retrieval_frontend build"
+run = "pnpm --dir repos/mycoai_retrieval_frontend lint && pnpm --dir repos/mycoai_retrieval_frontend typecheck && pnpm --dir repos/mycoai_retrieval_frontend build"
 
 [tasks.workspace-prepare]
 description = "Prepare a MycoAI remote workspace"
@@ -59,15 +59,15 @@ run = "bash tools/workspace_bootstrap.sh recover"
 
 [tasks.project-init]
 description = "Init full monorepo with submodules and deps"
-run = "git submodule update --init --recursive && mise install && uv --directory fungal-cv-qdrant sync && uv --directory mycoai_retrieval_backend sync --all-groups && pnpm --dir mycoai_retrieval_frontend install"
+run = "git submodule update --init --recursive && mise install && uv --directory repos/fungal-cv-qdrant sync && uv --directory repos/mycoai_retrieval_backend sync --all-groups && pnpm --dir repos/mycoai_retrieval_frontend install"
 
 [tasks.submodules-checkout-branch]
 description = "Checkout current root branch in all submodules"
-run = "branch=$(git branch --show-current) && [ -n \"$branch\" ] && for repo in fungal-cv-qdrant mycoai_retrieval_backend mycoai_retrieval_frontend; do if git -C \"$repo\" show-ref --verify --quiet \"refs/heads/$branch\"; then git -C \"$repo\" checkout \"$branch\"; else git -C \"$repo\" checkout -b \"$branch\"; fi; done"
+run = "branch=$(git branch --show-current) && [ -n \"$branch\" ] && for repo in repos/fungal-cv-qdrant repos/mycoai_retrieval_backend repos/mycoai_retrieval_frontend; do if git -C \"$repo\" show-ref --verify --quiet \"refs/heads/$branch\"; then git -C \"$repo\" checkout \"$branch\"; else git -C \"$repo\" checkout -b \"$branch\"; fi; done"
 
 [tasks.project-init-branch]
 description = "Init full monorepo and align submodule branches"
-run = "git submodule update --init --recursive && mise install && uv --directory fungal-cv-qdrant sync && uv --directory mycoai_retrieval_backend sync --all-groups && pnpm --dir mycoai_retrieval_frontend install && branch=$(git branch --show-current) && [ -n \"$branch\" ] && for repo in fungal-cv-qdrant mycoai_retrieval_backend mycoai_retrieval_frontend; do if git -C \"$repo\" show-ref --verify --quiet \"refs/heads/$branch\"; then git -C \"$repo\" checkout \"$branch\"; else git -C \"$repo\" checkout -b \"$branch\"; fi; done"
+run = "git submodule update --init --recursive && mise install && uv --directory repos/fungal-cv-qdrant sync && uv --directory repos/mycoai_retrieval_backend sync --all-groups && pnpm --dir repos/mycoai_retrieval_frontend install && branch=$(git branch --show-current) && [ -n \"$branch\" ] && for repo in repos/fungal-cv-qdrant repos/mycoai_retrieval_backend repos/mycoai_retrieval_frontend; do if git -C \"$repo\" show-ref --verify --quiet \"refs/heads/$branch\"; then git -C \"$repo\" checkout \"$branch\"; else git -C \"$repo\" checkout -b \"$branch\"; fi; done"
 
 [tasks.dataset-sync-plan]
 description = "Show dataset sync CLI help"

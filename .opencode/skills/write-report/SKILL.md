@@ -5,7 +5,7 @@ description: Write and render a new fungal-cv-qdrant experiment report, includin
 
 # Write Report
 
-Use this when you need to create or update a report under `fungal-cv-qdrant/report/`.
+Use this when you need to create or update a report under `repos/fungal-cv-qdrant/report/`.
 
 ## Responsibilities
 

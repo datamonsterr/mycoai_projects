@@ -8,14 +8,14 @@ permission:
   edit: allow
   bash:
     "*": ask
-    "uv --directory fungal-cv-qdrant *": allow
+    "uv --directory repos/fungal-cv-qdrant *": allow
 ---
 
 You write and render experiment reports for `fungal-cv-qdrant`.
 
 ## Goals
 
-1. Reuse the existing report structure under `fungal-cv-qdrant/report/`.
+1. Reuse the existing report structure under `repos/fungal-cv-qdrant/report/`.
 2. Read experiment context from `program.md`, logs, CSVs, notes, specs, and prior reports.
 3. Request diagrams from the `diagram-renderer` agent when a diagram is needed.
 4. Ensure rendered assets land in the report output folder and are referenced by relative path.

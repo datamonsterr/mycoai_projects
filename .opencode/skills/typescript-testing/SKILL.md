@@ -9,7 +9,7 @@ author: project
 
 ## Use When
 
-- Editing `mycoai_retrieval_frontend/`
+- Editing `repos/mycoai_retrieval_frontend/`
 - Fixing a frontend regression
 - Adding scientist-facing UI flows that need automated coverage
 - Designing or expanding the frontend test harness
@@ -45,9 +45,9 @@ author: project
 ## Verification Commands
 
 ```bash
-pnpm --dir mycoai_retrieval_frontend lint
-pnpm --dir mycoai_retrieval_frontend typecheck
-pnpm --dir mycoai_retrieval_frontend build
+pnpm --dir repos/mycoai_retrieval_frontend lint
+pnpm --dir repos/mycoai_retrieval_frontend typecheck
+pnpm --dir repos/mycoai_retrieval_frontend build
 ```
 
 If the repo adds unit or e2e scripts, run them as part of the feature's local

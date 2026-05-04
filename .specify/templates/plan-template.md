@@ -67,16 +67,16 @@ specs/[###-feature]/
 ### Source Code (repository root)
 
 ```text
-fungal-cv-qdrant/
+repos/fungal-cv-qdrant/
 ├── src/experiments/
 ├── src/analysis/
 └── report/
 
-mycoai_retrieval_backend/
+repos/mycoai_retrieval_backend/
 ├── src/
 └── tests/
 
-mycoai_retrieval_frontend/
+repos/mycoai_retrieval_frontend/
 ├── src/
 └── [tests or app-specific validation paths]
 

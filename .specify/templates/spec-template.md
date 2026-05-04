@@ -1,6 +1,6 @@
 # Feature Specification: [FEATURE NAME]
 
-**Feature Branch**: `[###-feature-name]` or `[autoresearch/<experiment-name>/<N>-<summary>]` for `fungal-cv-qdrant` autoresearch only  
+**Feature Branch**: `[###-feature-name]` or `[autoresearch/<experiment-name>/<N>-<summary>]` for `repos/fungal-cv-qdrant` autoresearch only  
 **Created**: [DATE]  
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
@@ -12,8 +12,8 @@
   producers before writing detailed requirements.
 -->
 
-- **Primary Repo**: [e.g., fungal-cv-qdrant, mycoai_retrieval_backend,
-  mycoai_retrieval_frontend]
+- **Primary Repo**: [e.g., repos/fungal-cv-qdrant,
+  repos/mycoai_retrieval_backend, repos/mycoai_retrieval_frontend]
 - **Additional Touched Repos**: [None or list]
 - **Shared Artifacts**: [e.g., Dataset/, results/, weights/,
   species_weights.json, or N/A]
@@ -23,7 +23,7 @@
   kmeans_segmentation outputs, name the source command, artifact, and consumer;
   otherwise N/A]
 - **Reimplementation Boundary**: [If product code is derived from
-  `fungal-cv-qdrant`, list the experiment paths reviewed, the artifact/schema
+  `repos/fungal-cv-qdrant`, list the experiment paths reviewed, the artifact/schema
   consumed, and confirm there are no direct imports; otherwise N/A]
 
 ## User Scenarios & Testing *(mandatory)*

@@ -1,9 +1,9 @@
 [submodule "fungal-cv-qdrant"]
-	path = fungal-cv-qdrant
+	path = repos/fungal-cv-qdrant
 	url = git@github.com:datamonsterr/fungal-cv-qdrant.git
 [submodule "mycoai_retrieval_backend"]
-	path = mycoai_retrieval_backend
+	path = repos/mycoai_retrieval_backend
 	url = git@github.com:datamonsterr/mycoai_retrieval_backend.git
 [submodule "mycoai_retrieval_frontend"]
-	path = mycoai_retrieval_frontend
+	path = repos/mycoai_retrieval_frontend
 	url = git@github.com:datamonsterr/mycoai_retrieval_frontend.git

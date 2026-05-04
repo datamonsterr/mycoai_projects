@@ -1,25 +1,21 @@
 <!--
 Sync Impact Report
-Version change: 1.2.1 -> 1.3.0
+Version change: 1.3.0 -> 1.3.0
 Modified principles:
-- IV. Context-Specific Verification and Delivery Evidence -> IV. Workspace Initialization and Context-Specific Verification
+- None
 Added sections:
-- Workspace bootstrap requirements for fresh clones and new worktrees
+- None
 Removed sections:
 - None
 Templates requiring updates:
 - ✅ checked: .specify/templates/plan-template.md
 - ✅ checked: .specify/templates/spec-template.md
 - ✅ checked: .specify/templates/tasks-template.md
-- ✅ checked: .specify/templates/commands/ (no command templates present)
-- ✅ updated: AGENTS.md
-- ✅ updated: CLAUDE.md
-- ✅ updated: .agents/skills/using-git-worktrees/SKILL.md
-- ✅ updated: .agents/skills/speckit-worktrees-create/SKILL.md
-- ✅ updated: .opencode/rules/worktree-init.md
-- ✅ updated: .opencode/tools/create-new-worktree.ts
+- ✅ checked: .specify/templates/commands/ (directory not present; no command templates to update)
+- ✅ checked: AGENTS.md
+- ✅ checked: CLAUDE.md
 Follow-up TODOs:
-- TODO(ROOT_ENV_EXAMPLE): add or document the canonical root `.env.example` if root-level credentials become required
+- None
 -->
 # MycoAI Monorepo Constitution
 
@@ -37,9 +33,9 @@ Rationale: clear ownership keeps research iteration and product delivery from
 drifting into each other.
 
 ### II. Experiment Contract Discipline
-Autoresearch work inside `fungal-cv-qdrant/` MUST start from the experiment
+Autoresearch work inside `repos/fungal-cv-qdrant/` MUST start from the experiment
 `program.md`, preserve the established
-`fungal-cv-qdrant/src/prepare.py` invocation contract, keep attempt logging
+`repos/fungal-cv-qdrant/src/prepare.py` invocation contract, keep attempt logging
 append-only, and follow the staircase visualization and branch naming rules
 defined in `.opencode/rules/`. Those branch naming and visualization rules
 apply only to `fungal-cv-qdrant` autoresearch branches and charts. Backend,
@@ -55,8 +51,8 @@ comparable, and traceable.
 
 ### III. Pipeline-to-Product Traceability and Reimplementation
 Any backend or frontend feature that depends on outputs from
-`fungal-cv-qdrant/src/experiments/retrieval/` or
-`fungal-cv-qdrant/src/experiments/kmeans_segmentation/` MUST identify the
+`repos/fungal-cv-qdrant/src/experiments/retrieval/` or
+`repos/fungal-cv-qdrant/src/experiments/kmeans_segmentation/` MUST identify the
 producing command, output artifact, and consuming API or UI surface in its
 spec, plan, and tasks. Product repos MAY inspect experiment code to understand
 algorithms, parameters, and expected outputs, but they MUST reimplement product
@@ -137,12 +133,12 @@ specification through validation and review handoff.
 
 ## Project Boundaries and Data Contracts
 
-- `fungal-cv-qdrant/` owns dataset preparation, segmentation, retrieval
+- `repos/fungal-cv-qdrant/` owns dataset preparation, segmentation, retrieval
   evaluation, experiment reports, and Qdrant-facing research outputs.
-- `mycoai_retrieval_backend/` owns API contracts, data management workflows,
+- `repos/mycoai_retrieval_backend/` owns API contracts, data management workflows,
   indexing orchestration, and product-side consumption of validated experiment
   outputs.
-- `mycoai_retrieval_frontend/` owns search, browsing, and visualization flows
+- `repos/mycoai_retrieval_frontend/` owns search, browsing, and visualization flows
   presented to mycologists and other scientist users.
 - Root-level `Dataset/`, `results/`, `weights/`, and `species_weights.json`
   are shared runtime assets. They MUST NOT become a second code location or an
@@ -152,7 +148,7 @@ specification through validation and review handoff.
   experiment source path consulted for product-side reimplementation before
   implementation begins.
 - Product repos MUST NOT add direct path, package, or runtime imports from
-  `fungal-cv-qdrant/`.
+  `repos/fungal-cv-qdrant/`.
 
 ## Delivery Workflow, Testing, and Quality Gates
 
@@ -209,8 +205,8 @@ usage, validation evidence, definition-of-done evidence, and documentation sync
 before approval.
 
 Operational guidance in `AGENTS.md`, `CLAUDE.md`,
-`.opencode/agents/autoresearch.md`, `fungal-cv-qdrant/README.md`,
-`mycoai_retrieval_backend/README.md`, and `mycoai_retrieval_frontend/README.md`
+`.opencode/agents/autoresearch.md`, `repos/fungal-cv-qdrant/README.md`,
+`repos/mycoai_retrieval_backend/README.md`, and `repos/mycoai_retrieval_frontend/README.md`
 MAY elaborate workflow details but MUST NOT contradict this constitution.
 
 **Version**: 1.3.0 | **Ratified**: 2026-04-12 | **Last Amended**: 2026-04-22

@@ -28,11 +28,11 @@ reimplementation tasks when translating experiment logic.
 
 ## Path Conventions
 
-- **Experiment repo**: `fungal-cv-qdrant/src/`,
-  `fungal-cv-qdrant/src/experiments/`, `fungal-cv-qdrant/report/`
-- **Backend repo**: `mycoai_retrieval_backend/src/`,
-  `mycoai_retrieval_backend/tests/`
-- **Frontend repo**: `mycoai_retrieval_frontend/src/` and related app config or
+- **Experiment repo**: `repos/fungal-cv-qdrant/src/`,
+  `repos/fungal-cv-qdrant/src/experiments/`, `repos/fungal-cv-qdrant/report/`
+- **Backend repo**: `repos/mycoai_retrieval_backend/src/`,
+  `repos/mycoai_retrieval_backend/tests/`
+- **Frontend repo**: `repos/mycoai_retrieval_frontend/src/` and related app config or
   validation paths
 - **Shared assets**: `Dataset/`, `results/`, `weights/`,
   `species_weights.json`
