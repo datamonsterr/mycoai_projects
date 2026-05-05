@@ -49,16 +49,22 @@ export default tool({
 
     if (fs.existsSync(paperIdeasPath)) {
       const ideas = fs.readFileSync(paperIdeasPath, "utf-8")
-      if (
-        ideas.toLowerCase().includes(strategyNorm) ||
-        (args.proposed_strategy &&
-          ideas.toLowerCase().includes(normalize(args.proposed_strategy).slice(0, 40)))
-      ) {
-        const inProgress = ideas.includes("Status**: in-progress") || ideas.includes("Status**: completed")
-        if (inProgress) {
-          return `DUPLICATE: Strategy already in-progress or completed in paper-ideas.md\nStrategy: ${args.strategy}`
+      const blocks = ideas.split(/^## Paper:/m).slice(1)
+      const matchedBlock = blocks.find((block) => {
+        const normalizedBlock = normalize(block)
+        return (
+          normalizedBlock.includes(strategyNorm) ||
+          (args.proposed_strategy &&
+            normalizedBlock.includes(normalize(args.proposed_strategy).slice(0, 40)))
+        )
+      })
+      if (matchedBlock) {
+        const statusMatch = matchedBlock.match(/\*\*Status\*\*:\s*([^\n]+)/)
+        const status = normalize(statusMatch?.[1] ?? "pending")
+        if (status === "in-progress" || status === "completed") {
+          return `DUPLICATE: Strategy already ${status} in paper-ideas.md\nStrategy: ${args.strategy}`
         }
-        return `DUPLICATE: Strategy already pending in paper-ideas.md — skip or modify\nStrategy: ${args.strategy}`
+        return `DUPLICATE: Strategy already ${status} in paper-ideas.md — skip or modify\nStrategy: ${args.strategy}`
       }
     }
 

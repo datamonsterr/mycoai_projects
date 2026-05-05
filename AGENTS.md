@@ -117,7 +117,6 @@ Or use the registered command: `opencode run "test"`
 - Plugin: `.opencode/plugins/autolab-compaction.ts`
 - Research notebook: `repos/fungal-cv-qdrant/research/`
 - Worker runtime: `repos/fungal-cv-qdrant/.runtime/worktrees/` (gitignored)
-- Lock-safe CSV: `repos/fungal-cv-qdrant/src/autolab/csv_append.py`
 
 ### Worktree Lifecycle
 
@@ -126,5 +125,5 @@ Worktrees are removed after the run completes. Best-result worktrees are retaine
 Max concurrent workers: `MAX_CONCURRENT_WORKERS=2` (default).
 
 ## Recent Changes
-- 004-autolab-multi-agent: Added 5-agent Autolab orchestration layer, experiment contract (9 packages), csv_append, 6 test suites
+- 004-autolab-multi-agent: Added 5-agent Autolab orchestration layer, custom tools/plugin, and full spec/plan/tasks package
 - 001-yolo-dataset-tools: Added Python 3.13 + OpenCV, NumPy, pandas, scikit-learn, pathlib

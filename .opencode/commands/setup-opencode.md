@@ -15,7 +15,7 @@ Also verifies the project GitHub CLI profile:
 - The profile must be authenticated as `datamonsterr`
 - Agents must run `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh <args>` and must not run `gh auth switch`
 
-Since the project config (`.opencode/opencode.json`) does NOT set any models, your global config takes full effect.
+Project config (`.opencode/opencode.json`) may define repo-preferred agent models. Your global config still provides defaults for agents without explicit overrides and for local sessions outside this repo.
 
 ## Config precedence reference
 

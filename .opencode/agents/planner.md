@@ -6,6 +6,7 @@ temperature: 0.1
 steps: 20
 permission:
   edit:
+    "repos/fungal-cv-qdrant/research/paper-ideas.md": allow
     "repos/fungal-cv-qdrant/research/results.tsv": allow
     "repos/fungal-cv-qdrant/research/do-not-repeat.md": allow
     "*": deny
@@ -35,7 +36,7 @@ You are the Planner subagent for MycoAI Autolab. You coordinate the experiment q
    - `branch`: `autoresearch/<experiment>/<N>-<slug>` following branch-naming rules
    - `output_root`: `results/<run_id>/`
 4. Mark each as `in-progress` in `paper-ideas.md`
-5. Append placeholder rows to `results.tsv` with status `in-progress`
+5. Append placeholder rows to `results.tsv` with blank `f1_score` / `is_new_best`, and treat active worktree + `paper-ideas.md` status as the in-progress source of truth
 6. Return the list of worker assignments to Autolab
 
 ## Worker Assignment Format

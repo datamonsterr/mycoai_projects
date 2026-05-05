@@ -29,6 +29,11 @@ export default tool({
       }
     }
 
+    function isMissingCliModule(output: string, exp: string): boolean {
+      const normalized = output.replace(/'/g, '"')
+      return normalized.includes(`No module named \"src.experiments.${exp}.cli\"`)
+    }
+
     const checks = args.checks ?? ["ruff", "mypy", "import"]
     let allPass = true
 
@@ -53,8 +58,12 @@ export default tool({
         if (!r.ok) { lines.push(r.output); allPass = false }
 
         const r2 = run(`uv run python -c "import src.experiments.${exp}.cli; print('import ok')"`)
-        lines.push(`import cli.py: ${r2.ok ? "✓ PASS" : "✗ FAIL (cli.py may not exist yet)"}`)
-        if (!r2.ok && !r2.output.includes("No module named")) { allPass = false }
+        const missingCli = !r2.ok && isMissingCliModule(r2.output, exp)
+        lines.push(`import cli.py: ${r2.ok ? "✓ PASS" : missingCli ? "✗ FAIL (missing cli.py module)" : "✗ FAIL"}`)
+        if (!r2.ok) {
+          lines.push(r2.output)
+          allPass = false
+        }
       }
 
       if (checks.includes("pytest")) {

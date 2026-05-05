@@ -1,6 +1,6 @@
 ---
 description: Run all fungal-cv-qdrant experiment package tests and lint checks
-agent: build
+agent: test-runner
 ---
 
 Run the full test and lint suite for the fungal-cv-qdrant experiment packages:

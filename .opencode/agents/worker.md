@@ -14,9 +14,9 @@ permission:
     "git -C repos/fungal-cv-qdrant worktree remove*": allow
     "git -C repos/fungal-cv-qdrant worktree list*": allow
     "git -C repos/fungal-cv-qdrant branch*": allow
-    "uv run python src/prepare.py*": allow
-    "uv --directory repos/fungal-cv-qdrant run python src/prepare.py*": allow
-    "uv run python -m src.experiments.*.cli*": allow
+    "bash -lc uv run python src/prepare.py*": allow
+    "bash -lc uv run python -m src.experiments.*.cli*": allow
+    "uv --directory repos/fungal-cv-qdrant run python -m src.autolab.csv_append*": allow
     "cat repos/fungal-cv-qdrant/.runtime/worktrees/*/results/*": allow
     "ls repos/fungal-cv-qdrant/.runtime/worktrees/*": allow
     "mkdir -p results/*": allow
@@ -81,17 +81,14 @@ Compare against current best in `results/autoresearch/<experiment>.csv`.
 
 ### Step 5: Append to shared CSV (with lock)
 
-Use the `experiment-log` tool to read current state, then append result via lock-safe Python snippet:
+Use the `experiment-log` tool to read current state, then append result with the lock-safe helper:
 
-```python
-import fcntl, csv, datetime, pathlib
-path = pathlib.Path("results/autoresearch/<experiment>.csv")
-path.parent.mkdir(parents=True, exist_ok=True)
-with open(path, "a", newline="") as f:
-    fcntl.flock(f, fcntl.LOCK_EX)
-    writer = csv.writer(f)
-    writer.writerow([experiment_index, f1_score, strategy_name, run_id, datetime.datetime.utcnow().isoformat()])
-    fcntl.flock(f, fcntl.LOCK_UN)
+```bash
+uv --directory repos/fungal-cv-qdrant run python -m src.autolab.csv_append \
+  --experiment <experiment> \
+  --f1-score <f1_score> \
+  --strategy-name "<strategy_name>" \
+  --run-id <run_id>
 ```
 
 ### Step 6: Clean up
