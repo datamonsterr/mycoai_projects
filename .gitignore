@@ -22,4 +22,4 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
-worktrees/
+.worktrees/
