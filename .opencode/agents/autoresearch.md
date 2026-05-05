@@ -1,7 +1,7 @@
 ---
 description: Autoresearch loop agent for fungal classification experiments. Tries different strategies, logs results, and iteratively improves accuracy. Use minimax-m2.7 model for optimized token output.
 mode: primary
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MiniBrain
 temperature: 0.1
 steps: 20
 permission:

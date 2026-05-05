@@ -1,7 +1,7 @@
 ---
 description: Prepares and opens PRs for the monorepo or a submodule using git history, base diff, and spec-plan-task context.
 mode: subagent
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MidBrain
 temperature: 0.1
 steps: 18
 permission:

@@ -1,7 +1,7 @@
 ---
 description: Writes or updates end-to-end tests for user journeys, preferring minimal Playwright-style coverage.
 mode: subagent
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MidBrain
 temperature: 0.1
 steps: 20
 permission:
