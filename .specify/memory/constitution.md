@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-Version change: 1.3.0 -> 1.3.0
+Version change: 1.3.0 -> 1.3.0 (no change; validation pass only)
 Modified principles:
 - None
 Added sections:
@@ -16,6 +16,7 @@ Templates requiring updates:
 - ✅ checked: CLAUDE.md
 Follow-up TODOs:
 - None
+Last validation: 2026-05-05
 -->
 # MycoAI Monorepo Constitution
 
