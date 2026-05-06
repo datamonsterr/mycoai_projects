@@ -2,7 +2,7 @@ Reset and set up the threshold experiment on the refreshed segmented diverse ret
 
 ## Mission
 
-Build a new canonical threshold input from segmented diverse colony queries, then establish a fresh baseline F1 that every later threshold autoresearch attempt must build on.
+Build a new canonical threshold input from segmented diverse colony queries, then establish a fresh baseline F1 that every later threshold Autolab pass must build on.
 
 ## Hard reset
 
@@ -107,27 +107,34 @@ Do **not** continue until all of these are true:
 
 If any check fails, fix the retrieval implementation and regenerate the retrieval outputs before running threshold analysis.
 
-## Step 4 — Run the fresh baseline threshold experiment
+## Step 4 — Run the fresh baseline via Autolab
 
-Use the normal experiment entry point so the result is recorded in autoresearch history.
+Use the Autolab multi-agent system to run the baseline:
 
 ```bash
-uv run python src/prepare.py --experiment threshold --description "baseline refreshed segmented diverse retrieval"
+opencode
+# Prompt: "run one autoresearch pass on threshold experiment using the refreshed segmented retrieval"
 ```
 
-This run establishes the new baseline F1.
-If the threshold experiment code still assumes stale retrieval semantics, fix that first and re-run the baseline.
+This delegates to the worker agent which creates an isolated worktree, runs `prepare.py`, and appends results.
 
 Expected outputs:
 
-- `results/threshold/threshold_analysis.csv`
-- `results/threshold/all_strategy_results.csv`
 - `results/autoresearch/threshold.csv`
 - `results/autoresearch/threshold.png`
+- `repos/fungal-cv-qdrant/research/results.tsv` updated
 
-## Step 5 — Interpret the baseline with the staircase rule
+## Step 5 — Check status via Reporter
 
-Use `.claude/rules/experiment-visualization.md` as the source of truth for interpreting the staircase in:
+Invoke the reporter agent to summarize:
+
+```
+ask reporter agent for threshold experiment status
+```
+
+## Step 6 — Interpret the staircase
+
+Use `.opencode/rules/experiment-visualization.md` as the source of truth for interpreting the staircase in:
 
 - `results/autoresearch/threshold.csv`
 - `results/autoresearch/threshold.png`
@@ -136,12 +143,12 @@ After the baseline run:
 
 - identify the best current `{formula}_{algorithm}`
 - identify whether it is the latest running best point on the staircase
-- use that formula family as the center of gravity for the next experiment loop
+- use that formula family as the center of gravity for the next Autolab loop
 
-Do **not** append logs to `.claude/rules/experiment-visualization.md`.
+Do **not** append logs to `.opencode/rules/experiment-visualization.md`.
 Use that file as the staircase specification, and log experiment outcomes in the threshold result and log files.
 
-## Step 6 — Prepare the next session handoff
+## Step 7 — Prepare the next session handoff
 
 Before handing off, make sure these are current:
 
@@ -152,8 +159,9 @@ Before handing off, make sure these are current:
 - `results/threshold/log/best_strategy.json`
 - `results/autoresearch/threshold.csv`
 - `results/autoresearch/threshold.png`
+- `repos/fungal-cv-qdrant/research/results.tsv`
 
-The next autoresearch session should continue with `/threshold-experiment`.
+The next Autolab loop should continue with `/threshold-experiment`.
 
 ## Key files
 
@@ -163,4 +171,4 @@ The next autoresearch session should continue with `/threshold-experiment`.
 - `src/experiments/threshold/expanded_threshold_analysis.py`
 - `src/experiments/threshold/run.py`
 - `src/analysis/visualization/visualize_prediction.py`
-- `.claude/rules/experiment-visualization.md`
+- `.opencode/rules/experiment-visualization.md`

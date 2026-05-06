@@ -82,6 +82,18 @@ Workers are safe to run in parallel. Each Worker:
 
 Max concurrent workers: `MAX_CONCURRENT_WORKERS=2` (default). Override per session.
 
+## Trackio Integration (Optional)
+
+Reporter logs a Trackio event after each completed loop when `TRACKIO_API_KEY` is set.
+
+```bash
+# Enable Trackio logging
+export TRACKIO_API_KEY=your_key_here
+
+# Reporter will log: experiment, run_id, f1_score, is_new_best per run
+# Without TRACKIO_API_KEY, Reporter skips Trackio silently and still prints status block
+```
+
 ## Verification
 
 ```bash

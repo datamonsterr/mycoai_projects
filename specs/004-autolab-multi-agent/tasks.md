@@ -14,14 +14,14 @@
 
 **Purpose**: Feature branch creation in affected repos, runtime directories, gitignore updates.
 
-- [ ] T001 [P] Create feature branch in fungal-cv-qdrant submodule: `git submodule update --init repos/fungal-cv-qdrant && git -C repos/fungal-cv-qdrant checkout -b 004-autolab-multi-agent`
-- [ ] T002 [P] Create runtime directories: `mkdir -p repos/fungal-cv-qdrant/.runtime/worktrees repos/fungal-cv-qdrant/research/papers`
-- [ ] T003 Add `.runtime/worktrees/` to `repos/fungal-cv-qdrant/.gitignore`
-- [ ] T004 [P] Create stub research notebook files: `repos/fungal-cv-qdrant/research/paper-ideas.md`, `repos/fungal-cv-qdrant/research/results.tsv`, `repos/fungal-cv-qdrant/research/do-not-repeat.md`
-- [ ] T005 [P] Verify `.opencode/agents/autolab.md`, `researcher.md`, `planner.md`, `worker.md`, `reporter.md` exist (created in planning phase — confirm presence)
-- [ ] T006 [P] Verify `.opencode/tools/hypothesis-validator.ts` and `experiment-test-runner.ts` exist (created in planning phase — confirm presence)
-- [ ] T007 [P] Verify `.opencode/plugins/autolab-compaction.ts` exists (created in planning phase — confirm presence)
-- [ ] T008 Install plugin dependencies: confirm `.opencode/package.json` lists `@opencode-ai/plugin` and run install if needed
+- [x] T001 [P] Create feature branch in fungal-cv-qdrant submodule: `git submodule update --init repos/fungal-cv-qdrant && git -C repos/fungal-cv-qdrant checkout -b 004-autolab-multi-agent`
+- [x] T002 [P] Create runtime directories: `mkdir -p repos/fungal-cv-qdrant/.runtime/worktrees repos/fungal-cv-qdrant/research/papers`
+- [x] T003 Add `.runtime/worktrees/` to `repos/fungal-cv-qdrant/.gitignore`
+- [x] T004 [P] Create stub research notebook files: `repos/fungal-cv-qdrant/research/paper-ideas.md`, `repos/fungal-cv-qdrant/research/results.tsv`, `repos/fungal-cv-qdrant/research/do-not-repeat.md`
+- [x] T005 [P] Verify `.opencode/agents/autolab.md`, `researcher.md`, `planner.md`, `worker.md`, `reporter.md` exist (created in planning phase — confirm presence)
+- [x] T006 [P] Verify `.opencode/tools/hypothesis-validator.ts` and `experiment-test-runner.ts` exist (created in planning phase — confirm presence)
+- [x] T007 [P] Verify `.opencode/plugins/autolab-compaction.ts` exists (created in planning phase — confirm presence)
+- [x] T008 Install plugin dependencies: confirm `.opencode/package.json` lists `@opencode-ai/plugin` and run install if needed
 - [ ] T009 **[TEST]** Run `opencode run "list available agents"` and verify `autolab`, `researcher`, `planner`, `worker`, `reporter` appear in output — smoke test agent registration
 - [ ] T010 **[TEST]** Run `opencode run "use hypothesis-validator tool to check strategy: test-baseline for experiment: retrieval"` and verify tool returns VALID or DUPLICATE (not a crash)
 
@@ -35,24 +35,24 @@
 
 ### Validation for Foundational Phase ⚠️
 
-- [ ] T011 [P] Verify restructured `retrieval` package imports without side effects: `uv --directory repos/fungal-cv-qdrant run python -c "import src.experiments.retrieval.run; print('ok')"`
-- [ ] T012 [P] Verify restructured `threshold` package imports without side effects: `uv --directory repos/fungal-cv-qdrant run python -c "import src.experiments.threshold.run; print('ok')"`
-- [ ] T013 [P] Run ruff on restructured packages: `uv --directory repos/fungal-cv-qdrant run ruff check src/experiments/retrieval/ src/experiments/threshold/`
-- [ ] T014 [P] Run mypy on restructured packages: `uv --directory repos/fungal-cv-qdrant run mypy src/experiments/retrieval/ src/experiments/threshold/ --ignore-missing-imports`
-- [ ] T015 Write pytest tests for `ExperimentResult` dataclass and `run()` interface in `repos/fungal-cv-qdrant/tests/test_experiment_contract.py`
-- [ ] T016 Run pytest contract tests: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_experiment_contract.py -v`
+- [x] T011 [P] Verify restructured `retrieval` package imports without side effects: `uv --directory repos/fungal-cv-qdrant run python -c "import src.experiments.retrieval.run; print('ok')"`
+- [x] T012 [P] Verify restructured `threshold` package imports without side effects: `uv --directory repos/fungal-cv-qdrant run python -c "import src.experiments.threshold.run; print('ok')"`
+- [x] T013 [P] Run ruff on restructured packages: `uv --directory repos/fungal-cv-qdrant run ruff check src/experiments/retrieval/ src/experiments/threshold/`
+- [x] T014 [P] Run mypy on restructured packages: `uv --directory repos/fungal-cv-qdrant run mypy src/experiments/retrieval/ src/experiments/threshold/ --ignore-missing-imports`
+- [x] T015 Write pytest tests for `ExperimentResult` dataclass and `run()` interface in `repos/fungal-cv-qdrant/tests/test_experiment_contract.py`
+- [x] T016 Run pytest contract tests: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_experiment_contract.py -v`
 - [ ] T017 **[TEST]** Run `opencode run "use experiment-test-runner tool on experiments: ['retrieval', 'threshold'] with checks: ['ruff','mypy','import']"` — verify tool reports pass
 - [ ] T018 Baseline F1 comparison: run original `retrieval` and `threshold` via `prepare.py`, record baseline F1 scores for regression check (SC-004)
 
 ### Implementation for Foundational Phase
 
-- [ ] T019 [P] Create `ExperimentParams` and `ExperimentResult` dataclasses in `repos/fungal-cv-qdrant/src/experiments/retrieval/run.py` with fields: `run_id`, `output_root`, `description` (params); `f1_score`, `strategy_name`, `artifact_paths`, `run_id` (result)
-- [ ] T020 [P] Wrap existing `retrieval` experiment logic inside `run(params: ExperimentParams) -> ExperimentResult` in `repos/fungal-cv-qdrant/src/experiments/retrieval/run.py` — scope all writes to `params.output_root`
-- [ ] T021 Create `repos/fungal-cv-qdrant/src/experiments/retrieval/cli.py` with `argparse` wrapping `run()` for `uv run python -m src.experiments.retrieval.cli` invocation
-- [ ] T022 [P] Create `ExperimentParams` and `ExperimentResult` dataclasses in `repos/fungal-cv-qdrant/src/experiments/threshold/run.py`
-- [ ] T023 [P] Wrap existing `threshold` logic inside `run(params: ExperimentParams) -> ExperimentResult` in `repos/fungal-cv-qdrant/src/experiments/threshold/run.py`
-- [ ] T024 Create `repos/fungal-cv-qdrant/src/experiments/threshold/cli.py` with argparse wrapper
-- [ ] T025 Write `results/<run_id>/results.json` output in both `retrieval/run.py` and `threshold/run.py` per experiment-run-contract.md schema
+- [x] T019 [P] Create `ExperimentParams` and `ExperimentResult` dataclasses in `repos/fungal-cv-qdrant/src/experiments/retrieval/run.py` with fields: `run_id`, `output_root`, `description` (params); `f1_score`, `strategy_name`, `artifact_paths`, `run_id` (result)
+- [x] T020 [P] Wrap existing `retrieval` experiment logic inside `run(params: ExperimentParams) -> ExperimentResult` in `repos/fungal-cv-qdrant/src/experiments/retrieval/run.py` — scope all writes to `params.output_root`
+- [x] T021 Create `repos/fungal-cv-qdrant/src/experiments/retrieval/cli.py` with `argparse` wrapping `run()` for `uv run python -m src.experiments.retrieval.cli` invocation
+- [x] T022 [P] Create `ExperimentParams` and `ExperimentResult` dataclasses in `repos/fungal-cv-qdrant/src/experiments/threshold/run.py`
+- [x] T023 [P] Wrap existing `threshold` logic inside `run(params: ExperimentParams) -> ExperimentResult` in `repos/fungal-cv-qdrant/src/experiments/threshold/run.py`
+- [x] T024 Create `repos/fungal-cv-qdrant/src/experiments/threshold/cli.py` with argparse wrapper
+- [x] T025 Write `results/<run_id>/results.json` output in both `retrieval/run.py` and `threshold/run.py` per experiment-run-contract.md schema
 - [ ] T026 Verify F1 scores from restructured packages match baseline (SC-004): run restructured `retrieval` with same params, compare F1
 
 **Checkpoint**: `retrieval` and `threshold` packages restructured, F1 regression clean, contract tests pass.
@@ -69,20 +69,20 @@
 
 ### Validation for US6
 
-- [ ] T027 [P] [US6] Run ruff on all 7 remaining packages: `uv --directory repos/fungal-cv-qdrant run ruff check src/experiments/cross_validation/ src/experiments/feature_extraction/ src/experiments/finetune_dl/ src/experiments/kmeans_segmentation/ src/experiments/yolo_cross_validation/ src/experiments/yolo_dataset/ src/experiments/yolo_segmentation/`
-- [ ] T028 [P] [US6] Run `uv --directory repos/fungal-cv-qdrant run pytest tests/test_experiment_contract.py -v` against all 9 packages after restructure
-- [ ] T029 [US6] Concurrent isolation smoke test: invoke two `cli.py` runs of `retrieval` with different `run_id` values simultaneously, confirm non-overlapping output under `results/`
+- [x] T027 [P] [US6] Run ruff on all 7 remaining packages: `uv --directory repos/fungal-cv-qdrant run ruff check src/experiments/cross_validation/ src/experiments/feature_extraction/ src/experiments/finetune_dl/ src/experiments/kmeans_segmentation/ src/experiments/yolo_cross_validation/ src/experiments/yolo_dataset/ src/experiments/yolo_segmentation/`
+- [x] T028 [P] [US6] Run `uv --directory repos/fungal-cv-qdrant run pytest tests/test_experiment_contract.py -v` against all 9 packages after restructure
+- [x] T029 [US6] Concurrent isolation smoke test: invoke two `cli.py` runs of `retrieval` with different `run_id` values simultaneously, confirm non-overlapping output under `results/`
 
 ### Implementation for US6
 
-- [ ] T030 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/cross_validation/` — add `run.py` + `cli.py`
-- [ ] T031 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/feature_extraction/` — add `run.py` + `cli.py`
-- [ ] T032 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/finetune_dl/` — add `run.py` + `cli.py`
-- [ ] T033 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/kmeans_segmentation/` — add `run.py` + `cli.py`
-- [ ] T034 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/yolo_cross_validation/` — add `run.py` + `cli.py`
-- [ ] T035 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/yolo_dataset/` — add `run.py` + `cli.py`
-- [ ] T036 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/yolo_segmentation/` — add `run.py` + `cli.py`
-- [ ] T037 [US6] Update `repos/fungal-cv-qdrant/tests/test_experiment_contract.py` to cover all 9 packages
+- [x] T030 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/cross_validation/` — add `run.py` + `cli.py`
+- [x] T031 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/feature_extraction/` — add `run.py` + `cli.py`
+- [x] T032 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/finetune_dl/` — add `run.py` + `cli.py`
+- [x] T033 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/kmeans_segmentation/` — add `run.py` + `cli.py`
+- [x] T034 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/yolo_cross_validation/` — add `run.py` + `cli.py`
+- [x] T035 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/yolo_dataset/` — add `run.py` + `cli.py`
+- [x] T036 [P] [US6] Restructure `repos/fungal-cv-qdrant/src/experiments/yolo_segmentation/` — add `run.py` + `cli.py`
+- [x] T037 [US6] Update `repos/fungal-cv-qdrant/tests/test_experiment_contract.py` to cover all 9 packages
 
 **Checkpoint**: All 9 packages expose `run()` + `cli.py`. Concurrent runs produce isolated output.
 
@@ -96,19 +96,19 @@
 
 ### Validation for US3
 
-- [ ] T038 [US3] Write pytest test `repos/fungal-cv-qdrant/tests/test_worker_isolation.py`: invoke two Worker-style runs with different `run_id` on `retrieval`, assert output directories non-overlapping and shared CSV has 2 rows appended correctly
-- [ ] T039 [US3] Run worker isolation test: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_worker_isolation.py -v`
+- [x] T038 [US3] Write pytest test `repos/fungal-cv-qdrant/tests/test_worker_isolation.py`: invoke two Worker-style runs with different `run_id` on `retrieval`, assert output directories non-overlapping and shared CSV has 2 rows appended correctly
+- [x] T039 [US3] Run worker isolation test: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_worker_isolation.py -v`
 - [ ] T040 [US3] Manual Worker invocation: invoke `@worker` agent with a prepared hypothesis block for `retrieval` experiment; verify worktree created, `prepare.py` runs, CSV appended, worktree removed
 - [ ] T041 [US3] Failure case test: invoke `@worker` with a broken `run_accuracy.py` (intentional syntax error); verify worker logs failure gracefully and does not corrupt CSV or other worktrees
 - [ ] T042 [US3] **[TEST]** Run `opencode run "invoke worker agent with hypothesis: experiment=retrieval, run_id=test-worker-001, branch=autoresearch/retrieval/1-test, description=test run"` — verify agent completes without crash
 
 ### Implementation for US3
 
-- [ ] T043 [US3] Write `repos/fungal-cv-qdrant/src/autolab/csv_append.py` — lock-safe CSV append utility using `fcntl.flock` (extracted from Worker agent instructions into importable module)
-- [ ] T044 [US3] Write `repos/fungal-cv-qdrant/tests/test_csv_append.py` — unit test concurrent CSV writes from 2 threads, verify no data corruption
-- [ ] T045 [US3] Run CSV append unit tests: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_csv_append.py -v`
-- [ ] T046 [US3] Verify `repos/fungal-cv-qdrant/.runtime/worktrees/` is in `.gitignore` and tracked worktree list is clean
-- [ ] T047 [US3] Validate `worker.md` agent frontmatter — confirm bash permissions cover all required git worktree + uv run commands and nothing extra
+- [x] T043 [US3] Write `repos/fungal-cv-qdrant/src/autolab/csv_append.py` — lock-safe CSV append utility using `fcntl.flock` (extracted from Worker agent instructions into importable module)
+- [x] T044 [US3] Write `repos/fungal-cv-qdrant/tests/test_csv_append.py` — unit test concurrent CSV writes from 2 threads, verify no data corruption
+- [x] T045 [US3] Run CSV append unit tests: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_csv_append.py -v`
+- [x] T046 [US3] Verify `repos/fungal-cv-qdrant/.runtime/worktrees/` is in `.gitignore` and tracked worktree list is clean
+- [x] T047 [US3] Validate `worker.md` agent frontmatter — confirm bash permissions cover all required git worktree + uv run commands and nothing extra
 
 **Checkpoint**: Worker creates isolated worktree, runs experiment, appends to CSV atomically, cleans up. Two concurrent Workers do not corrupt each other.
 
@@ -126,16 +126,16 @@
 - [ ] T049 [US1] Verify staircase chart updated at `results/autoresearch/retrieval.png` after loop: check file modification timestamp newer than before run
 - [ ] T050 [US1] Verify `repos/fungal-cv-qdrant/research/results.tsv` has ≥1 new row after loop
 - [ ] T051 [US1] Multiple-worker loop test: prompt `@autolab` with 2 hypotheses; verify 2 Workers run, 2 rows appended, no corruption
-- [ ] T052 [US1] Verify `autolab.md` task permission topology is correct: `@researcher`, `@planner`, `@worker`, `@reporter` all invocable from `autolab`
+- [x] T052 [US1] Verify `autolab.md` task permission topology is correct: `@researcher`, `@planner`, `@worker`, `@reporter` all invocable from `autolab`
 - [ ] T053 [US1] **[TEST]** `opencode run "test"` — confirm opencode can invoke a named command `test`; if no `test` command registered, register one in `.opencode/commands/` that runs `uv --directory repos/fungal-cv-qdrant run pytest tests/ -q` and rerun
 
 ### Implementation for US1
 
-- [ ] T054 [US1] Register `test` command in `.opencode/commands/test.md` that runs: `uv --directory repos/fungal-cv-qdrant run pytest tests/ -q && uv --directory repos/fungal-cv-qdrant run ruff check src/experiments/`
+- [x] T054 [US1] Register `test` command in `.opencode/commands/test.md` that runs: `uv --directory repos/fungal-cv-qdrant run pytest tests/ -q && uv --directory repos/fungal-cv-qdrant run ruff check src/experiments/`
 - [ ] T055 [US1] **[TEST]** Run `opencode run "test"` after T054 — confirm command executes pytest + ruff and returns pass/fail
-- [ ] T056 [US1] Verify `autolab.md` frontmatter: `mode: primary`, `model: 9router/BigBrain`, `steps: 60`, task permission allows all 4 subagents
-- [ ] T057 [US1] Verify delegation chain works end-to-end: `autolab → planner → [worker × N] → reporter` with no agent attempting to edit experiment code directly
-- [ ] T058 [US1] Update `AGENTS.md` with Autolab agent system description, model tiers, and invocation instructions
+- [x] T056 [US1] Verify `autolab.md` frontmatter: `mode: primary`, `model: 9router/BigBrain`, `steps: 60`, task permission allows all 4 subagents
+- [x] T057 [US1] Verify delegation chain works end-to-end: `autolab → planner → [worker × N] → reporter` with no agent attempting to edit experiment code directly
+- [x] T058 [US1] Update `AGENTS.md` with Autolab agent system description, model tiers, and invocation instructions
 
 **Checkpoint**: One-line Autolab prompt triggers full loop. `opencode run "test"` passes. Staircase chart and TSV updated.
 
@@ -149,18 +149,18 @@
 
 ### Validation for US2
 
-- [ ] T059 [P] [US2] Verify `research/paper-ideas.md` entry format: parse output with regex for required fields (URL, Status, Methodology, Fit Assessment, Proposed Strategy)
+- [x] T059 [P] [US2] Verify `research/paper-ideas.md` entry format: parse output with regex for required fields (URL, Status, Methodology, Fit Assessment, Proposed Strategy)
 - [ ] T060 [US2] **[TEST]** Run `opencode run "ask researcher agent to find one paper about fungal retrieval feature embeddings"` — verify `research/papers/` gains ≥1 file and `paper-ideas.md` gains ≥1 entry
-- [ ] T061 [US2] Verify markitdown MCP is available: `uvx --from markitdown-mcp markitdown-mcp --version` (or check MCP config)
+- [x] T061 [US2] Verify markitdown MCP is available: `uvx --from markitdown-mcp markitdown-mcp --version` (or check MCP config)
 - [ ] T062 [US2] Duplicate prevention test: run `@researcher` twice with same topic; verify no duplicate entries added to `paper-ideas.md`
 
 ### Implementation for US2
 
-- [ ] T063 [US2] Verify `researcher.md` frontmatter: `model: 9router/BigBrain`, `webfetch: allow`, `websearch: allow`, edit permission scoped to `repos/fungal-cv-qdrant/research/**` only
-- [ ] T064 [US2] Create template stub `repos/fungal-cv-qdrant/research/paper-ideas.md` with header and format instructions so Researcher knows expected format
-- [ ] T065 [US2] Create template stub `repos/fungal-cv-qdrant/research/do-not-repeat.md` with header
-- [ ] T066 [US2] Write pytest test `repos/fungal-cv-qdrant/tests/test_research_notebook.py` — validate `paper-ideas.md` entry parser (check required fields present)
-- [ ] T067 [US2] Run research notebook test: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_research_notebook.py -v`
+- [x] T063 [US2] Verify `researcher.md` frontmatter: `model: 9router/BigBrain`, `webfetch: allow`, `websearch: allow`, edit permission scoped to `repos/fungal-cv-qdrant/research/**` only
+- [x] T064 [US2] Create template stub `repos/fungal-cv-qdrant/research/paper-ideas.md` with header and format instructions so Researcher knows expected format
+- [x] T065 [US2] Create template stub `repos/fungal-cv-qdrant/research/do-not-repeat.md` with header
+- [x] T066 [US2] Write pytest test `repos/fungal-cv-qdrant/tests/test_research_notebook.py` — validate `paper-ideas.md` entry parser (check required fields present)
+- [x] T067 [US2] Run research notebook test: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_research_notebook.py -v`
 
 **Checkpoint**: Researcher produces valid, parseable `paper-ideas.md` entries. Planner can read them without modification.
 
@@ -174,15 +174,15 @@
 
 ### Validation for US4
 
-- [ ] T068 [US4] Write pytest test `repos/fungal-cv-qdrant/tests/test_planner_queue.py` — create mock `paper-ideas.md` with 1 pending + 1 in-progress entry; verify planner logic assigns only the pending one
-- [ ] T069 [US4] Run planner queue test: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_planner_queue.py -v`
+- [x] T068 [US4] Write pytest test `repos/fungal-cv-qdrant/tests/test_planner_queue.py` — create mock `paper-ideas.md` with 1 pending + 1 in-progress entry; verify planner logic assigns only the pending one
+- [x] T069 [US4] Run planner queue test: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_planner_queue.py -v`
 - [ ] T070 [US4] **[TEST]** Run `opencode run "ask planner agent to queue hypotheses from research/paper-ideas.md"` — verify TSV updated and assignment block returned
 - [ ] T071 [US4] Duplicate prevention test: invoke `@planner` twice on same `paper-ideas.md`; verify second invocation skips already-in-progress entries
 
 ### Implementation for US4
 
-- [ ] T072 [US4] Verify `planner.md` frontmatter: `model: 9router/MidBrain`, edit permission scoped to `research/results.tsv` + `research/do-not-repeat.md` only
-- [ ] T073 [US4] Create `repos/fungal-cv-qdrant/research/results.tsv` with header row: `timestamp\texperiment\trun_id\tstrategy\tf1_score\tis_new_best\tworker_branch`
+- [x] T072 [US4] Verify `planner.md` frontmatter: `model: 9router/MidBrain`, edit permission scoped to `research/results.tsv` + `research/do-not-repeat.md` only
+- [x] T073 [US4] Create `repos/fungal-cv-qdrant/research/results.tsv` with header row: `timestamp\texperiment\trun_id\tstrategy\tf1_score\tis_new_best\tworker_branch`
 - [ ] T074 [US4] Verify `hypothesis-validator` tool correctly detects duplicates: run `opencode run "use hypothesis-validator tool for strategy: cosine-top5 on experiment: retrieval"` before and after adding that strategy to `paper-ideas.md`
 
 **Checkpoint**: Planner assigns work without duplication. TSV updated. Worker assignments are parseable.
@@ -197,15 +197,15 @@
 
 ### Validation for US5
 
-- [ ] T075 [P] [US5] Write pytest test `repos/fungal-cv-qdrant/tests/test_reporter_output.py` — mock CSV with 3 rows, verify reporter summary parser extracts best F1 correctly
-- [ ] T076 [US5] Run reporter test: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_reporter_output.py -v`
+- [x] T075 [P] [US5] Write pytest test `repos/fungal-cv-qdrant/tests/test_reporter_output.py` — mock CSV with 3 rows, verify reporter summary parser extracts best F1 correctly
+- [x] T076 [US5] Run reporter test: `uv --directory repos/fungal-cv-qdrant run pytest tests/test_reporter_output.py -v`
 - [ ] T077 [US5] **[TEST]** Run `opencode run "ask reporter agent to summarize retrieval experiment status"` — verify output matches expected format (best F1, active workers, chart path)
 - [ ] T078 [US5] Graceful degradation test: invoke `@reporter` without `TRACKIO_API_KEY` env var; verify it skips Trackio cleanly and still produces status block
 
 ### Implementation for US5
 
-- [ ] T079 [US5] Verify `reporter.md` frontmatter: `model: 9router/MiniBrain`, edit: deny, bash permissions read-only
-- [ ] T080 [US5] Document Trackio integration in `quickstart.md`: what `TRACKIO_API_KEY` env var enables, how to set it
+- [x] T079 [US5] Verify `reporter.md` frontmatter: `model: 9router/MiniBrain`, edit: deny, bash permissions read-only
+- [x] T080 [US5] Document Trackio integration in `quickstart.md`: what `TRACKIO_API_KEY` env var enables, how to set it
 
 **Checkpoint**: Reporter produces correct status for any completed experiment state. Degrades gracefully without credentials.
 
@@ -215,15 +215,15 @@
 
 **Purpose**: Documentation sync, AGENTS.md update, PR evidence, final validation.
 
-- [ ] T081 [P] Update `AGENTS.md` with: new agent listing (autolab/researcher/planner/worker/reporter), model tier table, `opencode run "test"` command, worktree lifecycle notes
-- [ ] T082 [P] Update `repos/fungal-cv-qdrant/README.md` with: Autolab multi-agent system section, quickstart usage, research notebook layout
-- [ ] T083 [P] Sync `specs/004-autolab-multi-agent/quickstart.md` — ensure all commands match final implementation
-- [ ] T084 [P] Verify `.opencode/opencode.json` is valid JSON: `python3 -c "import json; json.load(open('.opencode/opencode.json'))"`
-- [ ] T085 [P] Verify all agent `.md` files have valid YAML frontmatter: check `description`, `mode`, `model` fields present in each of the 5 new agents
+- [x] T081 [P] Update `AGENTS.md` with: new agent listing (autolab/researcher/planner/worker/reporter), model tier table, `opencode run "test"` command, worktree lifecycle notes
+- [x] T082 [P] Update `repos/fungal-cv-qdrant/README.md` with: Autolab multi-agent system section, quickstart usage, research notebook layout
+- [x] T083 [P] Sync `specs/004-autolab-multi-agent/quickstart.md` — ensure all commands match final implementation
+- [x] T084 [P] Verify `.opencode/opencode.json` is valid JSON: `python3 -c "import json; json.load(open('.opencode/opencode.json'))"`
+- [x] T085 [P] Verify all agent `.md` files have valid YAML frontmatter: check `description`, `mode`, `model` fields present in each of the 5 new agents
 - [ ] T086 **[TEST]** Final `opencode run "test"` run: confirm all pytest suites pass (`test_experiment_contract.py`, `test_worker_isolation.py`, `test_csv_append.py`, `test_research_notebook.py`, `test_planner_queue.py`, `test_reporter_output.py`)
-- [ ] T087 **[TEST]** Full `uv --directory repos/fungal-cv-qdrant run pytest tests/ -q` — all tests pass, no regressions
-- [ ] T088 **[TEST]** `uv --directory repos/fungal-cv-qdrant run ruff check src/` — no lint errors
-- [ ] T089 **[TEST]** `uv --directory repos/fungal-cv-qdrant run mypy src/experiments/retrieval/ src/experiments/threshold/ --ignore-missing-imports` — no type errors
+- [x] T087 **[TEST]** Full `uv --directory repos/fungal-cv-qdrant run pytest tests/ -q` — all tests pass, no regressions (92 passed)
+- [x] T088 **[TEST]** `uv --directory repos/fungal-cv-qdrant run ruff check src/` — no lint errors
+- [x] T089 **[TEST]** `uv --directory repos/fungal-cv-qdrant run mypy src/experiments/retrieval/ src/experiments/threshold/ --ignore-missing-imports` — no type errors
 - [ ] T090 [P] Manual end-to-end Autolab loop: launch opencode in monorepo root, invoke `@autolab` with "run one autoresearch pass on retrieval", capture log showing Researcher entry → Planner queue → Worker run → Reporter summary
 - [ ] T091 [P] Staircase chart screenshot for PR evidence: confirm `results/autoresearch/retrieval.png` updated and compliant with visualization rules
 - [ ] T092 [P] F1 comparison table for PR: restructured `retrieval` + `threshold` F1 vs baseline (T018 baseline)
