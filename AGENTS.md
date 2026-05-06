@@ -69,6 +69,7 @@ uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --sco
 - User-facing product changes are only done after local checks, relevant workflow checks, and manual browser or API validation are recorded.
 - Detailed project guidance remains in `CLAUDE.md` and `repos/fungal-cv-qdrant/README.md`.
 - Terse by default: keep agent output compact, load only needed repo context, and prefer codebase-memory MCP for broad code structure queries before file-by-file reads.
+- Vast.ai remote workspace setup: use the canonical `tools/workspace_bootstrap.sh` entrypoint. Completion criteria: prepare finished without blockers, smoke-check passed, connection descriptor printed and usable for VS Code, and VS Code opens the correct remote workspace root. Agents must call out unavoidable manual steps (instance rental, SSH key registration, VS Code host key authorization) before starting automation.
 
 ## Active Technologies
 - Python 3.13 + OpenCV, NumPy, pandas, scikit-learn, pathlib (001-yolo-dataset-tools)

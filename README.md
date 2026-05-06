@@ -108,6 +108,48 @@ pnpm --dir repos/mycoai_retrieval_frontend typecheck
 pnpm --dir repos/mycoai_retrieval_frontend build
 ```
 
+## Dataset Structure
+
+Dataset root defaults to `Dataset/` at the monorepo root. Override with
+`DATASET_ROOT` environment variable. Structure must preserve:
+
+```text
+Dataset/
+├── curated_primary/          # High-quality source images (~4-7 strains/species)
+│   └── {species}/{strain}/   # Used for holdout, retrieval, YOLO training
+├── incoming_low_quality/     # Lower-quality source images (~1-2 strains/species)
+│   └── {species}/{strain}/   # Diverse data: fewer environments, varied quality
+└── prepared/                 # Canonical derived hierarchy
+    └── {species}/{strain}/{environment}/{image_stem}/
+        ├── source.jpg
+        ├── prepared.jpg
+        ├── item.json
+        ├── segments_kmeans/seg_0.jpg, seg_1.jpg, seg_2.jpg
+        ├── segments_contour/seg_0.jpg, ...
+        ├── bbox_kmeans.jpg
+        ├── bbox_contour.jpg
+        ├── pipeline_kmeans.jpg
+        └── pipeline_contour.jpg
+```
+
+Legacy paths `Dataset/original/` and `Dataset/new_data/` still work as fallback
+when canonical paths don't exist.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MYCOAI_ROOT` | Auto-detected monorepo root | Workspace root directory |
+| `DATASET_ROOT` | `$MYCOAI_ROOT/Dataset` | Path to shared Dataset folder |
+| `WEIGHTS_DIR` | `$MYCOAI_ROOT/weights` | Path to model checkpoints |
+| `RESULTS_DIR` | `$MYCOAI_ROOT/results` | Path to experiment outputs |
+
+Set `DATASET_ROOT` to a different path when using external storage:
+
+```bash
+export DATASET_ROOT=/mnt/data/fungal-dataset
+```
+
 ### Shared workspace tooling
 
 ```bash
@@ -115,10 +157,80 @@ bash tools/workspace_bootstrap.sh prepare
 bash tools/workspace_bootstrap.sh smoke-check
 bash tools/workspace_bootstrap.sh recover --instance-id <vast-instance-id>
 
-uv run python tools/dataset_sync.py plan --direction import --remote mydrive:mycoai-dataset --scope original/sample
-uv run python tools/dataset_sync.py import --remote mydrive:mycoai-dataset --scope original/sample
-uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --scope segmented_image/new-batch
+uv run python tools/dataset_sync.py plan --direction import --remote mydrive:mycoai-dataset --scope curated_primary/sample
+uv run python tools/dataset_sync.py import --remote mydrive:mycoai-dataset --scope curated_primary/sample
+uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --scope prepared/segments
 ```
+
+## Vast.ai Remote Workspace Setup
+
+### Quick Setup (First Time)
+
+1. Rent or reuse a Vast.ai instance with SSH access.
+2. SSH to the machine and clone the monorepo into the target workspace root.
+3. From the monorepo root, run prepare:
+
+```bash
+bash tools/workspace_bootstrap.sh prepare --non-interactive \
+  --ssh-host <host> --ssh-user <user> --ssh-port <port> \
+  --instance-id <vast-instance-id>
+```
+
+4. Validate the workspace:
+
+```bash
+bash tools/workspace_bootstrap.sh smoke-check
+```
+
+5. Use the printed connection descriptor to connect from VS Code Remote-SSH.
+
+**Unavoidable manual steps** (required before automation can proceed):
+- Choose and rent a Vast.ai instance with SSH access
+- Attach your SSH key in the Vast.ai account panel
+- Authorize VS Code Remote-SSH host key on first connect
+
+### Recover After Restart or Replacement
+
+If the instance changes host or port after a restart:
+
+```bash
+# Rediscover SSH details from the Vast.ai UI or CLI, then:
+bash tools/workspace_bootstrap.sh recover \
+  --instance-id <vast-instance-id> \
+  --host <new-host> --port <new-port>
+```
+
+The recovery command re-validates the workspace, repairs submodules, re-syncs
+missing venvs, and prints an updated connection descriptor for VS Code.
+
+### Workspace Bootstrap Script Reference
+
+```bash
+# Prepare a fresh workspace
+bash tools/workspace_bootstrap.sh prepare [--non-interactive] \
+  [--ssh-host <host>] [--ssh-user <user>] [--ssh-port <port>] \
+  [--instance-id <id>] [--workspace-root <path>]
+
+# Validate workspace readiness
+bash tools/workspace_bootstrap.sh smoke-check
+
+# Revalidate after reconnect
+bash tools/workspace_bootstrap.sh recover \
+  [--instance-id <id>] [--host <host>] [--port <port>] \
+  [--user <user>] [--workspace-root <path>]
+
+# Show help
+bash tools/workspace_bootstrap.sh help
+```
+
+### Setup Completion Criteria
+
+Setup is complete when all of the following are true:
+- `prepare` finished without blocking errors
+- `smoke-check` passed (validated status)
+- Connection descriptor is printed and usable for VS Code Remote-SSH
+- VS Code opens the correct remote workspace root
+- Any remaining manual steps are documented, not unresolved gaps
 
 ## Path Conventions
 
@@ -133,7 +245,9 @@ uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --sco
 ## Notes
 
 - `repos/fungal-cv-qdrant/src/config.py` auto-detects the monorepo root when the
-  submodule lives under `repos/`.
+  submodule lives under `repos/`; `MYCOAI_ROOT` overrides auto-detection.
+- `DATASET_ROOT` env var lets shared dataset live outside the monorepo (e.g.
+  external SSD, Vast.ai volume); folder structure must match the canonical layout.
 - Shared remote-workspace bootstrap and dataset sync entrypoints live in
   `tools/workspace_bootstrap.sh` and `tools/dataset_sync.py`.
 - GitHub automation should use `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh ...`
