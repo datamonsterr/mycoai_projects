@@ -108,6 +108,48 @@ pnpm --dir repos/mycoai_retrieval_frontend typecheck
 pnpm --dir repos/mycoai_retrieval_frontend build
 ```
 
+## Dataset Structure
+
+Dataset root defaults to `Dataset/` at the monorepo root. Override with
+`DATASET_ROOT` environment variable. Structure must preserve:
+
+```text
+Dataset/
+├── curated_primary/          # High-quality source images (~4-7 strains/species)
+│   └── {species}/{strain}/   # Used for holdout, retrieval, YOLO training
+├── incoming_low_quality/     # Lower-quality source images (~1-2 strains/species)
+│   └── {species}/{strain}/   # Diverse data: fewer environments, varied quality
+└── prepared/                 # Canonical derived hierarchy
+    └── {species}/{strain}/{environment}/{image_stem}/
+        ├── source.jpg
+        ├── prepared.jpg
+        ├── item.json
+        ├── segments_kmeans/seg_0.jpg, seg_1.jpg, seg_2.jpg
+        ├── segments_contour/seg_0.jpg, ...
+        ├── bbox_kmeans.jpg
+        ├── bbox_contour.jpg
+        ├── pipeline_kmeans.jpg
+        └── pipeline_contour.jpg
+```
+
+Legacy paths `Dataset/original/` and `Dataset/new_data/` still work as fallback
+when canonical paths don't exist.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MYCOAI_ROOT` | Auto-detected monorepo root | Workspace root directory |
+| `DATASET_ROOT` | `$MYCOAI_ROOT/Dataset` | Path to shared Dataset folder |
+| `WEIGHTS_DIR` | `$MYCOAI_ROOT/weights` | Path to model checkpoints |
+| `RESULTS_DIR` | `$MYCOAI_ROOT/results` | Path to experiment outputs |
+
+Set `DATASET_ROOT` to a different path when using external storage:
+
+```bash
+export DATASET_ROOT=/mnt/data/fungal-dataset
+```
+
 ### Shared workspace tooling
 
 ```bash
@@ -115,9 +157,9 @@ bash tools/workspace_bootstrap.sh prepare
 bash tools/workspace_bootstrap.sh smoke-check
 bash tools/workspace_bootstrap.sh recover --instance-id <vast-instance-id>
 
-uv run python tools/dataset_sync.py plan --direction import --remote mydrive:mycoai-dataset --scope original/sample
-uv run python tools/dataset_sync.py import --remote mydrive:mycoai-dataset --scope original/sample
-uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --scope segmented_image/new-batch
+uv run python tools/dataset_sync.py plan --direction import --remote mydrive:mycoai-dataset --scope curated_primary/sample
+uv run python tools/dataset_sync.py import --remote mydrive:mycoai-dataset --scope curated_primary/sample
+uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --scope prepared/segments
 ```
 
 ## Path Conventions
@@ -133,7 +175,9 @@ uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --sco
 ## Notes
 
 - `repos/fungal-cv-qdrant/src/config.py` auto-detects the monorepo root when the
-  submodule lives under `repos/`.
+  submodule lives under `repos/`; `MYCOAI_ROOT` overrides auto-detection.
+- `DATASET_ROOT` env var lets shared dataset live outside the monorepo (e.g.
+  external SSD, Vast.ai volume); folder structure must match the canonical layout.
 - Shared remote-workspace bootstrap and dataset sync entrypoints live in
   `tools/workspace_bootstrap.sh` and `tools/dataset_sync.py`.
 - GitHub automation should use `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh ...`
