@@ -102,4 +102,11 @@ Design artifacts define:
 
 ## Complexity Tracking
 
+**Bugfix**: 2026-05-07 — BUG-001: Added letter-range folder skip, ob/rev leaf directories, consolidated JSON metadata, physical source rename, and `segmentation` bbox map.
+
+- **Letter-range nesting**: Incoming source (`new_data/`) uses `D - L/`, `M - R/`, `S - Z/` grouping folders that must be transparently traversed. The tree walker for `incoming_low_quality` must enter these as pass-through nodes, not species/strain labels.
+- **ob/rev as directories**: Angles become leaf-level directories under `{species}/{strain}/{environment}/` instead of being encoded in filenames. Single source image may appear in both `ob/` and `rev/` subdirectories for the same strain+environment.
+- **Consolidated metadata**: Per-image `item.json` files removed. Single `{collection}_metadata.json` array per collection. Consumers iterate the array, not the filesystem.
+- **item_id stability**: UUID5 derived from `{species}+{strain}+{environment}+{angle}` ensures cross-run identity for Qdrant and retrieval holdout lookups.
+
 No constitution violations requiring justification.

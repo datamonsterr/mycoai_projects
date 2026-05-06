@@ -11,75 +11,48 @@
   - Contains many `Canonical Dataset Item` records.
 
 ## 2. Canonical Dataset Item
-- **Purpose**: One prepared source image placed into canonical hierarchy.
+
+**Bugfix**: 2026-05-07 — BUG-001: redesigned from scattered `_path`-suffixed fields to `paths` object, `instance_info`, and `segmentation` map.
+
+- **Purpose**: One prepared source image placed into canonical hierarchy with angle (ob/rev) as leaf directory.
 - **Fields**:
-  - `item_id`: stable unique id
-  - `source_collection`
-  - `species`
-  - `strain`
-  - `environment`
-  - `angle`
-  - `source_filename`
-  - `canonical_dir`
-  - `source_image_path`
-  - `prepared_image_path`
-  - `parse_status`: parsed or fallback/unknown metadata case
+  - `item_id`: UUID5 derived from stable source path components (species + strain + environment + angle). Needed so Qdrant, retrieval holdout, and fine-tune consumers can re-look up the same canonical item after a re-preparation run — the UUID is deterministic across runs.
+  - `source_collection`: `curated_primary` or `incoming_low_quality`
+  - `instance_info`: `{species, strain, environment, angle}` — flat, not nested under `data`
+  - `paths`: `{source, prepared, segments: [str, ...], bbox_kmeans, bbox_contour, pipeline_kmeans, pipeline_contour}`
+  - `segmentation`: `{kmeans: [{x, y, w, h}, ...], contour: [{x, y, w, h}, ...]}`
+  - `source_filename`: original input filename
+  - `parse_status`: `parsed` or `fallback`
 - **Validation Rules**:
   - Must belong to exactly one source collection.
-  - Must resolve to one canonical species/strain/environment folder.
+  - Must resolve to one canonical species/strain/environment/angle directory.
   - Must preserve source provenance even when metadata fields are unknown.
+  - `item_id` MUST NOT change across re-preparation of the same source image.
+  - `paths.segments` MUST list absolute or workspace-relative paths to cropped colony images.
 
-## 3. Segmentation Artifact Set
-- **Purpose**: All derived segmentation outputs for one canonical dataset item.
-- **Fields**:
-  - `item_id`
-  - `method`: `kmeans` or `contour`
-  - `segment_count`
-  - `segments_dir`
-  - `bbox_visualization_path`
-  - `pipeline_visualization_path`
-  - `status`: success, partial, failed, skipped
-- **Relationships**:
-  - Belongs to one `Canonical Dataset Item`.
-  - Contains many `Segment Artifact` records.
-- **Validation Rules**:
-  - Method label must match folder naming.
-  - Matching-name convention must link sibling methods for same parent image.
+## 3. Segmentation BBox Map
 
-## 4. Segment Artifact
-- **Purpose**: One derived crop produced by a segmentation method.
-- **Fields**:
-  - `segment_id`
-  - `item_id`
-  - `method`
-  - `segment_index`
-  - `image_path`
-  - `bbox`
-  - `width`
-  - `height`
-- **Relationships**:
-  - Belongs to one `Segmentation Artifact Set`.
-- **Validation Rules**:
-  - Path must exist inside method-specific segments folder.
-  - Index must be unique within item + method.
+**Bugfix**: 2026-05-07 — BUG-001: replaced separate Segmentation Artifact Set + Segment Artifact entities with inline `segmentation` map in item record.
 
-## 5. Retrieval Segment Record
-- **Purpose**: Segment metadata row consumed by feature extraction, training, retrieval, and Qdrant upload.
-- **Fields**:
-  - `segment_id`
-  - `parent_item_id`
-  - `species`
-  - `strain`
-  - `environment`
-  - `angle`
-  - `method`
-  - `segment_path`
-  - `bbox`
-- **Relationships**:
-  - Derived from one `Segment Artifact`.
-- **Validation Rules**:
-  - Must carry path-authoritative location, not inferred flat-directory path.
-  - Must preserve enough labels for holdout selection and evaluation.
+- **Purpose**: Per-method bounding box coordinates stored directly in the item's `segmentation` field.
+- **Fields**: `segmentation: {kmeans: [{x: int, y: int, w: int, h: int}, ...], contour: [...]}`
+- **Relationships**: Belongs to one `Canonical Dataset Item` record; no separate rows or IDs.
+- **Validation Rules**: Method key must match one of `kmeans`, `contour`, or `yolo`. Empty array means no colonies detected for that method.
+
+## 4. Consolidated Metadata JSON
+
+**Bugfix**: 2026-05-07 — BUG-001: replaces per-image `item.json` files.
+
+- **Purpose**: Single JSON array at `Dataset/{collection}_metadata.json` containing all item records.
+- **Fields**: Array of `Canonical Dataset Item` records (each with `item_id`, `paths`, `instance_info`, `segmentation`).
+- **Relationships**: One array per source collection.
+- **Validation Rules**: Must be valid JSON. Every `paths.segments[n]` must resolve to an existing file. No legacy `item.json` files permitted in the output tree.
+
+## 5. Leaf Segments Directory
+
+- **Purpose**: Each `ob/` or `rev/` leaf directory contains a `segments/` subdirectory with cropped colony images.
+- **Naming**: `segment_1.jpg`, `segment_2.jpg`, `segment_3.jpg` — 1-indexed, no method prefix.
+- **Paths**: Stored in parent item's `paths.segments` array as workspace-relative strings.
 
 ## 6. Strain-Species Mapping
 - **Purpose**: Stable lookup for strain-level evaluation and dataset labeling.
@@ -108,15 +81,15 @@
 ### Canonical Dataset Item
 1. `discovered` → source image found
 2. `parsed` → metadata parsed or unknown fallback assigned
-3. `prepared` → canonical prepared image written
-4. `segmented_partial` or `segmented_complete` → one or both methods produced outputs
-5. `indexed_ready` → retrieval segment records/materialized metadata available
-
-### Segmentation Artifact Set
-1. `pending`
-2. `running`
-3. `success` / `partial` / `failed` / `skipped`
+3. `prepared` → canonical prepared image written; ob/rev leaf directory created
+4. `segmented` → segmentation methods executed; bbox map written to `segmentation` field; segments saved in leaf `segments/` dir
+5. `indexed_ready` → consolidated metadata JSON written
 
 ## Consumer Notes
-- Retrieval, feature extraction, Qdrant upload, and training should consume `Retrieval Segment Record` rows filtered by method rather than rebuilding image paths from segment ids.
-- Visualization workflows should read canonical artifact paths directly from metadata.
+
+**Bugfix**: 2026-05-07 — BUG-001: consumers now read from consolidated JSON arrays instead of per-item item.json.
+
+- Retrieval, feature extraction, Qdrant upload, and training MUST consume item records from the consolidated `Dataset/{collection}_metadata.json` array.
+- Segment paths for feature extraction come from `paths.segments[n]`; bbox coordinates from `segmentation.{method}[n]`.
+- Visualization workflows MUST read `paths.bbox_kmeans`, `paths.bbox_contour`, `paths.pipeline_kmeans`, `paths.pipeline_contour` from item records.
+- Consumers MUST NOT construct paths from segment IDs or assume `Dataset/segmented_image/{id}.jpg`.

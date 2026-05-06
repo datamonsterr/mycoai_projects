@@ -162,6 +162,76 @@ uv run python tools/dataset_sync.py import --remote mydrive:mycoai-dataset --sco
 uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --scope prepared/segments
 ```
 
+## Vast.ai Remote Workspace Setup
+
+### Quick Setup (First Time)
+
+1. Rent or reuse a Vast.ai instance with SSH access.
+2. SSH to the machine and clone the monorepo into the target workspace root.
+3. From the monorepo root, run prepare:
+
+```bash
+bash tools/workspace_bootstrap.sh prepare --non-interactive \
+  --ssh-host <host> --ssh-user <user> --ssh-port <port> \
+  --instance-id <vast-instance-id>
+```
+
+4. Validate the workspace:
+
+```bash
+bash tools/workspace_bootstrap.sh smoke-check
+```
+
+5. Use the printed connection descriptor to connect from VS Code Remote-SSH.
+
+**Unavoidable manual steps** (required before automation can proceed):
+- Choose and rent a Vast.ai instance with SSH access
+- Attach your SSH key in the Vast.ai account panel
+- Authorize VS Code Remote-SSH host key on first connect
+
+### Recover After Restart or Replacement
+
+If the instance changes host or port after a restart:
+
+```bash
+# Rediscover SSH details from the Vast.ai UI or CLI, then:
+bash tools/workspace_bootstrap.sh recover \
+  --instance-id <vast-instance-id> \
+  --host <new-host> --port <new-port>
+```
+
+The recovery command re-validates the workspace, repairs submodules, re-syncs
+missing venvs, and prints an updated connection descriptor for VS Code.
+
+### Workspace Bootstrap Script Reference
+
+```bash
+# Prepare a fresh workspace
+bash tools/workspace_bootstrap.sh prepare [--non-interactive] \
+  [--ssh-host <host>] [--ssh-user <user>] [--ssh-port <port>] \
+  [--instance-id <id>] [--workspace-root <path>]
+
+# Validate workspace readiness
+bash tools/workspace_bootstrap.sh smoke-check
+
+# Revalidate after reconnect
+bash tools/workspace_bootstrap.sh recover \
+  [--instance-id <id>] [--host <host>] [--port <port>] \
+  [--user <user>] [--workspace-root <path>]
+
+# Show help
+bash tools/workspace_bootstrap.sh help
+```
+
+### Setup Completion Criteria
+
+Setup is complete when all of the following are true:
+- `prepare` finished without blocking errors
+- `smoke-check` passed (validated status)
+- Connection descriptor is printed and usable for VS Code Remote-SSH
+- VS Code opens the correct remote workspace root
+- Any remaining manual steps are documented, not unresolved gaps
+
 ## Path Conventions
 
 - Unqualified `src/`, `docs/`, `report/`, and `pyproject.toml` references mean

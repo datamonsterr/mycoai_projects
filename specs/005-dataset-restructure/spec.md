@@ -3,6 +3,7 @@
 **Feature Branch**: `005-dataset-restructure`  
 **Created**: 2026-05-05  
 **Status**: Draft  
+**Bugfix**: 2026-05-07 — BUG-001: source parsing, metadata schema, letter-range folders, ob/rev as directory, consolidated JSON, physical rename  
 **Input**: User description: "I want to work with dataset First, help me define dataset structure into instruction rule, restructure/rename the dataset to match content: 1. Dataset/original: each species has 4-7 strains, cyclopium has only 1 strain. Used in @repos/fungal-cv-qdrant/src/experiments/retrieval/run.py for taking one strain our and finetune, extract features from the rest image. Also use to train yolo manual label data. 2. Dataset/new_data: about 1-2 strain per species, the quality of image is worse, less environment. @repos/fungal-cv-qdrant/src/utils/reformat_dataset.py @repos/fungal-cv-qdrant/src/utils/reformat_dataset_yolo.py create derived dataset. Explore the derived structure and analyze. I want to rename the dataset for better readability, fix @repos/fungal-cv-qdrant/src/utils/reformat_dataset.py @repos/fungal-cv-qdrant/src/utils/reformat_dataset_yolo.py to only one script and one dataset will has only 1. Reformat hierarchical dataset with structure {species}/{strain}/{environment}/filename. 2. Reformat both dataset, include visualize with bounding boxes image using kmeans + kmeans pipeline visualization, 3 segments in segments_{method}/ folder with same name. We have segments_yolo, segments_kmeans. 3. Remove the redundant full_image, segmented images in Dataset/ with redundant metdata 4. Fix related code @repos/fungal-cv-qdrant/src/config.py Then, test the fix to make sure it works, related code works. Then, add isntruction about how to use the dataset. Setup the quickest way to sync up dataset to our drive, and quickly download for vast ai machine."
 
 ## Table of Contents
@@ -76,13 +77,15 @@ As a researcher using local and Vast.ai environments, I want retrieval code, dat
 - How does system avoid collisions when different source datasets contain images with same filename?
 - What happens when new low-quality data lacks environments present in original data?
 - How does sync workflow behave when only subset of dataset artifacts should be uploaded or downloaded?
+- How does system detect and skip letter-range grouping folders (e.g. `D - L/`) without treating them as species or strains?
+- What happens when `Dataset/original/` already exists and the system must rename it to `Dataset/curated_primary/`? How is the collision with an existing `curated_primary/` handled?
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: System MUST define and document human-readable names and intended use for each source dataset collection currently stored under `Dataset/`, including training-grade source data and lower-quality incoming data.
-- **FR-002**: System MUST provide one canonical derived dataset layout organized as `{species}/{strain}/{environment}/filename`.
+- **FR-002**: System MUST provide one canonical derived dataset layout organized as `{species}/{strain}/{environment}/{angle}/filename` where `{angle}` is `ob` (obverse) or `rev` (reverse).
 - **FR-003**: System MUST consolidate current dataset reformatting behavior into one maintained preparation entrypoint instead of separate KMeans-only and YOLO-only scripts.
 - **FR-004**: System MUST accept both source dataset collections as input to the canonical preparation flow and preserve source provenance for each prepared item.
 - **FR-005**: System MUST generate KMeans-based segmentation outputs and YOLO-based segmentation outputs for prepared dataset items when required inputs for each method are available.
@@ -99,11 +102,24 @@ As a researcher using local and Vast.ai environments, I want retrieval code, dat
 - **FR-016**: System MUST provide shortest supported sync workflow for uploading dataset artifacts to shared Drive and downloading them onto Vast.ai machines.
 - **FR-017**: System MUST keep sync instructions aligned with canonical dataset names and folder paths after rename.
 
+<!-- Bugfix: 2026-05-07 — BUG-001 source parsing and metadata schema gaps -->
+
+- **FR-018**: System MUST handle letter-range grouping folders (`D - L/`, `M - R/`, `S - Z/`) in incoming source collections by transparently entering them without treating them as species or strain labels.
+- **FR-019**: System MUST replace per-image `item.json` files with one consolidated JSON metadata array per source collection, stored at `Dataset/{collection}_metadata.json`.
+- **FR-020**: Each metadata item MUST use the canonical schema:
+  - `item_id`: UUID5 derived from source path (stable cross-run identity for Qdrant/retrieval/lookup)
+  - `paths`: `{source, prepared, segments, bbox_kmeans, bbox_contour, pipeline_kmeans, pipeline_contour}` — no `_path` suffix
+  - `instance_info`: `{species, strain, environment, angle}` — flat, not nested under `data`
+  - `segmentation`: `{kmeans: [{x, y, w, h}, ...], contour: [{x, y, w, h}, ...]}` per method
+- **FR-021**: System MUST rename source collections on disk: `Dataset/original/` → `Dataset/curated_primary/`, `Dataset/new_data/` → `Dataset/incoming_low_quality/` as an atomic `mv` operation before preparation.
+- **FR-022**: Each leaf `ob/` or `rev/` directory MUST contain a `segments/` subdirectory with segments named `segment_1.{extension}`, `segment_2.{extension}`, etc., whose paths are stored in the `paths.segments` array of the parent item metadata record.
+
 ### Key Entities *(include if feature involves data)*
 
 - **Source Dataset Collection**: Named image collection with defined quality level, intended use, and provenance such as holdout/fine-tuning source data or lower-quality incoming data.
-- **Canonical Dataset Item**: Prepared image record identified by species, strain, environment, source collection, filename, and parsed image metadata.
-- **Segmentation Artifact Set**: All derived outputs for one image, including method-specific segments and visualization assets for KMeans and YOLO.
+- **Canonical Dataset Item**: Prepared image record identified by `instance_info` (`{species, strain, environment, angle}`), `item_id` (UUID5 from source path for stable cross-run identity), `paths` object (source, prepared, segments[], bbox_kmeans, bbox_contour, pipeline_kmeans, pipeline_contour), and source collection provenance.
+- **Segmentation Artifact Set**: All derived bounding boxes for one image, stored as `segmentation: {kmeans: [{x,y,w,h}, ...], contour: [{x,y,w,h}, ...]}` directly in the item record. Per-leaf `segments/` directory contains cropped colony images as `segment_1.jpg`, `segment_2.jpg`, etc.
+- **Consolidated Metadata JSON**: Single JSON array at `Dataset/{collection}_metadata.json` replacing per-image `item.json` files. Each entry carries `item_id`, `paths`, `instance_info`, and `segmentation`.
 - **Strain-Species Mapping**: Lookup that connects strain identifiers to species labels for dataset preparation and retrieval evaluation.
 - **Sync Profile**: Documented local-to-Drive and Drive-to-Vast.ai transfer path definition for dataset artifacts.
 

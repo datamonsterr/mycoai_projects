@@ -27,9 +27,9 @@ description: "Task list for dataset restructure and derivation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [X] T004 Update dataset root constants and canonical path helpers in `repos/fungal-cv-qdrant/src/config.py`
+- [X] T004 ⚠️ Reopened (BUG-001) Update dataset root constants and canonical path helpers in `repos/fungal-cv-qdrant/src/config.py` — must handle letter-range skip logic and `DATASET_ROOT` env var for physical rename
 - [X] T005 [P] Create canonical dataset naming, path, and provenance helpers in `repos/fungal-cv-qdrant/src/utils/`
-- [X] T006 [P] Define path-authoritative item and segment metadata schema in `repos/fungal-cv-qdrant/src/prepare/`
+- [X] T006 ⚠️ Reopened (BUG-001) Define path-authoritative item metadata schema in `repos/fungal-cv-qdrant/src/prepare/` — must match `instance_info`, `paths` object, `segmentation` map from BUG-001
 - [X] T007 [P] Create shared preparation CLI interface for source selection, subset selection, and method selection in `repos/fungal-cv-qdrant/src/prepare/`
 - [X] T008 Remove or retire split preparation entrypoints in `repos/fungal-cv-qdrant/src/utils/reformat_dataset.py` and `repos/fungal-cv-qdrant/src/utils/reformat_dataset_yolo.py` in favor of unified flow
 
@@ -51,9 +51,9 @@ description: "Task list for dataset restructure and derivation"
 
 ### Implementation for User Story 1
 
-- [X] T012 [P] [US1] Implement source collection rename and purpose documentation data in `repos/fungal-cv-qdrant/src/config.py` and `repos/fungal-cv-qdrant/src/prepare/`
-- [X] T013 [P] [US1] Implement metadata parsing and deterministic fallback labels for species, strain, environment, and angle in `repos/fungal-cv-qdrant/src/prepare/`
-- [X] T014 [US1] Implement canonical prepared artifact writer for `Dataset/prepared/{species}/{strain}/{environment}/{image_stem}/` in `repos/fungal-cv-qdrant/src/prepare/`
+- [X] T012 [P] [US1] ⚠️ Reopened (BUG-001) Implement source collection rename and purpose documentation data in `repos/fungal-cv-qdrant/src/config.py` and `repos/fungal-cv-qdrant/src/prepare/` — must handle physical mv of source dirs
+- [X] T013 [P] [US1] ⚠️ Reopened (BUG-001) Implement metadata parsing and deterministic fallback labels for species, strain, environment, and angle in `repos/fungal-cv-qdrant/src/prepare/` — must handle letter-range skip, ob/rev→directory, filename env+angle extraction
+- [X] T014 [US1] ⚠️ Reopened (BUG-001) Implement canonical prepared artifact writer for `Dataset/prepared/{species}/{strain}/{environment}/{angle}/` in `repos/fungal-cv-qdrant/src/prepare/` — ob/rev as leaf dirs, segments/ per leaf with segment_1.jpg naming
 - [X] T015 [US1] Generate retained item metadata and strain-species mapping outputs with exact canonical paths in `repos/fungal-cv-qdrant/src/prepare/` and `repos/fungal-cv-qdrant/src/utils/generate_strain_mapping.py`
 - [X] T016 [US1] Stop generating redundant `Dataset/full_image/`, `Dataset/segmented_image/`, and duplicate flat metadata in unified preparation flow under `repos/fungal-cv-qdrant/src/prepare/`
 
@@ -75,8 +75,8 @@ description: "Task list for dataset restructure and derivation"
 
 ### Implementation for User Story 2
 
-- [X] T020 [P] [US2] Implement KMeans segmentation artifact writer with canonical `segments_kmeans/` and visualization outputs in `repos/fungal-cv-qdrant/src/prepare/`
-- [X] T021 [P] [US2] Implement contour segmentation artifact writer with canonical `segments_contour/` and visualization outputs in `repos/fungal-cv-qdrant/src/prepare/`
+- [X] T020 [P] [US2] ⚠️ Reopened (BUG-001) Implement KMeans segmentation writer — bboxes stored in `segmentation.kmeans` array, cropped images saved to leaf `segments/` dir as `segment_1.jpg` etc.
+- [X] T021 [P] [US2] ⚠️ Reopened (BUG-001) Implement contour segmentation writer — bboxes stored in `segmentation.contour` array, cropped images saved to leaf `segments/` dir as `segment_1.jpg` etc.
 - [X] T022 [US2] Implement shared segment record generation with matching parent-image naming and exact artifact paths in `repos/fungal-cv-qdrant/src/prepare/`
 - [X] T023 [US2] Implement clear missing-backend and short-segmentation failure handling in unified preparation flow under `repos/fungal-cv-qdrant/src/prepare/`
 
@@ -110,7 +110,21 @@ description: "Task list for dataset restructure and derivation"
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 7: Bugfix — Source Parsing & Metadata Schema (BUG-001)
+
+**Purpose**: Correct letter-range handling, ob/rev directory layout, consolidated metadata schema, physical rename, and downstream consumer updates.
+
+**Bugfix**: 2026-05-07 — BUG-001
+
+- [X] T038 [US1] [BUG-001] Implement letter-range folder skip + recursive species→strain→ob/rev tree walker for incoming_low_quality source in `repos/fungal-cv-qdrant/src/prepare/dataset.py`
+- [X] T039 [US1] [BUG-001] Implement consolidated JSON metadata builder — single `{collection}_metadata.json` array per collection — in `repos/fungal-cv-qdrant/src/prepare/dataset.py`
+- [X] T040 [US1] [BUG-001] Implement physical rename of source collections on disk (`original/` → `curated_primary/`, `new_data/` → `incoming_low_quality/`) in preparation flow
+- [X] T041 [US2] [BUG-001] Redesign `DatasetItemRecord` dataclass to match `instance_info` + `paths` object + `segmentation` map schema in `repos/fungal-cv-qdrant/src/prepare/dataset.py`; remove separate `SegmentRecord` / `SegmentationResult` as standalone metadata entities
+- [X] T042 [US3] [BUG-001] Update `upload_qdrant.py` payload mapping to consume consolidated metadata array fields: `instance_info.{species,strain,environment,angle}`, `paths.segments[n]`, `segmentation.{method}[n].bbox`
+- [X] T043 [US3] [BUG-001] Update feature extractors (`generate_features.py`, `extract_finetuned_features.py`, `extract_triplet_features.py`, `extract_vit_features.py`) to consume `paths.segments` array instead of constructing flat segment paths
+- [X] T044 [BUG-001] Re-generate EDA charts and staircase visualization against new consolidated metadata schema; re-compile report PDF
+
+**Checkpoint**: Source parsing correct for real directory structure; metadata schema consistent with downstream consumers
 
 **Purpose**: Final validation, docs sync, and PR-ready evidence capture.
 

@@ -66,3 +66,47 @@ Setup is complete only when all of the following are true:
 - the current instance details are recorded
 - VS Code opened the correct remote workspace
 - any remaining manual steps are documented as external platform requirements rather than unresolved setup gaps
+
+## 7. Validation Checklist
+
+Run through this checklist end to end before declaring setup complete.
+
+### Prepare Phase
+
+- [ ] `bash tools/workspace_bootstrap.sh prepare --non-interactive` completes without blocking errors
+- [ ] Workspace summary shows correct `workspace_root`, `fungal_dir`, `dataset_root`, `results_root`, `weights_root`
+- [ ] `rclone` availability is reported correctly
+- [ ] Next steps output references `smoke-check`
+
+### Smoke-Check Phase
+
+- [ ] `bash tools/workspace_bootstrap.sh smoke-check` returns pass
+- [ ] Shared root directories (`Dataset/`, `results/`, `weights/`) confirmed present
+- [ ] Fungal-cv-qdrant smoke command succeeds
+
+### Recovery Phase
+
+- [ ] `bash tools/workspace_bootstrap.sh recover --instance-id <id>` completes without blocking errors
+- [ ] Instance ID is logged for follow-up lookup
+- [ ] Updated SSH host/port are surfaced when provided
+- [ ] VS Code reopen guidance is included in output
+
+### VS Code Connection Phase
+
+- [ ] SSH connection descriptor is surfaced in a copyable format
+- [ ] VS Code Remote-SSH can attach using the surfaced details
+- [ ] Remote workspace root folder opens correctly
+- [ ] Integrated terminal is functional on the remote machine
+
+### Rerun Safety
+
+- [ ] Running `prepare` twice does not duplicate or destroy existing workspace data
+- [ ] Running `smoke-check` twice produces the same pass result
+- [ ] Running `recover` twice produces consistent connection guidance
+
+### Documentation Consistency
+
+- [ ] Command examples in `README.md` match `tools/workspace_bootstrap.sh` usage
+- [ ] `AGENTS.md` references the canonical bootstrap workflow
+- [ ] `CLAUDE.md` references the canonical bootstrap workflow
+- [ ] `.opencode/commands/` agent docs reference the same entrypoints
