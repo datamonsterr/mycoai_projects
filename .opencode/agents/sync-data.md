@@ -1,7 +1,7 @@
 ---
 description: Configures and runs non-destructive Dataset/results/weights sync via the canonical rclone workflow.
 mode: subagent
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MiniBrain
 temperature: 0.1
 steps: 18
 permission:

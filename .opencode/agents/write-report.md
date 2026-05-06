@@ -1,7 +1,7 @@
 ---
 description: Writes or updates fungal-cv-qdrant experiment reports and compiles them with linked image assets.
 mode: subagent
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MidBrain
 temperature: 0.1
 steps: 18
 permission:

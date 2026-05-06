@@ -1,7 +1,7 @@
 ---
 description: Creates Mermaid or Python-generated diagrams and returns report-relative asset paths.
 mode: subagent
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MiniBrain
 temperature: 0.1
 steps: 12
 permission:

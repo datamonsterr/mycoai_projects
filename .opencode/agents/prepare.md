@@ -1,7 +1,7 @@
 ---
 description: Scaffolds a new autoresearch experiment folder with program.md, prepare.py, run_accuracy.py, and log structure. Use when user asks to create or initialize a new experiment.
 mode: subagent
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MidBrain
 temperature: 0.1
 steps: 10
 permission:

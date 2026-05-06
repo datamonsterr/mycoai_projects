@@ -1,14 +1,14 @@
 ---
 description: Check experiment results and staircase status
-template: "Read the experiment log for {name} and report:\n- Current best F1 and strategy\n- Last 5 attempts with their results\n- Whether any attempt was a new best\n\nFormat concisely: one line per attempt."
-agent: autoresearch
+template: "Summarize the experiment status for {name}: best F1, strategy name, staircase chart path, active workers, and recent TSV rows."
+agent: reporter
 ---
 
-# Experiment Log Check
+# Experiment Results Check
 
-Usage: Ask @autoresearch to check experiment results
+Usage: Ask `@reporter` to summarize experiment status.
 
 Example prompts:
-- "Check threshold experiment results"
+- "Summarize retrieval experiment status"
 - "What's the current best for the threshold experiment?"
-- "Show me recent attempts for segmentation"
+- "Show status for all active experiments"
