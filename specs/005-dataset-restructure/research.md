@@ -8,7 +8,7 @@
   - Merge both into one raw folder immediately: rejected because provenance and quality differences matter for downstream selection and debugging.
 
 ## Decision 2: One canonical derived hierarchy with explicit per-image artifact folders
-- **Decision**: Store prepared outputs under one canonical hierarchy organized by species, strain, environment, and per-image artifact set, with method-specific `segments_kmeans/` and `segments_yolo/` subfolders plus visualization assets.
+- **Decision**: Store prepared outputs under one canonical hierarchy organized by species, strain, environment, and per-image artifact set, with method-specific `segments_kmeans/` and `segments_contour/` subfolders plus visualization assets.
 - **Rationale**: Current flat `full_image` and `segmented_image` stores force every consumer to reconstruct paths from ids and duplicate metadata. Per-image artifact sets preserve comparability and remove redundant copies.
 - **Alternatives considered**:
   - Keep flat segment store and add hierarchy in parallel: rejected because spec explicitly removes redundant top-level copies.
@@ -22,7 +22,7 @@
   - Keep old metadata shape and derive nested paths from id: rejected because brittle and incompatible with multiple segment methods.
 
 ## Decision 4: Unify KMeans and YOLO preparation into one entrypoint with method selection
-- **Decision**: Replace `src/utils/reformat_dataset.py` and `src/utils/reformat_dataset_yolo.py` with one maintained preparation entrypoint that can run KMeans, YOLO, or both methods for selected source collections/subsets.
+- **Decision**: Replace `src/utils/reformat_dataset.py` and `src/utils/reformat_dataset_yolo.py` with one maintained preparation entrypoint that can run KMeans, contour, or both methods for selected source collections/subsets.
 - **Rationale**: Spec explicitly removes dual-script drift. Unified entrypoint also centralizes naming, metadata schema, and validation.
 - **Alternatives considered**:
   - Leave two scripts and add wrapper: rejected because duplicate logic remains.
@@ -32,7 +32,7 @@
 - **Decision**: Downstream consumers that currently read flat segments must switch to reading canonical metadata filtered by segment method, using exact artifact paths from metadata.
 - **Rationale**: Spec requires both segmentation methods to coexist. Retrieval, feature extraction, visualization, and training need explicit method choice instead of implicit single flat corpus.
 - **Alternatives considered**:
-  - Continue assuming one global segment directory: rejected because incompatible with `segments_kmeans/` and `segments_yolo/`.
+  - Continue assuming one global segment directory: rejected because incompatible with `segments_kmeans/` and `segments_contour/`.
   - Duplicate features for all methods automatically in all pipelines: deferred because not all consumers need both methods immediately.
 
 ## Decision 6: Full impact audit must include downstream experiment utilities and sync docs

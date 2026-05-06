@@ -200,16 +200,10 @@ get_feature_paths() {
     #   3. Branch-name-based prefix lookup (legacy fallback)
     local feature_dir
     local branch_feature_dir=""
-    if ! branch_feature_dir=$(find_feature_dir_by_prefix "$repo_root" "$current_branch"); then
-        echo "ERROR: Failed to resolve feature directory" >&2
-        return 1
-    fi
 
     if [[ -n "${SPECIFY_FEATURE_DIRECTORY:-}" ]]; then
         feature_dir="$SPECIFY_FEATURE_DIRECTORY"
         [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
-    elif [[ -d "$branch_feature_dir" ]]; then
-        feature_dir="$branch_feature_dir"
     elif [[ -f "$repo_root/.specify/feature.json" ]]; then
         local _fd
         if command -v jq >/dev/null 2>&1; then
@@ -222,10 +216,15 @@ get_feature_paths() {
         if [[ -n "$_fd" ]]; then
             feature_dir="$_fd"
             [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
-        else
-            feature_dir="$branch_feature_dir"
         fi
-    else
+    fi
+
+    # Fallback to branch-name prefix lookup if no explicit dir resolved yet
+    if [[ -z "$feature_dir" ]]; then
+        if ! branch_feature_dir=$(find_feature_dir_by_prefix "$repo_root" "$current_branch"); then
+            echo "ERROR: Failed to resolve feature directory" >&2
+            return 1
+        fi
         feature_dir="$branch_feature_dir"
     fi
 

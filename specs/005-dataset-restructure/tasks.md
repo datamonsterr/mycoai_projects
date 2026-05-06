@@ -65,18 +65,18 @@ description: "Task list for dataset restructure and derivation"
 
 **Goal**: Generate method-specific KMeans and YOLO segment outputs plus visualization assets for direct review.
 
-**Independent Test**: Prepare sample images with KMeans-only, YOLO-only, and both-method runs; verify `segments_kmeans/`, `segments_yolo/`, `bbox_*.jpg`, `pipeline_*.jpg`, matching image stems, and clear skipped/partial statuses when one method unavailable.
+**Independent Test**: Prepare sample images with KMeans-only, YOLO-only, and both-method runs; verify `segments_kmeans/`, `segments_contour/`, `bbox_*.jpg`, `pipeline_*.jpg`, matching image stems, and clear skipped/partial statuses when one method unavailable.
 
 ### Validation for User Story 2
 
 - [X] T017 [P] [US2] Add automated coverage for method-specific segment artifact sets and partial/skipped status handling in `repos/fungal-cv-qdrant/tests/`
 - [X] T018 [US2] Run sample segmentation smoke commands for KMeans-only, YOLO-only, and both methods via unified preparation entrypoint in `repos/fungal-cv-qdrant/src/prepare/`
-- [X] T019 [US2] Manually inspect one sample item for `segments_kmeans/`, `segments_yolo/`, `bbox_kmeans.jpg`, `bbox_yolo.jpg`, `pipeline_kmeans.jpg`, and `pipeline_yolo.jpg`
+- [X] T019 [US2] Manually inspect one sample item for `segments_kmeans/`, `segments_contour/`, `bbox_kmeans.jpg`, `bbox_contour.jpg`, `pipeline_kmeans.jpg`, and `pipeline_contour.jpg`
 
 ### Implementation for User Story 2
 
 - [X] T020 [P] [US2] Implement KMeans segmentation artifact writer with canonical `segments_kmeans/` and visualization outputs in `repos/fungal-cv-qdrant/src/prepare/`
-- [X] T021 [P] [US2] Implement YOLO segmentation artifact writer with canonical `segments_yolo/` and visualization outputs in `repos/fungal-cv-qdrant/src/prepare/`
+- [X] T021 [P] [US2] Implement contour segmentation artifact writer with canonical `segments_contour/` and visualization outputs in `repos/fungal-cv-qdrant/src/prepare/`
 - [X] T022 [US2] Implement shared segment record generation with matching parent-image naming and exact artifact paths in `repos/fungal-cv-qdrant/src/prepare/`
 - [X] T023 [US2] Implement clear missing-backend and short-segmentation failure handling in unified preparation flow under `repos/fungal-cv-qdrant/src/prepare/`
 

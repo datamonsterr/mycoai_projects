@@ -50,7 +50,7 @@ As a researcher, I want both KMeans-derived and YOLO-derived segment outputs plu
 
 **Acceptance Scenarios**:
 
-1. **Given** canonical dataset preparation runs on an image, **When** segmentation succeeds, **Then** system stores method-specific segment outputs under `segments_kmeans/` and `segments_yolo/` using matching names for same parent image.
+1. **Given** canonical dataset preparation runs on an image, **When** segmentation succeeds, **Then** system stores method-specific segment outputs under `segments_kmeans/` and `segments_contour/` using matching names for same parent image.
 2. **Given** segmentation outputs are created, **When** researcher opens visualization outputs, **Then** each image shows bounding boxes and pipeline visualization needed to inspect how segments were produced.
 
 ---
@@ -86,7 +86,7 @@ As a researcher using local and Vast.ai environments, I want retrieval code, dat
 - **FR-003**: System MUST consolidate current dataset reformatting behavior into one maintained preparation entrypoint instead of separate KMeans-only and YOLO-only scripts.
 - **FR-004**: System MUST accept both source dataset collections as input to the canonical preparation flow and preserve source provenance for each prepared item.
 - **FR-005**: System MUST generate KMeans-based segmentation outputs and YOLO-based segmentation outputs for prepared dataset items when required inputs for each method are available.
-- **FR-006**: System MUST store method-specific segment images in `segments_kmeans/` and `segments_yolo/` folders using matching parent-image naming so outputs from both methods can be compared directly.
+- **FR-006**: System MUST store method-specific segment images in `segments_kmeans/` and `segments_contour/` folders using matching parent-image naming so outputs from both methods can be compared directly.
 - **FR-007**: System MUST produce per-image visualization artifacts that show bounding boxes and segmentation-review context for each enabled segmentation method.
 - **FR-008**: System MUST keep segmentation outputs and metadata sufficient for retrieval evaluation and downstream inspection without preserving redundant top-level `full_image` and `segmented_image` copies.
 - **FR-009**: System MUST remove or stop generating redundant dataset metadata files when same information can be derived from canonical structure and retained artifact records.
@@ -123,7 +123,7 @@ As a researcher using local and Vast.ai environments, I want retrieval code, dat
 
 - **Local Checks**: Relevant `uv --directory repos/fungal-cv-qdrant ...` validation for dataset preparation entrypoint, retrieval-related smoke checks, and any repo-standard Python checks added or updated for touched code
 - **Workflow Checks**: Relevant GitHub workflow checks if available for `repos/fungal-cv-qdrant`, otherwise N/A
-- **Manual Validation**: Inspect sample canonical dataset tree, inspect sample `segments_kmeans/` and `segments_yolo/` outputs plus bounding-box visualizations, confirm documented Drive/Vast.ai sync steps on dry-run or safe subset
+- **Manual Validation**: Inspect sample canonical dataset tree, inspect sample `segments_kmeans/` and `segments_contour/` outputs plus bounding-box visualizations, confirm documented Drive/Vast.ai sync steps on dry-run or safe subset
 - **PR Evidence**: Summary of renamed dataset structure, before/after artifact layout, commands used for validation, sample output paths, and updated usage/sync documentation
 
 ## Assumptions

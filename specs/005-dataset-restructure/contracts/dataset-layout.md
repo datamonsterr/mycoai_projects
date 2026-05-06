@@ -35,14 +35,14 @@ Dataset/
                     │   ├── seg_0.jpg
                     │   ├── seg_1.jpg
                     │   └── seg_2.jpg
-                    ├── segments_yolo/
+                    ├── segments_contour/
                     │   ├── seg_0.jpg
                     │   ├── seg_1.jpg
                     │   └── seg_2.jpg
                     ├── bbox_kmeans.jpg
-                    ├── bbox_yolo.jpg
+                    ├── bbox_contour.jpg
                     ├── pipeline_kmeans.jpg
-                    ├── pipeline_yolo.jpg
+                    ├── pipeline_contour.jpg
                     └── item.json
 ```
 
@@ -50,7 +50,7 @@ Dataset/
 
 - Same parent image uses same `{image_stem}` across methods.
 - Segment filenames are method-local and index-based.
-- `segments_kmeans/` and `segments_yolo/` are reserved names.
+- `segments_kmeans/` and `segments_contour/` are reserved names.
 - Unknown parsed metadata must still produce deterministic paths under fallback labels.
 
 ## 4. Metadata Contract

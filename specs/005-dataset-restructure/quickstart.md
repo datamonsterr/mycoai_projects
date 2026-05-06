@@ -63,7 +63,7 @@ uv run python tools/dataset_sync.py plan --direction import --remote mydrive:myc
 ## 5. Manual verification
 Inspect:
 - canonical prepared tree under `Dataset/`
-- one sample item with both `segments_kmeans/` and `segments_yolo/`
+- one sample item with both `segments_kmeans/` and `segments_contour/`
 - one sample bbox visualization and one pipeline visualization per method
 - retrieval/training metadata records to confirm they contain exact segment paths
 - updated Drive/Vast.ai sync instructions

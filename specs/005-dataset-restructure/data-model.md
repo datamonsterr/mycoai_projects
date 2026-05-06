@@ -33,7 +33,7 @@
 - **Purpose**: All derived segmentation outputs for one canonical dataset item.
 - **Fields**:
   - `item_id`
-  - `method`: `kmeans` or `yolo`
+  - `method`: `kmeans` or `contour`
   - `segment_count`
   - `segments_dir`
   - `bbox_visualization_path`
