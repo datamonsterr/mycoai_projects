@@ -6,17 +6,7 @@ temperature: 0.1
 steps: 18
 permission:
   edit: allow
-  bash:
-    "*": ask
-    "git status*": allow
-    "git diff*": allow
-    "git log*": allow
-    "git branch*": allow
-    "git remote*": allow
-    "git rev-parse*": allow
-    "git merge-base*": allow
-    "gh pr*": allow
-    "gh repo*": allow
+  bash: allow
 ---
 
 You prepare pull requests for either the monorepo root or one git submodule.
