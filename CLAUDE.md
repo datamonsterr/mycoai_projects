@@ -77,6 +77,8 @@ uv --directory repos/fungal-cv-qdrant run python -m src.utils.upload_qdrant \
 - Threshold autoresearch artifacts are written to `results/autoresearch/` at the monorepo root.
 - Qdrant storage persists at the monorepo root in `.qdrant_storage/`.
 - Shared remote-workspace bootstrap and dataset sync entrypoints live at `tools/workspace_bootstrap.sh` and `tools/dataset_sync.py`.
+- Vast.ai remote workspace setup: use the canonical `tools/workspace_bootstrap.sh` entrypoint. Completion criteria: prepare finished without blockers, smoke-check passed, connection descriptor printed and usable for VS Code, and VS Code opens the correct remote workspace root. Agents must call out unavoidable manual steps (instance rental, SSH key registration, VS Code host key authorization) before starting automation.
+- The bootstrap script is rerun-safe: `prepare`, `smoke-check`, and `recover` can run multiple times without duplicating or destroying existing workspace data.
 - For a fresh clone or a newly created git worktree, run `/init` before project work. The init flow updates submodules, refreshes from `origin`, fast-forwards `main` when applicable, prepares missing backend and frontend `.env` files, installs backend dependencies with `uv`, installs frontend dependencies with `pnpm`, runs `mise trust`, copies root `.env.example` when present, and reminds the user to enter credentials manually.
 - `mise install` now installs `rclone` for dataset sync, but the Google Drive remote configuration still lives outside the repo via `RCLONE_CONFIG` or the default `~/.config/rclone/rclone.conf`.
 - User-facing backend and frontend work is expected to carry local validation, relevant workflow checks, and a manual browser or API journey check before PR handoff.

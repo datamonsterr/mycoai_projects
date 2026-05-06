@@ -17,9 +17,9 @@
 
 **Purpose**: Confirm the existing root setup surface and documentation targets before changing behavior.
 
-- [ ] T001 Review the current Vast.ai workflow surfaces in `tools/workspace_bootstrap.sh`, `AGENTS.md`, `CLAUDE.md`, and `.opencode/commands/`
-- [ ] T002 [P] Inspect `specs/001-vastai-workspace-sync/` artifacts and reuse any still-valid setup, recovery, and connection language in `specs/001-autonomous-vastai-setup/`
-- [ ] T003 [P] Identify the human-facing setup document target (`README.md` or an existing root setup guide) and record the chosen file path in `specs/001-autonomous-vastai-setup/tasks.md`
+- [x] T001 Review the current Vast.ai workflow surfaces in `tools/workspace_bootstrap.sh`, `AGENTS.md`, `CLAUDE.md`, and `.opencode/commands/`
+- [x] T002 [P] Inspect `specs/001-vastai-workspace-sync/` artifacts and reuse any still-valid setup, recovery, and connection language in `specs/001-autonomous-vastai-setup/`
+- [x] T003 [P] Identify the human-facing setup document target (`README.md` or an existing root setup guide) and record the chosen file path in `specs/001-autonomous-vastai-setup/tasks.md` — Chosen: README.md
 
 ---
 
@@ -29,10 +29,10 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Define the connection-output contract and required summary fields for `tools/workspace_bootstrap.sh` using `specs/001-autonomous-vastai-setup/contracts/workspace-bootstrap-cli.md`
-- [ ] T005 [P] Define the agent command surface to add or update under `.opencode/commands/` using `specs/001-autonomous-vastai-setup/contracts/agent-vast-setup-command.md`
-- [ ] T006 [P] Map prerequisite, instance-context, validation-result, and editor-descriptor fields from `specs/001-autonomous-vastai-setup/data-model.md` to concrete script and documentation outputs in `tools/workspace_bootstrap.sh` and the chosen root doc file
-- [ ] T007 Create a validation checklist section in `specs/001-autonomous-vastai-setup/quickstart.md` covering prepare, smoke-check, recovery, and VS Code attach evidence
+- [x] T004 Define the connection-output contract and required summary fields for `tools/workspace_bootstrap.sh` using `specs/001-autonomous-vastai-setup/contracts/workspace-bootstrap-cli.md`
+- [x] T005 [P] Define the agent command surface to add or update under `.opencode/commands/` using `specs/001-autonomous-vastai-setup/contracts/agent-vast-setup-command.md`
+- [x] T006 [P] Map prerequisite, instance-context, validation-result, and editor-descriptor fields from `specs/001-autonomous-vastai-setup/data-model.md` to concrete script and documentation outputs in `tools/workspace_bootstrap.sh` and the chosen root doc file
+- [x] T007 Create a validation checklist section in `specs/001-autonomous-vastai-setup/quickstart.md` covering prepare, smoke-check, recovery, and VS Code attach evidence
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -46,18 +46,18 @@
 
 ### Validation for User Story 1 (REQUIRED) ⚠️
 
-- [ ] T008 [US1] Run `bash -n tools/workspace_bootstrap.sh` after bootstrap-flow changes in `tools/workspace_bootstrap.sh`
-- [ ] T009 [US1] Execute the first-time setup path from `specs/001-autonomous-vastai-setup/quickstart.md` and capture evidence for prepare plus smoke-check against `tools/workspace_bootstrap.sh`
-- [ ] T010 [US1] Rerun the bootstrap path from `specs/001-autonomous-vastai-setup/quickstart.md` and verify rerun-safe behavior from `tools/workspace_bootstrap.sh`
-- [ ] T011 [US1] Review command examples for consistency across `tools/workspace_bootstrap.sh`, the chosen root setup doc, and `.opencode/commands/`
+- [x] T008 [US1] Run `bash -n tools/workspace_bootstrap.sh` after bootstrap-flow changes in `tools/workspace_bootstrap.sh`
+- [ ] T009 [US1] Execute the first-time setup path from `specs/001-autonomous-vastai-setup/quickstart.md` and capture evidence for prepare plus smoke-check against `tools/workspace_bootstrap.sh`  **(manual — requires Vast.ai instance)**
+- [ ] T010 [US1] Rerun the bootstrap path from `specs/001-autonomous-vastai-setup/quickstart.md` and verify rerun-safe behavior from `tools/workspace_bootstrap.sh`  **(manual — requires Vast.ai instance)**
+- [x] T011 [US1] Review command examples for consistency across `tools/workspace_bootstrap.sh`, the chosen root setup doc, and `.opencode/commands/`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Extend prerequisite validation, blocker messaging, and non-interactive prepare output in `tools/workspace_bootstrap.sh`
-- [ ] T013 [US1] Add structured workspace summary fields and explicit next-step output for setup completion in `tools/workspace_bootstrap.sh`
-- [ ] T014 [US1] Update the chosen root setup guide file with the canonical first-time Vast.ai bootstrap workflow and unavoidable manual prerequisites
-- [ ] T015 [US1] Update `AGENTS.md` with the canonical autonomous bootstrap commands and completion criteria for remote setup
-- [ ] T016 [US1] Update `CLAUDE.md` with the same bootstrap workflow and rerun-safe guidance used in `AGENTS.md`
+- [x] T012 [US1] Extend prerequisite validation, blocker messaging, and non-interactive prepare output in `tools/workspace_bootstrap.sh`
+- [x] T013 [US1] Add structured workspace summary fields and explicit next-step output for setup completion in `tools/workspace_bootstrap.sh`
+- [x] T014 [US1] Update the chosen root setup guide file with the canonical first-time Vast.ai bootstrap workflow and unavoidable manual prerequisites
+- [x] T015 [US1] Update `AGENTS.md` with the canonical autonomous bootstrap commands and completion criteria for remote setup
+- [x] T016 [US1] Update `CLAUDE.md` with the same bootstrap workflow and rerun-safe guidance used in `AGENTS.md`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -73,14 +73,14 @@
 
 - [ ] T017 [US2] Run the VS Code attach flow from `specs/001-autonomous-vastai-setup/quickstart.md` using the current connection output from `tools/workspace_bootstrap.sh`
 - [ ] T018 [US2] Manually verify file browsing and integrated terminal access in VS Code for the remote workspace described in the chosen root setup doc
-- [ ] T019 [US2] Review all VS Code connection snippets for consistency across the chosen root setup doc, `AGENTS.md`, `CLAUDE.md`, and `.opencode/commands/`
+- [x] T019 [US2] Review all VS Code connection snippets for consistency across the chosen root setup doc, `AGENTS.md`, `CLAUDE.md`, and `.opencode/commands/`
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Add editor-ready connection descriptor output and VS Code-specific next steps to `tools/workspace_bootstrap.sh`
-- [ ] T021 [US2] Update the chosen root setup guide file with the canonical VS Code Remote-SSH workflow and copyable connection instructions
-- [ ] T022 [P] [US2] Create or update `.opencode/commands/setup-vastai.md` with agent instructions for prerequisite checks, setup execution, validation, and VS Code connection
-- [ ] T023 [P] [US2] Create or update `.opencode/commands/connect-vscode-vastai.md` with agent instructions for generating or using the connection descriptor from current SSH metadata
+- [x] T020 [US2] Add editor-ready connection descriptor output and VS Code-specific next steps to `tools/workspace_bootstrap.sh`
+- [x] T021 [US2] Update the chosen root setup guide file with the canonical VS Code Remote-SSH workflow and copyable connection instructions
+- [x] T022 [P] [US2] Create or update `.opencode/commands/setup-vastai.md` with agent instructions for prerequisite checks, setup execution, validation, and VS Code connection
+- [x] T023 [P] [US2] Create or update `.opencode/commands/connect-vscode-vastai.md` with agent instructions for generating or using the connection descriptor from current SSH metadata
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -94,17 +94,17 @@
 
 ### Validation for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T024 [US3] Run `bash -n tools/workspace_bootstrap.sh` after recovery-flow changes in `tools/workspace_bootstrap.sh`
-- [ ] T025 [US3] Execute the recovery flow from `specs/001-autonomous-vastai-setup/quickstart.md` with `--instance-id` and capture the resulting validation and connection output from `tools/workspace_bootstrap.sh`
-- [ ] T026 [US3] Execute the recovery flow with refreshed `--host` and `--port` values and verify the updated connection guidance from `tools/workspace_bootstrap.sh`
-- [ ] T027 [US3] Review the recovery instructions for human/agent alignment across the chosen root setup doc, `AGENTS.md`, `CLAUDE.md`, and `.opencode/commands/`
+- [x] T024 [US3] Run `bash -n tools/workspace_bootstrap.sh` after recovery-flow changes in `tools/workspace_bootstrap.sh`
+- [ ] T025 [US3] Execute the recovery flow from `specs/001-autonomous-vastai-setup/quickstart.md` with `--instance-id` and capture the resulting validation and connection output from `tools/workspace_bootstrap.sh`  **(manual — requires Vast.ai instance)**
+- [ ] T026 [US3] Execute the recovery flow with refreshed `--host` and `--port` values and verify the updated connection guidance from `tools/workspace_bootstrap.sh`  **(manual — requires Vast.ai instance)**
+- [x] T027 [US3] Review the recovery instructions for human/agent alignment across the chosen root setup doc, `AGENTS.md`, `CLAUDE.md`, and `.opencode/commands/`
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Extend recovery messaging, refreshed instance-context handling, and post-recovery next-step output in `tools/workspace_bootstrap.sh`
-- [ ] T029 [US3] Update the chosen root setup guide file with the canonical recovery workflow for reconnect, restart, and replacement scenarios
-- [ ] T030 [P] [US3] Create or update `.opencode/commands/recover-vastai.md` with agent instructions for rerun-safe recovery and validation
-- [ ] T031 [P] [US3] Update `.opencode/commands/setup-vastai.md` to include recovery entrypoints, blockers, and completion criteria shared with the human docs
+- [x] T028 [US3] Extend recovery messaging, refreshed instance-context handling, and post-recovery next-step output in `tools/workspace_bootstrap.sh`
+- [x] T029 [US3] Update the chosen root setup guide file with the canonical recovery workflow for reconnect, restart, and replacement scenarios
+- [x] T030 [P] [US3] Create or update `.opencode/commands/recover-vastai.md` with agent instructions for rerun-safe recovery and validation
+- [x] T031 [P] [US3] Update `.opencode/commands/setup-vastai.md` to include recovery entrypoints, blockers, and completion criteria shared with the human docs
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -114,10 +114,10 @@
 
 **Purpose**: Final synchronization, validation evidence, and handoff quality.
 
-- [ ] T032 [P] Sync the final command names, file references, and workflow ordering across `tools/workspace_bootstrap.sh`, the chosen root setup doc, `AGENTS.md`, `CLAUDE.md`, and `.opencode/commands/`
-- [ ] T033 [P] Run `uv run --with pytest pytest tools/tests/test_dataset_sync.py` to confirm adjacent root tooling still passes after the Vast.ai workflow updates
-- [ ] T034 Run the full quickstart in `specs/001-autonomous-vastai-setup/quickstart.md` end to end and record setup, VS Code, and recovery evidence for PR handoff
-- [ ] T035 [P] Verify whether any relevant GitHub workflow checks should be inspected with `gh` and record the result or N/A rationale in the final change summary
+- [x] T032 [P] Sync the final command names, file references, and workflow ordering across `tools/workspace_bootstrap.sh`, the chosen root setup doc, `AGENTS.md`, `CLAUDE.md`, and `.opencode/commands/`
+- [x] T033 [P] Run `uv run --with pytest pytest tools/tests/test_dataset_sync.py` to confirm adjacent root tooling still passes after the Vast.ai workflow updates (27/27 passed)
+- [ ] T034 Run the full quickstart in `specs/001-autonomous-vastai-setup/quickstart.md` end to end and record setup, VS Code, and recovery evidence for PR handoff  **(manual — requires Vast.ai instance)**
+- [x] T035 [P] Verify whether any relevant GitHub workflow checks should be inspected with `gh` and record the result or N/A rationale in the final change summary — N/A: no monorepo-level workflows; submodule workflows unchanged by this root-only feature
 
 ---
 
