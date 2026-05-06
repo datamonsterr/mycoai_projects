@@ -1,7 +1,7 @@
 ---
 description: Primary autonomous delivery agent for MycoAI. Plans, implements, validates, checks workflows, performs manual validation, and prepares PR-ready output.
 mode: primary
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/BigBrain
 temperature: 0.1
 steps: 40
 permission:

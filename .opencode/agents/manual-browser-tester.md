@@ -1,7 +1,7 @@
 ---
 description: Performs manual browser or API validation and records final behavior against the definition of done.
 mode: subagent
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MidBrain
 temperature: 0.1
 steps: 16
 permission:

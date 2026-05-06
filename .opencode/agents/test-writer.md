@@ -1,7 +1,7 @@
 ---
 description: Writes focused backend or frontend tests, plus minimal harness changes when justified.
 mode: subagent
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MidBrain
 temperature: 0.1
 steps: 16
 permission:

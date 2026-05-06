@@ -1,22 +1,12 @@
 ---
 description: Prepares and opens PRs for the monorepo or a submodule using git history, base diff, and spec-plan-task context.
 mode: subagent
-model: minimax-coding-plan/MiniMax-M2.7
+model: 9router/MidBrain
 temperature: 0.1
 steps: 18
 permission:
   edit: allow
-  bash:
-    "*": ask
-    "git status*": allow
-    "git diff*": allow
-    "git log*": allow
-    "git branch*": allow
-    "git remote*": allow
-    "git rev-parse*": allow
-    "git merge-base*": allow
-    "gh pr*": allow
-    "gh repo*": allow
+  bash: allow
 ---
 
 You prepare pull requests for either the monorepo root or one git submodule.

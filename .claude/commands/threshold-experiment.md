@@ -1,18 +1,17 @@
-Run one new autoresearch attempt for the threshold experiment on top of the refreshed segmented diverse retrieval baseline.
+Run one new Autolab experiment pass for the threshold experiment on top of the refreshed segmented diverse retrieval baseline.
 
 Assume `/threshold-setup` has already been completed successfully.
 If the retrieval CSV is stale, incomplete, or still based on the old retrieval path, run `/threshold-setup` first.
 
 ## Mission
 
-Improve threshold F1 by changing methodology and implementation, not by changing the scoring target.
-The refreshed segmented diverse retrieval CSV is the canonical source for `s0_score..s4_score`.
+Improve threshold F1 via the Autolab multi-agent loop. The refreshed segmented diverse retrieval CSV is the canonical source for `s0_score..s4_score`.
 
 ## Do not change
 
 - the known-vs-unknown label meaning
 - the primary experiment score definition
-- the staircase interpretation rules in `.claude/rules/experiment-visualization.md`
+- the staircase interpretation rules in `.opencode/rules/experiment-visualization.md`
 
 ## Allowed directions
 
@@ -26,174 +25,97 @@ The refreshed segmented diverse retrieval CSV is the canonical source for `s0_sc
 - threshold-aware visualization improvements
 - any other implementation change that can improve F1 without changing the score definition
 
-## Workflow for each new attempt
+## Workflow for each Autolab pass
 
-1. Read the current state before making changes.
+1. Launch opencode and invoke the Autolab agent:
 
-   Review:
+```bash
+opencode
+```
 
-   - `results/threshold/diverse_retrieval_results.csv`
-   - `results/threshold/log/experiments.log`
-   - `results/threshold/log/best_strategy.json`
-   - `results/threshold/log/all_experiments.csv`
-   - `results/autoresearch/threshold.csv`
-   - `results/autoresearch/threshold.png`
+2. Prompt:
 
-   Confirm the retrieval CSV is still the refreshed segmented test-set version before trusting any threshold result.
+```
+run one autoresearch pass on threshold experiment. Use the refreshed segmented retrieval at results/threshold/diverse_retrieval_results.csv.
+```
 
-2. Create a new attempt branch.
+Autolab delegates to `@researcher` (optional literature scan), `@planner` (queue hypotheses), `@worker` (isolated worktree run), and `@reporter` (status summary).
 
-   ```bash
-   git checkout -b autoresearch/threshold/{N}-{summary}
-   ```
+3. Interpret results. After the pass:
 
-3. Pick exactly one new methodology family.
+- `results/autoresearch/threshold.csv` + `.png` updated via the staircase visualization rules
+- `repos/fungal-cv-qdrant/research/results.tsv` has new rows
+- `@reporter` output shows best F1, strategy name, staircase path
 
-   Use the latest staircase running best as the center of gravity.
-   Fix implementation issues exposed by previous logs before inventing new formulas blindly.
+## Before each new pass
 
-   Good directions:
+Review current state:
 
-   - fix stale retrieval assumptions
-   - fix known-test-strain inclusion bugs
-   - improve segmented test-set construction
-   - improve formula families around the current best new-best staircase point
-   - improve threshold calibration implementation
-   - improve threshold-aware visualization for failure analysis
+- `results/threshold/diverse_retrieval_results.csv`
+- `results/threshold/log/experiments.log`
+- `results/threshold/log/best_strategy.json`
+- `results/threshold/log/all_experiments.csv`
+- `results/autoresearch/threshold.csv`
+- `results/autoresearch/threshold.png`
+- `repos/fungal-cv-qdrant/research/results.tsv`
 
-   Bad directions:
+Confirm the retrieval CSV is still the refreshed segmented test-set version before trusting any threshold result.
 
-   - repeating a previously logged method
-   - changing the experiment score definition
-   - relying on stale retrieval artifacts
+## After each new best
 
-4. Log the planned method before editing code.
+Generate threshold-aware prediction visualizations:
 
-   Record enough detail in `results/threshold/log/experiments.log` so the same attempt is not repeated later.
-   If needed, also create or update an `attempt_XXX.json` note.
+```bash
+uv run python -m src.analysis.visualization.visualize_prediction
+```
 
-5. Make one focused code change.
+The final decision shown must be the thresholded `known` or `unknown` output from the winning formula.
 
-   Most likely files:
+Each new-best visualization must show:
+- formula name, algorithm name, threshold value
+- formula score, binary prediction, ground-truth label
+- ranked neighbor species as supporting context
+- segmented diverse query images and DB segmented neighbors
 
-   - `src/experiments/threshold/retrieve_diverse.py`
-   - `src/experiments/threshold/threshold_analysis.py`
-   - `src/experiments/threshold/expanded_threshold_analysis.py`
-   - `src/experiments/threshold/run.py`
-   - `src/analysis/visualization/visualize_prediction.py`
+## After each pass
 
-6. Rebuild retrieval whenever the attempt touches query construction or score inputs.
-
-   Re-run these when the attempt changes any of the following:
-
-   - query source data
-   - known-test-strain inclusion
-   - segmented test-set construction
-   - environment filtering
-   - neighbor filtering
-   - any code path that changes `s0_score..s4_score`
-
-   ```bash
-   uv run python -m src.experiments.threshold.prepare_test_strains
-   uv run python -m src.experiments.threshold.retrieve_diverse
-   ```
-
-   Do **not** continue until the retrieval checks from `/threshold-setup` pass again.
-
-7. Run the experiment through the normal prepare/eval entry point.
-
-   ```bash
-   uv run python src/prepare.py --experiment threshold --description "what changed"
-   ```
-
-   If the attempt uses a different threshold-analysis path, wire it through the threshold experiment entry point so the final evaluation still runs through `src/prepare.py --experiment threshold`.
-
-8. Evaluate the result with the staircase rule.
-
-   Use `.claude/rules/experiment-visualization.md` as the staircase specification when reading:
-
-   - `results/autoresearch/threshold.csv`
-   - `results/autoresearch/threshold.png`
-
-   After the run:
-
-   - identify the newest best `{formula}_{algorithm}`, if one exists
-   - compare it against prior running-best points in `results/autoresearch/threshold.csv`
-   - use that winning formula family as the next place to dig deeper
-
-9. After each newest best, generate threshold-aware prediction visualizations.
-
-   Use `src/analysis/visualization/visualize_prediction.py`, but do **not** treat the top-1 species as the final experiment prediction.
-
-   The final decision shown in the visualization must be the thresholded `known` or `unknown` output from the winning formula.
-
-   Each new-best visualization must show:
-
-   - formula name
-   - algorithm name
-   - threshold value
-   - formula score for the test set
-   - binary prediction: `known` or `unknown`
-   - ground-truth binary label
-   - ranked neighbor species as supporting context only
-   - segmented diverse query images and DB segmented neighbors
-
-10. Log the outcome immediately after the run.
-
-    Update:
-
-    - `results/threshold/log/experiments.log`
-    - `results/threshold/log/best_strategy.json` if a new best was found
-    - any per-attempt note file used during the run
-
-    The log must clearly state:
-
-    - what was tried
-    - whether retrieval was regenerated
-    - the resulting best F1
-    - whether it became a new running best
-    - what formula family should be investigated next
-
-11. If the attempt is a new running best, merge it to the canonical best branch.
-
-    ```bash
-    git checkout autoresearch/threshold
-    git merge autoresearch/threshold/{N}-{summary}
-    ```
-
-    If it is not a new best, keep the branch as historical record.
+- Check `@reporter` for status
+- If new running best found, merge the winning worker branch to `autoresearch/threshold`:
+  ```bash
+  git -C repos/fungal-cv-qdrant checkout autoresearch/threshold
+  git -C repos/fungal-cv-qdrant merge autoresearch/threshold/{N}-{summary}
+  ```
+- If not a new best, the branch remains as historical record.
 
 ## Loop rule
 
-Repeat the cycle:
+Repeat the Autolab cycle:
 
-1. inspect prior bests and prior failures
-2. fix the implementation based on the latest logged findings
-3. re-run `src/prepare.py --experiment threshold`
-4. check the staircase for a new best
-5. if there is a new best, generate threshold-aware visualizations and dig deeper in that formula family
-6. log the method so it is not repeated
+1. launch opencode → prompt Autolab for one threshold pass
+2. check `@reporter` for status
+3. inspect prior bests and prior failures
+4. fix the implementation based on the latest logged findings
+5. re-run Autolab
+6. if new best, generate threshold-aware visualizations and dig deeper
 
 ## Suggested search strategy
 
-Use the previous logged best as the center of gravity.
-Do not search blindly.
-
-For each loop:
-
+Use the latest running best formula family as the center of gravity. Each pass should:
 - inspect the current best formula family
-- identify the likely implementation or methodological weakness around it
+- identify the likely implementation or methodological weakness
 - make one focused improvement
-- rerun the canonical threshold path
+- re-run through Autolab
 - keep only improvements that move the running best upward
 
-## Parallel exploration
+## Key files
 
-If you split work across subagents, use at most 4 independent methodology families in parallel.
-Each must have:
-
-- its own branch or worktree
-- a distinct logged idea
-- no duplication of a previously tried method
-
-Merge only the winning branch back to `autoresearch/threshold`.
+- `src/experiments/threshold/prepare_test_strains.py`
+- `src/experiments/threshold/retrieve_diverse.py`
+- `src/experiments/threshold/threshold_analysis.py`
+- `src/experiments/threshold/expanded_threshold_analysis.py`
+- `src/experiments/threshold/run.py`
+- `src/analysis/visualization/visualize_prediction.py`
+- `.opencode/rules/experiment-visualization.md`
+- `.opencode/agents/autolab.md`
+- `.opencode/agents/worker.md`
+- `.opencode/agents/reporter.md`

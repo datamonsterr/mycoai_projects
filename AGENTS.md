@@ -78,5 +78,52 @@ uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --sco
 - Bash + Python 3.13 + Markdown documentation + OpenSSH, git with submodules, `mise`, `uv`, optional `vastai` CLI for instance lookup, VS Code Remote-SSH, existing `tools/workspace_bootstrap.sh` and `tools/dataset_sync.py` (001-vastai-workspace-sync)
 - Monorepo root filesystem (`Dataset/`, `results/`, `weights/`, `species_weights.json`), local SSH config on the developer machine, optional external `rclone` config for dataset access (001-vastai-workspace-sync)
 
+## Autolab Multi-Agent System (004-autolab-multi-agent)
+
+Five-agent orchestration layer built on top of `fungal-cv-qdrant` autoresearch infrastructure.
+
+### Agent Roster
+
+| Agent | Model | Mode | Role |
+|-------|-------|------|------|
+| `autolab` | `9router/BigBrain` | primary | Orchestrator — delegates to all subagents |
+| `researcher` | `9router/BigBrain` | subagent | Literature scout — web/PDF → paper-ideas.md |
+| `planner` | `9router/MidBrain` | subagent | Queue coordinator — assigns run_ids to Workers |
+| `worker` | `9router/MiniBrain` | subagent | Isolated experiment runner via git worktree |
+| `reporter` | `9router/MiniBrain` | subagent | Status summarizer — reads CSV, emits F1 summary |
+
+### Invocation
+
+```bash
+# Launch opencode and prompt the Autolab agent
+opencode
+# Prompt: "run one autoresearch pass on retrieval experiment"
+```
+
+### Test Command
+
+```bash
+# Run all autolab tests + lint
+uv --directory repos/fungal-cv-qdrant run pytest tests/ -q
+uv --directory repos/fungal-cv-qdrant run python -m ruff check src/experiments/
+```
+
+Or use the registered command: `opencode run "test"`
+
+### Key Files
+
+- Agent definitions: `.opencode/agents/autolab.md`, `researcher.md`, `planner.md`, `worker.md`, `reporter.md`
+- Custom tools: `.opencode/tools/hypothesis-validator.ts`, `experiment-test-runner.ts`
+- Plugin: `.opencode/plugins/autolab-compaction.ts`
+- Research notebook: `repos/fungal-cv-qdrant/research/`
+- Worker runtime: `repos/fungal-cv-qdrant/.runtime/worktrees/` (gitignored)
+
+### Worktree Lifecycle
+
+Workers create `repos/fungal-cv-qdrant/.runtime/worktrees/<experiment-id>` per run.
+Worktrees are removed after the run completes. Best-result worktrees are retained until merged.
+Max concurrent workers: `MAX_CONCURRENT_WORKERS=2` (default).
+
 ## Recent Changes
+- 004-autolab-multi-agent: Added 5-agent Autolab orchestration layer, custom tools/plugin, and full spec/plan/tasks package
 - 001-yolo-dataset-tools: Added Python 3.13 + OpenCV, NumPy, pandas, scikit-learn, pathlib
