@@ -77,6 +77,7 @@ uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --sco
 - Bash + Python 3.13 + OpenSSH, git with submodules, `mise`, `uv`, `rclone`, optional `vastai` CLI for connection lookup (001-vastai-workspace-sync)
 - Monorepo root filesystem (`Dataset/`, `results/`, `weights/`, `species_weights.json`), Google Drive remote rooted to a dedicated dataset folder, ephemeral Vast.ai instance storage with optional external persistence (001-vastai-workspace-sync)
 - Bash + Python 3.13 + Markdown documentation + OpenSSH, git with submodules, `mise`, `uv`, optional `vastai` CLI for instance lookup, VS Code Remote-SSH, existing `tools/workspace_bootstrap.sh` and `tools/dataset_sync.py` (001-vastai-workspace-sync)
+- Python 3.13 + Ultralytics YOLOv26, OpenCV, ssh, SCP, GPU (RTX 2060) (006-yolo26-seg-finetune)
 - Monorepo root filesystem (`Dataset/`, `results/`, `weights/`, `species_weights.json`), local SSH config on the developer machine, optional external `rclone` config for dataset access (001-vastai-workspace-sync)
 
 ## Autolab Multi-Agent System (004-autolab-multi-agent)
@@ -126,5 +127,6 @@ Worktrees are removed after the run completes. Best-result worktrees are retaine
 Max concurrent workers: `MAX_CONCURRENT_WORKERS=2` (default).
 
 ## Recent Changes
+- 006-yolo26-seg-finetune: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 004-autolab-multi-agent: Added 5-agent Autolab orchestration layer, custom tools/plugin, and full spec/plan/tasks package
 - 001-yolo-dataset-tools: Added Python 3.13 + OpenCV, NumPy, pandas, scikit-learn, pathlib
