@@ -7737,10 +7737,22 @@
       "sourceType": "github",
       "computedHash": "34e488497c1e29d9032a36a07c0a6f2b50ad6e4135fb0f80a8942148e536606e"
     },
+    "vastai": {
+      "source": "vast-ai/vast-cli",
+      "sourceType": "github",
+      "skillPath": "vastai/SKILL.md",
+      "computedHash": "b755f6ee6047f50b8e0c6aa9e176a1633585b500abf70f276cacdf5671b4ecc2"
+    },
     "vastai-api": {
       "source": "rawveg/skillsforge-marketplace",
       "sourceType": "github",
       "computedHash": "96b025a3e968ce0e5cbcee518025330b1c2e087fcae05602b9a353dbcd9abc54"
+    },
+    "vastai-sdk": {
+      "source": "vast-ai/vast-cli",
+      "sourceType": "github",
+      "skillPath": "vastai_sdk/SKILL.md",
+      "computedHash": "9a09473c7a6d84fc7b86e4889bbffd5167d560e5a7e1f47db76818f1aad6bdaf"
     },
     "vector-database-engineer": {
       "source": "sickn33/antigravity-awesome-skills",
