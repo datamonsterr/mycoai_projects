@@ -88,13 +88,13 @@ mapping.
 
 ## Acceptance Criteria
 
-- [ ] Single image upload with strain + media selection
-- [ ] Max colonies slider (1-10) with "default (model threshold)" option
-- [ ] Batch folder upload with template.json parsing
-- [ ] Batch preview showing image count per strain, removable per image
-- [ ] AI-assisted column mapping from arbitrary CSVs
-- [ ] Progress indicator during batch processing
-- [ ] Downloadable results CSV after batch completion
+- [x] Single image upload with strain + media selection
+- [x] Max colonies slider (1-10) with "default (model threshold)" option
+- [x] Batch folder upload with template.json parsing
+- [x] Batch preview showing image count per strain, removable per image
+- [x] AI-assisted column mapping from arbitrary CSVs
+- [x] Progress indicator during batch processing
+- [x] Downloadable results CSV after batch completion
 
 ## Dependencies
 
