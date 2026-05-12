@@ -142,16 +142,16 @@ in Qdrant? (See 07-training-observation.md)
 
 ## Acceptance Criteria
 
-- [ ] Create species with unique name validation
-- [ ] Create strain+image with direct species link
-- [ ] Batch upload with species classification
-- [ ] Filterable database browser (strain, species, media, date, source)
-- [ ] Overview dashboard with counts and charts
-- [ ] Species rename with bulk relabeling
-- [ ] Soft delete (archive) with restore capability
-- [ ] Trash management (view, restore, permanent delete, empty)
-- [ ] Retrain warning on archive
-- [ ] Audit log of all CRUD operations
+- [x] Create species with unique name validation
+- [x] Create strain+image with direct species link
+- [x] Batch upload with species classification
+- [x] Filterable database browser (strain, species, media, date, source)
+- [x] Overview dashboard with counts and charts
+- [x] Species rename with bulk relabeling
+- [x] Soft delete (archive) with restore capability
+- [x] Trash management (view, restore, permanent delete, empty)
+- [x] Retrain warning on archive
+- [x] Audit log of all CRUD operations
 
 ## Dependencies
 
