@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        working-directory: repos/mycoai_retrieval_backend
+        run: uv sync --all-groups
+
+      - name: Lint
+        working-directory: repos/mycoai_retrieval_backend
+        run: uv run ruff check .
+
+      - name: Format check
+        working-directory: repos/mycoai_retrieval_backend
+        run: uv run ruff format --check .
+
+      - name: Type check
+        working-directory: repos/mycoai_retrieval_backend
+        run: uv run mypy src
+
+      - name: Tests
+        working-directory: repos/mycoai_retrieval_backend
+        run: uv run pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        working-directory: repos/mycoai_retrieval_frontend
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Format check
+        working-directory: repos/mycoai_retrieval_frontend
+        run: pnpm exec prettier --check index.html components.json "src/**/*.{ts,tsx,css}" "*.config.{js,ts}" "tsconfig*.json"
+
+      - name: Lint
+        working-directory: repos/mycoai_retrieval_frontend
+        run: pnpm run --if-present lint
+
+      - name: Type check
+        working-directory: repos/mycoai_retrieval_frontend
+        run: pnpm run --if-present typecheck
+
+      - name: Unit tests
+        working-directory: repos/mycoai_retrieval_frontend
+        run: pnpm run --if-present test
+
+      - name: Integration tests
+        working-directory: repos/mycoai_retrieval_frontend
+        run: pnpm run --if-present test:integration
+
+      - name: E2E tests
+        working-directory: repos/mycoai_retrieval_frontend
+        run: pnpm run --if-present test:e2e
+
+      - name: Build
+        working-directory: repos/mycoai_retrieval_frontend
+        run: pnpm run --if-present build
+
+  docker-dry-run:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Validate fungal Qdrant compose file
+        run: docker compose -f repos/fungal-cv-qdrant/docker-compose.yml config
+
+      - name: Deployment image dry-run
+        run: |
+          shopt -s globstar nullglob
+          dockerfiles=(**/Dockerfile **/Dockerfile.*)
+          if [ ${#dockerfiles[@]} -eq 0 ]; then
+            echo "No Dockerfiles found; compose config dry-run completed."
+            exit 0
+          fi
+          for dockerfile in "${dockerfiles[@]}"; do
+            context="$(dirname "$dockerfile")"
+            docker build --check -f "$dockerfile" "$context"
+          done
