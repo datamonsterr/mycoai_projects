@@ -92,6 +92,14 @@ Authentication is required for all data-modifying operations.
 - UI hides unavailable actions (buttons, menus) based on role
 - API returns 403 even if UI is bypassed
 
+## Implementation Status
+
+- Backend: `repos/mycoai_retrieval_backend/src/mycoai_retrieval_backend/routers/auth.py` exposes registration, login, profile, user management, and audit endpoints under `/api/auth`.
+- Backend: `repos/mycoai_retrieval_backend/src/mycoai_retrieval_backend/deps.py` enforces 401 for missing/invalid auth and 403 for non-owner access.
+- Backend: `repos/mycoai_retrieval_backend/src/mycoai_retrieval_backend/services/user_store.py` assigns the first user as Data Owner, stores password hashes, records role-change audit entries, and blocks self-demotion so at least one Data Owner remains.
+- Frontend: `repos/mycoai_retrieval_frontend/src/App.tsx` demonstrates role-based session state and hides Data Owner-only actions for Normal Users.
+- Tests: `repos/mycoai_retrieval_backend/tests/test_auth.py` covers registration, login, 401/403 enforcement, role changes, audit logging, and owner protection.
+
 ## Open Questions
 
 1. Can normal users add data to the database by asking permission from the
@@ -102,14 +110,14 @@ Authentication is required for all data-modifying operations.
 
 ## Acceptance Criteria
 
-- [ ] User registration with email/password
-- [ ] Login with JWT session management
-- [ ] Role-based UI (hide unavailable actions)
-- [ ] Role-based API enforcement (401/403 responses)
-- [ ] First user auto-assigned as Data Owner
-- [ ] Data Owner can manage other users' roles
-- [ ] Audit log of role changes
-- [ ] At least one Data Owner must exist at all times
+- [x] User registration with email/password
+- [x] Login with JWT session management
+- [x] Role-based UI (hide unavailable actions)
+- [x] Role-based API enforcement (401/403 responses)
+- [x] First user auto-assigned as Data Owner
+- [x] Data Owner can manage other users' roles
+- [x] Audit log of role changes
+- [x] At least one Data Owner must exist at all times
 
 ## Dependencies
 
