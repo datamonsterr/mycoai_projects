@@ -71,20 +71,20 @@ visualization.
 ## Acceptance Criteria
 
 ### Phase 1
-- [ ] Ranked results table with species, score, rank
-- [ ] Confidence bar visualization per species
-- [ ] Expandable per-media KNN neighbor detail
-- [ ] Neighbor thumbnails with similarity scores
-- [ ] CSV export of results
-- [ ] Sortable columns
+- [x] Ranked results table with species, score, rank
+- [x] Confidence bar visualization per species
+- [x] Expandable per-media KNN neighbor detail
+- [x] Neighbor thumbnails with similarity scores
+- [x] CSV export of results
+- [x] Sortable columns
 
 ### Phase 2
-- [ ] Interactive force-directed graph
-- [ ] Configurable k slider on the graph
-- [ ] Weighted/uni toggle
-- [ ] Species-based node coloring with legend
-- [ ] Pan, zoom, hover, click interactions
-- [ ] Graph updates in real-time when k or strategy changes
+- [x] Interactive force-directed graph
+- [x] Configurable k slider on the graph
+- [x] Weighted/uni toggle
+- [x] Species-based node coloring with legend
+- [x] Pan, zoom, hover, click interactions
+- [x] Graph updates in real-time when k or strategy changes
 
 ## Dependencies
 
