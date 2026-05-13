@@ -1,0 +1,105 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mycoai
+      POSTGRES_USER: mycoai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mycoai -d mycoai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/6333'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: repos/mycoai_retrieval_backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      MYCOAI_BACKEND_ENVIRONMENT: production
+      MYCOAI_BACKEND_HOST: "0.0.0.0"
+      MYCOAI_BACKEND_PORT: "8000"
+      MYCOAI_QDRANT_HOST: qdrant
+      MYCOAI_QDRANT_PORT: "6333"
+      MYCOAI_QDRANT_COLLECTION: ${QDRANT_COLLECTION:-mycoai}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
+      JWT_ALGORITHM: HS256
+      JWT_ACCESS_EXPIRE_MINUTES: "60"
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      UPLOAD_DIR: /data/uploads
+      WEIGHTS_DIR: /data/weights
+    volumes:
+      - upload_data:/data/uploads
+      - ${WEIGHTS_DIR:-./weights}:/data/weights:ro
+
+  celery-worker:
+    build:
+      context: repos/mycoai_retrieval_backend
+      dockerfile: Dockerfile
+    command: celery -A mycoai_retrieval_backend.tasks worker --loglevel=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      MYCOAI_BACKEND_ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379/0
+      UPLOAD_DIR: /data/uploads
+      WEIGHTS_DIR: /data/weights
+    volumes:
+      - upload_data:/data/uploads
+      - ${WEIGHTS_DIR:-./weights}:/data/weights:ro
+
+  frontend:
+    build:
+      context: repos/mycoai_retrieval_frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  qdrant_storage:
+  upload_data:
