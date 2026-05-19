@@ -1,4 +1,4 @@
-<!-- spec: synced 2026-05-11T04:02:09Z from feature_spec/08-roles-and-permissions.md -->
+<!-- spec: synced 2026-05-19T00:00:00Z from feature_spec/08-roles-and-permissions.md -->
 
 # Feature Spec: Roles and Permissions
 

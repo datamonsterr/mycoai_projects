@@ -95,5 +95,3 @@ colony crops per image.
 
 - 01-image-input.md (receives uploaded images)
 - 03-retrieval.md (consumes segment crops)
-- Consumes: fungal-cv-qdrant segmentation pipeline outputs (kmeans.py,
-  contour bboxes)

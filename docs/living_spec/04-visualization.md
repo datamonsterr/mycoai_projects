@@ -1,4 +1,4 @@
-<!-- spec: synced 2026-05-11T04:02:09Z from feature_spec/04-visualization.md -->
+<!-- spec: synced 2026-05-19T00:00:00Z from feature_spec/04-visualization.md -->
 
 # Feature Spec: Results Visualization
 
