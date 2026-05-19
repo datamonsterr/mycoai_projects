@@ -1,4 +1,4 @@
-<!-- spec: synced 2026-05-11T04:02:09Z from feature_spec/02-segmentation.md -->
+<!-- spec: synced 2026-05-19T00:00:00Z from feature_spec/02-segmentation.md -->
 
 # Feature Spec: Segmentation
 
@@ -97,5 +97,3 @@ colony crops per image.
 
 - 01-image-input.md (receives uploaded images)
 - 03-retrieval.md (consumes segment crops)
-- Consumes: fungal-cv-qdrant segmentation pipeline outputs (kmeans.py,
-  contour bboxes)

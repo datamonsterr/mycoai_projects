@@ -1,4 +1,4 @@
-<!-- spec: synced 2026-05-11T04:02:09Z from feature_spec/06-data-management.md -->
+<!-- spec: synced 2026-05-19T00:00:00Z from feature_spec/06-data-management.md -->
 
 # Feature Spec: Data Management (CRUD)
 
@@ -9,11 +9,11 @@ Full CRUD operations with archive/trash and training awareness.
 
 ## User Stories
 
-### 1. Create
+### 1. Index New Data
 
 **As a** data owner
-**I want to** create new species and upload classified images
-**So that I** can expand the known fungal species database
+**I want to** upload strain images for known species and index them as new data
+**So that I** can expand the species database used by retrieval
 
 **Create Species:**
 - Define new species name
@@ -21,11 +21,11 @@ Full CRUD operations with archive/trash and training awareness.
 - Species names must be unique (case-insensitive check)
 - On creation: species is empty (no strains yet)
 
-**Create Strain + Image (Direct Link):**
-- Same UI as normal User Image Input (see 01-image-input.md)
+**Index Strain Images:**
+- Extends retrieve species workflow from 03-retrieval.md
 - Additional field: species (dropdown of known species)
-- Data owner classifies in advance — bypasses retrieval
-- Image goes through segmentation pipeline
+- Data owner classifies in advance — bypasses species prediction
+- Image goes through upload, AI auto-segmentation, editable bounding boxes, and result review
 - Segments are indexed directly into Qdrant with known species label
 - Supports batch upload with species column in template.json
 

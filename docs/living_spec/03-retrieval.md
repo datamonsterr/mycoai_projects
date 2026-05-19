@@ -1,4 +1,4 @@
-<!-- spec: synced 2026-05-11T04:02:09Z from feature_spec/03-retrieval.md -->
+<!-- spec: synced 2026-05-19T00:00:00Z from feature_spec/03-retrieval.md -->
 
 # Feature Spec: Retrieval
 
@@ -11,22 +11,26 @@ aggregates results across segments and media.
 
 ## User Stories
 
-### 1. Species Classification
+### 1. Retrieve Species
 
-**As a** researcher
-**I want** to submit segmented colony images and get species predictions
-**So that** I can identify unknown fungal isolates
+**As a** authenticated researcher
+**I want** to upload strain images, segment colonies, and retrieve species predictions
+**So that** I can identify unknown fungal isolates from one strain
 
 **Behavior:**
-- Input: segmented colony images from one strain (1-3 segments per image,
-  multiple images across different media)
+- Input: one or more strain images with media and strain metadata
+- Retrieval includes upload, segmentation, and results review
+- Segmentation runs before retrieval and provides colony crops
 - Pipeline:
-  1. Feature extraction (EfficientNetB1 finetuned, ResNet50, etc.)
-  2. Qdrant KNN search (k=5 default, configurable)
-  3. Sibling filtering (exclude segments from same source image)
-  4. Aggregation across segments (weighted by cosine similarity, or uniform)
-  5. Environment strategy (same medium, all media, exclude medium)
-- Output: ranked list of species with confidence scores
+  1. Upload strain images
+  2. Auto segment colonies with AI
+  3. Allow bounding-box edits before processing
+  4. Feature extraction (EfficientNetB1 finetuned, ResNet50, etc.)
+  5. Qdrant KNN search (k=5 default, configurable)
+  6. Sibling filtering (exclude segments from same source image)
+  7. Aggregation across segments (weighted by cosine similarity, or uniform)
+  8. Environment strategy (same medium, all media, exclude medium)
+  9. View ranked species results with confidence scores
 
 ### 2. Configurable KNN
 
@@ -75,6 +79,10 @@ aggregates results across segments and media.
 
 ## Acceptance Criteria
 
+- [ ] Authentication required before retrieval workflow starts
+- [ ] Strain image upload captures strain and media metadata
+- [ ] AI auto-segmentation runs before retrieval
+- [ ] Bounding boxes are editable before retrieval
 - [ ] Feature extraction pipeline runs on segmented colony crops
 - [ ] Qdrant KNN search with configurable k (1-20)
 - [ ] Configurable aggregation strategy (weighted / uni)
@@ -123,5 +131,3 @@ aggregates results across segments and media.
 
 - 02-segmentation.md (provides segmented colony crops)
 - 04-visualization.md (consumes ranked results for display)
-- Consumes: fungal-cv-qdrant Qdrant collection, feature extractors,
-  aggregation logic (cross_validation.py, qdrant_query.py)
