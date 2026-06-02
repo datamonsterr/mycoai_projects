@@ -1,153 +1,138 @@
-# Technical Spec: Training Pipeline
+# Technical Spec: Model and Index Maintenance
 
 ## Overview
 
-Design the model training and re-indexing pipeline. The backend triggers
-training jobs as Celery tasks, monitors progress, and deploys updated
-models to Qdrant.
+Backend supports Qdrant re-indexing and Candidate Model assessment. Deep feature-extractor retraining is not triggered in-system; Data Owner receives Python guidance for external retraining and reuploads the resulting model as a Candidate Model.
 
 ---
 
-## Training Types
+## Maintenance Types
 
-| Type | What it does | Trigger |
-|------|-------------|---------|
-| **Re-index** | Re-extract features for all active segments, upsert to Qdrant | Adding new images, updating labels, archiving data |
-| **Fine-tune** | Fine-tune feature extractor neural network weights | Many new images (>50), significant label corrections |
-| **Full retrain** | Fine-tune + re-index + evaluate | Major database expansion (>200 images) |
+| Type | In-system | What it does | Trigger |
+|------|----------|--------------|---------|
+| Qdrant re-index | Yes | Re-extract features for active changed segments and upsert/update Qdrant points; exclude archived data | Data Owner action after indexing, metadata edits, bbox edits, archive/restore, accepted feedback |
+| External retraining guidance | Yes (guidance only) | Shows dataset download/retrain/reupload instructions | Many reference-data changes accumulated |
+| Deep feature-extractor retraining | No | Trains neural network weights outside system | Data Owner runs external Python workflow |
+| Candidate Model assessment | Yes | Evaluates uploaded model on fixed set and compares with current model | Candidate Model upload |
 
 ---
 
-## Re-index Pipeline
+## Qdrant Re-index Pipeline
 
-    1. Data owner clicks "Re-index" on training dashboard
-    2. Backend counts affected segments (new, modified, archived)
-    3. Pre-flight summary shown to owner
-    4. Owner confirms -> POST /api/v1/training/trigger { type: "reindex" }
-    5. Celery task starts:
-       a. For each active segment (non-archived):
-          - Extract features (all extractors: EfficientNetB1, ResNet50...)
+    1. Data Owner opens Maintain Model and Index dashboard
+    2. Backend counts affected data:
+       - updated_requires_reindex
+       - archived since last index
+       - restored since last index
+       - accepted feedback/contributions since last index
+    3. System shows pre-flight summary
+    4. Data Owner confirms re-index
+    5. Backend task starts:
+       a. For each active changed segment:
+          - Extract features with current model
           - Upsert named vectors to Qdrant
-          - Update qdrant_index_state (last_updated, is_active=TRUE)
+          - Mark Data Update Status current
        b. For archived segments:
-          - Delete Qdrant points
-          - Update qdrant_index_state (is_active=FALSE)
-       c. Progress: (processed / total) segments
+          - Exclude/remove Qdrant points
+          - Keep archive state
+       c. Record progress
     6. On completion:
-       - Update model_version
-       - Log completion to training_jobs
-       - Notify data owner
+       - Update index status
+       - Log audit event
+       - Notify Data Owner
 
 ---
 
-## Fine-tune Pipeline
+## External Retraining Guidance
 
-    1. Data owner clicks "Fine-tune model"
-    2. Pre-flight: count training images, show estimated time
-    3. Owner confirms -> POST /api/v1/training/trigger { type: "finetune" }
-    4. Celery task:
-       a. Prepare dataset: active segment images, stratified by species
-       b. Run fungal-cv-qdrant fine-tuning script
-          - Load base model (EfficientNetB1, ImageNet weights)
-          - Train classification head for N species
-          - Save .pth weights to weights/
-       c. Evaluate on held-out split, record F1 score
-       d. Stage model (not auto-deployed)
-    5. Owner reviews evaluation metrics
-    6. Owner clicks "Deploy" -> re-index with new model
+When accumulated reference-data changes exceed configured threshold, system shows a warning and Python guidance. Guidance covers:
+
+1. Download active dataset
+2. Run external feature-extractor retraining
+3. Produce model artifact with version metadata
+4. Reupload artifact as Candidate Model
+
+No endpoint starts deep model retraining.
+
+---
+
+## Candidate Model Assessment
+
+    1. Data Owner uploads Candidate Model artifact
+    2. Backend validates model metadata and compatibility
+    3. Backend evaluates Candidate Model on fixed evaluation set
+    4. Backend compares Candidate Model metrics to current model metrics
+    5. Data Owner reviews report
+    6. Data Owner promotes or rejects Candidate Model
+    7. Promotion updates active model version and may require Qdrant re-indexing
 
 ---
 
 ## Model Versioning
 
-**[DECISION: Model versioning strategy]**
+**Decision: Semantic versioning `v{major}.{minor}.{patch}`.**
 
-Choices:
-- A) **Semantic versioning: v{major}.{minor}.{patch}** — major=new
-  architecture, minor=new training, patch=re-index. **(Recommended)**
-- B) Timestamp-based: 2025-05-11-1430
-- C) Auto-increment integer: model_1, model_2...
+| Version part | Meaning |
+|---|---|
+| major | New architecture or incompatible feature space |
+| minor | New externally trained Candidate Model promoted |
+| patch | Qdrant re-index or metadata-only index refresh |
 
-**Version storage:**
+Version storage:
 
-    training_jobs.model_version = "v3.2.1"
-    Previous model weights kept in weights/archive/v3.2.0/
+    model_versions.version = "v3.2.1"
+    model_versions.status = "active | candidate | rejected | archived"
+
+---
+
+## Promotion Strategy
+
+**Decision: Manual review + promote.**
+
+Candidate Model is never auto-promoted. Data Owner must compare metrics and explicitly promote or reject.
+
+---
+
+## Evaluation Support
+
+**Decision: Fixed evaluation set comparison for MVP.**
+
+Show:
+- Current vs Candidate F1
+- Per-Species performance where available
+- Confusion matrix preview where available
+- Evaluation set identifier/version
+
+No live traffic A/B split for MVP.
 
 ---
 
 ## Rollback
 
-**[DECISION: Rollback mechanism]**
-
-Choices:
-- A) **Keep previous model weights + re-index with previous model** —
-  safest, requires storage for old weights. Re-index is deterministic
-  given model weights. **(Recommended)**
-- B) Keep previous Qdrant collection snapshot — Qdrant snapshots API
-- C) No rollback — trust the evaluation metrics, deploy only good models
-
-**Rollback flow:**
-
-    1. Owner clicks "Rollback" on training dashboard
-    2. Select previous version from dropdown
-    3. Confirm -> POST /api/v1/training/rollback { version: "v3.2.0" }
-    4. Celery task: re-index all segments with v3.2.0 weights
-    5. Update model_version
+Recommended mechanism: keep previous model weights and re-index with previous model when rollback is required. Rollback is a future operational action, not automatic promotion logic.
 
 ---
 
-## Deployment Strategy
+## API Shape
 
-**[DECISION: When to deploy new models]**
+    POST /api/v1/index/reindex
+    Body: { scope: "changed | full_active" }
 
-Choices:
-- A) **Manual review + deploy** — training completes, owner reviews
-  metrics, clicks Deploy. Safest, most control. **(Recommended)**
-- B) Auto-deploy on threshold — if F1 > previous best, auto-deploy
-- C) Staged deploy — deploy new model alongside old, A/B test for a week
+    GET /api/v1/index/status
+    Response: {
+      qdrant_index_status,
+      changes_since_last_index,
+      external_retraining_recommended
+    }
 
-**Deploy process:**
+    POST /api/v1/models/candidates
+    Body: multipart model artifact + metadata
 
-    1. New model trained + saved to weights/
-    2. Owner sees: "Model v3.3.0 ready for review"
-       - F1: 0.92 (vs current 0.89)
-       - Confusion matrix preview
-       - Per-species accuracy breakdown
-    3. Owner reviews -> clicks "Deploy v3.3.0"
-    4. Backend triggers re-index with new model
-    5. All new queries use v3.3.0 from this point
-    6. Previous model v3.2.0 weights archived
+    POST /api/v1/models/candidates/{id}/evaluate
 
----
+    POST /api/v1/models/candidates/{id}/promote
 
-## A/B Evaluation
-
-**[DECISION: A/B evaluation support]**
-
-Choices:
-- A) **Run evaluation on held-out set, show comparison table** — old vs
-  new F1, per-species, confusion matrix diff. No live A/B traffic
-  splitting. **(Recommended for MVP)**
-- B) Live traffic split — 50% queries use old model, 50% new. Compare
-  real-world accuracy. Complex, requires feedback integration.
-- C) No A/B — just deploy and monitor overall accuracy over time
-
----
-
-## GPU Requirements
-
-**[DECISION: GPU for training]**
-
-Choices:
-- A) **Vast.ai GPU instance (on-demand)** — already in monorepo workflow.
-  Spin up instance, run training, download weights, destroy instance.
-  Cost: ~$0.50-2/hr. **(Recommended)**
-- B) Local GPU (if available) — fastest iteration, no cost
-- C) Hugging Face Jobs — managed training, more expensive
-- D) CPU-only — slow but works, GIL-bound
-
-**Re-indexing does NOT need GPU:** feature extraction with pre-trained
-models can run on CPU (slower but functional). Fine-tuning requires GPU.
+    POST /api/v1/models/candidates/{id}/reject
 
 ---
 
@@ -155,21 +140,18 @@ models can run on CPU (slower but functional). Fine-tuning requires GPU.
 
 | Metric | How |
 |--------|-----|
-| Training progress | Celery task state + progress JSON |
-| Training logs | Streaming output to training_jobs.log |
-| GPU utilization | Vast.ai monitoring API |
-| Training cost | Track GPU hours per job |
-| Model accuracy over time | Track F1 per version in training_jobs |
+| Re-index progress | Task state + progress JSON |
+| Index freshness | Data Update Status counts |
+| External retraining recommendation | Changed-data thresholds |
+| Candidate Model accuracy | Fixed evaluation report |
+| Model version history | model_versions table |
 
 ---
 
-## Scheduling
+## Resolved Decisions
 
-**[DECISION: Scheduled retraining]**
-
-Choices:
-- A) **Manual only** — data owner triggers when ready. Simplest.
-  **(Recommended for MVP)**
-- B) Scheduled (e.g., weekly) — automatic re-index for new data
-- C) Threshold-based — auto-trigger when N feedback accepted or N images
-  added
+1. Qdrant re-indexing is in-system.
+2. Deep feature-extractor retraining is external/manual.
+3. System provides Python retraining guidance instead of training trigger.
+4. Candidate Model assessment uses fixed evaluation set.
+5. Candidate Model promotion is manual only.

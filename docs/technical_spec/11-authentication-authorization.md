@@ -12,8 +12,12 @@ role-based access control, and security considerations.
     Registration:
     POST /api/v1/auth/register
     Body: { email, password, name }
-    -> Create user (first user gets role="owner")
+    -> Create user with role="user"
     -> Return access_token + refresh_token
+
+    Initial Data Owner provisioning:
+    python -m mycoai_retrieval_backend.create-owner --email owner@example.com
+    -> Assign initial role="owner" by internal script
 
     Login:
     POST /api/v1/auth/login
@@ -83,8 +87,8 @@ Choices:
 
 | Role | Description |
 |------|-------------|
-| `user` | Normal researcher — can upload, query, submit feedback |
-| `owner` | Data owner — full CRUD, feedback review, training, admin |
+| `user` | User — can upload, retrieve Species, download batch results, submit feedback/contribution proposals from retrieval results |
+| `owner` | Data Owner — User access plus reference-data indexing, metadata/dataset/user governance, Qdrant re-indexing, Candidate Model assessment |
 
 ### Implementation
 
@@ -123,14 +127,15 @@ Choices:
 | Auth (register, login, refresh, logout) | Yes | Yes |
 | Images (upload, query status) | Yes | Yes |
 | Retrieval (query, results) | Yes | Yes |
-| Species (read) | Yes | Yes |
-| Species (create, update, delete) | No | Yes |
-| Strains (read) | Yes | Yes |
-| Strains (create, delete) | No | Yes |
-| Feedback (submit, view own) | Yes | Yes |
+| Species/Media metadata (read for retrieval forms) | Yes | Yes |
+| Species/Media metadata (create, update, archive) | No | Yes |
+| Reference dataset browse/search/filter/group | No | Yes |
+| Reference dataset update/archive/restore | No | Yes |
+| Feedback (submit from retrieval results, view own) | Yes | Yes |
 | Feedback (inbox, review) | No | Yes |
-| Training (status, history) | Read | Full |
-| Dashboard (stats) | Yes (filtered) | Yes |
+| Qdrant re-index | No | Yes |
+| Candidate Model upload/assessment/promotion | No | Yes |
+| Dashboard (stats) | No | Yes |
 | Admin (users, audit log) | No | Yes |
 
 ---
@@ -139,14 +144,12 @@ Choices:
 
 **[DECISION: How first data owner is created]**
 
-Choices:
-- A) **First registered user auto-assigned role="owner"** — no separate
-  setup script needed. Simple, works for small teams.
-  **(Recommended)**
-- B) Seed script: `python -m mycoai_retrieval_backend.create-owner
-  --email admin@example.com` — explicit, more secure
-- C) Registration disabled — only data owner can create accounts via
-  admin panel
+Decision:
+- Initial Data Owner is created by seed script:
+  `python -m mycoai_retrieval_backend.create-owner --email admin@example.com`
+- Self-registration remains available for Users.
+- Data Owners can promote Users after bootstrap.
+- Data Owners can invite Users by onboarding email for convenience.
 
 ---
 

@@ -54,20 +54,27 @@ Choices:
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     archived_at     TIMESTAMPTZ
 
-    strains
-    -------
+    media
+    -----
     id              UUID PK
-    name            VARCHAR(255) NOT NULL
-    species_id      UUID FK -> species.id
-    source          VARCHAR(50) NOT NULL  -- 'curated_primary',
-                                          -- 'incoming_low_quality',
-                                          -- 'user_upload'
+    name            VARCHAR(255) UNIQUE NOT NULL
+    description     TEXT
     is_archived     BOOLEAN NOT NULL DEFAULT FALSE
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     archived_at     TIMESTAMPTZ
 
-    UNIQUE(name, species_id)  -- strain name unique within species
+    strains
+    -------
+    id              UUID PK
+    name            VARCHAR(255) NOT NULL
+    source          VARCHAR(50) NOT NULL  -- 'curated_primary',
+                                          -- 'incoming_low_quality',
+                                          -- 'user_upload'
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+    UNIQUE(name)
 
 ### Images & Segments
 
@@ -75,13 +82,16 @@ Choices:
     ------
     id              UUID PK
     strain_id       UUID FK -> strains.id
-    media           VARCHAR(20) NOT NULL  -- MEA, CYA, YES, etc.
+    species_id      UUID FK -> species.id
+    media_id        UUID FK -> media.id
     angle           VARCHAR(10)           -- ob, rev
     file_path       VARCHAR(500) NOT NULL  -- relative to storage root
     prepared_path   VARCHAR(500)          -- preprocessed image
     pipeline_path   VARCHAR(500)          -- visualization
-    is_archived     BOOLEAN NOT NULL DEFAULT FALSE
+    data_update_status VARCHAR(30) NOT NULL DEFAULT 'current'
+                    -- 'current'|'updated_requires_reindex'|'archived'
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 
     segments
     --------
@@ -144,13 +154,14 @@ Choices:
     id              UUID PK
     submitter_id    UUID FK -> users.id
     reviewer_id     UUID FK -> users.id (nullable)
-    source          VARCHAR(20) NOT NULL   -- 'query_result' |
-                                           -- 'database_review'
-    query_strain    VARCHAR(255)           -- nullable for database_review
-    result_id       UUID FK -> retrieval_results.id (nullable)
-    image_id        UUID FK -> images.id (nullable) -- for database_review
+    source          VARCHAR(20) NOT NULL   -- 'retrieval_result'
+    feedback_type   VARCHAR(30) NOT NULL   -- 'wrong_prediction'|'issue'|
+                                           -- 'contribution'
+    query_strain    VARCHAR(255) NOT NULL
+    result_id       UUID FK -> retrieval_results.id NOT NULL
+    image_id        UUID FK -> images.id (nullable)
     predicted_species VARCHAR(255)
-    suggested_species VARCHAR(255) NOT NULL
+    suggested_species VARCHAR(255)
     description     TEXT NOT NULL
     status          VARCHAR(20) NOT NULL DEFAULT 'pending'
                     -- 'pending'|'accepted'|'rejected'|'deferred'
@@ -158,24 +169,36 @@ Choices:
     submitted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
     reviewed_at     TIMESTAMPTZ
 
-### Training Jobs
+### Index Jobs
 
-    training_jobs
-    -------------
+    index_jobs
+    ----------
     id              UUID PK
     triggered_by    UUID FK -> users.id
-    job_type        VARCHAR(20) NOT NULL   -- 'reindex'|'finetune'|
-                                           -- 'full_retrain'
+    job_type        VARCHAR(20) NOT NULL   -- 'qdrant_reindex'
     status          VARCHAR(20) NOT NULL DEFAULT 'pending'
-    progress        JSONB                  -- {stage, current, total, epoch,
-                                           --  loss, accuracy}
-    changes_since_last JSONB               -- {strains_added, strains_archived,
-                                           --  feedback_accepted}
+    progress        JSONB                  -- {stage, current, total}
+    changes_since_last JSONB               -- {items_updated, items_archived,
+                                           --  feedback_accepted,
+                                           --  contributions_accepted}
     model_version   VARCHAR(50)
-    is_deployed     BOOLEAN NOT NULL DEFAULT FALSE
     started_at      TIMESTAMPTZ
     completed_at    TIMESTAMPTZ
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+### Candidate Models
+
+    candidate_models
+    ----------------
+    id              UUID PK
+    uploaded_by     UUID FK -> users.id
+    version         VARCHAR(50) NOT NULL
+    status          VARCHAR(20) NOT NULL   -- 'uploaded'|'evaluating'|
+                                           -- 'promoted'|'rejected'
+    artifact_path   TEXT NOT NULL
+    evaluation_report JSONB
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    reviewed_at     TIMESTAMPTZ
 
 ### Audit Log
 

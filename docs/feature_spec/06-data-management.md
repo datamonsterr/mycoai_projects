@@ -1,105 +1,103 @@
-# Feature Spec: Data Management (CRUD)
+# Feature Spec: Data Management
 
 ## Overview
 
-Data owners manage species, strains, images, and media in the database.
-Full CRUD operations with archive/trash and training awareness.
+Data Owners manage reference dataset records and managed metadata. Dataset records include image metadata, strain, media, species, segmentation/bounding boxes, archive state, and Qdrant index state. Users cannot browse or mutate the reference dataset.
 
 ## User Stories
 
 ### 1. Index New Data
 
-**As a** data owner
-**I want to** upload strain images for known species and index them as new data
-**So that I** can expand the species database used by retrieval
+**As a** Data Owner
+**I want to** upload strain images for known Species and index them as reference data
+**So that I** can expand retrieval coverage
 
-**Create Species:**
-- Define new species name
-- Optional: species description, reference images, taxonomic info
-- Species names must be unique (case-insensitive check)
-- On creation: species is empty (no strains yet)
+**Behavior:**
+- Index New Data reuses upload, auto-segmentation, editable bounding boxes, and review from the retrieval preparation workflow
+- Index New Data does not include Retrieve Species because prediction is bypassed
+- Required metadata: Species, strain, Media
+- Segments are indexed into Qdrant with known Species metadata
+- Supports batch indexing with Species metadata in folder structure/template
+- Accepted contribution feedback enters pending reference data; Data Owner reviews metadata and bounding boxes before indexing
 
-**Index Strain Images:**
-- Extends retrieve species workflow from 03-retrieval.md
-- Additional field: species (dropdown of known species)
-- Data owner classifies in advance — bypasses species prediction
-- Image goes through upload, AI auto-segmentation, editable bounding boxes, and result review
-- Segments are indexed directly into Qdrant with known species label
-- Supports batch upload with species column in template.json
+### 2. Manage Metadata
 
-### 2. Read
+**As a** Data Owner
+**I want to** CRUD Species and Media
+**So that** retrieval and indexing use governed metadata values
 
-**As a** data owner / researcher
-**I want to** filter and browse the database
-**So that I** can understand what data exists
+**Behavior:**
+- Species names must be unique case-insensitively
+- Media names must be unique case-insensitively
+- Data Owner can create Species/Media during indexing or feedback review
+- Data Owner can accept new/other Media into managed Media or map it to existing Media
+- Data Owner can map free-text suggested species to existing Species or create Species during review
+- Strain is image metadata/dataset entity, not managed metadata catalog
 
-**Filters:**
-- By strain (text search)
-- By species (dropdown)
-- By growth medium (checkboxes)
-- By date added (date range)
-- By data source (curated_primary, incoming_low_quality, user_upload)
+### 3. Browse Dataset
+
+**As a** Data Owner
+**I want to** browse, search, filter, and group dataset records
+**So that I** can understand and govern reference data
+
+**Filters and grouping:**
+- Search by strain
+- Filter by Species
+- Filter by Media
+- Filter by date added
+- Filter by data source
+- Filter by Data Update Status
+- Group by strain, Media, Species
 
 **Overview Dashboard:**
 
 | Metric | Description |
 |--------|-------------|
-| Total images | Count of all images in database |
+| Total images | Count of active images |
 | Total strains | Distinct strain count |
-| Total species | Distinct species count |
-| Total media types | Distinct media count |
-| Images per species | Pie chart of species distribution |
-| Images per medium | Bar chart of medium distribution |
-| Learned vs unlearned | How many strains are indexed in Qdrant |
+| Total species | Distinct Species count |
+| Total media types | Distinct Media count |
+| Images per species | Species distribution |
+| Images per medium | Media distribution |
+| Index status | Current vs updated_requires_reindex vs archived |
 
-**Charts:**
-- Pie chart: species distribution by image count
-- Bar chart: images per growth medium
-- Timeline: images added over time
-- Status: learned (in Qdrant) vs pending (uploaded but not indexed)
+### 4. Update Dataset Records
 
-### 3. Update
-
-**As a** data owner
-**I want to** update species names
-**So that I** can correct taxonomic changes
+**As a** Data Owner
+**I want to** update image metadata and bounding boxes
+**So that** reference data stays correct
 
 **Behavior:**
-- Rename a species: all strains under that species are relabeled
-- Triggers re-indexing for all affected Qdrant points
-- Warning: "Renaming will require re-indexing N strains. Proceed?"
-- Old species name is soft-deleted (retained in archive)
-- Update is atomic: all strains update or none
+- Editable metadata: Species, strain, Media
+- Editable segmentation/bounding boxes
+- Metadata or bbox changes mark item `updated_requires_reindex`
+- System warns: "This update requires Qdrant re-indexing before retrieval reflects the change."
+- Update is audited
 
-**Open Question:** Does updating a species name require full re-training
-of the deep learning models, or is it sufficient to relabel and re-index
-in Qdrant? (See 07-training-observation.md)
+### 5. Archive and Restore
 
-### 4. Delete / Archive
+**As a** Data Owner
+**I want to** archive or restore incorrect or obsolete data
+**So that I** keep the dataset clean while preserving auditability
 
-**As a** data owner
-**I want to** remove incorrect or obsolete data
-**So that I** keep the database clean
-
-**Archive (soft delete):**
-- Delete moves data to trash/archive — not permanently removed
+**Behavior:**
+- Archive is reversible
+- Permanent delete is not supported
 - Archived data is excluded from Qdrant queries
-- Archived data is excluded from training data
-- User sees warning: "Archiving N strains. Models must be retrained
-  for changes to take effect. [Continue] [Cancel]"
-- Archive preserves: images, metadata, timestamps
+- Archived data is excluded from future indexing/retraining datasets
+- Restore moves item back to active state and marks it for re-index when needed
+- System warns when many archived/updated/accepted records indicate external retraining may be needed
 
-**Trash Management:**
-- View all archived items
-- Restore: move back to active (re-index into Qdrant)
-- Permanent delete: remove files and database records entirely
-- "Empty trash" with confirmation dialog
-- Data owner can hit "Retrain" when enough data has been archived
+### 6. Qdrant Re-index Awareness
 
-**Retrain Trigger:**
-- After significant archiving, data owner manually triggers re-training
-- System shows count of archived items since last training
-- "Retrain now" button (see 07-training-observation.md)
+**As a** Data Owner
+**I want to** see which records require re-indexing
+**So that** retrieval uses current reference data
+
+**Behavior:**
+- Data Update Status values: `current`, `updated_requires_reindex`, `archived`
+- Changed metadata, changed boxes, accepted corrections, accepted contributions, and restores can require re-indexing
+- Data Owner can trigger Qdrant re-indexing through Maintain Model and Index
 
 ## Data Model
 
@@ -114,46 +112,52 @@ in Qdrant? (See 07-training-observation.md)
       "is_archived": false
     }
 
-**Strain:**
+**Media:**
 
     {
-      "strain_id": "uuid",
-      "name": "string",
-      "species_id": "uuid (FK)",
+      "media_id": "uuid",
+      "name": "string (unique)",
+      "description": "string | null",
       "created_at": "ISO8601",
-      "is_archived": false,
-      "source": "curated_primary | incoming_low_quality | user_upload"
+      "updated_at": "ISO8601",
+      "is_archived": false
     }
 
 **Image:**
 
     {
       "image_id": "uuid",
-      "strain_id": "uuid (FK)",
-      "media": "string (enum)",
+      "strain": "string",
+      "species_id": "uuid (FK)",
+      "media_id": "uuid (FK)",
       "file_path": "string",
       "segments": [{"segment_index": int, "bbox": {...}, "crop_path": "string"}],
+      "data_update_status": "current | updated_requires_reindex | archived",
       "indexed_in_qdrant": false,
       "created_at": "ISO8601",
-      "is_archived": false
+      "updated_at": "ISO8601"
     }
 
 ## Acceptance Criteria
 
-- [ ] Create species with unique name validation
-- [ ] Create strain+image with direct species link
-- [ ] Batch upload with species classification
-- [ ] Filterable database browser (strain, species, media, date, source)
-- [ ] Overview dashboard with counts and charts
-- [ ] Species rename with bulk relabeling
-- [ ] Soft delete (archive) with restore capability
-- [ ] Trash management (view, restore, permanent delete, empty)
-- [ ] Retrain warning on archive
-- [ ] Audit log of all CRUD operations
+- [ ] Create/update/archive/restore Species with unique name validation
+- [ ] Create/update/archive/restore Media with unique name validation
+- [ ] Strain handled as image metadata/dataset entity
+- [ ] Index new data with required Species, strain, and Media metadata
+- [ ] Batch indexing with Species metadata in folder structure
+- [ ] Accepted contribution feedback becomes pending reference data before indexing
+- [ ] Data Owner dataset browser supports search/filter/group by strain, Media, Species
+- [ ] Data Owner can edit image metadata and bounding boxes
+- [ ] Edits mark item `updated_requires_reindex`
+- [ ] Archive/restore only; no permanent delete
+- [ ] Archived data excluded from retrieval/indexing
+- [ ] Audit log of all dataset and metadata operations
 
 ## Dependencies
 
-- 01-image-input.md (shares upload UI for direct-link creation)
-- 05-feedback-pipeline.md (feeds accepted corrections into updates)
-- 07-training-observation.md (retrain trigger)
-- 08-roles-and-permissions.md (data owner vs normal user)
+- 01-image-input.md (shares upload UI)
+- 02-segmentation.md (bounding-box review)
+- 05-feedback-pipeline.md (accepted feedback feeds pending data/corrections)
+- 07-training-observation.md (Qdrant re-index and external retraining warning)
+- 08-roles-and-permissions.md (Data Owner access)
+- ../SRS.md UC-004, UC-005, UC-007

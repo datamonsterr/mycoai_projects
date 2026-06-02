@@ -10,7 +10,7 @@ colony crops per image.
 
 ### 1. Auto-Segmentation
 
-**As a** researcher
+**As a** User
 **I want** the system to automatically detect and crop fungal colonies
 **So that** I don't have to manually draw bounding boxes
 
@@ -26,7 +26,7 @@ colony crops per image.
 
 ### 2. Editable Bounding Boxes
 
-**As a** researcher
+**As a** User
 **I want** to resize and reposition bounding boxes
 **So that** I can correct the segmenter when it misdetects
 
@@ -40,7 +40,7 @@ colony crops per image.
 
 ### 3. Segment Removal
 
-**As a** researcher
+**As a** User
 **I want** to remove individual segments
 **So that** I exclude debris, reflections, or non-colony regions
 
@@ -52,7 +52,7 @@ colony crops per image.
 
 ### 4. Batch Segmentation
 
-**As a** researcher
+**As a** User
 **I want** to review and edit segmentations across an entire batch
 **So that** I can quickly validate or correct many images
 

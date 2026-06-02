@@ -2,54 +2,67 @@
 
 ## Overview
 
-Design the feedback submission, review, and application pipeline. Feedback
-flows from user submissions through data owner review to database updates.
+Design feedback submission, review, and application pipeline. Feedback flows from retrieval-result submissions through Data Owner review to database updates, pending reference data, or rejection. Users cannot submit feedback from reference dataset browsing.
 
 ---
 
 ## Data Model
 
-See 04-database-design.md for the feedback table schema.
+See 04-database-design.md for feedback table schema.
 
 ## Submission Flow
 
     1. User views retrieval results
-    2. User clicks "Report incorrect" on a species prediction
-    3. Modal/dialog opens with pre-filled form
-    4. User selects correct species from dropdown (or "other")
-    5. User enters required description
-    6. Optional: upload supporting image
-    7. Submit -> POST /api/v1/feedback
-    8. Show confirmation toast
-    9. Feedback appears in user's "My Feedback" list
+    2. User clicks "Report incorrect" or "Submit as contribution"
+    3. Modal/dialog opens with pre-filled retrieval context
+    4. User selects feedback type:
+       - wrong_prediction
+       - issue
+       - contribution
+    5. User selects known Species or enters free-text suggested species when relevant
+    6. User enters required description
+    7. Optional: upload supporting image/evidence
+    8. Submit -> POST /api/v1/feedback
+    9. Show confirmation
+    10. Feedback appears in user's "My Feedback" list
 
 ## Review Flow (Data Owner)
 
-    1. Data owner opens /feedback/inbox
-    2. Sees list of pending feedback, sorted by date (newest first)
-    3. Each item shows: submitter, query strain, predicted vs suggested,
-       description, link to original results
+    1. Data Owner opens /feedback/inbox
+    2. Sees list of pending feedback, sorted by date
+    3. Each item shows submitter, query strain, media, predicted vs suggested species,
+       feedback type, description, images/segments, link to original results
     4. Actions:
-       - Accept: modal with optional review note -> PATCH status=accepted
-       - Reject: modal with required review note -> PATCH status=rejected
+       - Accept: modal with optional review note
+       - Reject: modal with required review note
        - Defer: stays pending, optionally add note
     5. Bulk actions: select multiple, accept/reject all
-    6. Accepted feedback triggers downstream actions (see below)
+    6. Accepted feedback triggers downstream actions by type
 
-## On Accept: Database Update
+## On Accept: Wrong Prediction or Issue
 
-When data owner accepts feedback:
+    1. Data Owner maps suggested species:
+       - existing Species, or
+       - create new Species first
+    2. Update affected dataset item if applicable
+    3. Mark affected item Data Update Status = updated_requires_reindex
+    4. Notify submitter
+    5. Log audit event
 
-    1. Update strain species (if strain exists)
-       - Update strains.species_id -> new species
-       - If suggested species is new ("other"), prompt data owner to
-         create the species first
-    2. Flag affected Qdrant points for re-indexing
-       - Query segments where image.strain_id = feedback strain
-       - Update qdrant_index_state.is_active = FALSE
-       - Queue Celery task to re-extract + re-upsert
-    3. Notify submitter (in-app + optional email)
-    4. Log to audit_log
+## On Accept: Contribution
+
+    1. Create pending reference data from retrieval result images/segments
+    2. Data Owner reviews Species, strain, Media, and bounding boxes
+    3. If Media is new/other:
+       - accept new Media into managed list, or
+       - map to existing Media
+    4. If suggested species is free text:
+       - map to existing Species, or
+       - create new Species
+    5. Data Owner indexes after final review
+    6. Mark new indexed data current or updated_requires_reindex depending index action
+    7. Notify submitter
+    8. Log audit event
 
 ## On Reject: Record Only
 
@@ -58,63 +71,47 @@ When data owner accepts feedback:
     3. No database changes
     4. Submitter can see rejection reason in "My Feedback"
 
-## Feedback on Database Entries
+---
 
-Separate from query-result feedback:
+## Explicit Non-Scope
 
-    1. User browses database (/database)
-    2. User opens a strain/image detail
-    3. User clicks "Report issue"
-    4. Form: current species (auto-filled), suggested correction,
-       description
-    5. source = "database_review"
-    6. Same review workflow as above
+Users cannot browse the reference dataset and cannot submit feedback from database entry pages. Feedback source is retrieval results only.
 
 ---
 
 ## Notification System
 
-**[DECISION: Notification delivery]**
-
-Choices:
-- A) **In-app notification bell + optional email** — bell icon with
-  unread count, dropdown of recent notifications. Email for accepted/
-  rejected feedback (opt-in). **(Recommended)**
-- B) Email only — simpler, no in-app complexity
-- C) In-app only, no email — all self-contained
-- D) Webhook — for integration with lab systems
-
-**Notification types:**
+**Decision: In-app notification bell + optional email.**
 
 | Event | Notify |
 |-------|--------|
-| Feedback submitted | Data owner |
+| Feedback submitted | Data Owner |
 | Feedback accepted | Submitter |
 | Feedback rejected | Submitter |
-| Training complete | Data owner |
-| Training failed | Data owner |
+| Contribution moved to pending reference data | Data Owner |
+| New/other Media pending review | Data Owner |
+| Re-index recommended | Data Owner |
+| External retraining recommended | Data Owner |
 
 ---
 
 ## Feedback Statistics
 
-**[DECISION: What feedback metrics to track]**
+Track:
 
-- [ ] Total feedback submitted (by source type)
-- [ ] Acceptance rate (accepted / total reviewed)
-- [ ] Average review time (submitted -> reviewed)
-- [ ] Most frequently misclassified species
-- [ ] Feedback by strain (which strains generate most feedback)
+- Total feedback submitted by type
+- Acceptance rate
+- Average review time
+- Most frequently misclassified Species
+- Contribution acceptance count
+- New/other Media review count
 
 ---
 
-## Open Questions (from feature spec)
+## Resolved Decisions
 
-1. Can normal users submit feedback on database entries directly?
-   **Answer: Yes**, source = "database_review". Same form, different entry
-   point.
-2. Is re-training automatic on acceptance?
-   **Answer: No**, data owner manually triggers retraining when enough
-   changes accumulate. See 07-training-observation.md.
-3. Should rejected feedback be visible to the submitter?
-   **Answer: Yes**, with data owner's review note explaining the rejection.
+1. Users submit feedback only from retrieval results.
+2. Contribution proposal is feedback type, not direct dataset mutation.
+3. Accepted contribution becomes pending reference data before indexing.
+4. Accepted correction marks affected data for Qdrant re-indexing.
+5. Retraining is not automatic; external retraining guidance is shown when changes accumulate.

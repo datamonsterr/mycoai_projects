@@ -2,31 +2,32 @@
 
 ## Overview
 
-Users upload fungal colony images and run species classification. The system
-supports single-image classification and batch processing with a template
-folder structure.
+Users upload fungal colony images and run species retrieval. The system
+supports single-image retrieval and batch processing with a Batch Template
+Folder that includes restructuring instructions.
 
 ## User Stories
 
 ### 1. Single Image Upload
 
-**As a** researcher
-**I want** to upload one image of a fungal strain grown on one medium
-**So that** I can classify its species
+**As a** User
+**I want** to upload one image of a fungal strain grown on one Media
+**So that** I can retrieve its Species prediction
 
 **Rules:**
 - One image = one strain x one medium x N colonies (N configurable)
 - Image formats: JPEG, PNG, TIFF (minimum 256x256)
 - Upload shows a preview before processing
-- User must specify the growth medium from a predefined list
-- User must specify the strain identifier (free text)
+- User must specify Media from managed list or enter new/other Media
+- User must specify strain identifier (free text)
+- New/other Media is allowed for retrieval, uses all-Media KNN, and is flagged for Data Owner review
 
 **Predefined Media Set:** MEA, CYA, YES, DG18, OA, CREA, PDA, CMA, SAB, M40Y
 (subject to expansion)
 
 ### 2. Max Colonies Configuration
 
-**As a** researcher
+**As a** User
 **I want** to set the maximum number of colonies per image
 **So that** I control segmentation sensitivity
 
@@ -38,9 +39,9 @@ folder structure.
 
 ### 3. Batch Processing
 
-**As a** researcher
+**As a** User
 **I want** to upload a folder of images with metadata
-**So that** I can classify hundreds of samples at once
+**So that** I can retrieve Species predictions for many samples at once
 
 **Template folder structure:**
 
@@ -69,13 +70,11 @@ folder structure.
       "output_format": "csv"
     }
 
-**AI reformat commands:** The system provides a CLI/API to reformat arbitrary
-folder structures into the template format. AI-assisted column detection and
-mapping.
+**Batch Template Folder instructions:** The downloadable template includes the required folder structure and a defined command prompt/instructions for using an agent to restructure arbitrary local data into the upload format. This is part of product scope.
 
 ### 4. Image Removal (Batch Context)
 
-**As a** researcher
+**As a** User
 **I want** to remove individual images from a batch before processing
 **So that** I can exclude poor-quality samples
 
