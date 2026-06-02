@@ -2,79 +2,83 @@
 
 ## Overview
 
-Two user roles control access to features: Data Owner and Normal User.
-Authentication is required for all data-modifying operations.
+Two roles control access: **User** and **Data Owner**. Authentication is required for all protected workflows. Data Owner has all User capabilities plus governance capabilities.
 
 ## Roles
 
 ### Data Owner
 
-**Full access to data management and system configuration.**
+**Full access to retrieval, feedback, data management, model/index maintenance, and user management.**
 
 **Permissions:**
 
 | Area | Access |
 |------|--------|
-| Upload images for classification | Yes |
+| Upload images for retrieval | Yes |
 | View retrieval results | Yes |
-| Submit feedback | Yes |
-| Create/edit species | Yes |
-| Upload images with direct species link | Yes |
-| Update species names | Yes |
-| Archive/delete data | Yes |
-| Restore from trash | Yes |
-| Review feedback (accept/reject) | Yes |
-| Trigger retraining | Yes |
-| Configure system settings | Yes |
+| Submit feedback or contribution proposal | Yes |
+| Index new reference data | Yes |
+| Create/edit/archive Species | Yes |
+| Create/edit/archive Media | Yes |
+| Browse/search/filter/group dataset | Yes |
+| Update image metadata | Yes |
+| Archive/restore dataset records | Yes |
+| Review feedback (accept/reject/defer) | Yes |
+| Re-index Qdrant | Yes |
+| Review external retraining guidance | Yes |
+| Upload/assess/promote Candidate Model | Yes |
 | View audit logs | Yes |
-| Manage users | Yes |
+| Manage users and roles | Yes |
 
-### Normal User
+### User
 
-**Classification and feedback only. Cannot modify database.**
+**Retrieval and feedback only. Cannot browse or mutate the reference dataset.**
 
 **Permissions:**
 
 | Area | Access |
 |------|--------|
-| Upload images for classification | Yes |
+| Upload images for retrieval | Yes |
 | View retrieval results | Yes |
-| Submit feedback | Yes |
-| Submit feedback on database entries | Yes |
-| Create/edit species | No |
-| Upload images with direct species link | No |
-| Update species names | No |
-| Archive/delete data | No |
-| Restore from trash | No |
+| Submit feedback from retrieval results | Yes |
+| Submit contribution proposal from retrieval results | Yes |
+| Download batch retrieval results | Yes |
+| Browse reference dataset | No |
+| Create/edit Species | No |
+| Create/edit Media | No |
+| Index new reference data | No |
+| Archive/restore dataset records | No |
 | Review feedback | No |
-| Trigger retraining | No |
-| Configure system settings | No |
+| Re-index Qdrant | No |
+| Upload/assess/promote Candidate Model | No |
 | View audit logs | No |
+| Manage users | No |
 
 ## User Stories
 
 ### 1. Registration and Login
 
-**As a** researcher
+**As a** User
 **I want** to create an account and log in
-**So that** I can use the classification system
+**So that** I can use retrieval workflows
 
 **Behavior:**
-- Registration: email + password + name
-- Account activation: auto-activate or email verification (configurable)
-- Login: email + password, JWT session
-- Profile: name, email, role (display only)
+- Self-registration remains available for Users: email + password + name
+- Login: email + password, authenticated session
+- Profile: name, email, role
+- Initial Data Owner is provisioned internally by script using user email
+- Data Owner can invite Users by onboarding email for convenience
 
 ### 2. Role Assignment
 
-**As a** data owner
+**As a** Data Owner
 **I want** to assign and revoke roles
-**So that** I can control who manages the database
+**So that** I can control who governs the dataset
 
 **Behavior:**
-- First registered user is automatically Data Owner
-- Data owners can promote other users to Data Owner
-- Data owners can demote other Data Owners (must keep at least one)
+- Data Owners can promote Users to Data Owner
+- Data Owners can demote Data Owners
+- System must keep at least one active Data Owner
 - Role changes are logged in audit trail
 
 ### 3. Permission Enforcement
@@ -85,30 +89,32 @@ Authentication is required for all data-modifying operations.
 
 **Behavior:**
 - Backend validates user role on every protected endpoint
-- Normal user accessing data-owner endpoints receives 403 Forbidden
-- Unauthenticated user receives 401 Unauthorized
-- UI hides unavailable actions (buttons, menus) based on role
+- User accessing Data Owner endpoints receives 403 Forbidden
+- Unauthenticated actor receives 401 Unauthorized
+- UI hides unavailable actions based on role
 - API returns 403 even if UI is bypassed
 
-## Open Questions
+## Resolved Decisions
 
-1. Can normal users add data to the database by asking permission from the
-   data owner? (Spec says: data owner can approve, making it a
-   feedback-accept workflow — see 05-feedback-pipeline.md)
-2. Should there be a "contributor" role between Normal User and Data Owner?
-3. Is anonymous/public access needed for any endpoints (e.g., species list)?
+1. Canonical actor term is **User**, not "Normal User".
+2. There is no contributor role. User contribution happens through feedback review.
+3. Users cannot browse the reference dataset. Feedback is only available from retrieval results.
+4. Initial Data Owner is created by internal script; role promotion is available afterward.
 
 ## Acceptance Criteria
 
-- [ ] User registration with email/password
-- [ ] Login with JWT session management
-- [ ] Role-based UI (hide unavailable actions)
-- [ ] Role-based API enforcement (401/403 responses)
-- [ ] First user auto-assigned as Data Owner
-- [ ] Data Owner can manage other users' roles
+- [ ] User self-registration with email/password
+- [ ] Login with session management
+- [ ] Data Owner invitation with onboarding email
+- [ ] Initial Data Owner provisioning by script
+- [ ] Role-based UI hiding unavailable actions
+- [ ] Role-based API enforcement with 401/403 responses
+- [ ] Data Owner can promote/demote roles
+- [ ] At least one active Data Owner must exist
 - [ ] Audit log of role changes
-- [ ] At least one Data Owner must exist at all times
+- [ ] User cannot browse reference dataset endpoints
 
 ## Dependencies
 
 - All other feature specs (enforces access boundaries)
+- `../SRS.md` UC-001 and UC-006

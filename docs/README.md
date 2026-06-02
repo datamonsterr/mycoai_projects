@@ -5,6 +5,7 @@
 ```
 docs/
 ├── README.md                   # You are here — how to use this folder
+├── SRS.md                      # Software Requirements Specification
 ├── feature_spec/               # Ground-truth feature specifications
 │   ├── 01-image-input.md       # Image upload, batch processing, template system
 │   ├── 02-segmentation.md      # Auto-segment, editable bboxes, image removal
@@ -13,7 +14,7 @@ docs/
 │   ├── 05-feedback-pipeline.md # User feedback → data owner review workflow
 │   ├── 06-data-management.md   # CRUD for species, strains, images, media
 │   ├── 07-training-observation.md # Async training job status
-│   └── 08-roles-and-permissions.md # Data Owner vs Normal User
+│   └── 08-roles-and-permissions.md # Data Owner vs User
 ├── technical_spec/             # Technical decisions with decision points
 │   ├── ...md                   # Each spec asks multiple-choice questions
 └── living_spec/                # Synced working copy (auto-maintained)

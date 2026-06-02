@@ -10,7 +10,7 @@ visualization.
 
 ### User Story
 
-**As a** researcher
+**As a** User
 **I want** to see species predictions ranked by confidence
 **So that** I can quickly identify the most likely species
 
@@ -42,7 +42,7 @@ visualization.
 
 ### User Story
 
-**As a** researcher
+**As a** User
 **I want** to see the KNN retrieval as an interactive graph
 **So that** I can explore relationships between query and database strains
 

@@ -1,149 +1,132 @@
-# Feature Spec: Training Observation
+# Feature Spec: Model and Index Maintenance
 
 ## Overview
 
-Data owners can monitor and trigger deep learning model training jobs.
-The system provides async job status, progress tracking, and configurable
-training triggers.
+Data Owners maintain the Qdrant index in-system and manage deep feature-extractor model versions through external retraining guidance plus Candidate Model assessment. The system does not trigger deep feature-extractor retraining.
 
 ## User Stories
 
-### 1. View Training Status
+### 1. View Model and Index Status
 
-**As a** data owner
-**I want to** see the status of model training jobs
-**So that I** know when updated models are ready
-
-**Behavior:**
-- Dashboard widget showing:
-  - Current model version (e.g. "EfficientNetB1 finetuned v3")
-  - Last training date
-  - Number of strains in training set
-  - Model accuracy (F1 score from latest evaluation)
-- Training history table:
-  - Job ID, start time, end time, duration
-  - Status: pending, running, completed, failed
-  - Changes: "N strains added, M strains removed since last training"
-
-### 2. Trigger Retraining
-
-**As a** data owner
-**I want to** manually trigger model retraining
-**So that I** incorporate new data and corrections
+**As a** Data Owner
+**I want to** see current model and Qdrant index status
+**So that I** know whether retrieval reflects current reference data
 
 **Behavior:**
-- "Retrain" button on the training dashboard
-- Pre-flight check:
-  - "N new strains added since last train"
-  - "M strains archived since last train"
-  - "P feedback corrections accepted since last train"
-  - "Estimated training time: ~X hours on current hardware"
-- Confirmation dialog before starting
-- Only one training job can be running at a time
-- If job is already running, show progress instead
+- Dashboard widget shows:
+  - Current model version
+  - Current Qdrant index status
+  - Count of data items with `updated_requires_reindex`
+  - Count of archived/restored records since last index update
+  - Count of accepted feedback/contributions since last index update
+  - Latest evaluation metrics
 
-### 3. Training Progress
+### 2. Re-index Qdrant
 
-**As a** data owner
-**I want to** monitor training progress in real-time
-**So that I** know when to expect updated models
+**As a** Data Owner
+**I want to** trigger Qdrant re-indexing
+**So that** metadata, archive, restore, and accepted feedback changes affect retrieval
 
 **Behavior:**
-- Progress bar with:
-  - Current stage (data prep, feature extraction, training epochs,
-    evaluation)
-  - Epoch X of Y
-  - Current loss / accuracy
-  - Estimated time remaining
-- Training log (streaming terminal output)
-- Cancel button (graceful shutdown at end of current epoch)
-- Email/webhook notification on completion or failure
+- Data Owner reviews pre-flight summary
+- Data Owner triggers in-system Qdrant re-index
+- System re-extracts features for active changed segments and updates Qdrant points
+- Archived items are excluded from Qdrant retrieval
+- System updates Data Update Status to `current` after successful re-index
+- Audit log records re-index action
 
-### 4. Model Deployment
+### 3. Review External Retraining Guidance
 
-**As a** data owner
-**I want to** deploy a newly trained model
-**So that I** can use improved accuracy for queries
+**As a** Data Owner
+**I want to** be warned when many reference-data changes accumulate
+**So that I** know when deep feature-extractor retraining may be needed
 
 **Behavior:**
-- After training completes, model is staged (not auto-deployed)
-- Data owner reviews evaluation metrics
-- "Deploy" button replaces current Qdrant index with new features
-- Rollback: keep previous model version, revert with one click
-- A/B evaluation: compare old vs new model on a validation set
+- System shows warning when accumulated reference-data changes exceed configured threshold
+- Warning includes changed/accepted/archived counts
+- System provides Python guidance to:
+  1. Download active dataset
+  2. Retrain feature extractor externally
+  3. Upload Candidate Model
+- No in-system deep retraining trigger is available
+
+### 4. Version and Assess Candidate Model
+
+**As a** Data Owner
+**I want to** upload and assess a Candidate Model
+**So that** I can compare it against the current model before promotion
+
+**Behavior:**
+- Data Owner uploads Candidate Model artifact
+- System runs fixed evaluation set
+- System compares Candidate Model metrics against current model metrics
+- Data Owner manually promotes or rejects Candidate Model
+- No auto-promotion occurs
+- Previous model version remains available for comparison/rollback planning
 
 ## Key Design Decisions
 
+### What re-indexing means
+
+1. Feature re-extraction for active segment images using current model
+2. Qdrant point upsert/update for active data
+3. Qdrant exclusion/removal for archived data
+
 ### What retraining means
 
-For this system, "retraining" means:
+Deep feature-extractor retraining changes model weights. It is performed outside the system by Data Owner using provided Python guidance, then reuploaded as a Candidate Model.
 
-1. **Feature re-extraction**: Run all feature extractors on all active
-   (non-archived) segment images
-2. **Qdrant re-indexing**: Upsert all feature vectors into Qdrant,
-   replacing existing points for updated strains
-3. **Deep model fine-tuning** (optional, triggered separately):
-   - Fine-tune feature extractors (ResNet50, EfficientNetB1, etc.)
-   - Only needed when adding many new images or correcting labels
-   - Much heavier operation than re-indexing
+### When re-index vs retrain?
 
-### When full retraining vs re-indexing?
-
-| Action | What it does | When needed |
-|--------|-------------|-------------|
-| Re-index into Qdrant | Re-extract features, upsert points | Add new images, update labels, archive data |
-| Fine-tune feature extractor | Train neural network weights | Many new images added, significant data changes |
-| Full retrain | Fine-tune + re-index | Major database expansion |
-
-### What data owners need to know
-
-- **High**: Whether models are up to date with current database
-- **High**: Training progress and completion
-- **Medium**: Model accuracy metrics
-- **Low**: Individual epoch loss values (available but not primary UI)
+| Action | In-system? | When needed |
+|--------|------------|-------------|
+| Qdrant re-index | Yes | Add/index data, edit metadata/boxes, archive/restore, accepted feedback |
+| Deep feature-extractor retrain | No | Many new images, significant label/media changes, degraded evaluation |
+| Candidate Model assessment | Yes | After external retraining and upload |
 
 ## Data Contract
 
-**Training job status:**
+**Index/model status:**
 
     {
-      "job_id": "uuid",
-      "job_type": "reindex | finetune | full_retrain",
-      "status": "pending | running | completed | failed | cancelled",
-      "progress": {
-        "stage": "preparing | extracting | training | evaluating | indexing",
-        "current": 15,
-        "total": 50,
-        "epoch": 3,
-        "current_loss": 0.023,
-        "current_accuracy": 0.87
+      "current_model_version": "string",
+      "qdrant_index_status": "current | needs_reindex | reindexing | failed",
+      "changes_since_last_index": {
+        "items_updated": 12,
+        "items_archived": 3,
+        "feedback_accepted": 5,
+        "contributions_accepted": 4
       },
-      "trigger": "manual | scheduled | feedback_accepted",
-      "changes_since_last": {
-        "strains_added": 12,
-        "strains_archived": 3,
-        "feedback_accepted": 5
-      },
-      "started_at": "ISO8601",
-      "completed_at": "ISO8601 | null",
-      "estimated_completion": "ISO8601 | null"
+      "external_retraining_recommended": true
+    }
+
+**Candidate model evaluation:**
+
+    {
+      "candidate_model_id": "uuid",
+      "status": "uploaded | evaluating | accepted | rejected",
+      "current_metrics": {"f1": 0.89},
+      "candidate_metrics": {"f1": 0.92},
+      "evaluation_set_id": "fixed-evaluation-set"
     }
 
 ## Acceptance Criteria
 
-- [ ] Training status dashboard with current model info
-- [ ] Training history table
-- [ ] Manual retrain trigger with pre-flight summary
-- [ ] Real-time progress bar with stage/epoch/loss
-- [ ] Cancel training with graceful shutdown
-- [ ] Completion notification (in-app + optional email)
-- [ ] Staged deployment with review step
-- [ ] Rollback to previous model version
-- [ ] A/B comparison of old vs new model
+- [ ] Dashboard shows current model and Qdrant index status
+- [ ] Data Owner can trigger Qdrant re-indexing in-system
+- [ ] Re-index pre-flight summary shows affected active/archived/updated data counts
+- [ ] Successful re-index marks affected data `current`
+- [ ] System warns when deep feature-extractor retraining is recommended
+- [ ] System provides Python guidance for dataset download, external retraining, and model reupload
+- [ ] No in-system deep retraining trigger exists
+- [ ] Data Owner can upload Candidate Model
+- [ ] Candidate Model is evaluated against fixed evaluation set
+- [ ] Data Owner manually promotes or rejects Candidate Model
+- [ ] Audit log records re-indexing and model promotion/rejection
 
 ## Dependencies
 
-- 05-feedback-pipeline.md (accepted feedback triggers re-indexing)
-- 06-data-management.md (CRUD operations trigger retraining)
-- Consumes: fungal-cv-qdrant feature extraction, DNN training scripts,
-  Qdrant indexing utilities
+- 05-feedback-pipeline.md (accepted feedback/contributions)
+- 06-data-management.md (data changes requiring re-index)
+- 08-roles-and-permissions.md (Data Owner permissions)
+- ../SRS.md UC-008

@@ -1741,6 +1741,18 @@
       "sourceType": "github",
       "computedHash": "77a0bcae51c6446090a80689f01afd32b6ff94472605f858a8e8e20b7cc7440f"
     },
+    "ckm:design-system": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/design-system/SKILL.md",
+      "computedHash": "49b8308dc428c66b0983f4b3d102c522c495f62538121064d1e82a040b1afd2c"
+    },
+    "ckm:ui-styling": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-styling/SKILL.md",
+      "computedHash": "9ae38e4e201f338b6150e462b98a2db0f2ae7c180c77e8cfb1d33eba9d33bf33"
+    },
     "claimable-postgres": {
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
@@ -7608,9 +7620,10 @@
       "computedHash": "52432e3ed86e4ba19de9fea9cb0affbe8393229cca2eca49662d74c5ce918a2a"
     },
     "ui-ux-pro-max": {
-      "source": "sickn33/antigravity-awesome-skills",
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
-      "computedHash": "ea0fb31c87f04ec5dd77637180f9201b4f556b791691c2b32793269f49ba17be"
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "0a413bf988d06481f69bb81df2070741c3ba12dd9f1be2706d57f259c905992d"
     },
     "ui-visual-validator": {
       "source": "sickn33/antigravity-awesome-skills",
