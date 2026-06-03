@@ -19,15 +19,15 @@ export default tool({
     const root = context.worktree
     const paperIdeasPath = path.join(
       root,
-      "repos/fungal-cv-qdrant/research/paper-ideas.md",
+      "research/research/paper-ideas.md",
     )
     const doNotRepeatPath = path.join(
       root,
-      "repos/fungal-cv-qdrant/research/do-not-repeat.md",
+      "research/research/do-not-repeat.md",
     )
     const programPath = path.join(
       root,
-      "repos/fungal-cv-qdrant/src/experiments",
+      "research/src/experiments",
       args.experiment,
       "program.md",
     )

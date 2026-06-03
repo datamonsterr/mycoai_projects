@@ -761,7 +761,7 @@ For wide diagrams, rotate to landscape:
 | Aspect | Mermaid | TikZ |
 |--------|---------|------|
 | **Learning Curve** | Low - simple syntax | High - complex LaTeX |
-| **Speed** | Fast - quick prototypes | Slow - detailed coding |
+| **Speed** | Fast - quick frontends | Slow - detailed coding |
 | **Customization** | Limited themes | Full control |
 | **Quality** | Good (raster/vector) | Excellent (native vector) |
 | **Collaboration** | Easy - non-LaTeX users | Hard - LaTeX experts only |
@@ -777,7 +777,7 @@ For wide diagrams, rotate to landscape:
 - Making **sequence diagrams** for API documentation
 - Building **ER diagrams** for database documentation
 - Collaborating with **non-LaTeX users**
-- Need **quick iterations** and prototypes
+- Need **quick iterations** and frontends
 - Diagram structure matters more than pixel-perfect appearance
 
 ### Use TikZ When:

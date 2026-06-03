@@ -12,7 +12,7 @@ options below.
 
 **[DECISION: Backend framework] ✓ A) FastAPI**
 - Async-native, Pydantic integration, auto-docs, good for ML/API workloads.
-  Already scaffolded in `repos/mycoai_retrieval_backend/`.
+  Already scaffolded in `backend/`.
 
 ---
 

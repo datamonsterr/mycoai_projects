@@ -63,7 +63,7 @@ Then in VS Code Remote-SSH: "Connect to Host..." → select `mycoai-vast`.
 After connecting, verify:
 
 1. **File browsing**: Open the remote workspace root folder. You should see
-   `Dataset/`, `results/`, `weights/`, `repos/`, `tools/`.
+   `Dataset/`, `results/`, `weights/`, `research/`, `backend/`, `frontend/`, `tools/`.
 2. **Integrated terminal**: Run `pwd` — should show the workspace root.
 3. **Smoke validation** (optional but recommended):
 

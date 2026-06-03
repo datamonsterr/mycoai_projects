@@ -6,19 +6,19 @@ temperature: 0.1
 steps: 25
 permission:
   edit:
-    "repos/fungal-cv-qdrant/.runtime/worktrees/**": allow
+    "research/.runtime/worktrees/**": allow
     "*": deny
   bash:
     "*": deny
-    "git -C repos/fungal-cv-qdrant worktree add*": allow
-    "git -C repos/fungal-cv-qdrant worktree remove*": allow
-    "git -C repos/fungal-cv-qdrant worktree list*": allow
-    "git -C repos/fungal-cv-qdrant branch*": allow
+    "git -C research worktree add*": allow
+    "git -C research worktree remove*": allow
+    "git -C research worktree list*": allow
+    "git -C research branch*": allow
     "bash -lc uv run python src/prepare.py*": allow
     "bash -lc uv run python -m src.experiments.*.cli*": allow
-    "uv --directory repos/fungal-cv-qdrant run python -m src.autolab.csv_append*": allow
-    "cat repos/fungal-cv-qdrant/.runtime/worktrees/*/results/*": allow
-    "ls repos/fungal-cv-qdrant/.runtime/worktrees/*": allow
+    "uv --directory research run python -m src.autolab.csv_append*": allow
+    "cat research/.runtime/worktrees/*/results/*": allow
+    "ls research/.runtime/worktrees/*": allow
     "mkdir -p results/*": allow
 ---
 
@@ -40,15 +40,15 @@ source: research/paper-ideas.md#<title>
 ### Step 1: Create worktree
 
 ```bash
-git -C repos/fungal-cv-qdrant worktree add \
+git -C research worktree add \
   .runtime/worktrees/<run_id> \
   -b autoresearch/<experiment>/<N>-<slug>
 ```
 
 ### Step 2: Implement hypothesis
 
-- Read `repos/fungal-cv-qdrant/src/experiments/<experiment>/program.md`
-- Read `repos/fungal-cv-qdrant/results/<experiment>/log/experiments.log` (if exists) for context
+- Read `research/src/experiments/<experiment>/program.md`
+- Read `research/results/<experiment>/log/experiments.log` (if exists) for context
 - Modify ONLY `run_accuracy.py` inside `.runtime/worktrees/<run_id>/src/experiments/<experiment>/run_accuracy.py`
 - Make the ONE change described in the hypothesis description
 - Do NOT modify `prepare.py` under any circumstances
@@ -84,7 +84,7 @@ Compare against current best in `results/autoresearch/<experiment>.csv`.
 Use the `experiment-log` tool to read current state, then append result with the lock-safe helper:
 
 ```bash
-uv --directory repos/fungal-cv-qdrant run python -m src.autolab.csv_append \
+uv --directory research run python -m src.autolab.csv_append \
   --experiment <experiment> \
   --f1-score <f1_score> \
   --strategy-name "<strategy_name>" \
@@ -93,7 +93,7 @@ uv --directory repos/fungal-cv-qdrant run python -m src.autolab.csv_append \
 
 ### Step 6: Clean up
 
-- If result is NOT new best: `git -C repos/fungal-cv-qdrant worktree remove .runtime/worktrees/<run_id>`
+- If result is NOT new best: `git -C research worktree remove .runtime/worktrees/<run_id>`
 - If result IS new best: keep worktree, report branch for merge
 
 ### Step 7: Report back

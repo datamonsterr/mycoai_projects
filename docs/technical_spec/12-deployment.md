@@ -40,9 +40,9 @@ Choices:
         image: redis:7-alpine
         ports: ["6379:6379"]
 
-    Backend: uv --directory repos/mycoai_retrieval_backend run uvicorn
-    Frontend: pnpm --dir repos/mycoai_retrieval_frontend dev (port 5173)
-    Celery: uv --directory repos/mycoai_retrieval_backend run celery worker
+    Backend: uv --directory backend run uvicorn
+    Frontend: pnpm --dir frontend dev (port 5173)
+    Celery: uv --directory backend run celery worker
 
 ---
 
@@ -66,16 +66,16 @@ Choices:
       qdrant:    (same as dev, with persistent volume)
       redis:     (same as dev)
       backend:
-        build: repos/mycoai_retrieval_backend
+        build: backend
         ports: ["8000:8000"]
         depends_on: [postgres, qdrant, redis]
         environment: [...]
       celery-worker:
-        build: repos/mycoai_retrieval_backend
+        build: backend
         command: celery -A mycoai_retrieval_backend.tasks worker
         depends_on: [redis, postgres]
       frontend:
-        build: repos/mycoai_retrieval_frontend
+        build: frontend
         ports: ["80:80"]
         depends_on: [backend]
 

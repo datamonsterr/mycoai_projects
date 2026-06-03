@@ -1,0 +1,75 @@
+[project]
+name = "fungal-cv-qdrant"
+version = "0.1.0"
+description = "Fungal species classification using Computer Vision and Qdrant"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "typing_extensions>=4.12.0",
+    "pydantic>=2.0.0",
+    "pydantic-core>=2.0.0",
+    "qdrant-client",
+    "numpy",
+    "pandas",
+    "opencv-python-headless",
+    "scikit-learn",
+    "scikit-image",
+    "scipy",
+    "pillow",
+    "matplotlib",
+    "seaborn",
+    "torch",
+    "torchvision",
+    "torchaudio",
+    "tqdm",
+    "gdown>=5.2.1",
+    "ultralytics",
+    "roboflow>=1.3.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "black",
+    "isort",
+    "flake8",
+    "mypy",
+    "ruff>=0.15.12",
+]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+skip_gitignore = true
+known_first_party = ["src"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''

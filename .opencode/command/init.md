@@ -27,20 +27,14 @@ When running `/init`, perform these steps in order.
    - Run `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh auth status -h github.com`.
    - If not authenticated as `datamonsterr`, ask the user to log in with `GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh auth login -h github.com`.
    - Do not run `gh auth switch`.
-3. Initialize git submodules from the repo root.
-   - Run: `git submodule update --init --recursive`
-4. Refresh the current checkout from `origin/main`.
+3. Refresh the current checkout from `origin/main`.
    - Run `git fetch origin`
    - Confirm the current branch/worktree state
    - If the current branch is `main`, run `git pull --ff-only origin main`
    - If the current branch is not `main`, update refs from `origin/main` and tell the user if they should rebase or merge manually instead of changing branches unexpectedly
-5. Set up the admin UI workspace if `repos/nuoa-io-admin-ui/` exists.
-   - If `repos/nuoa-io-admin-ui/.env.beta` exists and `.env` does not, copy `.env.beta` to `.env`
-   - Run `yarn` in `repos/nuoa-io-admin-ui/`
-   - If the path does not exist, report that it is skipped
-6. Trust the project with mise.
+4. Trust the project with mise.
    - Run: `mise trust`
-7. Set up the root environment file.
+5. Set up the root environment file.
    - If `.env.example` exists and `.env` does not, copy `.env.example` to `.env`
    - Then ask the user to open `.env` and enter their credentials or secrets manually
    - Never invent or write credentials
@@ -60,7 +54,6 @@ Use the repo root unless noted otherwise:
 
 ```bash
 GH_CONFIG_DIR="$HOME/.config/gh-datamonsterr" gh auth status -h github.com
-git submodule update --init --recursive
 git fetch origin
 git branch --show-current
 git pull --ff-only origin main
@@ -68,21 +61,12 @@ mise trust
 cp .env.example .env
 ```
 
-For the admin UI repo if present:
-
-```bash
-cp repos/nuoa-io-admin-ui/.env.beta repos/nuoa-io-admin-ui/.env
-yarn
-```
-
 ## Completion Report
 
 At the end, report:
 
 - GitHub CLI profile status for `datamonsterr`
-- submodule init status
 - git refresh status
-- admin UI env/yarn status
 - mise trust status
 - root `.env` status
 - whether the user must add credentials manually
