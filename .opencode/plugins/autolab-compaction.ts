@@ -8,13 +8,13 @@ export const AutolabCompactionPlugin: Plugin = async (ctx) => {
       const root = ctx.worktree
       const contextChunks: string[] = []
 
-      const resultstsv = path.join(root, "repos/fungal-cv-qdrant/research/results.tsv")
+      const resultstsv = path.join(root, "research/research/results.tsv")
       if (fs.existsSync(resultstsv)) {
         const rows = fs.readFileSync(resultstsv, "utf-8").trim().split("\n").slice(-5)
         contextChunks.push(`## Last 5 experiment runs (results.tsv)\n${rows.join("\n")}`)
       }
 
-      const paperIdeas = path.join(root, "repos/fungal-cv-qdrant/research/paper-ideas.md")
+      const paperIdeas = path.join(root, "research/research/paper-ideas.md")
       if (fs.existsSync(paperIdeas)) {
         const content = fs.readFileSync(paperIdeas, "utf-8")
         const pending = content.match(/## Paper:.*?\n[\s\S]*?Status\*\*: pending/g) ?? []
@@ -27,7 +27,7 @@ export const AutolabCompactionPlugin: Plugin = async (ctx) => {
       const worktreeOut = (() => {
         try {
           const { execSync } = require("child_process")
-          return execSync("git -C repos/fungal-cv-qdrant worktree list", {
+          return execSync("git -C research worktree list", {
             cwd: root,
             encoding: "utf-8",
           }).trim()

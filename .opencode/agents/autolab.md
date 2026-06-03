@@ -9,9 +9,9 @@ permission:
   bash:
     "*": deny
     "git worktree list*": allow
-    "git -C repos/fungal-cv-qdrant worktree list*": allow
+    "git -C research worktree list*": allow
     "cat research/results.tsv*": allow
-    "cat repos/fungal-cv-qdrant/research/results.tsv*": allow
+    "cat research/research/results.tsv*": allow
   task:
     "*": allow
   webfetch: deny

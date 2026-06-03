@@ -109,10 +109,10 @@ The bootstrap script is safe to rerun:
 | Condition | Action |
 |-----------|--------|
 | Missing git, mise, or uv | Report blocker — these need host installation |
-| Missing mise.toml or repos/ | Verify workspace root is the monorepo root |
+| Missing mise.toml or research/ | Verify workspace root is the monorepo root |
 | SSH connection fails | Verify host/port/user, check instance is running |
 | VS Code cannot open remote folder | Verify Remote-SSH extension is installed |
-| fungal smoke command fails | Run `uv --directory repos/fungal-cv-qdrant sync` and retry |
+| fungal smoke command fails | Run `uv --directory research sync` and retry |
 
 ## Recovery Entrypoints
 

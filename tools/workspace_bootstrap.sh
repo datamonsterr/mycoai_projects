@@ -5,8 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_WORKSPACE_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
 WORKSPACE_ROOT="${MYCOAI_ROOT:-$DEFAULT_WORKSPACE_ROOT}"
-  REPOS_DIR="${WORKSPACE_ROOT}/repos"
-  FUNGAL_DIR="${REPOS_DIR}/fungal-cv-qdrant"
+  RESEARCH_DIR="${WORKSPACE_ROOT}/research"
   DATASET_ROOT="${WORKSPACE_ROOT}/Dataset"
 
 RESULTS_ROOT="${WORKSPACE_ROOT}/results"
@@ -47,7 +46,7 @@ Usage: bash tools/workspace_bootstrap.sh <command> [options]
 
 Commands:
   prepare       Prepare a fresh MycoAI workspace on the current machine
-  smoke-check   Validate the local workspace layout and fungal-cv-qdrant smoke command
+  smoke-check   Validate the local workspace layout and research smoke command
   recover       Revalidate a workspace after reconnect, restart, or replacement
   help          Show this help message
 
@@ -76,8 +75,7 @@ set_workspace_root() {
   local workspace_root="$1"
 
   WORKSPACE_ROOT="$workspace_root"
-  REPOS_DIR="${WORKSPACE_ROOT}/repos"
-  FUNGAL_DIR="${REPOS_DIR}/fungal-cv-qdrant"
+  RESEARCH_DIR="${WORKSPACE_ROOT}/research"
 
   DATASET_ROOT="${WORKSPACE_ROOT}/Dataset"
   RESULTS_ROOT="${WORKSPACE_ROOT}/results"
@@ -192,16 +190,8 @@ validate_prerequisites() {
     blocker "Expected mise.toml at ${WORKSPACE_ROOT}/mise.toml"
   fi
 
-  if [[ ! -d "$REPOS_DIR" ]]; then
-    blocker "Expected repos directory at $REPOS_DIR"
-  fi
-
-  if [[ ! -d "$FUNGAL_DIR" ]]; then
-    blocker "Expected fungal-cv-qdrant at $FUNGAL_DIR"
-  fi
-
-  if [[ ! -f "${WORKSPACE_ROOT}/.gitmodules" ]]; then
-    warn "No .gitmodules found at ${WORKSPACE_ROOT}; submodule repair will be skipped"
+  if [[ ! -d "$RESEARCH_DIR" ]]; then
+    blocker "Expected research directory at $RESEARCH_DIR"
   fi
 
   local blocker_count=${#BLOCKERS[@]}
@@ -228,31 +218,20 @@ validate_prerequisites() {
 
 verify_repo_layout() {
   [[ -f "${WORKSPACE_ROOT}/mise.toml" ]] || fail "Expected mise.toml at ${WORKSPACE_ROOT}/mise.toml"
-  [[ -d "$REPOS_DIR" ]] || fail "Expected repos directory at $REPOS_DIR"
-  [[ -d "$FUNGAL_DIR" ]] || fail "Expected fungal-cv-qdrant at $FUNGAL_DIR"
-  [[ -f "${WORKSPACE_ROOT}/.gitmodules" ]] || warn "No .gitmodules found at ${WORKSPACE_ROOT}; submodule repair will be skipped"
+  [[ -d "$RESEARCH_DIR" ]] || fail "Expected research directory at $RESEARCH_DIR"
 }
 
 ensure_workspace_layout() {
   mkdir -p "$DATASET_ROOT" "$RESULTS_ROOT" "$WEIGHTS_ROOT"
 }
 
-repair_submodules() {
-  if git -C "$WORKSPACE_ROOT" rev-parse --git-dir >/dev/null 2>&1 && [[ -f "${WORKSPACE_ROOT}/.gitmodules" ]]; then
-    log "Syncing git submodules"
-    git -C "$WORKSPACE_ROOT" submodule update --init --recursive
-  else
-    warn "Skipping submodule sync because ${WORKSPACE_ROOT} is not a git checkout with submodules"
-  fi
+run_research_sync() {
+  log "Syncing research dependencies with uv"
+  uv --directory "$RESEARCH_DIR" sync
 }
 
-run_fungal_sync() {
-  log "Syncing fungal-cv-qdrant dependencies with uv"
-  uv --directory "$FUNGAL_DIR" sync
-}
-
-run_fungal_smoke_command() {
-  uv --directory "$FUNGAL_DIR" run python -m src.prepare.init --help >/dev/null
+run_research_smoke_command() {
+  uv --directory "$RESEARCH_DIR" run python -m src.prepare.init --help >/dev/null
 }
 
 print_connection_descriptor() {
@@ -293,7 +272,7 @@ print_workspace_summary() {
   printf '  mode:           %s\n' "$MODE"
   printf '  status:         %s\n' "${STATUS:-prepared}"
   printf '  workspace_root: %s\n' "$WORKSPACE_ROOT"
-  printf '  fungal_dir:     %s\n' "$FUNGAL_DIR"
+  printf '  research_dir:   %s\n' "$RESEARCH_DIR"
   printf '  dataset_root:   %s\n' "$DATASET_ROOT"
   printf '  results_root:   %s\n' "$RESULTS_ROOT"
   printf '  weights_root:   %s\n' "$WEIGHTS_ROOT"
@@ -346,13 +325,12 @@ handle_prepare() {
   validate_prerequisites || exit 1
 
   verify_repo_layout
-  repair_submodules
   ensure_workspace_layout
 
   log "Installing shared toolchain with mise"
   (cd "$WORKSPACE_ROOT" && mise install)
 
-  run_fungal_sync
+  run_research_sync
 
   STATUS="prepared"
 
@@ -384,8 +362,8 @@ handle_smoke_check() {
   [[ -d "$RESULTS_ROOT" ]] || fail "Missing results directory at $RESULTS_ROOT"
   [[ -d "$WEIGHTS_ROOT" ]] || fail "Missing weights directory at $WEIGHTS_ROOT"
 
-  log "Running fungal-cv-qdrant smoke command"
-  run_fungal_smoke_command
+  log "Running research smoke command"
+  run_research_smoke_command
 
   STATUS="validated"
   log "Workspace smoke-check passed"
@@ -438,12 +416,11 @@ handle_recover() {
   validate_prerequisites || exit 1
 
   verify_repo_layout
-  repair_submodules
   ensure_workspace_layout
 
-  if [[ ! -d "${FUNGAL_DIR}/.venv" ]]; then
-    warn "fungal-cv-qdrant virtual environment is missing; re-running uv sync"
-    run_fungal_sync
+  if [[ ! -d "${RESEARCH_DIR}/.venv" ]]; then
+    warn "research virtual environment is missing; re-running uv sync"
+    run_research_sync
   fi
 
   if [[ -n "$instance_id" ]]; then
@@ -472,7 +449,7 @@ handle_recover() {
   [[ -d "$DATASET_ROOT" ]] || fail "Missing Dataset directory at $DATASET_ROOT"
   [[ -d "$RESULTS_ROOT" ]] || fail "Missing results directory at $RESULTS_ROOT"
   [[ -d "$WEIGHTS_ROOT" ]] || fail "Missing weights directory at $WEIGHTS_ROOT"
-  run_fungal_smoke_command
+  run_research_smoke_command
 
   STATUS="validated"
   log "Recovery validation passed"

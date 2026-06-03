@@ -3,7 +3,7 @@ import { execSync } from "child_process"
 
 export default tool({
   description:
-    "Run experiment package validation checks (ruff, mypy, pytest) for one or more experiment packages inside repos/fungal-cv-qdrant. Returns pass/fail summary grouped by check type.",
+    "Run experiment package validation checks (ruff, mypy, pytest) for one or more experiment packages inside research. Returns pass/fail summary grouped by check type.",
   args: {
     experiments: tool.schema
       .array(tool.schema.string())
@@ -15,7 +15,7 @@ export default tool({
       .describe("Which checks to run"),
   },
   async execute(args, context) {
-    const cwd = `${context.worktree}/repos/fungal-cv-qdrant`
+    const cwd = `${context.worktree}/research`
     const lines: string[] = []
 
     function run(cmd: string): { ok: boolean; output: string } {

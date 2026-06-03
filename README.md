@@ -1,23 +1,21 @@
 # MycoAI Monorepo
 
-MycoAI is a monorepo that coordinates one experiment repository and two product
-repositories, plus shared datasets, results, and weights at the workspace root.
-The three git submodules now live under `repos/`.
+MycoAI coordinates one research experiment directory and two product directories,
+plus shared datasets, results, and weights at the workspace root.
 
 ## Repository Layout
 
 ```text
 /home/dat/dev/mycoai/
-├── repos/
-│   ├── fungal-cv-qdrant/           # Experiment + analysis code
-│   ├── mycoai_retrieval_backend/   # FastAPI retrieval backend
-│   └── mycoai_retrieval_frontend/  # React 19 + Vite frontend
-├── Dataset/                        # Shared datasets
-├── results/                        # Shared outputs, logs, reports
-├── weights/                        # Shared checkpoints
-├── species_weights.json            # Shared lookup artifact
-├── tools/                          # Shared workspace/bootstrap/sync tooling
-├── specs/                          # Spec-kit feature artifacts
+├── frontend/                        # React 19 + Vite frontend
+├── backend/                         # FastAPI retrieval backend
+├── research/                        # Experiment + analysis code
+├── Dataset/                         # Shared datasets
+├── results/                         # Shared outputs, logs, reports
+├── weights/                         # Shared checkpoints
+├── species_weights.json             # Shared lookup artifact
+├── tools/                           # Shared workspace/bootstrap/sync tooling
+├── specs/                           # Spec-kit feature artifacts
 ├── AGENTS.md
 ├── CLAUDE.md
 └── mise.toml
@@ -25,21 +23,18 @@ The three git submodules now live under `repos/`.
 
 ## Ownership
 
-- `repos/fungal-cv-qdrant/` owns experiment logic, reports, and artifact
-  generation.
-- `repos/mycoai_retrieval_backend/` owns backend APIs, indexing, and product-side
-  service behavior.
-- `repos/mycoai_retrieval_frontend/` owns scientist-facing UI behavior.
+- `research/` owns experiment logic, reports, and artifact generation.
+- `backend/` owns backend APIs, indexing, and product-side service behavior.
+- `frontend/` owns scientist-facing UI behavior.
 - `Dataset/`, `results/`, `weights/`, and `species_weights.json` are shared
   runtime artifacts, not shared code locations.
 
-Product repos may inspect experiment code for reference, but they must
+Product directories may inspect experiment code for reference, but they must
 reimplement behavior locally and must not import runtime code from
-`repos/fungal-cv-qdrant/`.
+`research/`.
 
 ## Prerequisites
 
-- `git` with submodule support
 - `mise`
 - `uv`
 - `pnpm`
@@ -53,59 +48,49 @@ mise install
 
 ## Initial Setup
 
-For a fresh clone or a new git worktree, run the init flow before feature work:
-
 ```bash
-git submodule update --init --recursive
-git fetch origin
-mise trust
-uv --directory repos/mycoai_retrieval_backend sync --all-groups
-pnpm --dir repos/mycoai_retrieval_frontend install
-uv --directory repos/fungal-cv-qdrant sync
-```
-
-If you are on `main`, also fast-forward it:
-
-```bash
-git pull --ff-only origin main
+mise install
+uv --directory backend sync --all-groups
+pnpm --dir frontend install
+uv --directory research sync
 ```
 
 If these files exist and their `.env` counterparts do not, copy them manually
 before starting work:
 
-- `repos/mycoai_retrieval_backend/.env.example`
-- `repos/mycoai_retrieval_frontend/.env.example`
+- `backend/.env.example`
+- `frontend/.env.example`
 - `.env.example`
 
 Enter credentials manually after copying.
 
 ## Common Commands
 
-### Experiment repo
+### Research
 
 ```bash
-uv --directory repos/fungal-cv-qdrant sync
-uv --directory repos/fungal-cv-qdrant run python src/prepare.py --experiment threshold
-uv --directory repos/fungal-cv-qdrant run python src/run.py --experiment-list
+uv --directory research sync
+uv --directory research run python src/prepare.py --experiment threshold
+uv --directory research run python src/run.py --experiment-list
 ```
 
-### Backend repo
+### Backend
 
 ```bash
-uv --directory repos/mycoai_retrieval_backend sync --all-groups
-uv --directory repos/mycoai_retrieval_backend run ruff check .
-uv --directory repos/mycoai_retrieval_backend run ruff format --check .
-uv --directory repos/mycoai_retrieval_backend run mypy src
-uv --directory repos/mycoai_retrieval_backend run pytest
+uv --directory backend sync --all-groups
+uv --directory backend run ruff check .
+uv --directory backend run ruff format --check .
+uv --directory backend run mypy src
+uv --directory backend run pytest
 ```
 
-### Frontend repo
+### Frontend
 
 ```bash
-pnpm --dir repos/mycoai_retrieval_frontend install
-pnpm --dir repos/mycoai_retrieval_frontend lint
-pnpm --dir repos/mycoai_retrieval_frontend typecheck
-pnpm --dir repos/mycoai_retrieval_frontend build
+pnpm --dir frontend install
+pnpm --dir frontend lint
+pnpm --dir frontend typecheck
+pnpm --dir frontend build
 ```
 
 ## Dataset Structure
@@ -200,8 +185,8 @@ bash tools/workspace_bootstrap.sh recover \
   --host <new-host> --port <new-port>
 ```
 
-The recovery command re-validates the workspace, repairs submodules, re-syncs
-missing venvs, and prints an updated connection descriptor for VS Code.
+The recovery command re-validates the workspace, re-syncs dependencies, and
+prints an updated connection descriptor for VS Code.
 
 ### Workspace Bootstrap Script Reference
 
@@ -235,17 +220,17 @@ Setup is complete when all of the following are true:
 ## Path Conventions
 
 - Unqualified `src/`, `docs/`, `report/`, and `pyproject.toml` references mean
-  `repos/fungal-cv-qdrant/` unless another repo is named explicitly.
+  `research/` unless another directory is named explicitly.
 - Product-side features that depend on experiment outputs must name the producer
   command, consumed artifact, and downstream consumer in spec, plan, and task
   artifacts.
 - The autoresearch branch naming and staircase-chart rules apply only to
-  `repos/fungal-cv-qdrant/` experiment work.
+  `research/` experiment work.
 
 ## Notes
 
-- `repos/fungal-cv-qdrant/src/config.py` auto-detects the monorepo root when the
-  submodule lives under `repos/`; `MYCOAI_ROOT` overrides auto-detection.
+- `research/src/config.py` auto-detects the monorepo root; `MYCOAI_ROOT` overrides
+  auto-detection.
 - `DATASET_ROOT` env var lets shared dataset live outside the monorepo (e.g.
   external SSD, Vast.ai volume); folder structure must match the canonical layout.
 - Shared remote-workspace bootstrap and dataset sync entrypoints live in

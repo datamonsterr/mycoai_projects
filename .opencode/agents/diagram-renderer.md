@@ -8,7 +8,7 @@ permission:
   edit: allow
   bash:
     "*": ask
-    "uv --directory repos/fungal-cv-qdrant *": allow
+    "uv --directory research *": allow
 ---
 
 You create diagrams for reports and docs.
