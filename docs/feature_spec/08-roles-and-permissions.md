@@ -117,4 +117,4 @@ Two roles control access: **User** and **Data Owner**. Authentication is require
 ## Dependencies
 
 - All other feature specs (enforces access boundaries)
-- `../SRS.md` UC-001 and UC-006
+- `../SRS.md` UC-AUTH-01 and UC-AUTH-02

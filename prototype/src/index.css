@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Exo:wght@300;400;500;600;700&family=Roboto+Mono:wght@300;400;500;700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-primary: #1E40AF;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #3B82F6;
+  --color-accent: #D97706;
+  --color-accent-foreground: #FFFFFF;
+  --color-background: #F8FAFC;
+  --color-foreground: #1E3A8A;
+  --color-muted: #E9EEF6;
+  --color-muted-foreground: #475569;
+  --color-border: #DBEAFE;
+  --color-destructive: #DC2626;
+  --color-destructive-foreground: #FFFFFF;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1E3A8A;
+  --color-ring: #1E40AF;
+  --color-success: #16A34A;
+  --color-success-foreground: #FFFFFF;
+  --color-warning: #D97706;
+  --color-warning-foreground: #FFFFFF;
+  --font-heading: 'Exo', sans-serif;
+  --font-mono: 'Roboto Mono', monospace;
+  --radius: 0.5rem;
+}
+
+body {
+  font-family: 'Roboto Mono', monospace;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Exo', sans-serif;
+}

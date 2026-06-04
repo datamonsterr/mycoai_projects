@@ -1,0 +1,267 @@
+# =============================================================================
+# MycoAI Monorepo — Docker Compose (production base)
+# =============================================================================
+# Start production:
+#   docker compose up -d
+#
+# Start development (applies dev overrides):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Set COMPOSE_FILE in .env for convenience:
+#   echo 'COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml' >> .env
+#
+# Run migrations (either env):
+#   docker compose run --rm --profile migrate db-migrate
+#
+# mise shortcuts:
+#   mise run compose-dev-up      # dev stack
+#   mise run compose-prod-up     # prod stack
+#   mise run compose-migrate     # alembic upgrade head
+# =============================================================================
+
+name: mycoai
+
+services:
+  # ── Postgres ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: mycoai-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mycoai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mycoai}
+      POSTGRES_DB: ${POSTGRES_DB:-mycoai}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mycoai} -d ${POSTGRES_DB:-mycoai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  # ── Redis (Celery broker + result backend) ─────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: mycoai-redis
+    restart: always
+    command: >
+      redis-server
+      --save 60 1
+      --loglevel warning
+      ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # ── Qdrant — Product (backend vector store) ────────────────────────────────
+  qdrant-product:
+    image: qdrant/qdrant:latest
+    container_name: mycoai-qdrant-product
+    restart: always
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    volumes:
+      - qdrant_product_data:/qdrant/storage
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/6333'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ── Qdrant — Research (experiment vector store) ────────────────────────────
+  qdrant-research:
+    image: qdrant/qdrant:latest
+    container_name: mycoai-qdrant-research
+    restart: always
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    volumes:
+      - ./.qdrant_storage:/qdrant/storage
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 5 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/6333'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ── Backend (FastAPI + uvicorn) ────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      target: prod
+    container_name: mycoai-backend
+    restart: always
+    environment:
+      MYCOAI_BACKEND_ENVIRONMENT: production
+      MYCOAI_BACKEND_HOST: "0.0.0.0"
+      MYCOAI_BACKEND_PORT: "8000"
+      MYCOAI_BACKEND_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mycoai}:${POSTGRES_PASSWORD:-mycoai}@postgres:5432/${POSTGRES_DB:-mycoai}
+      MYCOAI_BACKEND_QDRANT_HOST: qdrant-product
+      MYCOAI_BACKEND_QDRANT_PORT: "6333"
+      MYCOAI_BACKEND_CELERY_BROKER_URL: redis://redis:6379/0
+      MYCOAI_BACKEND_CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MYCOAI_BACKEND_JWT_SECRET_KEY: ${MYCOAI_BACKEND_JWT_SECRET_KEY:-dev-secret-not-for-production}
+      MYCOAI_QDRANT_HOST: qdrant-product
+      MYCOAI_QDRANT_PORT: "6333"
+      MYCOAI_QDRANT_GRPC_PORT: "6334"
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads_data:/app/Dataset/uploads
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant-product:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  # ── DB Migrations (run-once) ───────────────────────────────────────────────
+  db-migrate:
+    build:
+      context: ./backend
+      target: prod
+    container_name: mycoai-db-migrate
+    command: >
+      sh -c "uv run alembic upgrade head"
+    environment:
+      MYCOAI_BACKEND_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mycoai}:${POSTGRES_PASSWORD:-mycoai}@postgres:5432/${POSTGRES_DB:-mycoai}
+    volumes:
+      - ./backend/migrations:/app/migrations:ro
+      - ./backend/alembic.ini:/app/alembic.ini:ro
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - migrate
+
+  # ── Celery Worker (async tasks) ────────────────────────────────────────────
+  celery-worker:
+    build:
+      context: ./backend
+      target: prod
+    container_name: mycoai-celery-worker
+    restart: always
+    command: >
+      uv run celery -A mycoai_retrieval_backend.celery_app worker
+      --loglevel=info
+      --concurrency=2
+    environment:
+      MYCOAI_BACKEND_ENVIRONMENT: production
+      MYCOAI_BACKEND_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mycoai}:${POSTGRES_PASSWORD:-mycoai}@postgres:5432/${POSTGRES_DB:-mycoai}
+      MYCOAI_BACKEND_CELERY_BROKER_URL: redis://redis:6379/0
+      MYCOAI_BACKEND_CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MYCOAI_BACKEND_QDRANT_HOST: qdrant-product
+      MYCOAI_BACKEND_QDRANT_PORT: "6333"
+      MYCOAI_QDRANT_HOST: qdrant-product
+      MYCOAI_QDRANT_PORT: "6333"
+      MYCOAI_QDRANT_GRPC_PORT: "6334"
+    volumes:
+      - uploads_data:/app/Dataset/uploads
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  # ── Frontend (nginx serving built assets) ──────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+    container_name: mycoai-frontend
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - backend
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: mycoai_postgres_data
+  redis_data:
+    name: mycoai_redis_data
+  qdrant_product_data:
+    name: mycoai_qdrant_product_data
+  uploads_data:
+    name: mycoai_uploads_data
