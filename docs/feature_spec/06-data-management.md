@@ -13,7 +13,7 @@ Data Owners manage reference dataset records and managed metadata. Dataset recor
 **So that I** can expand retrieval coverage
 
 **Behavior:**
-- Index New Data reuses upload, auto-segmentation, editable bounding boxes, and review from the retrieval preparation workflow
+- Index New Data reuses upload, auto-segmentation (UC-PREP-01 Prepare Segmented Images), editable bounding boxes, and review from the retrieval preparation workflow
 - Index New Data does not include Retrieve Species because prediction is bypassed
 - Required metadata: Species, strain, Media
 - Segments are indexed into Qdrant with known Species metadata
@@ -160,4 +160,4 @@ Data Owners manage reference dataset records and managed metadata. Dataset recor
 - 05-feedback-pipeline.md (accepted feedback feeds pending data/corrections)
 - 07-training-observation.md (Qdrant re-index and external retraining warning)
 - 08-roles-and-permissions.md (Data Owner access)
-- ../SRS.md UC-004, UC-005, UC-007
+- ../SRS.md UC-DATA-01, UC-META-01, UC-DATA-02

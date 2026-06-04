@@ -74,4 +74,4 @@ _Avoid_: sync status, dirty flag
 ## Flagged ambiguities
 
 - "Normal User" was used in existing docs, while the SRS request uses "User" — resolved: **User** is canonical.
-- "Index New Data includes Retrieval" was proposed, but rejected because indexing uses the same preparation workflow while bypassing species prediction; resolved: **Index New Data** includes **Prepare Segmented Images** and **Submit Reference Dataset**, not **Retrieve Species**.
+- "Index New Data includes Retrieval" was proposed, but rejected because indexing uses the same preparation workflow while bypassing species prediction; resolved: **Index New Data** includes **Prepare Segmented Images (UC-PREP-01)** and **Submit Reference Dataset**, not **Retrieve Species**.

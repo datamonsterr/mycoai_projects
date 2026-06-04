@@ -129,4 +129,4 @@ Deep feature-extractor retraining changes model weights. It is performed outside
 - 05-feedback-pipeline.md (accepted feedback/contributions)
 - 06-data-management.md (data changes requiring re-index)
 - 08-roles-and-permissions.md (Data Owner permissions)
-- ../SRS.md UC-008
+- ../SRS.md UC-MODEL-01

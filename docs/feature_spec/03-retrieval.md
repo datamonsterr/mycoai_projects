@@ -19,7 +19,7 @@ Given one or more segmented colony images from one strain, retrieve likely Speci
 - Pipeline:
   1. Upload single image or batch folder
   2. Download Batch Template Folder when needed
-  3. Auto segment colonies with AI
+  3. Auto segment colonies with AI (see UC-PREP-01 Prepare Segmented Images)
   4. Allow bounding-box edits before processing
   5. Feature extraction
   6. Qdrant KNN search
@@ -139,4 +139,4 @@ Given one or more segmented colony images from one strain, retrieve likely Speci
 - 02-segmentation.md (segmented colony crops)
 - 04-visualization.md (ranked results display)
 - 05-feedback-pipeline.md (feedback/contribution from results)
-- ../SRS.md UC-002
+- ../SRS.md UC-RETRIEVE-01

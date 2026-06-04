@@ -1,0 +1,41 @@
+# Python / uv
+__pycache__
+*.py[cod]
+*.egg-info
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Secrets
+.env
+.env.*
+
+# Data (mounted at runtime)
+Dataset
+
+# Docs
+*.md
+!README.md
+
+# Test artifacts
+coverage
+htmlcov
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp

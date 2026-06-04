@@ -1,0 +1,98 @@
+# =============================================================================
+# MycoAI Monorepo — Development Overrides
+# =============================================================================
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Or set COMPOSE_FILE in .env:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
+#   docker compose up -d
+#
+# Key differences from production base:
+#   - Exposed ports on all infrastructure services
+#   - Dev build targets (hot reload, HMR)
+#   - Source-code volume mounts (changes reflected instantly)
+#   - No resource limits
+#   - Lenient restart policy
+#   - Development JWT secret default
+# =============================================================================
+
+services:
+  # ── Postgres ───────────────────────────────────────────────────────────────
+  postgres:
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/migrations:ro
+    deploy: !reset {}
+
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    deploy: !reset {}
+
+  # ── Qdrant Product ─────────────────────────────────────────────────────────
+  qdrant-product:
+    ports:
+      - "6335:6333"
+      - "6336:6334"
+    restart: unless-stopped
+    deploy: !reset {}
+
+  # ── Qdrant Research ────────────────────────────────────────────────────────
+  qdrant-research:
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    restart: unless-stopped
+    deploy: !reset {}
+
+  # ── Backend ────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      target: dev
+    restart: unless-stopped
+    environment:
+      MYCOAI_BACKEND_ENVIRONMENT: development
+      MYCOAI_BACKEND_JWT_SECRET_KEY: ${MYCOAI_BACKEND_JWT_SECRET_KEY:-dev-secret-not-for-production}
+    volumes:
+      - ./backend/src:/app/src:ro
+      - uploads_data:/app/Dataset/uploads
+    deploy: !reset {}
+
+  # ── DB Migrations ──────────────────────────────────────────────────────────
+  db-migrate:
+    build:
+      target: dev
+
+  # ── Celery Worker ──────────────────────────────────────────────────────────
+  celery-worker:
+    build:
+      target: dev
+    restart: unless-stopped
+    environment:
+      MYCOAI_BACKEND_ENVIRONMENT: development
+    volumes:
+      - ./backend/src:/app/src:ro
+      - uploads_data:/app/Dataset/uploads
+    deploy: !reset {}
+
+  # ── Frontend ───────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      target: dev
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+      - ./frontend/index.html:/app/index.html:ro
+      - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+    deploy: !reset {}

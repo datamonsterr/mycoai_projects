@@ -112,4 +112,4 @@ Users can submit feedback from retrieval results. Feedback may report an incorre
 - 06-data-management.md (database update on accept)
 - 07-training-observation.md (re-index/retraining warning)
 - 08-roles-and-permissions.md (Data Owner permissions)
-- ../SRS.md UC-003
+- ../SRS.md UC-FEEDBACK-01

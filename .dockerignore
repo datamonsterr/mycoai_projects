@@ -1,0 +1,60 @@
+# Python / uv
+__pycache__
+*.py[cod]
+*.egg-info
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+
+# Node / pnpm
+node_modules
+*.tsbuildinfo
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# Secrets
+.env
+.env.*
+
+# Data (mounted at runtime, not copied into image)
+Dataset
+results
+weights
+.qdrant_storage
+
+# Docs & config
+*.md
+LICENSE
+.agents
+.claude
+.worktrees
+skills-lock.json
+species_weights.json
+
+# Frontend build output
+dist
+build
+
+# Test & type artifacts
+coverage
+htmlcov
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
