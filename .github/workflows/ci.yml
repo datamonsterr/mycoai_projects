@@ -10,13 +10,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend:
+  research:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,23 +25,49 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        working-directory: repos/mycoai_retrieval_backend
+        working-directory: research
+        run: uv sync
+
+      - name: Lint
+        working-directory: research
+        run: uv run ruff check src/
+
+      - name: Tests
+        working-directory: research
+        run: uv run pytest tests/ -q
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        working-directory: backend
         run: uv sync --all-groups
 
       - name: Lint
-        working-directory: repos/mycoai_retrieval_backend
+        working-directory: backend
         run: uv run ruff check .
 
       - name: Format check
-        working-directory: repos/mycoai_retrieval_backend
+        working-directory: backend
         run: uv run ruff format --check .
 
       - name: Type check
-        working-directory: repos/mycoai_retrieval_backend
+        working-directory: backend
         run: uv run mypy src
 
       - name: Tests
-        working-directory: repos/mycoai_retrieval_backend
+        working-directory: backend
         run: uv run pytest
 
   frontend:
@@ -51,8 +75,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -64,50 +86,36 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        working-directory: repos/mycoai_retrieval_frontend
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Format check
-        working-directory: repos/mycoai_retrieval_frontend
-        run: pnpm exec prettier --check index.html components.json "src/**/*.{ts,tsx,css}" "*.config.{js,ts}" "tsconfig*.json"
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
-        working-directory: repos/mycoai_retrieval_frontend
-        run: pnpm run --if-present lint
+        working-directory: frontend
+        run: pnpm run lint
 
       - name: Type check
-        working-directory: repos/mycoai_retrieval_frontend
-        run: pnpm run --if-present typecheck
-
-      - name: Unit tests
-        working-directory: repos/mycoai_retrieval_frontend
-        run: pnpm run --if-present test
-
-      - name: Integration tests
-        working-directory: repos/mycoai_retrieval_frontend
-        run: pnpm run --if-present test:integration
-
-      - name: E2E tests
-        working-directory: repos/mycoai_retrieval_frontend
-        run: pnpm run --if-present test:e2e
+        working-directory: frontend
+        run: pnpm run typecheck
 
       - name: Build
-        working-directory: repos/mycoai_retrieval_frontend
-        run: pnpm run --if-present build
+        working-directory: frontend
+        run: pnpm run build
 
   docker-dry-run:
     runs-on: ubuntu-latest
-    needs: [backend, frontend]
+    needs: [research, backend, frontend]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
-      - name: Validate fungal Qdrant compose file
-        run: docker compose -f repos/fungal-cv-qdrant/docker-compose.yml config
+      - name: Validate compose files
+        run: |
+          docker compose -f docker-compose.yml config
+          docker compose -f docker-compose.dev.yml config
 
       - name: Deployment image dry-run
         run: |
