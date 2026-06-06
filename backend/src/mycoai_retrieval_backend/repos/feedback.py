@@ -138,7 +138,7 @@ class FeedbackRepository:
                 reviewed_at=now,
             )
         )
-        result = await db.execute(stmt)
+        await db.execute(stmt)
 
         if data.status == "accepted":
             feedbacks = (
@@ -174,4 +174,4 @@ class FeedbackRepository:
                 )
 
         await db.commit()
-        return result.rowcount
+        return len(feedback_ids)
