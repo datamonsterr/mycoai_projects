@@ -1,3 +1,4 @@
+import hashlib
 import uuid
 from datetime import UTC, datetime
 
@@ -5,6 +6,10 @@ import bcrypt
 import jwt
 
 from .config import get_settings
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def hash_password(password: str) -> str:
@@ -48,6 +53,6 @@ def decode_access_token(token: str) -> dict:
 
 
 def require_role(user: object, role: str) -> None:
-    roles = getattr(user, "roles", ())
-    if role not in roles:
+    user_role = getattr(user, "role", None)
+    if user_role != role:
         raise PermissionError(f"Missing required role: {role}")

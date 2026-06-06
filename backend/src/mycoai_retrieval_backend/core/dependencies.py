@@ -1,16 +1,21 @@
 from typing import Annotated
+from uuid import UUID
 
 import jwt
 from fastapi import Depends, Header
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..services.stores import get_user_store
+from ..database import get_db
+from ..models import User
 from .exceptions import AuthenticationError, AuthorizationError
 from .security import decode_access_token
 
 
 async def get_current_user(
     authorization: Annotated[str, Header(description="Bearer <token>")] = "",
-) -> dict:
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+) -> User:
     if not authorization.startswith("Bearer "):
         raise AuthenticationError("Missing or invalid Authorization header")
     token = authorization.removeprefix("Bearer ")
@@ -20,22 +25,41 @@ async def get_current_user(
         raise AuthenticationError("Invalid or expired token") from err
     if payload.get("type") != "access":
         raise AuthenticationError("Token is not an access token")
-    user_id = payload["sub"]
-    store = get_user_store()
-    user = store.get(user_id)
-    if not user or not user.get("is_active", True):
+    user_id = UUID(payload["sub"])
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
         raise AuthenticationError("User not found or inactive")
     return user
 
 
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
 def require_role(required_role: str):
     async def role_checker(
-        user: Annotated[dict, Depends(get_current_user)],
-    ) -> dict:
-        if user.get("role") != required_role:
+        user: Annotated[User, Depends(get_current_user)],
+    ) -> User:
+        if user.role != required_role:
             raise AuthorizationError(
-                f"Role '{required_role}' required, got '{user.get('role')}'"
+                f"Role '{required_role}' required, got '{user.role}'"
             )
         return user
 
     return role_checker
+
+
+def require_owner():
+    async def owner_checker(
+        user: Annotated[User, Depends(get_current_user)],
+    ) -> User:
+        if user.role != "owner":
+            raise AuthorizationError(
+                "Role 'owner' required"
+            )
+        return user
+
+    return owner_checker
+
+
+CurrentOwner = Annotated[User, Depends(require_owner())]

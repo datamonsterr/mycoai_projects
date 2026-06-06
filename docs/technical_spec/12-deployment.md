@@ -74,6 +74,10 @@ Choices:
         build: backend
         command: celery -A mycoai_retrieval_backend.tasks worker
         depends_on: [redis, postgres]
+      celery-beat:
+        build: backend
+        command: celery -A mycoai_retrieval_backend.tasks beat
+        depends_on: [redis, postgres]
       frontend:
         build: frontend
         ports: ["80:80"]
@@ -201,7 +205,14 @@ Choices:
 
 Choices:
 - A) **Healthcheck endpoints + Docker health checks + logs** — minimal
-  but sufficient for MVP. Alert on /health failure. **(Recommended)**
+  but sufficient for MVP. Alert on /health failure.
+  **(Recommended)**
+
+Healthcheck endpoints:
+- `GET /health` — backend liveness (includes DB, Redis, Qdrant connectivity)
+- `GET /api/v1/index/status` — Qdrant index freshness
+- Redis: `redis-cli PING` via Docker healthcheck
+- Celery: worker heartbeat via broker connection
 - B) Prometheus + Grafana — production-grade, more setup
 - C) Sentry for error tracking + UptimeRobot for availability
 - D) None — fix when broken

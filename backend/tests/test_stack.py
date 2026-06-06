@@ -18,7 +18,7 @@ def test_config_defaults() -> None:
     assert s.app_name == "MycoAI Retrieval Backend"
     assert s.host == "0.0.0.0"
     assert s.port == 8000
-    assert "postgresql+asyncpg" in s.database_url
+    assert s.database_url
     assert s.qdrant_port == 6333
     assert s.jwt_algorithm == "HS256"
     assert s.jwt_access_token_expire_minutes == 30

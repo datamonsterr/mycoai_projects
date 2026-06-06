@@ -10,6 +10,7 @@ from mycoai_retrieval_backend.models import (
     AuditLog,
     Feedback,
     Image,
+    Media,
     QdrantIndexState,
     RetrievalJob,
     RetrievalResult,
@@ -31,6 +32,7 @@ async def test_database_schema_creates_all_specified_tables(
             "audit_log",
             "feedback",
             "images",
+            "media",
             "qdrant_index_state",
             "refresh_tokens",
             "retrieval_jobs",
@@ -73,14 +75,20 @@ async def test_segment_links_to_qdrant_index_state(
         password_hash="hash",
         name="User",
     )
-    session.add_all([species, user])
+    media = Media(name="MEA", description=None)
+    session.add_all([species, user, media])
     await session.flush()
 
     strain = Strain(name="st1", species_id=species.id, source="user_upload")
     session.add(strain)
     await session.flush()
 
-    image = Image(strain_id=strain.id, media="MEA", file_path="raw/img.jpg")
+    image = Image(
+        strain_id=strain.id,
+        species_id=species.id,
+        media_id=media.id,
+        file_path="raw/img.jpg",
+    )
     session.add(image)
     await session.flush()
 

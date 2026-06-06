@@ -1,150 +1,118 @@
-from fastapi import APIRouter, Depends
+from __future__ import annotations
 
-from ..core.dependencies import get_current_user, require_role
+import uuid
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..core.dependencies import get_current_user, require_owner
+from ..core.exceptions import NotFoundError
 from ..core.pagination import PageParams, PaginatedResponse
-from ..schemas import (
+from ..database import get_db
+from ..models import Feedback, User
+from ..repos.feedback import FeedbackRepository
+from ..schemas.feedback import (
     FeedbackBatchRequest,
-    FeedbackCreateRequest,
-    FeedbackItem,
-    FeedbackUpdateRequest,
+    FeedbackCreate,
+    FeedbackResponse,
+    FeedbackUpdate,
 )
-from ..services.stores import as_paginated, get_feedback_store, new_id, utcnow
 
 router = APIRouter()
 
 
-@router.post("", response_model=FeedbackItem, status_code=201)
-def submit_feedback(
-    data: FeedbackCreateRequest,
-    user: dict = Depends(get_current_user),
-) -> dict:
-    item_id = new_id()
-    item = {
-        "id": item_id,
-        "submitter_id": user["id"],
-        "reviewer_id": None,
-        "source": data.source,
-        "query_strain": data.query_strain,
-        "result_id": data.result_id,
-        "image_id": data.image_id,
-        "predicted_species": data.predicted_species,
-        "suggested_species": data.suggested_species,
-        "description": data.description,
-        "status": "pending",
-        "review_note": None,
-        "submitted_at": utcnow(),
-        "reviewed_at": None,
-    }
-    get_feedback_store().put(item)
-    return {
-        "id": item_id,
-        "submitter_id": item["submitter_id"],
-        "reviewer_id": None,
-        "source": item["source"],
-        "status": "pending",
-        "suggested_species": item["suggested_species"],
-        "description": item["description"],
-    }
+def _feedback_to_response(f: Feedback) -> FeedbackResponse:
+    return FeedbackResponse(
+        id=str(f.id),
+        submitter_id=str(f.submitter_id),
+        reviewer_id=str(f.reviewer_id) if f.reviewer_id else None,
+        source=f.source,
+        feedback_type=f.feedback_type,
+        query_strain=f.query_strain,
+        result_id=str(f.result_id) if f.result_id else None,
+        predicted_species=f.predicted_species,
+        suggested_species=f.suggested_species,
+        description=f.description,
+        status=f.status,
+        review_note=f.review_note,
+        submitted_at=f.submitted_at,
+        reviewed_at=f.reviewed_at,
+    )
 
 
-@router.get("", response_model=PaginatedResponse[FeedbackItem])
-def list_my_feedback(
+@router.post("", response_model=FeedbackResponse, status_code=201)
+async def submit_feedback(
+    data: FeedbackCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> FeedbackResponse:
+    feedback = await FeedbackRepository.create(db, user.id, data)
+    return _feedback_to_response(feedback)
+
+
+@router.get("", response_model=PaginatedResponse[FeedbackResponse])
+async def list_my_feedback(
     params: PageParams = Depends(),
-    user: dict = Depends(get_current_user),
+    status: str | None = Query(None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
-    store = get_feedback_store()
-    items = [f for f in store.list() if f["submitter_id"] == user["id"]]
-    result = [
-        {
-            "id": f["id"],
-            "submitter_id": f["submitter_id"],
-            "reviewer_id": f.get("reviewer_id"),
-            "source": f["source"],
-            "status": f["status"],
-            "suggested_species": f.get("suggested_species", ""),
-            "description": f.get("description", ""),
-        }
-        for f in items
-    ]
-    page_items, total = as_paginated(result, params.offset, params.limit)
+    items = await FeedbackRepository.list_by_user(
+        db, user.id, status=status, offset=params.offset, limit=params.limit
+    )
+    total = await FeedbackRepository.count(db, status=status, user_id=user.id)
     return {
-        "items": page_items,
+        "items": [_feedback_to_response(f) for f in items],
         "total": total,
         "offset": params.offset,
         "limit": params.limit,
     }
 
 
-@router.get("/inbox", response_model=PaginatedResponse[FeedbackItem])
-def feedback_inbox(
+@router.get("/inbox", response_model=PaginatedResponse[FeedbackResponse])
+async def feedback_inbox(
     params: PageParams = Depends(),
-    user: dict = Depends(require_role("owner")),
+    status: str | None = Query(None),
+    user: User = Depends(require_owner()),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
-    store = get_feedback_store()
-    items = [f for f in store.list() if f["status"] == "pending"]
-    result = [
-        {
-            "id": f["id"],
-            "submitter_id": f["submitter_id"],
-            "reviewer_id": f.get("reviewer_id"),
-            "source": f["source"],
-            "status": f["status"],
-            "suggested_species": f.get("suggested_species", ""),
-            "description": f.get("description", ""),
-        }
-        for f in items
-    ]
-    page_items, total = as_paginated(result, params.offset, params.limit)
+    items = await FeedbackRepository.list_inbox(
+        db, status=status or "pending", offset=params.offset, limit=params.limit
+    )
+    total = await FeedbackRepository.count(db, status=status or "pending")
     return {
-        "items": page_items,
+        "items": [_feedback_to_response(f) for f in items],
         "total": total,
         "offset": params.offset,
         "limit": params.limit,
     }
 
 
-@router.patch("/{feedback_id}", response_model=FeedbackItem)
-def update_feedback(
+@router.patch("/{feedback_id}", response_model=FeedbackResponse)
+async def review_feedback(
     feedback_id: str,
-    data: FeedbackUpdateRequest,
-    user: dict = Depends(require_role("owner")),
-) -> dict:
-    from ..core.exceptions import NotFoundError
-
-    store = get_feedback_store()
-    f = store.get(feedback_id)
-    if not f:
+    data: FeedbackUpdate,
+    user: User = Depends(require_owner()),
+    db: AsyncSession = Depends(get_db),
+) -> FeedbackResponse:
+    feedback = await FeedbackRepository.update_status(
+        db, uuid.UUID(feedback_id), data, user.id
+    )
+    if not feedback:
         raise NotFoundError(f"Feedback {feedback_id} not found")
-    f["status"] = data.status
-    f["reviewer_id"] = user["id"]
-    if data.review_note is not None:
-        f["review_note"] = data.review_note
-    f["reviewed_at"] = utcnow()
-    store.put(f)
-    return {
-        "id": f["id"],
-        "submitter_id": f["submitter_id"],
-        "reviewer_id": f.get("reviewer_id"),
-        "source": f["source"],
-        "status": f["status"],
-        "suggested_species": f.get("suggested_species", ""),
-        "description": f.get("description", ""),
-    }
+    return _feedback_to_response(feedback)
 
 
 @router.post("/batch", status_code=200)
-def batch_feedback(
+async def batch_review(
     data: FeedbackBatchRequest,
-    user: dict = Depends(require_role("owner")),
+    user: User = Depends(require_owner()),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
-    store = get_feedback_store()
-    updated = 0
-    for fid in data.ids:
-        f = store.get(fid)
-        if f:
-            f["status"] = data.status
-            f["reviewer_id"] = user["id"]
-            f["reviewed_at"] = utcnow()
-            store.put(f)
-            updated += 1
+    updated = await FeedbackRepository.bulk_update_status(
+        db,
+        [uuid.UUID(fid) for fid in data.feedback_ids],
+        FeedbackUpdate(status=data.status, review_note=data.review_note),
+        user.id,
+    )
     return {"updated": updated}

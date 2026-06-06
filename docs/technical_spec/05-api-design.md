@@ -76,6 +76,16 @@ Convention:
 | PATCH | `/api/v1/species/{id}` | Owner | Update species (rename) |
 | DELETE | `/api/v1/species/{id}` | Owner | Archive species |
 
+### Media
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/media` | User | List media (filtered) |
+| POST | `/api/v1/media` | Owner | Create media |
+| GET | `/api/v1/media/{id}` | User | Media detail + count |
+| PATCH | `/api/v1/media/{id}` | Owner | Update media |
+| DELETE | `/api/v1/media/{id}` | Owner | Archive media |
+
 ### Strains
 
 | Method | Path | Auth | Description |
@@ -124,6 +134,22 @@ Convention:
 | GET | `/api/v1/admin/users` | Owner | List users |
 | PATCH | `/api/v1/admin/users/{id}/role` | Owner | Change user role |
 | GET | `/api/v1/admin/audit-log` | Owner | Audit trail |
+
+### Index
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/v1/index/reindex` | Owner | Trigger Qdrant re-index |
+| GET | `/api/v1/index/status` | Owner | Index job status |
+
+### Candidate Models
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/v1/models/candidates` | Owner | Upload candidate model |
+| POST | `/api/v1/models/candidates/{id}/evaluate` | Owner | Run evaluation |
+| POST | `/api/v1/models/candidates/{id}/promote` | Owner | Promote to production |
+| POST | `/api/v1/models/candidates/{id}/reject` | Owner | Reject candidate |
 
 ---
 
@@ -193,6 +219,23 @@ Response (200):
       ]
     }
 
+### PATCH /api/v1/admin/users/{id}/role
+
+Request:
+
+    {
+      "role": "owner"
+    }
+
+Response (200):
+
+    {
+      "user_id": "uuid",
+      "email": "user@example.com",
+      "role": "owner",
+      "updated_at": "2026-06-05T12:00:00Z"
+    }
+
 ---
 
 ## Pagination
@@ -229,16 +272,32 @@ Standard query parameter conventions:
 
 ## Authentication Flow
 
+    Register:
+    POST /api/v1/auth/register
+    Body: { email, password, name }
+    -> { access_token, refresh_token, token_type: "bearer", expires_in: 3600 }
+
+    Login:
     POST /api/v1/auth/login
+    Body: { email, password }
     -> { access_token, refresh_token, token_type: "bearer", expires_in: 3600 }
 
     Subsequent requests:
     Authorization: Bearer <access_token>
 
-    On 401:
+    On 401 (expired access token):
     POST /api/v1/auth/refresh
     Body: { refresh_token }
     -> { access_token, expires_in: 3600 }
+
+    On refresh failure (expired refresh token):
+    Client must re-authenticate via login.
+
+    Logout:
+    POST /api/v1/auth/logout
+    Header: Authorization: Bearer <access_token>
+    -> Revokes refresh token, access token invalidated
+    -> 204 No Content
 
 ---
 

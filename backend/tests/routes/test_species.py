@@ -1,13 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from mycoai_retrieval_backend.app import app
-
-
-@pytest.fixture(name="client")
-def fixture_client() -> TestClient:
-    return TestClient(app)
-
 
 @pytest.fixture(name="user_headers")
 def fixture_user_headers(client: TestClient) -> dict[str, str]:
@@ -59,7 +52,9 @@ def test_create_species_requires_owner(
 def test_get_species_not_found(
     client: TestClient, user_headers: dict[str, str]
 ) -> None:
-    resp = client.get("/api/v1/species/nonexistent", headers=user_headers)
+    resp = client.get(
+        "/api/v1/species/00000000-0000-0000-0000-000000000000", headers=user_headers
+    )
     assert resp.status_code == 404
 
 

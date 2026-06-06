@@ -2,7 +2,14 @@
 
 ## Overview
 
-Design feedback submission, review, and application pipeline. Feedback flows from retrieval-result submissions through Data Owner review to database updates, pending reference data, or rejection. Users cannot submit feedback from reference dataset browsing.
+Design feedback submission, review, and application pipeline.
+
+**Use case reference**: UC-FEEDBACK-01 (extends UC-RETRIEVE-01).
+
+Feedback flows from retrieval-result submissions through Data Owner review to
+database updates, pending reference data, or rejection. Users cannot submit
+feedback from reference dataset browsing — feedback source is retrieval results
+(UC-RETRIEVE-01) only.
 
 ---
 

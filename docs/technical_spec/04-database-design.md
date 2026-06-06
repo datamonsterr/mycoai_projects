@@ -2,8 +2,9 @@
 
 ## Overview
 
-Design the relational database schema for species, strains, images, users,
-feedback, training jobs, and audit logging.
+Design the relational database schema for media, species, strains, images,
+users, feedback, retrieval jobs, index jobs, candidate models, and audit
+logging.
 
 ---
 
@@ -44,8 +45,8 @@ Choices:
 
 ### Taxonomy
 
-    species
-    -------
+    media
+    -----
     id              UUID PK
     name            VARCHAR(255) UNIQUE NOT NULL
     description     TEXT
@@ -54,8 +55,8 @@ Choices:
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
     archived_at     TIMESTAMPTZ
 
-    media
-    -----
+    species
+    -------
     id              UUID PK
     name            VARCHAR(255) UNIQUE NOT NULL
     description     TEXT
@@ -208,8 +209,8 @@ Choices:
     user_id         UUID FK -> users.id
     action          VARCHAR(50) NOT NULL    -- 'create_species', 'archive_strain',
                                             -- 'accept_feedback', etc.
-    entity_type     VARCHAR(50) NOT NULL    -- 'species', 'strain', 'image',
-                                            -- 'feedback', 'user'
+    entity_type     VARCHAR(50) NOT NULL    -- 'species', 'media', 'strain',
+                                            -- 'image', 'feedback', 'user'
     entity_id       UUID
     changes         JSONB                   -- {field: {old, new}}
     ip_address      INET
@@ -247,15 +248,20 @@ Choices:
 
 Choices:
 - A) **is_archived flag + archived_at timestamp** — simple queries,
-  restore is a flag flip **(Recommended)**
+  restore is a flag flip. Applied to species, media, and segments.
+  Images use data_update_status with an `archived` state.
+  **(Recommended)**
 - B) Separate archive tables — clean active tables, more complex queries
 - C) Move to separate schema — PostgreSQL schema-level isolation
 
 **[DECISION: Where to store Qdrant point IDs]**
 
 Choices:
-- A) **In segments table (qdrant_point_id)** — direct FK, single source
-  of truth **(Recommended)**
+- A) **In segments table (qdrant_point_id) and qdrant_index_state
+  table** — segments holds the live FK, qdrant_index_state tracks
+  collection/indexing metadata. Two-table approach gives operational
+  flexibility while keeping the segments row lightweight.
+  **(Recommended)**
 - B) Separate qdrant_index_state table — normalized, more flexible
 - C) In Qdrant payload only — no DB tracking, risk of drift
 

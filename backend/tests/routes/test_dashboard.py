@@ -1,13 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from mycoai_retrieval_backend.app import app
-
-
-@pytest.fixture(name="client")
-def fixture_client() -> TestClient:
-    return TestClient(app)
-
 
 @pytest.fixture(name="headers")
 def fixture_headers(client: TestClient) -> dict[str, str]:
@@ -23,19 +16,19 @@ def test_dashboard_stats(client: TestClient, headers: dict[str, str]) -> None:
     resp = client.get("/api/v1/dashboard/stats", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert "species_count" in data
-    assert "strains_count" in data
-    assert "images_count" in data
+    assert "total_species" in data
+    assert "total_strains" in data
+    assert "total_images" in data
 
 
 def test_chart_species(client: TestClient, headers: dict[str, str]) -> None:
-    resp = client.get("/api/v1/dashboard/charts/species", headers=headers)
+    resp = client.get("/api/v1/dashboard/charts/species-distribution", headers=headers)
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 
 
 def test_chart_media(client: TestClient, headers: dict[str, str]) -> None:
-    resp = client.get("/api/v1/dashboard/charts/media", headers=headers)
+    resp = client.get("/api/v1/dashboard/charts/media-distribution", headers=headers)
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 

@@ -90,6 +90,9 @@ Choices:
 | `user` | User — can upload, retrieve Species, download batch results, submit feedback/contribution proposals from retrieval results |
 | `owner` | Data Owner — User access plus reference-data indexing, metadata/dataset/user governance, Qdrant re-indexing, Candidate Model assessment |
 
+The Data Owner role inherits all User permissions. Any endpoint marked
+`User` is also accessible to Data Owners.
+
 ### Implementation
 
     from fastapi import Depends, HTTPException, status
@@ -128,7 +131,8 @@ Choices:
 | Images (upload, query status) | Yes | Yes |
 | Retrieval (query, results) | Yes | Yes |
 | Species/Media metadata (read for retrieval forms) | Yes | Yes |
-| Species/Media metadata (create, update, archive) | No | Yes |
+| Species metadata (create, update, archive) | No | Yes |
+| Media metadata (create, update, archive) | No | Yes |
 | Reference dataset browse/search/filter/group | No | Yes |
 | Reference dataset update/archive/restore | No | Yes |
 | Feedback (submit from retrieval results, view own) | Yes | Yes |

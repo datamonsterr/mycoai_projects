@@ -5,6 +5,9 @@
 Design how the backend invokes segmentation on uploaded images, caches
 results, and surfaces editable bounding boxes to the frontend.
 
+**Use case reference**: UC-PREP-01 (Prepare Segmented Images). This pipeline is
+shared by both retrieval (UC-RETRIEVE-01) and data indexing (UC-DATA-01) workflows.
+
 ---
 
 ## Segmentation Methods
@@ -111,6 +114,10 @@ When user edits bounding boxes:
 
 The backend re-crops segments with updated bboxes and re-runs feature
 extraction before retrieval.
+
+**Bounding box validation**: All bbox edits (including AI-generated initial bboxes)
+are validated to stay within source image dimensions (`x >= 0, y >= 0, x+w <= img_w, y+h <= img_h`).
+Out-of-bounds bboxes are rejected with a 422 response.
 
 ---
 

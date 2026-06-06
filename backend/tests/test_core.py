@@ -1,16 +1,20 @@
+from dataclasses import dataclass
+
 from mycoai_retrieval_backend.core.security import require_role
-from mycoai_retrieval_backend.models.user import User
 
 
-def test_require_role_passes_for_admin() -> None:
-    user = User(id="1", email="a@b.c", roles=("admin",), service="test")
-    require_role(user, "admin")
+@dataclass
+class _FakeUser:
+    role: str
 
 
-def test_require_role_raises_for_viewer() -> None:
-    user = User(id="2", email="v@b.c", roles=("viewer",), service="test")
+def test_require_role_passes_for_owner() -> None:
+    require_role(_FakeUser(role="owner"), "owner")
+
+
+def test_require_role_raises_for_user() -> None:
     try:
-        require_role(user, "admin")
+        require_role(_FakeUser(role="user"), "owner")
     except PermissionError:
         pass
     else:

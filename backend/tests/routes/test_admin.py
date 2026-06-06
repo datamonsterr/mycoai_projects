@@ -1,13 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from mycoai_retrieval_backend.app import app
-
-
-@pytest.fixture(name="client")
-def fixture_client() -> TestClient:
-    return TestClient(app)
-
 
 @pytest.fixture(name="user_headers")
 def fixture_user_headers(client: TestClient) -> dict[str, str]:
@@ -38,8 +31,8 @@ def test_list_users_requires_owner(
     resp = client.get("/api/v1/admin/users", headers=owner_headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert "items" in data
-    assert "total" in data
+    assert isinstance(data, list)
+    assert len(data) >= 1
 
 
 def test_update_user_role(client: TestClient, owner_headers: dict[str, str]) -> None:
@@ -52,7 +45,7 @@ def test_update_user_role(client: TestClient, owner_headers: dict[str, str]) -> 
         },
     )
     users = client.get("/api/v1/admin/users", headers=owner_headers).json()
-    target = next(u for u in users["items"] if u["email"] == "role-update@test.com")
+    target = next(u for u in users if u["email"] == "role-update@test.com")
     resp = client.patch(
         f"/api/v1/admin/users/{target['id']}/role",
         json={"role": "owner"},
@@ -66,4 +59,4 @@ def test_audit_log(client: TestClient, owner_headers: dict[str, str]) -> None:
     resp = client.get("/api/v1/admin/audit-log", headers=owner_headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert "items" in data
+    assert isinstance(data, list)

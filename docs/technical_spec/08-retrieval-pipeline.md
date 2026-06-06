@@ -6,6 +6,9 @@ Design the backend retrieval pipeline that orchestrates feature extraction,
 Qdrant KNN search, and result aggregation to produce ranked species
 predictions.
 
+**Use case references**: UC-RETRIEVE-01 (includes UC-PREP-01).<br>
+**Feature spec references**: FR-030 (configurable KNN, k=1–20), FR-031 (multi-Media queries).
+
 ---
 
 ## Pipeline Flow
@@ -48,34 +51,30 @@ predictions.
 
 ## Environment Strategy Implementation
 
-Reimplements fungal-cv-qdrant E1-E4 strategies:
+The retrieval pipeline supports two environment strategies (per FR-031):
 
-    def build_environment_filter(strategy, query_media):
-        """
-        E1: Same medium — match(query_media)
-        E2: All media — no filter
-        E3_<ENV>: Specific medium — match(<ENV>)
-        E4_<ENV>: Exclude medium — must_not match(<ENV>)
-        """
-        if strategy == "E1":
-            return Filter(must=[FieldCondition(
-                key="environment",
-                match=MatchValue(value=query_media)
-            )])
-        elif strategy == "E2":
-            return None
-        elif strategy.startswith("E3_"):
-            env = strategy[3:]
-            return Filter(must=[FieldCondition(
-                key="environment",
-                match=MatchValue(value=env)
-            )])
-        elif strategy.startswith("E4_"):
-            env = strategy[3:]
-            return Filter(must_not=[FieldCondition(
-                key="environment",
-                match=MatchValue(value=env)
-            )])
+**Same-media**: Filter Qdrant search to vectors whose `environment` field
+matches the query media type. Used for Known Media queries.
+
+**All-media**: No environment filter applied. Use for New/other Media queries.
+
+```python
+def build_environment_filter(strategy, query_media):
+    """
+    same_media:   Filter by query_media
+    all_media:    No filter
+    """
+    if strategy == "same_media":
+        return Filter(must=[FieldCondition(
+            key="environment",
+            match=MatchValue(value=query_media)
+        )])
+    elif strategy == "all_media":
+        return None
+```
+
+Configurable KNN (`k` = 1–20, per FR-030) is passed to the Qdrant search
+call and applies to both aggregation methods (weighted and uniform).
 
 ---
 

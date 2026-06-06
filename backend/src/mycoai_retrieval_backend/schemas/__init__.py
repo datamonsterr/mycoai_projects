@@ -1,44 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
-
-class TokenPair(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: Literal["bearer"] = "bearer"
-    expires_in: int
-
-
-class AuthRegisterRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=8)
-    name: str
-
-
-class AuthLoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class AuthRefreshRequest(BaseModel):
-    refresh_token: str
-
-
-class AuthLogoutRequest(BaseModel):
-    refresh_token: str
-
-
-class UserProfile(BaseModel):
-    id: str
-    email: EmailStr
-    name: str
-    role: Literal["user", "owner"]
-    is_active: bool = True
-    created_at: datetime
+from .auth import (  # noqa: F401
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserResponse,
+)
 
 
 class ImageUploadResponse(BaseModel):
@@ -104,22 +76,21 @@ class RetrievalResultsResponse(BaseModel):
     rankings: list[RetrievalRanking]
 
 
-class SpeciesItem(BaseModel):
-    id: str
-    name: str
-    description: str | None = None
-    is_archived: bool = False
-    count: int = 0
+from .species import (  # noqa: E402, F401
+    SpeciesCreate,
+    SpeciesListResponse,
+    SpeciesResponse,
+    SpeciesUpdate,
+)
 
+SpeciesCreateRequest = SpeciesCreate
+SpeciesUpdateRequest = SpeciesUpdate
 
-class SpeciesCreateRequest(BaseModel):
-    name: str
-    description: str | None = None
-
-
-class SpeciesUpdateRequest(BaseModel):
-    name: str | None = None
-    description: str | None = None
+AuthLoginRequest = LoginRequest
+AuthRefreshRequest = RefreshRequest
+AuthRegisterRequest = RegisterRequest
+TokenPair = TokenResponse
+UserProfile = UserResponse
 
 
 class StrainItem(BaseModel):
@@ -138,34 +109,14 @@ class StrainCreateRequest(BaseModel):
     images: list[str] = Field(default_factory=list)
 
 
-class FeedbackCreateRequest(BaseModel):
-    source: str
-    query_strain: str | None = None
-    result_id: str | None = None
-    image_id: str | None = None
-    predicted_species: str | None = None
-    suggested_species: str
-    description: str
+from .feedback import (  # noqa: E402, F401
+    FeedbackBatchRequest,
+    FeedbackCreate,
+    FeedbackResponse,
+    FeedbackUpdate,
+)
 
-
-class FeedbackItem(BaseModel):
-    id: str
-    submitter_id: str
-    reviewer_id: str | None = None
-    source: str
-    status: str
-    suggested_species: str
-    description: str
-
-
-class FeedbackUpdateRequest(BaseModel):
-    status: str
-    review_note: str | None = None
-
-
-class FeedbackBatchRequest(BaseModel):
-    ids: list[str]
-    status: str
+FeedbackCreateRequest = FeedbackCreate
 
 
 class TrainingStatus(BaseModel):
@@ -190,20 +141,11 @@ class TrainingDeployRequest(BaseModel):
     force: bool = False
 
 
-class DashboardStats(BaseModel):
-    species_count: int
-    strains_count: int
-    images_count: int
-
-
-class ChartPoint(BaseModel):
-    label: str
-    value: int
-
-
-class QdrantStatus(BaseModel):
-    learned: int
-    unlearned: int
+from .dashboard import (  # noqa: E402, F401
+    DashboardStats,
+    MediaDistributionItem,
+    SpeciesDistributionItem,
+)
 
 
 class AdminUserItem(BaseModel):
