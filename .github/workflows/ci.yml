@@ -66,9 +66,11 @@ jobs:
         working-directory: backend
         run: uv run mypy src
 
-      - name: Tests
+      - name: Tests (unit)
         working-directory: backend
-        run: uv run pytest
+        env:
+          DATABASE_URL: "sqlite+aiosqlite://"
+        run: uv run pytest -m "not integration"
 
   frontend:
     runs-on: ubuntu-latest

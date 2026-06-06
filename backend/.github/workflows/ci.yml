@@ -34,7 +34,9 @@ jobs:
         run: uv run mypy src
 
       - name: Unit tests
-        run: uv run pytest tests -m "not integration"
+        env:
+          DATABASE_URL: "sqlite+aiosqlite://"
+        run: uv run pytest -m "not integration"
 
       - name: Integration tests
         run: uv run pytest tests -m integration || status=$?; if [ "${status:-0}" -eq 5 ]; then exit 0; else exit "${status:-0}"; fi
