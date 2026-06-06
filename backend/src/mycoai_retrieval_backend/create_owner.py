@@ -12,7 +12,7 @@ import secrets
 import string
 
 from .core.security import hash_password
-from .database import AsyncSessionLocal
+from .database import _get_sessionmaker
 from .models import User
 
 
@@ -27,7 +27,7 @@ async def _create_owner(email: str, password: str | None) -> None:
 
     password_hash = hash_password(password)
 
-    async with AsyncSessionLocal() as db:
+    async with _get_sessionmaker()() as db:
         user = User(
             email=email,
             password_hash=password_hash,

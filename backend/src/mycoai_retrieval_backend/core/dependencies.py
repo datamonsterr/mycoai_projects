@@ -1,5 +1,5 @@
+import uuid
 from typing import Annotated
-from uuid import UUID
 
 import jwt
 from fastapi import Depends, Header
@@ -14,7 +14,7 @@ from .security import decode_access_token
 
 async def get_current_user(
     authorization: Annotated[str, Header(description="Bearer <token>")] = "",
-    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    db: Annotated[AsyncSession | None, Depends(get_db)] = None,
 ) -> User:
     if not authorization.startswith("Bearer "):
         raise AuthenticationError("Missing or invalid Authorization header")
@@ -25,7 +25,8 @@ async def get_current_user(
         raise AuthenticationError("Invalid or expired token") from err
     if payload.get("type") != "access":
         raise AuthenticationError("Token is not an access token")
-    user_id = UUID(payload["sub"])
+    user_id = uuid.UUID(payload["sub"])
+    assert db is not None  # FastAPI always injects the dependency
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
