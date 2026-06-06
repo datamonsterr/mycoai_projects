@@ -11,9 +11,7 @@ from ..models import User
 class UserRepository:
     @staticmethod
     async def get_user(db: AsyncSession, user_id: str) -> User | None:
-        result = await db.execute(
-            select(User).where(User.id == uuid.UUID(user_id))
-        )
+        result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
         return result.scalar_one_or_none()
 
     @staticmethod

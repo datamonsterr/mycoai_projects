@@ -54,9 +54,7 @@ def require_owner():
         user: Annotated[User, Depends(get_current_user)],
     ) -> User:
         if user.role != "owner":
-            raise AuthorizationError(
-                "Role 'owner' required"
-            )
+            raise AuthorizationError("Role 'owner' required")
         return user
 
     return owner_checker

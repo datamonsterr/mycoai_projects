@@ -79,7 +79,7 @@ class TestDecodeToken:
     def test_decode_tampered_token_raises(self) -> None:
         token = create_access_token("user-y", "user")
         tampered = token[:-5] + ("AAAAA")
-        with pytest.raises(Exception):
+        with pytest.raises(jwt.PyJWTError):
             decode_access_token(tampered)
 
     def test_decode_expired_token_raises(self) -> None:

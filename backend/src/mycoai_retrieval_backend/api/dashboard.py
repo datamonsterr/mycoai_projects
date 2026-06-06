@@ -21,18 +21,12 @@ async def get_stats(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: CurrentUser,
 ) -> DashboardStats:
-    images = (
-        await db.execute(select(func.count()).select_from(Image))
-    ).scalar() or 0
-    strains = (
-        await db.execute(select(func.count()).select_from(Strain))
-    ).scalar() or 0
+    images = (await db.execute(select(func.count()).select_from(Image))).scalar() or 0
+    strains = (await db.execute(select(func.count()).select_from(Strain))).scalar() or 0
     species = (
         await db.execute(select(func.count()).select_from(Species))
     ).scalar() or 0
-    media = (
-        await db.execute(select(func.count()).select_from(Media))
-    ).scalar() or 0
+    media = (await db.execute(select(func.count()).select_from(Media))).scalar() or 0
     return DashboardStats(
         total_images=images,
         total_strains=strains,
@@ -93,6 +87,7 @@ async def timeline(
     user: CurrentUser,
 ) -> list[dict]:
     return []
+
 
 @router.get("/qdrant-status")
 async def qdrant_status(

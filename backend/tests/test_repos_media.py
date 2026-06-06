@@ -55,7 +55,7 @@ async def test_list_media(session: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_list_media_archived(session: AsyncSession) -> None:
-    m1 = await media_repo.create_media(session, MediaCreate(name="Active"))
+    await media_repo.create_media(session, MediaCreate(name="Active"))
     m2 = await media_repo.create_media(session, MediaCreate(name="Archived"))
     await media_repo.archive_media(session, m2.id)
 

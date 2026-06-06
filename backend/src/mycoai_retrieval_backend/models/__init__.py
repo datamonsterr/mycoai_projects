@@ -332,12 +332,16 @@ class Feedback(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
     source: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="retrieval_result",
-        server_default="retrieval_result"
+        String(20),
+        nullable=False,
+        default="retrieval_result",
+        server_default="retrieval_result",
     )
     feedback_type: Mapped[str] = mapped_column(
-        String(30), nullable=False, default="wrong_prediction",
-        server_default="wrong_prediction"
+        String(30),
+        nullable=False,
+        default="wrong_prediction",
+        server_default="wrong_prediction",
     )
     query_strain: Mapped[str | None] = mapped_column(String(255), nullable=True)
     result_id: Mapped[uuid.UUID | None] = mapped_column(
