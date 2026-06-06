@@ -82,6 +82,30 @@ class RefreshToken(Base):
     user: Mapped["User"] = relationship(back_populates="refresh_tokens")
 
 
+class Media(Base):
+    __tablename__ = "media"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    archived_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    images: Mapped[list["Image"]] = relationship(back_populates="media")
+
+
 class Species(Base):
     __tablename__ = "species"
 
@@ -106,6 +130,7 @@ class Species(Base):
     strains: Mapped[list["Strain"]] = relationship(
         back_populates="species", cascade="all, delete-orphan"
     )
+    images: Mapped[list["Image"]] = relationship(back_populates="species")
 
 
 class Strain(Base):
@@ -150,19 +175,32 @@ class Image(Base):
     strain_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("strains.id"), nullable=False
     )
-    media: Mapped[str] = mapped_column(String(20), nullable=False)
+    species_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("species.id"), nullable=False
+    )
+    media_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("media.id"), nullable=False
+    )
     angle: Mapped[str | None] = mapped_column(String(10), nullable=True)
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     prepared_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     pipeline_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    data_update_status: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="current", server_default="current"
+    )
     is_archived: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
     strain: Mapped["Strain"] = relationship(back_populates="images")
+    species: Mapped["Species"] = relationship(back_populates="images")
+    media: Mapped["Media"] = relationship(back_populates="images")
     segments: Mapped[list["Segment"]] = relationship(
         back_populates="image", cascade="all, delete-orphan"
     )
@@ -293,7 +331,14 @@ class Feedback(Base):
     reviewer_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
-    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="retrieval_result",
+        server_default="retrieval_result"
+    )
+    feedback_type: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="wrong_prediction",
+        server_default="wrong_prediction"
+    )
     query_strain: Mapped[str | None] = mapped_column(String(255), nullable=True)
     result_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),

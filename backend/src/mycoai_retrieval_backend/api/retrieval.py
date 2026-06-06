@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from ..core.dependencies import get_current_user
+from ..models import User
 from ..schemas import (
     RetrievalJobResponse,
     RetrievalQueryRequest,
@@ -13,12 +14,12 @@ router = APIRouter()
 
 @router.post("/query", response_model=RetrievalJobResponse, status_code=202)
 def start_query(
-    data: RetrievalQueryRequest, user: dict = Depends(get_current_user)
+    data: RetrievalQueryRequest, user: User = Depends(get_current_user)
 ) -> dict:
     job_id = new_id()
     job = {
         "id": job_id,
-        "user_id": user["id"],
+        "user_id": str(user.id),
         "job_type": "single",
         "status": "processing",
         "config": data.model_dump(),
@@ -29,7 +30,7 @@ def start_query(
 
 
 @router.get("/jobs/{job_id}", response_model=RetrievalJobResponse)
-def get_job_status(job_id: str, user: dict = Depends(get_current_user)) -> dict:
+def get_job_status(job_id: str, user: User = Depends(get_current_user)) -> dict:
     from ..core.exceptions import NotFoundError
 
     job = get_retrieval_job_store().get(job_id)
@@ -43,7 +44,7 @@ def get_job_status(job_id: str, user: dict = Depends(get_current_user)) -> dict:
 
 
 @router.get("/jobs/{job_id}/results", response_model=RetrievalResultsResponse)
-def get_job_results(job_id: str, user: dict = Depends(get_current_user)) -> dict:
+def get_job_results(job_id: str, user: User = Depends(get_current_user)) -> dict:
     from ..core.exceptions import NotFoundError
 
     job = get_retrieval_job_store().get(job_id)
@@ -74,7 +75,7 @@ def get_job_results(job_id: str, user: dict = Depends(get_current_user)) -> dict
 
 @router.post("/query-sync", response_model=RetrievalResultsResponse)
 def query_sync(
-    data: RetrievalQueryRequest, user: dict = Depends(get_current_user)
+    data: RetrievalQueryRequest, user: User = Depends(get_current_user)
 ) -> dict:
     job_id = new_id()
     return {

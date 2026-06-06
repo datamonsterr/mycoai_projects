@@ -2,18 +2,22 @@
 
 ## Overview
 
-Backend supports Qdrant re-indexing and Candidate Model assessment. Deep feature-extractor retraining is not triggered in-system; Data Owner receives Python guidance for external retraining and reuploads the resulting model as a Candidate Model.
+Backend supports Qdrant re-indexing and Candidate Model assessment.
+
+**Use case reference**: UC-MODEL-01.
+
+Deep feature-extractor retraining is not triggered in-system; Data Owner receives Python guidance for external retraining and reuploads the resulting model as a Candidate Model.
 
 ---
 
 ## Maintenance Types
 
-| Type | In-system | What it does | Trigger |
-|------|----------|--------------|---------|
-| Qdrant re-index | Yes | Re-extract features for active changed segments and upsert/update Qdrant points; exclude archived data | Data Owner action after indexing, metadata edits, bbox edits, archive/restore, accepted feedback |
-| External retraining guidance | Yes (guidance only) | Shows dataset download/retrain/reupload instructions | Many reference-data changes accumulated |
-| Deep feature-extractor retraining | No | Trains neural network weights outside system | Data Owner runs external Python workflow |
-| Candidate Model assessment | Yes | Evaluates uploaded model on fixed set and compares with current model | Candidate Model upload |
+| Type | In-system | What it does | Trigger | Data Owner action |
+|------|----------|--------------|---------|-------------------|
+| Qdrant re-index | Yes | Re-extract features for active changed segments and upsert/update Qdrant points; exclude archived data | Data adds, metadata edits, bbox edits, archive/restore, accepted feedback | Open Maintain Model dashboard, review pre-flight summary, confirm re-index |
+| External retraining guidance | Yes (guidance only) | Shows dataset download/retrain/reupload instructions | Many reference-data changes accumulated | Review guidance, run external Python workflow, reupload Candidate Model |
+| Deep feature-extractor retraining | No | Trains neural network weights outside system | Data Owner runs external Python workflow | (external only) |
+| Candidate Model assessment | Yes | Evaluates uploaded model on fixed set and compares with current model | Candidate Model upload | Upload artifact, review evaluation report, manually promote or reject |
 
 ---
 

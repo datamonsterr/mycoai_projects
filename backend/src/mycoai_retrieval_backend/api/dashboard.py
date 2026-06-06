@@ -1,44 +1,101 @@
-from fastapi import APIRouter, Depends
+from typing import Annotated
 
-from ..core.dependencies import get_current_user
-from ..schemas import ChartPoint, DashboardStats, QdrantStatus
-from ..services.stores import (
-    get_image_store,
-    get_species_store,
-    get_strain_store,
+from fastapi import APIRouter, Depends
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..core.dependencies import CurrentUser
+from ..database import get_db
+from ..models import Image, Media, Species, Strain
+from ..schemas.dashboard import (
+    DashboardStats,
+    MediaDistributionItem,
+    SpeciesDistributionItem,
 )
 
 router = APIRouter()
 
 
 @router.get("/stats", response_model=DashboardStats)
-def get_stats(user: dict = Depends(get_current_user)) -> dict:
-    species = [s for s in get_species_store().list() if not s.get("is_archived", False)]
-    strains = [s for s in get_strain_store().list() if not s.get("is_archived", False)]
-    images = [i for i in get_image_store().list() if not i.get("is_archived", False)]
-    return {
-        "species_count": len(species),
-        "strains_count": len(strains),
-        "images_count": len(images),
-    }
+async def get_stats(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentUser,
+) -> DashboardStats:
+    images = (
+        await db.execute(select(func.count()).select_from(Image))
+    ).scalar() or 0
+    strains = (
+        await db.execute(select(func.count()).select_from(Strain))
+    ).scalar() or 0
+    species = (
+        await db.execute(select(func.count()).select_from(Species))
+    ).scalar() or 0
+    media = (
+        await db.execute(select(func.count()).select_from(Media))
+    ).scalar() or 0
+    return DashboardStats(
+        total_images=images,
+        total_strains=strains,
+        total_species=species,
+        total_media=media,
+    )
 
 
-@router.get("/charts/species", response_model=list[ChartPoint])
-def chart_species(user: dict = Depends(get_current_user)) -> list[dict]:
-    species = [s for s in get_species_store().list() if not s.get("is_archived", False)]
-    return [{"label": s["name"], "value": 1} for s in species]
+@router.get(
+    "/charts/species-distribution",
+    response_model=list[SpeciesDistributionItem],
+)
+async def species_distribution(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentUser,
+) -> list[SpeciesDistributionItem]:
+    result = await db.execute(
+        select(Species.name, func.count(Image.id).label("image_count"))
+        .outerjoin(Image, Image.species_id == Species.id)
+        .where(Species.is_archived.is_(False))
+        .group_by(Species.id, Species.name)
+        .order_by(func.count(Image.id).desc())
+    )
+    rows = result.all()
+    return [
+        SpeciesDistributionItem(species_name=row.name, image_count=row.image_count)
+        for row in rows
+    ]
 
 
-@router.get("/charts/media", response_model=list[ChartPoint])
-def chart_media(user: dict = Depends(get_current_user)) -> list[dict]:
-    return [{"label": "MEA", "value": 10}, {"label": "CYA", "value": 5}]
+@router.get(
+    "/charts/media-distribution",
+    response_model=list[MediaDistributionItem],
+)
+async def media_distribution(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentUser,
+) -> list[MediaDistributionItem]:
+    result = await db.execute(
+        select(Media.name, func.count(Image.id).label("image_count"))
+        .outerjoin(Image, Image.media_id == Media.id)
+        .where(Media.is_archived.is_(False))
+        .group_by(Media.id, Media.name)
+        .order_by(func.count(Image.id).desc())
+    )
+    rows = result.all()
+    return [
+        MediaDistributionItem(media_name=row.name, image_count=row.image_count)
+        for row in rows
+    ]
 
 
-@router.get("/charts/timeline", response_model=list[ChartPoint])
-def chart_timeline(user: dict = Depends(get_current_user)) -> list[dict]:
-    return [{"label": "2025-05", "value": 3}]
+@router.get(
+    "/charts/timeline",
+    response_model=list[dict],
+)
+async def timeline(
+    user: CurrentUser,
+) -> list[dict]:
+    return []
 
-
-@router.get("/qdrant-status", response_model=QdrantStatus)
-def qdrant_status(user: dict = Depends(get_current_user)) -> dict:
-    return {"learned": 120, "unlearned": 35}
+@router.get("/qdrant-status")
+async def qdrant_status(
+    user: CurrentUser,
+) -> dict:
+    return {"learned": 0, "unlearned": 0}

@@ -282,54 +282,46 @@ def test_get_collection_stats_mocked() -> None:
 # ── router tests ──
 
 
-@patch("mycoai_retrieval_backend.qdrant.client.QdrantClient")
-def test_stats_endpoint(mock_qc: MagicMock) -> None:
+@patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
+def test_stats_endpoint(mock_get_client: MagicMock, client: TestClient) -> None:
     mock_client = MagicMock()
-    mock_qc.return_value = mock_client
+    mock_get_client.return_value = mock_client
     fake_info = MagicMock()
     fake_info.points_count = 5
     mock_client.get_collection.return_value = fake_info
     mock_client.scroll.return_value = ([], None)
 
-    from mycoai_retrieval_backend.app import app
-
-    client = TestClient(app)
     response = client.get("/api/collections/stats")
     assert response.status_code == 200
     data = response.json()
     assert data["total_points"] == 5
 
 
-@patch("mycoai_retrieval_backend.qdrant.client.QdrantClient")
-def test_search_by_image_endpoint_requires_vector(mock_qc: MagicMock) -> None:
-    from mycoai_retrieval_backend.app import app
-
-    client = TestClient(app)
+@patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
+def test_search_by_image_endpoint_requires_vector(
+    mock_get_client: MagicMock, client: TestClient
+) -> None:
     response = client.post("/api/search/by-image", json={"k": 5})
     assert response.status_code == 400
 
 
-@patch("mycoai_retrieval_backend.qdrant.client.QdrantClient")
-def test_search_by_id_endpoint_not_found(mock_qc: MagicMock) -> None:
+@patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
+def test_search_by_id_endpoint_not_found(
+    mock_get_client: MagicMock, client: TestClient
+) -> None:
     mock_client = MagicMock()
-    mock_qc.return_value = mock_client
+    mock_get_client.return_value = mock_client
     mock_client.retrieve.return_value = []
 
-    from mycoai_retrieval_backend.app import app
-
-    client = TestClient(app)
     response = client.post("/api/search/by-id", json={"point_id": 999, "k": 5})
     assert response.status_code == 404
 
 
-@patch("mycoai_retrieval_backend.qdrant.client.QdrantClient")
-def test_upsert_endpoint(mock_qc: MagicMock) -> None:
+@patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
+def test_upsert_endpoint(mock_get_client: MagicMock, client: TestClient) -> None:
     mock_client = MagicMock()
-    mock_qc.return_value = mock_client
+    mock_get_client.return_value = mock_client
 
-    from mycoai_retrieval_backend.app import app
-
-    client = TestClient(app)
     response = client.post(
         "/api/index/upsert",
         json=[{"point_id": 1, "vectors": {"v": [0.1]}, "payload": {"s": "test"}}],
@@ -338,10 +330,7 @@ def test_upsert_endpoint(mock_qc: MagicMock) -> None:
     assert response.json()["upserted"] == 1
 
 
-def test_aggregate_router() -> None:
-    from mycoai_retrieval_backend.app import app
-
-    client = TestClient(app)
+def test_aggregate_router(client: TestClient) -> None:
     response = client.post(
         "/api/aggregate",
         json={
@@ -362,7 +351,7 @@ def test_aggregate_router() -> None:
 
 
 @patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
-def test_environments_endpoint(mock_get_client: MagicMock) -> None:
+def test_environments_endpoint(mock_get_client: MagicMock, client: TestClient) -> None:
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client
 
@@ -375,9 +364,6 @@ def test_environments_endpoint(mock_get_client: MagicMock) -> None:
         None,
     )
 
-    from mycoai_retrieval_backend.app import app
-
-    client = TestClient(app)
     response = client.get("/api/collections/environments")
     assert response.status_code == 200
     data = response.json()

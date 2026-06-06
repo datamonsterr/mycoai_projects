@@ -1,5 +1,11 @@
 from .config import Settings, get_settings
-from .dependencies import get_current_user, require_role
+from .dependencies import (
+    CurrentOwner,
+    CurrentUser,
+    get_current_user,
+    require_owner,
+    require_role,
+)
 from .exceptions import (
     AppError,
     NotFoundError,
@@ -16,6 +22,8 @@ from .security import (
 
 __all__ = [
     "AppError",
+    "CurrentOwner",
+    "CurrentUser",
     "NotFoundError",
     "PageParams",
     "PaginatedResponse",
@@ -27,6 +35,7 @@ __all__ = [
     "get_current_user",
     "get_settings",
     "hash_password",
+    "require_owner",
     "require_role",
     "verify_password",
 ]

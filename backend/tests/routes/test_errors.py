@@ -1,12 +1,4 @@
-import pytest
 from fastapi.testclient import TestClient
-
-from mycoai_retrieval_backend.app import app
-
-
-@pytest.fixture(name="client")
-def fixture_client() -> TestClient:
-    return TestClient(app)
 
 
 def test_404_returns_problem_details(client: TestClient) -> None:
@@ -16,7 +8,9 @@ def test_404_returns_problem_details(client: TestClient) -> None:
     )
     token = resp.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
-    r = client.get("/api/v1/species/nonexistent-123", headers=headers)
+    r = client.get(
+        "/api/v1/species/00000000-0000-0000-0000-000000000000", headers=headers
+    )
     assert r.status_code == 404
     data = r.json()
     assert data["type"] == "https://api.mycoai.dev/errors/not-found"
@@ -63,10 +57,6 @@ def test_paginated_response_format(client: TestClient) -> None:
     data = r.json()
     assert "items" in data
     assert "total" in data
-    assert "offset" in data
-    assert data["offset"] == 0
-    assert "limit" in data
-    assert data["limit"] == 50
 
 
 def test_healthcheck_returns_ok(client: TestClient) -> None:

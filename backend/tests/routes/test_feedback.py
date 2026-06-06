@@ -1,13 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from mycoai_retrieval_backend.app import app
-
-
-@pytest.fixture(name="client")
-def fixture_client() -> TestClient:
-    return TestClient(app)
-
 
 @pytest.fixture(name="user_headers")
 def fixture_user_headers(client: TestClient) -> dict[str, str]:
@@ -33,14 +26,14 @@ def test_submit_feedback(client: TestClient, user_headers: dict[str, str]) -> No
     resp = client.post(
         "/api/v1/feedback",
         json={
-            "source": "query_result",
+            "feedback_type": "wrong_prediction",
             "suggested_species": "Penicillium commune",
             "description": "Looks correct",
         },
         headers=user_headers,
     )
     assert resp.status_code == 201
-    assert resp.json()["source"] == "query_result"
+    assert resp.json()["suggested_species"] == "Penicillium commune"
     assert resp.json()["status"] == "pending"
 
 
@@ -64,7 +57,7 @@ def test_review_feedback(client: TestClient, owner_headers: dict[str, str]) -> N
     resp = client.post(
         "/api/v1/feedback",
         json={
-            "source": "query_result",
+            "feedback_type": "wrong_prediction",
             "suggested_species": "Penicillium commune",
             "description": "test",
         },
@@ -84,7 +77,7 @@ def test_batch_feedback(client: TestClient, owner_headers: dict[str, str]) -> No
     r1 = client.post(
         "/api/v1/feedback",
         json={
-            "source": "query_result",
+            "feedback_type": "wrong_prediction",
             "suggested_species": "P. commune",
             "description": "d1",
         },
@@ -93,7 +86,7 @@ def test_batch_feedback(client: TestClient, owner_headers: dict[str, str]) -> No
     r2 = client.post(
         "/api/v1/feedback",
         json={
-            "source": "query_result",
+            "feedback_type": "wrong_prediction",
             "suggested_species": "P. commune",
             "description": "d2",
         },
@@ -103,7 +96,7 @@ def test_batch_feedback(client: TestClient, owner_headers: dict[str, str]) -> No
     fid2 = r2.json()["id"]
     resp = client.post(
         "/api/v1/feedback/batch",
-        json={"ids": [fid1, fid2], "status": "rejected"},
+        json={"feedback_ids": [fid1, fid2], "status": "rejected"},
         headers=owner_headers,
     )
     assert resp.status_code == 200

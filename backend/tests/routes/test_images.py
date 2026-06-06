@@ -3,13 +3,6 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from mycoai_retrieval_backend.app import app
-
-
-@pytest.fixture(name="client")
-def fixture_client() -> TestClient:
-    return TestClient(app)
-
 
 @pytest.fixture(name="headers")
 def fixture_headers(client: TestClient) -> dict[str, str]:

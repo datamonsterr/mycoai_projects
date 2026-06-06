@@ -5799,6 +5799,12 @@
       "sourceType": "github",
       "computedHash": "85c40a04d3d855a00a6a8190db63d844a6cbc59d87d5ddb988e535ccb0645718"
     },
+    "pytest-coverage": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/pytest-coverage/SKILL.md",
+      "computedHash": "06481f4bbc6d80a52091ec9ba5856eb1dc5f80cbabb40fd4ad02aaea3085a0dc"
+    },
     "python": {
       "source": "mindrally/skills",
       "sourceType": "github",
@@ -7213,6 +7219,12 @@
       "source": "sickn33/antigravity-awesome-skills",
       "sourceType": "github",
       "computedHash": "9efd080894be64069e82a41a28ae3460bd2cdeede5d04df15bcf475d933d5b51"
+    },
+    "tdd": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/tdd/SKILL.md",
+      "computedHash": "15a7b5e36383ebadb2dec5e586679e55e9663d292da418926b8da6fc0ef27d84"
     },
     "tdd-orchestrator": {
       "source": "sickn33/antigravity-awesome-skills",

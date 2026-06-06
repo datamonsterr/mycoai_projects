@@ -1,124 +1,173 @@
-from fastapi import APIRouter, Depends
+from datetime import UTC, datetime, timedelta
+from typing import Annotated
+from uuid import UUID
 
-from ..core.dependencies import get_current_user
-from ..schemas import (
-    AuthLoginRequest,
-    AuthRefreshRequest,
-    AuthRegisterRequest,
-    TokenPair,
-    UserProfile,
+import jwt
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..core.config import get_settings
+from ..core.dependencies import CurrentUser
+from ..core.exceptions import AuthenticationError, ConflictError
+from ..core.security import (
+    create_access_token,
+    create_refresh_token,
+    hash_password,
+    hash_token,
+    verify_password,
 )
-from ..services.stores import (
-    create_refresh_token_record,
-    find_user_by_email,
-    get_user_store,
-    is_first_user,
-    new_id,
-    revoke_refresh_token,
-    utcnow,
+from ..database import get_db
+from ..models import RefreshToken, User
+from ..schemas.auth import (
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserResponse,
 )
 
 router = APIRouter()
 
 
-@router.post("/register", response_model=TokenPair, status_code=201)
-def register(data: AuthRegisterRequest) -> dict:
-    from ..core.security import create_access_token, create_refresh_token, hash_password
-
-    existing = find_user_by_email(data.email)
-    if existing:
-        from ..core.exceptions import ConflictError
-
+@router.post("/register", response_model=TokenResponse, status_code=201)
+async def register(
+    data: RegisterRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TokenResponse:
+    existing = await db.scalar(select(User).where(User.email == data.email))
+    if existing is not None:
         raise ConflictError("User with this email already exists")
-    role = "owner" if is_first_user() else "user"
-    password_hash = hash_password(data.password)
-    user_id = new_id()
-    user: dict[str, object] = {
-        "id": user_id,
-        "email": data.email,
-        "password_hash": password_hash,
-        "name": data.name,
-        "role": role,
-        "is_active": True,
-        "created_at": utcnow(),
-    }
-    get_user_store().put(user)
-    access_token = create_access_token(user_id, role)
-    refresh_token = create_refresh_token(user_id)
-    create_refresh_token_record(
-        user_id,
-        refresh_token,
-        utcnow(),
+
+    user = User(
+        email=data.email,
+        password_hash=hash_password(data.password),
+        name=data.name,
+        role="user",
     )
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "expires_in": 3600,
-    }
+    db.add(user)
+    await db.flush()
 
+    user_id_str = str(user.id)
+    settings = get_settings()
+    access_token = create_access_token(user_id_str, user.role)
+    refresh_token = create_refresh_token(user_id_str)
 
-@router.post("/login", response_model=TokenPair)
-def login(data: AuthLoginRequest) -> dict:
-    from ..core.exceptions import AuthenticationError
-    from ..core.security import (
-        create_access_token,
-        create_refresh_token,
-        verify_password,
+    rt = RefreshToken(
+        user_id=user.id,
+        token_hash=hash_token(refresh_token),
+        expires_at=datetime.now(UTC)
+        + timedelta(seconds=settings.refresh_token_expire_seconds),
+    )
+    db.add(rt)
+    await db.commit()
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=settings.access_token_expire_seconds,
     )
 
-    user = find_user_by_email(data.email)
-    if not user or not verify_password(data.password, user["password_hash"]):
+
+@router.post("/login", response_model=TokenResponse)
+async def login(
+    data: LoginRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TokenResponse:
+    user = await db.scalar(select(User).where(User.email == data.email))
+    if user is None or not verify_password(data.password, user.password_hash):
         raise AuthenticationError("Invalid email or password")
-    access_token = create_access_token(user["id"], user["role"])
-    refresh_token = create_refresh_token(user["id"])
-    create_refresh_token_record(user["id"], refresh_token, utcnow())
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "expires_in": 3600,
-    }
+    if not user.is_active:
+        raise AuthenticationError("Account is inactive")
+
+    user_id_str = str(user.id)
+    settings = get_settings()
+    access_token = create_access_token(user_id_str, user.role)
+    refresh_token = create_refresh_token(user_id_str)
+
+    rt = RefreshToken(
+        user_id=user.id,
+        token_hash=hash_token(refresh_token),
+        expires_at=datetime.now(UTC)
+        + timedelta(seconds=settings.refresh_token_expire_seconds),
+    )
+    db.add(rt)
+    await db.commit()
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=settings.access_token_expire_seconds,
+    )
 
 
-@router.post("/refresh", response_model=dict)
-def refresh(data: AuthRefreshRequest) -> dict:
-    from ..core.exceptions import AuthenticationError
-    from ..core.security import create_access_token
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh(
+    data: RefreshRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TokenResponse:
+    settings = get_settings()
+    token_hash = hash_token(data.refresh_token)
 
-    store = get_user_store()
-    from ..services.stores import get_refresh_token_store
-
-    rt_store = get_refresh_token_store()
-    found = None
-    for _, token in list(rt_store.items.items()):
-        if token["token_hash"] == data.refresh_token:
-            found = token
-            break
-    if not found:
+    rt = await db.scalar(
+        select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+    )
+    if rt is None:
         raise AuthenticationError("Invalid refresh token")
-    user = store.get(found["user_id"])
-    if not user:
-        raise AuthenticationError("User not found")
-    access_token = create_access_token(user["id"], user["role"])
-    return {"access_token": access_token, "token_type": "bearer", "expires_in": 3600}
+
+    rt_expires = rt.expires_at
+    if rt_expires.tzinfo is None:
+        rt_expires = rt_expires.replace(tzinfo=UTC)
+    if rt_expires < datetime.now(UTC):
+        raise AuthenticationError("Refresh token expired")
+
+    try:
+        payload: dict[str, object] = jwt.decode(
+            data.refresh_token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except jwt.PyJWTError as err:
+        raise AuthenticationError("Invalid refresh token") from err
+
+    if payload.get("type") != "refresh":
+        raise AuthenticationError("Token is not a refresh token")
+
+    user_id_str = str(payload["sub"])
+    user = await db.scalar(select(User).where(User.id == UUID(user_id_str)))
+    if user is None or not user.is_active:
+        raise AuthenticationError("User not found or inactive")
+
+    access_token = create_access_token(user_id_str, user.role)
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=data.refresh_token,
+        expires_in=settings.access_token_expire_seconds,
+    )
 
 
 @router.post("/logout", status_code=204)
-def logout(
-    data: AuthRefreshRequest,
-    user: dict = Depends(get_current_user),
+async def logout(
+    data: RefreshRequest,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    revoke_refresh_token(data.refresh_token)
+    token_hash = hash_token(data.refresh_token)
+    rt = await db.scalar(
+        select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+    )
+    if rt is not None:
+        await db.delete(rt)
+        await db.commit()
 
 
-@router.get("/me", response_model=UserProfile)
-def get_me(user: dict = Depends(get_current_user)) -> dict:
-    return {
-        "id": user["id"],
-        "email": user["email"],
-        "name": user["name"],
-        "role": user["role"],
-        "is_active": user.get("is_active", True),
-        "created_at": user["created_at"],
-    }
+@router.get("/me", response_model=UserResponse)
+async def me(current_user: CurrentUser) -> UserResponse:
+    return UserResponse(
+        id=str(current_user.id),
+        email=current_user.email,
+        name=current_user.name,
+        role=current_user.role,
+        is_active=current_user.is_active,
+    )
