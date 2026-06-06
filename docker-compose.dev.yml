@@ -45,6 +45,7 @@ services:
 
   # ── Qdrant Research ────────────────────────────────────────────────────────
   qdrant-research:
+    image: qdrant/qdrant:latest
     ports:
       - "6333:6333"
       - "6334:6334"
@@ -95,4 +96,3 @@ services:
       - ./frontend/public:/app/public:ro
       - ./frontend/index.html:/app/index.html:ro
       - ./frontend/vite.config.ts:/app/vite.config.ts:ro
-    deploy: !reset {}

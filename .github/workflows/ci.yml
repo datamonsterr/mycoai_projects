@@ -117,7 +117,7 @@ jobs:
       - name: Validate compose files
         run: |
           docker compose -f docker-compose.yml config
-          docker compose -f docker-compose.dev.yml config
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config
 
       - name: Deployment image dry-run
         run: |
