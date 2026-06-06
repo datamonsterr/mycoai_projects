@@ -12,6 +12,7 @@ async def create_media(db: AsyncSession, data: MediaCreate) -> Media:
     existing = await db.execute(select(Media).where(Media.name == data.name))
     if existing.scalar_one_or_none():
         from ..core.exceptions import ConflictError
+
         raise ConflictError(f"Media '{data.name}' already exists")
 
     media = Media(name=data.name, description=data.description)
@@ -47,9 +48,7 @@ async def count_media(db: AsyncSession) -> int:
     return result.scalar() or 0
 
 
-async def update_media(
-    db: AsyncSession, media_id: UUID, data: MediaUpdate
-) -> Media:
+async def update_media(db: AsyncSession, media_id: UUID, data: MediaUpdate) -> Media:
     from ..core.exceptions import NotFoundError
 
     media = await get_media(db, media_id)
@@ -62,6 +61,7 @@ async def update_media(
         )
         if existing.scalar_one_or_none():
             from ..core.exceptions import ConflictError
+
             raise ConflictError(f"Media '{data.name}' already exists")
         media.name = data.name
     if data.description is not None:

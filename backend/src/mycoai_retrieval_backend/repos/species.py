@@ -12,6 +12,7 @@ async def create_species(db: AsyncSession, data: SpeciesCreate) -> Species:
     existing = await db.execute(select(Species).where(Species.name == data.name))
     if existing.scalar_one_or_none():
         from ..core.exceptions import ConflictError
+
         raise ConflictError(f"Species '{data.name}' already exists")
 
     species = Species(name=data.name, description=data.description)
@@ -62,6 +63,7 @@ async def update_species(
         )
         if existing.scalar_one_or_none():
             from ..core.exceptions import ConflictError
+
             raise ConflictError(f"Species '{data.name}' already exists")
         species.name = data.name
     if data.description is not None:

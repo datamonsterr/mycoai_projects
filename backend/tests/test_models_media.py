@@ -121,7 +121,6 @@ async def test_media_cascade_does_not_delete_images(session: AsyncSession) -> No
     session.add(image)
     await session.commit()
 
-    image_id = image.id
     await session.delete(media)
     with pytest.raises(IntegrityError):
         await session.commit()

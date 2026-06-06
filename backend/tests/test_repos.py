@@ -129,12 +129,12 @@ async def test_list_media_with_archived_filter(session: AsyncSession) -> None:
     await session.commit()
 
     active = (
-        (await session.execute(select(Media).where(Media.is_archived == False)))
+        (await session.execute(select(Media).where(Media.is_archived.is_(False))))
         .scalars()
         .all()
     )
     archived = (
-        (await session.execute(select(Media).where(Media.is_archived == True)))
+        (await session.execute(select(Media).where(Media.is_archived.is_(True))))
         .scalars()
         .all()
     )
@@ -327,7 +327,7 @@ async def test_count_active_owners(session: AsyncSession) -> None:
         await session.execute(
             select(func.count())
             .select_from(User)
-            .where(User.role == "owner", User.is_active == True)
+            .where(User.role == "owner", User.is_active.is_(True))
         )
     ).scalar_one()
     assert count == 2

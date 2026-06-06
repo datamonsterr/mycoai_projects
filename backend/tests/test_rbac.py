@@ -4,7 +4,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mycoai_retrieval_backend.core.config import get_settings
 from mycoai_retrieval_backend.core.security import (
     create_access_token,
     create_refresh_token,
@@ -65,7 +64,6 @@ async def test_get_current_user_rejects_expired_token(
     client: TestClient, session: AsyncSession
 ):
     owner = await _create_owner(session)
-    settings = get_settings()
     token = create_access_token(str(owner.id), owner.role)
     resp = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
@@ -204,7 +202,7 @@ async def test_public_register_endpoint_accessible_without_auth(
 @pytest.mark.asyncio
 async def test_cannot_demote_last_owner(client: TestClient, session: AsyncSession):
     owner = await _create_owner(session)
-    user = await _create_user(session, role="user")
+    await _create_user(session, role="user")
     token = create_access_token(str(owner.id), owner.role)
     h = {"Authorization": f"Bearer {token}"}
 
