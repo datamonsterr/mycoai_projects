@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { mediaList } from '@/lib/mock-data'
 import { sampleStrains } from '@/lib/sample-assets'
 import { uploadImage } from '@/services/images'
-import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Plus, Trash2 } from 'lucide-react'
+import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Loader2, Plus, Trash2 } from 'lucide-react'
+import { useStartRetrieval, useJobStatus, useJobResults } from '@/hooks/use-retrieval'
+import type { RetrievalRanking, RetrievalNeighbor } from '@/services/types'
 
 type Step = 'upload' | 'segmentation' | 'processing' | 'results'
 
@@ -39,15 +41,6 @@ const ranks: Rank[] = [
   { rank: 1, species: 'thymicola', score: 0.91 },
   { rank: 2, species: 'sclerotigenum', score: 0.66 },
   { rank: 3, species: 'Penicillium commune', score: 0.38 },
-]
-
-const processingStages = [
-  'Auto-segmenting colonies on each plate...',
-  'Extracting visual features from segments...',
-  'Querying Qdrant vector database...',
-  'KNN search across reference dataset...',
-  'Aggregating results across all images per strain...',
-  'Ranking species predictions by confidence...',
 ]
 
 const stepLabels: Record<Step, string> = { upload: 'Upload', segmentation: 'Segment', processing: 'Preparing ...', results: 'Results' }
@@ -375,7 +368,33 @@ function SegmentCard({
   )
 }
 
-function ResultDetail({ strain, images, knnK, aggMethod }: { strain: string; images: StrainImage[]; knnK: number; aggMethod: 'weighted' | 'uni' }) {
+function apiNeighborsToDisplay(neighbors: RetrievalNeighbor[]) {
+  return neighbors.map((neighbor) => ({
+    strain: neighbor.strain,
+    species: neighbor.species,
+    media: neighbor.media,
+    original: neighbor.image_thumbnail_url,
+    similarity: neighbor.similarity,
+  }))
+}
+
+function ResultDetail({
+  strain,
+  images,
+  knnK,
+  aggMethod,
+  rankings: apiRankings,
+  topNeighbors: apiNeighbors,
+}: {
+  strain: string
+  images: StrainImage[]
+  knnK: number
+  aggMethod: 'weighted' | 'uni'
+  rankings?: RetrievalRanking[]
+  topNeighbors?: RetrievalNeighbor[]
+}) {
+  const displayRanks = apiRankings ?? ranks
+  const displayNeighbors = apiNeighbors ? apiNeighborsToDisplay(apiNeighbors) : null
   return (
     <div className="space-y-4">
       <Card>
@@ -386,7 +405,7 @@ function ResultDetail({ strain, images, knnK, aggMethod }: { strain: string; ima
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 p-4 pt-0">
-          {ranks.map((rank) => (
+          {displayRanks.map((rank) => (
             <div key={rank.rank} className="grid grid-cols-[40px_1fr_140px_64px] items-center gap-3 rounded-lg border border-border p-3">
               <div className="font-heading text-lg font-bold">#{rank.rank}</div>
               <div className="font-heading font-semibold">{rank.species}</div>
@@ -416,7 +435,7 @@ function ResultDetail({ strain, images, knnK, aggMethod }: { strain: string; ima
                 <Badge variant="secondary">K={knnK}</Badge>
               </summary>
               <div className="grid grid-cols-1 gap-3 border-t border-border p-3 md:grid-cols-5">
-                {getNeighbors(image, knnK).map((neighbor, index) => (
+                {(displayNeighbors ?? getNeighbors(image, knnK)).map((neighbor, index) => (
                   <div key={`${image.id}-${neighbor.strain}-${neighbor.media}-${index}`} className="overflow-hidden rounded-lg border border-border bg-muted">
                     <img src={neighbor.original} alt={`${neighbor.species} ${neighbor.media}`} className="h-32 w-full object-contain" />
                     <div className="space-y-1 bg-card p-2 text-xs">
@@ -435,81 +454,6 @@ function ResultDetail({ strain, images, knnK, aggMethod }: { strain: string; ima
   )
 }
 
-function ProcessingScreen() {
-  const [stage, setStage] = useState(0)
-  const [progress, setProgress] = useState(0)
-  const [logs, setLogs] = useState<string[]>([processingStages[0]])
-  const logsRef = useRef(logs)
-
-  useEffect(() => {
-    logsRef.current = logs
-  }, [logs])
-
-  useEffect(() => {
-    const totalMs = 5000
-    const interval = 80
-    const steps = Math.floor(totalMs / interval)
-    const stageStep = Math.floor(steps / processingStages.length)
-    let tick = 0
-
-    const timer = setInterval(() => {
-      tick++
-      setProgress(Math.min(100, Math.round((tick / steps) * 100)))
-      const newStage = Math.min(processingStages.length - 1, Math.floor(tick / stageStep))
-      setStage(newStage)
-      if (tick % stageStep === 0 && newStage < processingStages.length && logsRef.current[logsRef.current.length - 1] !== processingStages[newStage]) {
-        setLogs((prev) => [...prev, processingStages[newStage]])
-      }
-      if (tick >= steps) clearInterval(timer)
-    }, interval)
-
-    return () => clearInterval(timer)
-  }, [])
-
-  return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader className="p-6 text-center">
-        <CardTitle className="font-heading text-xl">Running Retrieval</CardTitle>
-        <CardDescription>Processing {processingStages.length} pipeline stages</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6 p-6 pt-0">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-medium">{processingStages[stage]}</span>
-            <span className="font-mono">{progress}%</span>
-          </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-200 ease-linear"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2 rounded-lg bg-muted/50 p-4 max-h-48 overflow-y-auto">
-          {logs.map((log, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs animate-[fadeIn_0.3s_ease-out]">
-              <span className="mt-0.5 font-mono text-muted-foreground flex-shrink-0">
-                {String(i + 1).padStart(2, '0')}
-              </span>
-              <span className={i === logs.length - 1 ? 'text-foreground font-medium' : 'text-success'}>
-                {log}
-              </span>
-              {i < logs.length - 1 && (
-                <span className="text-success ml-1">✓</span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <p className="text-center text-xs text-muted-foreground animate-pulse">
-          Estimated time remaining: {Math.max(0, Math.ceil(5 - (progress / 100) * 5))}s
-        </p>
-      </CardContent>
-    </Card>
-  )
-}
-
 export default function RetrievePage() {
   const [step, setStep] = useState<Step>('upload')
   const [isBatch, setIsBatch] = useState(false)
@@ -521,6 +465,18 @@ export default function RetrievePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingStrainIndex = useRef(0)
   const [uploading, setUploading] = useState(false)
+
+  const [jobId, setJobId] = useState<string | null>(null)
+
+  const startRetrieval = useStartRetrieval()
+  const jobStatus = useJobStatus(jobId ?? '')
+  const jobResults = useJobResults(jobId ?? '', jobStatus.data?.status)
+
+  useEffect(() => {
+    if (jobStatus.data?.status === 'completed' && step === 'processing') {
+      queueMicrotask(() => setStep('results'))
+    }
+  }, [jobStatus.data?.status, step])
 
   const current = strains[activeStrain]
   const totalImages = imageCount(strains)
@@ -657,7 +613,74 @@ export default function RetrievePage() {
         </div>
       </div>
 
-      {step === 'processing' && <ProcessingScreen />}
+      {step === 'processing' && (
+        <Card className="max-w-2xl mx-auto">
+          <CardHeader className="p-6 text-center">
+            <CardTitle className="font-heading text-xl">Running Retrieval</CardTitle>
+            <CardDescription>
+              {startRetrieval.isPending
+                ? 'Submitting query...'
+                : jobStatus.data?.status === 'queued'
+                  ? 'Job queued — waiting for worker'
+                  : jobStatus.data?.status === 'running'
+                    ? 'Processing retrieval pipeline...'
+                    : jobStatus.data?.status === 'completed'
+                      ? 'Retrieval complete'
+                      : jobStatus.data?.status ?? 'Preparing...'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6 p-6 pt-0">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium">
+                  {jobStatus.data?.status ?? 'queued'}
+                </span>
+                <span className="font-mono">
+                  {jobStatus.data?.status === 'completed'
+                    ? 'Done'
+                    : jobStatus.data?.estimated_seconds
+                      ? `~${jobStatus.data.estimated_seconds}s`
+                      : '...'}
+                </span>
+              </div>
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-500 ease-linear"
+                  style={{
+                    width: jobStatus.data?.status === 'completed'
+                      ? '100%'
+                      : jobStatus.data?.status === 'running'
+                        ? '70%'
+                        : '30%',
+                    animation: jobStatus.data?.status === 'completed' ? 'none' : undefined,
+                  }}
+                />
+              </div>
+            </div>
+
+            {startRetrieval.isError && (
+              <p className="text-center text-sm text-destructive">
+                {startRetrieval.error instanceof Error ? startRetrieval.error.message : 'Failed to start retrieval'}
+              </p>
+            )}
+
+            {jobStatus.data?.status === 'failed' && (
+              <p className="text-center text-sm text-destructive">Job failed. Check the image and try again.</p>
+            )}
+
+            {jobStatus.isLoading && (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Polling job status...
+              </div>
+            )}
+
+            {jobStatus.data?.status === 'completed' && (
+              <p className="text-center text-xs text-muted-foreground">Loading results...</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {step === 'upload' && (
         <div className="space-y-4">
@@ -826,16 +849,16 @@ export default function RetrievePage() {
                       className={`w-full rounded-md p-3 text-left text-sm transition-colors cursor-pointer ${detailStrain === index ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/70'}`}
                     >
                       <div className="font-heading font-semibold">{strain.strain || `Strain ${index + 1}`}</div>
-                      <div className="text-xs opacity-75">{strain.images.length} images · top: {ranks[index % ranks.length].species}</div>
+                      <div className="text-xs opacity-75">{strain.images.length} images · top: {jobResults.data?.rankings?.[0]?.species ?? ranks[index % ranks.length].species}</div>
                     </button>
                   ))}
                   <Button variant="outline" size="sm" className="w-full"><Download className="h-4 w-4" /> Export Batch CSV</Button>
                 </CardContent>
               </Card>
-              <ResultDetail strain={activeResult?.strain || 'Strain'} images={activeResult?.images ?? []} knnK={knnK} aggMethod={aggMethod} />
+              <ResultDetail strain={activeResult?.strain || 'Strain'} images={activeResult?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} topNeighbors={jobResults.data?.rankings?.[0]?.neighbors} />
             </div>
           ) : (
-            <ResultDetail strain={strains[0]?.strain || 'Single strain'} images={strains[0]?.images ?? []} knnK={knnK} aggMethod={aggMethod} />
+            <ResultDetail strain={strains[0]?.strain || 'Single strain'} images={strains[0]?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} topNeighbors={jobResults.data?.rankings?.[0]?.neighbors} />
           )}
         </div>
       )}
@@ -846,8 +869,20 @@ export default function RetrievePage() {
           onClick={() => {
             if (step === 'upload') setStep('segmentation')
             if (step === 'segmentation') {
+              const queryImageId = strains[0]?.images[0]?.id
+              if (!queryImageId) return
               setStep('processing')
-              window.setTimeout(() => setStep('results'), 5100)
+              startRetrieval.mutate(
+                {
+                  image_id: queryImageId,
+                  k: knnK,
+                  aggregation: aggMethod === 'weighted' ? 'weighted' : 'uni',
+                  environment_strategy: 'mean',
+                },
+                {
+                  onSuccess: (data) => setJobId(data.job_id),
+                },
+              )
             }
           }}
           disabled={step === 'results' || step === 'processing'}
