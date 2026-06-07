@@ -1,40 +1,95 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import type { Role, UserAccount } from '@/lib/mock-data'
-import { me, users } from '@/lib/mock-data'
+import { useState, useCallback, useEffect, useSyncExternalStore, type ReactNode } from 'react'
+import { authService } from '@/services/auth'
+import { clearToken } from '@/services/api-client'
 import { AuthContext } from '@/lib/auth-context'
+import type { User } from '@/services/types'
+
+function authStore() {
+  let user: User | null = null
+  let loaded = false
+  const listeners = new Set<() => void>()
+
+  const emit = () => { for (const l of listeners) l() }
+
+  return {
+    getSnapshot: () => ({ user, loaded }),
+    subscribe: (cb: () => void) => {
+      listeners.add(cb)
+      return () => { listeners.delete(cb) }
+    },
+    init: async () => {
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        loaded = true
+        emit()
+        return
+      }
+      try {
+        user = await authService.me()
+      } catch {
+        clearToken()
+        user = null
+      }
+      loaded = true
+      emit()
+    },
+    login: async (email: string, password: string): Promise<boolean> => {
+      try {
+        await authService.login({ email, password })
+        user = await authService.me()
+        emit()
+        return true
+      } catch {
+        return false
+      }
+    },
+    logout: async () => {
+      try {
+        const refreshToken = localStorage.getItem('refresh_token') ?? ''
+        await authService.logout(refreshToken)
+      } catch { /* ignore */ }
+      clearToken()
+      user = null
+      emit()
+    },
+  }
+}
+
+const store = authStore()
 
 interface MycoAIWindow {
   __mycoai_logout?: () => void
-  __mycoai_switchRole?: (role: Role) => void
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserAccount | null>(me)
+  const [ready, setReady] = useState(false)
 
-  const login = (email: string, password: string) => {
-    const found = password ? users.find((u) => u.email === email && u.account_status === 'active') : undefined
-    if (found) { setUser(found); return true }
-    return false
-  }
+  useEffect(() => {
+    store.init().then(() => setReady(true))
+  }, [])
 
-  const logout = useCallback(() => setUser(null), [])
+  const auth = useSyncExternalStore(store.subscribe, () => store.getSnapshot(), () => ({ user: null, loaded: true }))
 
-  const switchRole = useCallback((role: Role) => {
-    setUser((prev) => prev ? { ...prev, role } : null)
+  const login = useCallback(async (email: string, password: string) => {
+    return store.login(email, password)
+  }, [])
+
+  const logout = useCallback(async () => {
+    return store.logout()
   }, [])
 
   useEffect(() => {
     const win = window as unknown as MycoAIWindow
-    win.__mycoai_logout = logout
-    win.__mycoai_switchRole = switchRole
+    win.__mycoai_logout = () => { store.logout() }
     return () => {
       delete win.__mycoai_logout
-      delete win.__mycoai_switchRole
     }
-  }, [logout, switchRole])
+  }, [])
+
+  if (!ready) return null
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, switchRole }}>
+    <AuthContext.Provider value={{ user: auth.user, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

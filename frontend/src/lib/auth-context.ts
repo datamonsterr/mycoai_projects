@@ -1,16 +1,14 @@
 import { createContext } from 'react'
-import type { Role, UserAccount } from '@/lib/mock-data'
+import type { User } from '@/services/types'
 
 export interface AuthState {
-  user: UserAccount | null
-  login: (email: string, password: string) => boolean
-  logout: () => void
-  switchRole: (role: Role) => void
+  user: User | null
+  login: (email: string, password: string) => Promise<boolean>
+  logout: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthState>({
   user: null,
-  login: () => false,
-  logout: () => {},
-  switchRole: () => {},
+  login: async () => false,
+  logout: async () => {},
 })
