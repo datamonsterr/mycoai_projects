@@ -23,3 +23,7 @@ Thumbs.db
 .vscode/
 .idea/
 worktrees/
+.understand-anything/
+.vite/
+frontend/playwright-report/
+frontend/test-results/
