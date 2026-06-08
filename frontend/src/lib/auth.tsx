@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import type { Role, UserAccount } from '@/lib/mock-data'
 import { me, users } from '@/lib/mock-data'
 import { AuthContext } from '@/lib/auth-context'
@@ -18,6 +18,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return
     setUser({ ...user, role })
   }
+
+  useEffect(() => {
+    ;(window as any).__mycoai_logout = logout
+    ;(window as any).__mycoai_switchRole = switchRole
+    return () => {
+      delete (window as any).__mycoai_logout
+      delete (window as any).__mycoai_switchRole
+    }
+  }, [user])
 
   return (
     <AuthContext.Provider value={{ user, login, logout, switchRole }}>

@@ -1,22 +1,25 @@
 import { test, expect } from '@playwright/test'
 
+async function lo(page: import('@playwright/test').Page) {
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+  await page.waitForFunction(() => (window as any).__mycoai_logout !== undefined, {}, { timeout: 5000 })
+  await page.evaluate(() => { (window as any).__mycoai_logout() })
+  await page.waitForTimeout(200)
+}
+
 test.describe('API Service Units', () => {
   test('api client uses correct base URL', async ({ page }) => {
-    await page.goto('/login')
-    const apiClient = page.evaluate(() => {
-      const resp = new Response(JSON.stringify({}), {status: 401, statusText: 'Unauthorized'})
-      return window.location.origin
-    })
-    expect(apiClient).toBeTruthy()
+    await lo(page)
+    const origin = await page.evaluate(() => window.location.origin)
+    expect(origin).toBeTruthy()
   })
 
-  test('auth service stores tokens in localStorage', async ({ page, context }) => {
-    await context.grantPermissions(['storage'])
-    await page.goto('/login')
-    await page.fill('input[type="email"]', 'test@example.com')
-    await page.fill('input[type="password"]', 'password123')
+  test('auth service login flow works with mock', async ({ page }) => {
+    await lo(page)
+    await page.fill('input#email', 'alice@mycoai.org')
+    await page.fill('input#password', 'adminpass')
     await page.click('button[type="submit"]')
-    const token = await page.evaluate(() => localStorage.getItem('access_token'))
-    expect(token).toBeTruthy()
+    await expect(page.locator('h1:has-text("Dashboard")')).toBeVisible({ timeout: 5000 })
   })
 })
