@@ -15,23 +15,18 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
-
       - name: Install dependencies
         working-directory: research
         run: uv sync
-
       - name: Lint
         working-directory: research
         run: uv run ruff check src/
-
       - name: Tests
         working-directory: research
         run: uv run pytest tests/ -q
@@ -41,71 +36,66 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
-
       - name: Install dependencies
         working-directory: backend
         run: uv sync --all-groups
-
       - name: Lint
         working-directory: backend
         run: uv run ruff check .
-
       - name: Format check
         working-directory: backend
         run: uv run ruff format --check .
-
       - name: Type check
         working-directory: backend
         run: uv run mypy src
-
       - name: Tests (unit)
         working-directory: backend
         env:
           DATABASE_URL: "sqlite+aiosqlite://"
         run: uv run pytest -m "not integration"
+      - name: Tests (integration)
+        working-directory: backend
+        env:
+          DATABASE_URL: "sqlite+aiosqlite://"
+        run: uv run pytest -m integration
 
   frontend:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10
           run_install: false
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
-
       - name: Install dependencies
         working-directory: frontend
         run: pnpm install --frozen-lockfile
-
       - name: Lint
         working-directory: frontend
         run: pnpm run lint
-
       - name: Type check
         working-directory: frontend
         run: pnpm run typecheck
-
       - name: Build
         working-directory: frontend
         run: pnpm run build
+      - name: E2E tests
+        working-directory: frontend
+        run: pnpm run test:e2e
 
   docker-dry-run:
     runs-on: ubuntu-latest
@@ -113,12 +103,10 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-
       - name: Validate compose files
         run: |
           docker compose -f docker-compose.yml config
           docker compose -f docker-compose.yml -f docker-compose.dev.yml config
-
       - name: Deployment image dry-run
         run: |
           shopt -s globstar nullglob
