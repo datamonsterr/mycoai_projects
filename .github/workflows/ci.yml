@@ -93,9 +93,14 @@ jobs:
       - name: Build
         working-directory: frontend
         run: pnpm run build
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
       - name: E2E tests
         working-directory: frontend
         run: pnpm run test:e2e
+        env:
+          BASE_URL: http://localhost:4173
 
   docker-dry-run:
     runs-on: ubuntu-latest

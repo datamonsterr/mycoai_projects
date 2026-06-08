@@ -1,0 +1,125 @@
+name: SRS E2E Full Flow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/SRS.md'
+      - 'frontend/src/**'
+      - 'frontend/e2e/**'
+      - 'frontend/playwright.config.ts'
+      - 'backend/src/**'
+      - '.github/workflows/srs-e2e.yml'
+  pull_request:
+    paths:
+      - 'docs/SRS.md'
+      - 'frontend/src/**'
+      - 'frontend/e2e/**'
+      - 'frontend/playwright.config.ts'
+      - 'backend/src/**'
+      - '.github/workflows/srs-e2e.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: srs-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    outputs:
+      backend-ready: ${{ steps.health.outputs.success }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v6
+      - name: Install backend deps
+        working-directory: backend
+        run: uv sync --all-groups
+      - name: Lint
+        working-directory: backend
+        run: uv run ruff check .
+      - name: Type check
+        working-directory: backend
+        run: uv run mypy src
+      - name: Unit tests
+        working-directory: backend
+        env:
+          DATABASE_URL: "sqlite+aiosqlite://"
+        run: uv run pytest -m "not integration" -q
+      - name: Integration tests
+        working-directory: backend
+        env:
+          DATABASE_URL: "sqlite+aiosqlite://"
+        run: uv run pytest -m integration -q
+      - name: Health check
+        id: health
+        run: echo "success=true" >> "$GITHUB_OUTPUT"
+
+  e2e:
+    needs: backend
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        spec:
+          - auth
+          - navigation
+          - api
+          - srs-flows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm run build
+
+      - name: Run E2E: ${{ matrix.spec }}
+        working-directory: frontend
+        run: npx playwright test "e2e/${{ matrix.spec }}.spec.ts"
+        timeout-minutes: 10
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.spec }}
+          path: frontend/playwright-report/
+          retention-days: 7
+
+  report:
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: E2E status
+        run: |
+          if [ "${{ needs.e2e.result }}" = "success" ]; then
+            echo "✅ All SRS E2E specs passed"
+          else
+            echo "❌ Some SRS E2E specs failed — check artifacts above"
+            exit 1
+          fi
