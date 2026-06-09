@@ -44,7 +44,7 @@ async def increment_counter(
     if field not in COUNTER_FIELDS:
         raise ValueError(f"Unknown counter field: {field}")
     row = await _ensure_counter(db)
-    current = int(row.value.get(field, 0))
+    current = int(row.value.get(field, 0))  # type: ignore[call-overload]
     row.value[field] = current + amount
     row.updated_at = datetime.datetime.now(datetime.UTC)
     await db.flush()
@@ -63,4 +63,4 @@ async def reset_counter(db: AsyncSession) -> dict[str, Any]:
 
 async def get_threshold(db: AsyncSession) -> int:
     row = await _ensure_counter(db)
-    return int(row.value.get("threshold", DEFAULT_THRESHOLD))
+    return int(row.value.get("threshold", DEFAULT_THRESHOLD))  # type: ignore[call-overload]
