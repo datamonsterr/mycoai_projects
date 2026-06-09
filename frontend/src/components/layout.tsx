@@ -1,8 +1,5 @@
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/use-auth'
-import { useMemo } from 'react'
-import type { Role } from '@/lib/mock-data'
-import { feedbackItems } from '@/lib/mock-data'
 import {
   LayoutDashboard,
   Upload,
@@ -15,19 +12,19 @@ import {
   LogOut,
   Menu,
   X,
-  Shield,
   FlaskConical,
   PanelLeftClose,
   PanelLeftOpen,
   type LucideIcon,
 } from 'lucide-react'
 import { useState } from 'react'
+import type { UserRole } from '@/services/types'
 
 interface NavItem {
   label: string
   href: string
   icon: LucideIcon
-  roles: Role[]
+  roles: UserRole[]
   badge?: number
 }
 
@@ -49,7 +46,7 @@ const ownerNav: NavItem[] = [
 ]
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, switchRole } = useAuth()
+  const { user, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -62,19 +59,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = window.location.pathname
   const isOwner = user?.role === 'owner'
   const navItems = isOwner ? ownerNav : userNav
-
-  const pendingCount = useMemo(() => feedbackItems.filter((f) => f.status === 'pending').length, [])
-
-  const navWithBadges = navItems.map((item) => {
-    if (item.href === '/feedback-inbox' && isOwner && pendingCount > 0) {
-      return { ...item, badge: pendingCount }
-    }
-    if (item.href === '/my-feedback' && !isOwner && pendingCount > 0) {
-      const myPending = feedbackItems.filter((f) => f.status === 'pending' && f.submitter_id === user?.user_id).length
-      if (myPending > 0) return { ...item, badge: myPending }
-    }
-    return item
-  })
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -113,7 +97,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2 space-y-1">
-          {navWithBadges.map((item) => {
+          {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
             return (
               <a
@@ -170,17 +154,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <div className="flex gap-1">
                 <button
-                  onClick={() => switchRole(user?.role === 'owner' ? 'user' : 'owner')}
+                  onClick={() => logout()}
                   className="flex-1 inline-flex items-center justify-center gap-1 rounded-md border border-border px-2 py-1 text-xs cursor-pointer hover:bg-muted transition-colors"
                 >
-                  <Shield className="h-3 w-3" />
-                  {user?.role === 'owner' ? 'View as User' : 'View as Owner'}
-                </button>
-                <button
-                  onClick={logout}
-                  className="inline-flex items-center justify-center rounded-md border border-border p-1 cursor-pointer hover:bg-muted transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-3 w-3" /> Sign Out
                 </button>
               </div>
             </>
