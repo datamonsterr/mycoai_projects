@@ -5,14 +5,16 @@ import {
   getImage,
   deleteImage,
   listSegments,
+  listImages,
 } from '@/services/images'
+import type { ImageListParams } from '@/services/images'
 import { useToast } from '@/hooks/use-toast'
 
 const imagesKeys = {
   all: ['images'] as const,
   detail: (imageId: string) => [...imagesKeys.all, 'detail', imageId] as const,
   segments: (imageId: string) => [...imagesKeys.all, 'segments', imageId] as const,
-  list: () => [...imagesKeys.all, 'list'] as const,
+  list: (params?: ImageListParams) => [...imagesKeys.all, 'list', params] as const,
 }
 
 export function useImageUpload() {
@@ -86,5 +88,12 @@ export function useSegments(imageId: string) {
     queryKey: imagesKeys.segments(imageId),
     queryFn: () => listSegments(imageId),
     enabled: !!imageId,
+  })
+}
+
+export function useImagesList(params?: ImageListParams) {
+  return useQuery({
+    queryKey: imagesKeys.list(params),
+    queryFn: () => listImages(params),
   })
 }

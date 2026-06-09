@@ -29,6 +29,27 @@ class ImageDetail(BaseModel):
     segments: list[dict[str, object]] = Field(default_factory=list)
 
 
+class ImageListItem(BaseModel):
+    id: str
+    strain_name: str
+    species_id: str
+    species_name: str
+    media_id: str
+    media_name: str
+    file_path: str
+    angle: str | None = None
+    segments_count: int = 0
+    data_update_status: str
+    indexed_in_qdrant: bool = False
+    is_archived: bool = False
+    created_at: datetime
+
+
+class ImageListResponse(BaseModel):
+    items: list[ImageListItem]
+    total: int
+
+
 class SegmentDetail(BaseModel):
     id: str
     image_id: str

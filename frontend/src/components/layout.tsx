@@ -69,12 +69,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 border-r border-border bg-card flex flex-col transition-all duration-200',
+        'fixed inset-y-0 left-0 z-50 h-screen border-r border-border bg-card flex flex-col transition-all duration-200 overflow-hidden',
         collapsed ? 'w-16' : 'w-64',
         'lg:relative lg:translate-x-0',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
       )}>
-        <div className="flex items-center h-14 px-3 border-b border-border">
+        <div className="flex items-center h-14 px-3 border-b border-border flex-shrink-0">
           {!collapsed && (
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <FlaskConical className="h-5 w-5 text-primary flex-shrink-0" />
@@ -134,7 +134,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className={cn('border-t border-border', collapsed ? 'p-2' : 'p-4 space-y-2')}>
+        <div className={cn('border-t border-border flex-shrink-0', collapsed ? 'p-2' : 'p-4 space-y-2')}>
           {collapsed ? (
             <div className="flex justify-center" title={user?.name}>
               <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold font-heading">
@@ -166,7 +166,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Mobile menu trigger */}
         <button
           className="lg:hidden fixed top-3 left-3 z-30 h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card shadow-sm cursor-pointer"
@@ -174,7 +174,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <main className="flex-1 p-4 pt-14 lg:pt-4 lg:p-6 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 pt-14 lg:pt-4 lg:p-6 max-w-7xl w-full mx-auto overflow-x-hidden">
           {children}
         </main>
       </div>
