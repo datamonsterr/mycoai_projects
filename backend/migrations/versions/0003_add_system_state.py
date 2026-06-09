@@ -35,7 +35,8 @@ def upgrade() -> None:
         INSERT INTO system_state (key, value, updated_at)
         VALUES (
             'retraining_counter',
-            '{"images_added": 0, "bbox_corrections": 0, "items_archived": 0, "species_added": 0, "last_reset_at": null, "threshold": 20}'::jsonb,
+            '{"images_added": 0, "bbox_corrections": 0, "items_archived": 0, '
+            '"species_added": 0, "last_reset_at": null, "threshold": 20}'::jsonb,
             now()
         )
         """
