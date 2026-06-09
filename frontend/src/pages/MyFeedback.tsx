@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/use-auth'
 export default function MyFeedbackPage() {
   const { user } = useAuth()
   const [tab, setTab] = useState('all')
-  const mine = feedbackItems.filter((f) => f.submitter_id === user?.user_id)
+  const mine = feedbackItems.filter((f) => f.submitter_id === user?.id)
 
   return (
     <div className="space-y-6">

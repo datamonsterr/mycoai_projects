@@ -5,25 +5,36 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { FlaskConical } from 'lucide-react'
-import { users } from '@/lib/mock-data'
 
 export default function LoginPage() {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'login' | 'register'>('login')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setLoading(true)
+
     if (mode === 'login') {
-      const ok = login(email, password)
+      const ok = await login(email, password)
       if (!ok) setError('Invalid credentials or inactive account.')
     } else {
-      setError('Registration successful (mock). Switch to login.')
-      setMode('login')
+      try {
+        const { authService } = await import('@/services/auth')
+        await authService.register({ email, password, name })
+        const ok = await login(email, password)
+        if (!ok) setError('Registration succeeded but login failed. Please try signing in.')
+        else setMode('login')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Registration failed. Please try again.')
+      }
     }
+    setLoading(false)
   }
 
   return (
@@ -41,7 +52,7 @@ export default function LoginPage() {
             {mode === 'register' && (
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" placeholder="Your name" required />
+                <Input id="name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
             )}
             <div className="space-y-2">
@@ -64,15 +75,15 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full">
-              {mode === 'login' ? 'Sign In' : 'Register'}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Register'}
             </Button>
           </form>
-          <div className="mt-4 space-y-2">
+          <div className="mt-4">
             <button
               type="button"
               className="text-xs text-muted-foreground hover:text-foreground cursor-pointer w-full text-center"
@@ -80,22 +91,6 @@ export default function LoginPage() {
             >
               {mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign In'}
             </button>
-            <div className="border-t border-border pt-2">
-              <p className="text-xs text-muted-foreground mb-2 text-center">Quick demo logins:</p>
-              <div className="space-y-1">
-                {users.filter(u => u.account_status === 'active').map((u) => (
-                  <button
-                    key={u.user_id}
-                    type="button"
-                    className="w-full text-left text-xs px-3 py-1.5 rounded hover:bg-muted cursor-pointer flex justify-between"
-                    onClick={() => { setEmail(u.email); setPassword('password'); }}
-                  >
-                    <span>{u.name}</span>
-                    <span className="text-muted-foreground">{u.role === 'owner' ? 'Data Owner' : 'User'}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>
