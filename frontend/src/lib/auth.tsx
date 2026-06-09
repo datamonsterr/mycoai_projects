@@ -7,12 +7,18 @@ import type { User } from '@/services/types'
 function authStore() {
   let user: User | null = null
   let loaded = false
+  let snapshot: { user: User | null; loaded: boolean } = { user, loaded }
   const listeners = new Set<() => void>()
 
-  const emit = () => { for (const l of listeners) l() }
+  const emit = () => {
+    if (snapshot.user !== user || snapshot.loaded !== loaded) {
+      snapshot = { user, loaded }
+    }
+    for (const l of listeners) l()
+  }
 
   return {
-    getSnapshot: () => ({ user, loaded }),
+    getSnapshot: () => snapshot,
     subscribe: (cb: () => void) => {
       listeners.add(cb)
       return () => { listeners.delete(cb) }
@@ -68,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     store.init().then(() => setReady(true))
   }, [])
 
-  const auth = useSyncExternalStore(store.subscribe, () => store.getSnapshot(), () => ({ user: null, loaded: true }))
+  const auth = useSyncExternalStore(store.subscribe, store.getSnapshot)
 
   const login = useCallback(async (email: string, password: string) => {
     return store.login(email, password)

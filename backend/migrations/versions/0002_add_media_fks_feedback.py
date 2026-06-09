@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0002_add_media_image_fks_feedback"
+revision: str = "0002_add_media_fks_feedback"
 down_revision: str | None = "0001_initial_schema"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

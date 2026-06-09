@@ -7,7 +7,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0003_add_system_state"
-down_revision: str | None = "0002_add_media_image_fks_feedback"
+down_revision: str | None = "0002_add_media_fks_feedback"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
