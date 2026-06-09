@@ -14,7 +14,8 @@ def test_upload_get_and_patch_segments(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_upload_rejects_unknown_segmentation_method(
-    tmp_path: Path, monkeypatch,
+    tmp_path: Path,
+    monkeypatch,
 ) -> None:
     get_settings.cache_clear()
     monkeypatch.setenv("MYCOAI_BACKEND_UPLOAD_ROOT", str(tmp_path / "uploads"))
