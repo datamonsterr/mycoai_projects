@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Feedback, Image
 from ..schemas.feedback import FeedbackCreate, FeedbackUpdate
+from . import system_state
 
 
 class FeedbackRepository:
@@ -116,6 +117,7 @@ class FeedbackRepository:
                     .where(Image.id == feedback.image_id)
                     .values(data_update_status="pending_reference")
                 )
+                await system_state.increment_counter(db, "images_added")
 
         await db.flush()
         return feedback
@@ -171,6 +173,9 @@ class FeedbackRepository:
                     update(Image)
                     .where(Image.id.in_(reference_image_ids))
                     .values(data_update_status="pending_reference")
+                )
+                await system_state.increment_counter(
+                    db, "images_added", amount=len(reference_image_ids)
                 )
 
         await db.commit()

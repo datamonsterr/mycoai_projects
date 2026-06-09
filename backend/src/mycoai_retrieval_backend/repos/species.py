@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Species
 from ..schemas.species import SpeciesCreate, SpeciesUpdate
+from . import system_state
 
 
 async def create_species(db: AsyncSession, data: SpeciesCreate) -> Species:
@@ -19,6 +20,7 @@ async def create_species(db: AsyncSession, data: SpeciesCreate) -> Species:
     db.add(species)
     await db.commit()
     await db.refresh(species)
+    await system_state.increment_counter(db, "species_added")
     return species
 
 
