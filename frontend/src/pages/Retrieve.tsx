@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { mediaList } from '@/lib/mock-data'
 import { sampleStrains } from '@/lib/sample-assets'
+import { uploadImage } from '@/services/images'
 import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Plus, Trash2 } from 'lucide-react'
 
 type Step = 'upload' | 'segmentation' | 'processing' | 'results'
@@ -129,19 +130,6 @@ function mediaOptions() {
 
 function imageCount(strains: StrainDraft[]) {
   return strains.reduce((sum, strain) => sum + strain.images.length, 0)
-}
-
-function flatSampleImages(): SampleImage[] {
-  return typedSampleStrains.reduce<SampleImage[]>((items, strain) => [...items, ...strain.images], [])
-}
-
-function createSampleImage(index: number): StrainImage {
-  const sampleImages = flatSampleImages()
-  const sample = sampleImages[(index - 1) % sampleImages.length]
-  return {
-    ...fromSampleImage(sample),
-    id: `${sample.id}-${index}-${crypto.randomUUID()}`,
-  }
 }
 
 function getNeighbors(currentImage: StrainImage, k = 5) {
@@ -530,6 +518,9 @@ export default function RetrievePage() {
   const [knnK, setKnnK] = useState(5)
   const [aggMethod, setAggMethod] = useState<'weighted' | 'uni'>('weighted')
   const [strains, setStrains] = useState<StrainDraft[]>([{ strain: '', images: [] }])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const pendingStrainIndex = useRef(0)
+  const [uploading, setUploading] = useState(false)
 
   const current = strains[activeStrain]
   const totalImages = imageCount(strains)
@@ -566,8 +557,42 @@ export default function RetrievePage() {
   }
 
   const addImage = (strainIndex: number) => {
+    pendingStrainIndex.current = strainIndex
+    fileInputRef.current?.click()
+  }
+
+  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files?.length) return
+    setUploading(true)
+    const strainIndex = pendingStrainIndex.current
     const strain = strains[strainIndex]
-    updateStrain(strainIndex, { images: [...strain.images, createSampleImage(strain.images.length + 1)] })
+    const strainName = strain.strain || 'unknown'
+    for (const file of Array.from(files)) {
+      try {
+        const res = await uploadImage(file, strainName, mediaList[0].name)
+        const newImage: StrainImage = {
+          id: res.image_id,
+          fileName: file.name,
+          media: res.media,
+          mediaIsNew: false,
+          maxColonies: 'default',
+          original: URL.createObjectURL(file),
+        }
+        setStrains((prev) => {
+          const updated = [...prev]
+          updated[strainIndex] = {
+            ...updated[strainIndex],
+            images: [...updated[strainIndex].images, newImage],
+          }
+          return updated
+        })
+      } catch {
+        /* continue with next file */
+      }
+    }
+    e.target.value = ''
+    setUploading(false)
   }
 
   const updateImage = (strainIndex: number, imageId: string, field: Partial<StrainImage>) => {
@@ -636,6 +661,14 @@ export default function RetrievePage() {
 
       {step === 'upload' && (
         <div className="space-y-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            className="hidden"
+            onChange={handleFilesSelected}
+          />
           <div className="flex flex-wrap items-center gap-2">
             <Button variant={!isBatch ? 'default' : 'outline'} size="sm" onClick={() => { setIsBatch(false); setActiveStrain(0) }}>
               <FlaskConical className="h-4 w-4" /> Single Strain
@@ -673,15 +706,15 @@ export default function RetrievePage() {
                     Compact metadata shown per card. Bigger plate preview helps catch wrong media/image before segmentation.
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => addImage(activeStrain)}><Plus className="h-4 w-4" /> Add Image</Button>
+                    <Button variant="outline" size="sm" disabled={uploading} onClick={() => addImage(activeStrain)}><Plus className="h-4 w-4" /> {uploading ? 'Uploading...' : 'Add Image'}</Button>
                     {isBatch && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeStrain(activeStrain)}><Trash2 className="h-4 w-4" /></Button>}
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-4 pt-0">
                 {current.images.length === 0 ? (
-                  <button className="flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary" onClick={() => addImage(activeStrain)}>
-                    <Images className="mb-2 h-8 w-8" /> Add first image for this strain
+                  <button className="flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary" disabled={uploading} onClick={() => addImage(activeStrain)}>
+                    <Images className="mb-2 h-8 w-8" /> {uploading ? 'Uploading...' : 'Add first image for this strain'}
                   </button>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
