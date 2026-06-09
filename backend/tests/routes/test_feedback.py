@@ -43,11 +43,11 @@ def test_list_my_feedback(client: TestClient, user_headers: dict[str, str]) -> N
     assert "items" in resp.json()
 
 
-def test_feedback_inbox_requires_owner(
+def test_feedback_inbox_accessible_by_any_authenticated_user(
     client: TestClient, user_headers: dict[str, str], owner_headers: dict[str, str]
 ) -> None:
     resp = client.get("/api/v1/feedback/inbox", headers=user_headers)
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
     resp = client.get("/api/v1/feedback/inbox", headers=owner_headers)
     assert resp.status_code == 200

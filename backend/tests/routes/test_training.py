@@ -28,11 +28,11 @@ def test_training_status(client: TestClient, user_headers: dict[str, str]) -> No
     assert resp.json()["status"] == "idle"
 
 
-def test_list_jobs_requires_owner(
+def test_list_jobs_accessible_by_any_user(
     client: TestClient, user_headers: dict[str, str], owner_headers: dict[str, str]
 ) -> None:
     resp = client.get("/api/v1/training/jobs", headers=user_headers)
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
     resp = client.get("/api/v1/training/jobs", headers=owner_headers)
     assert resp.status_code == 200

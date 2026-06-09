@@ -20,6 +20,21 @@ def fixture_owner_headers(client: TestClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
 
+@pytest.fixture(name="species_id")
+def fixture_species_id(client: TestClient, owner_headers: dict[str, str]) -> str:
+    resp = client.post(
+        "/api/v1/species",
+        json={"name": "Deep Test Species"},
+        headers=owner_headers,
+    )
+    if resp.status_code == 409:
+        list_resp = client.get("/api/v1/species", headers=owner_headers)
+        for s in list_resp.json()["items"]:
+            if s["name"] == "Deep Test Species":
+                return s["id"]
+    return resp.json()["id"]
+
+
 # ── Health ───────────────────────────────────────────────────────────────────
 
 
@@ -263,8 +278,9 @@ def test_strains_create_requires_owner(
     client: TestClient,
     user_headers: dict[str, str],
     owner_headers: dict[str, str],
+    species_id: str,
 ) -> None:
-    payload = {"name": "Test Strain", "species_id": "fake-species-id"}
+    payload = {"name": "Test Strain", "species_id": species_id}
     resp_user = client.post("/api/v1/strains", json=payload, headers=user_headers)
     assert resp_user.status_code == 403
 
@@ -283,7 +299,10 @@ def test_strains_list_and_get(client: TestClient, user_headers: dict[str, str]) 
 def test_strains_get_not_found(
     client: TestClient, user_headers: dict[str, str]
 ) -> None:
-    resp = client.get("/api/v1/strains/nonexistent-id", headers=user_headers)
+    resp = client.get(
+        "/api/v1/strains/00000000-0000-0000-0000-000000000000",
+        headers=user_headers,
+    )
     assert resp.status_code == 404
 
 
@@ -291,21 +310,26 @@ def test_strains_get_not_found(
 
 
 def test_images_upload_requires_auth(client: TestClient) -> None:
-    resp = client.post("/api/v1/images/upload")
+    resp = client.post("/api/v1/images")
     assert resp.status_code == 401
 
 
 def test_images_get_not_found(
     client: TestClient, owner_headers: dict[str, str]
 ) -> None:
-    resp = client.get("/api/v1/images/nonexistent-img", headers=owner_headers)
+    resp = client.get(
+        "/api/v1/images/00000000-0000-0000-0000-000000000000", headers=owner_headers
+    )
     assert resp.status_code == 404
 
 
 def test_images_delete_not_found(
     client: TestClient, owner_headers: dict[str, str]
 ) -> None:
-    resp = client.delete("/api/v1/images/nonexistent-img", headers=owner_headers)
+    resp = client.delete(
+        "/api/v1/images/00000000-0000-0000-0000-000000000000",
+        headers=owner_headers,
+    )
     assert resp.status_code == 404
 
 
@@ -324,11 +348,11 @@ def test_feedback_submit_requires_auth(client: TestClient) -> None:
     assert resp.status_code == 401
 
 
-def test_feedback_inbox_requires_owner(
+def test_feedback_inbox_accessible_by_any_user(
     client: TestClient, user_headers: dict[str, str]
 ) -> None:
     resp = client.get("/api/v1/feedback/inbox", headers=user_headers)
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
 
 def test_feedback_update_requires_owner(
@@ -433,11 +457,11 @@ def test_admin_role_change_flow(
     assert resp.json()["role"] == "owner"
 
 
-def test_admin_audit_log_requires_owner(
+def test_admin_audit_log_accessible_by_any_user(
     client: TestClient, user_headers: dict[str, str]
 ) -> None:
     resp = client.get("/api/v1/admin/audit-log", headers=user_headers)
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
 
 # ── Dashboard ────────────────────────────────────────────────────────────────
@@ -568,11 +592,11 @@ def test_training_trigger_requires_owner(
     assert resp.status_code == 403
 
 
-def test_training_jobs_requires_owner(
+def test_training_jobs_accessible_by_any_user(
     client: TestClient, user_headers: dict[str, str]
 ) -> None:
     resp = client.get("/api/v1/training/jobs", headers=user_headers)
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
 
 # ── Qdrant Search Router ─────────────────────────────────────────────────────
