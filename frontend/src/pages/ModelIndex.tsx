@@ -4,9 +4,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/misc'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
-import { AlertTriangle, RefreshCw, Upload, Check, X } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Upload, Check, X, ShieldAlert } from 'lucide-react'
 import { useTrainingStatus, useTrainingJobs, useTriggerTraining, useCancelJob, useDeployModel } from '@/hooks/use-training'
 import { useIndexStatus, useTriggerReindex } from '@/hooks/use-index'
+import { useAuth } from '@/lib/use-auth'
 
 function statusBadgeVariant(status: string) {
   if (status === 'current' || status === 'completed') return 'success' as const
@@ -16,6 +17,8 @@ function statusBadgeVariant(status: string) {
 }
 
 export default function ModelIndexPage() {
+  const { user } = useAuth()
+  const isOwner = user?.role === 'owner'
   const [reindexOpen, setReindexOpen] = useState(false)
   const [retrainOpen, setRetrainOpen] = useState(false)
 
@@ -57,7 +60,7 @@ export default function ModelIndexPage() {
                 </div>
                 <Separator />
                 <div className="space-y-2 text-sm">
-                  {Object.entries(indexStatus.changes_since_last).map(([key, count]) => (
+                  {Object.entries(indexStatus.changes_since_last ?? {}).map(([key, count]) => (
                     <div key={key} className="flex justify-between">
                       <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
                       <span className="font-mono">{count}</span>
@@ -69,14 +72,21 @@ export default function ModelIndexPage() {
                   <span className="text-muted-foreground">Current Model</span>
                   <span className="font-mono">{currentModel}</span>
                 </div>
-                <Button
-                  size="sm"
-                  className="w-full"
-                  onClick={() => setReindexOpen(true)}
-                  disabled={triggerReindex.isPending}
-                >
-                  <RefreshCw className="h-4 w-4" /> Re-index Qdrant
-                </Button>
+                {isOwner ? (
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setReindexOpen(true)}
+                    disabled={triggerReindex.isPending}
+                  >
+                    <RefreshCw className="h-4 w-4" /> Re-index Qdrant
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    <ShieldAlert className="h-3 w-3 inline mr-1" />
+                    Data Owner access required for re-indexing
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">Index status unavailable</p>
@@ -93,7 +103,7 @@ export default function ModelIndexPage() {
             <p className="text-sm">Review changes before triggering Qdrant re-index:</p>
             <div className="space-y-1 text-sm bg-muted p-3 rounded-md">
               {indexStatus ? (
-                Object.entries(indexStatus.changes_since_last).map(([key, count]) => (
+                Object.entries(indexStatus.changes_since_last ?? {}).map(([key, count]) => (
                   <div key={key} className="flex justify-between">
                     <span className="capitalize">{key.replace(/_/g, ' ')}</span>
                     <span className="font-mono">{count}</span>
@@ -151,14 +161,16 @@ export default function ModelIndexPage() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-sm font-medium">Training Jobs</h4>
-                <Button
-                  variant="outline"
-                  size="sm"
+                {isOwner && (
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => triggerTraining.mutate(undefined)}
-                  disabled={triggerTraining.isPending}
-                >
-                  {triggerTraining.isPending ? 'Starting…' : 'Trigger Training'}
-                </Button>
+                    disabled={triggerTraining.isPending}
+                  >
+                    {triggerTraining.isPending ? 'Starting…' : 'Trigger Training'}
+                  </Button>
+                )}
               </div>
               {jobsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading…</p>
@@ -182,7 +194,7 @@ export default function ModelIndexPage() {
                         <Badge variant={statusBadgeVariant(job.status)}>
                           {job.status}
                         </Badge>
-                        {job.status === 'running' && (
+                        {isOwner && job.status === 'running' && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -193,7 +205,7 @@ export default function ModelIndexPage() {
                             <X className="h-4 w-4" />
                           </Button>
                         )}
-                        {job.status === 'completed' && (
+                        {isOwner && job.status === 'completed' && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -211,9 +223,11 @@ export default function ModelIndexPage() {
               )}
             </div>
 
-            <Button variant="outline" size="sm" className="w-full">
-              <Upload className="h-4 w-4" /> Upload Candidate Model
-            </Button>
+            {isOwner && (
+              <Button variant="outline" size="sm" className="w-full">
+                <Upload className="h-4 w-4" /> Upload Candidate Model
+              </Button>
+            )}
           </CardContent>
         </Card>
 

@@ -14,7 +14,7 @@
 # =============================================================================
 
 # ---- Dependencies layer (shared) --------------------------------------------
-FROM node:25-alpine AS deps
+FROM node:25-slim AS deps
 RUN npm install -g pnpm
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
@@ -22,7 +22,7 @@ RUN pnpm install --frozen-lockfile
 
 
 # ---- Development (Vite HMR) -------------------------------------------------
-FROM node:25-alpine AS dev
+FROM node:25-slim AS dev
 RUN npm install -g pnpm
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -32,7 +32,7 @@ CMD ["pnpm", "dev", "--host", "0.0.0.0"]
 
 
 # ---- Build (production assets) ----------------------------------------------
-FROM node:25-alpine AS build
+FROM node:25-slim AS build
 RUN npm install -g pnpm
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules

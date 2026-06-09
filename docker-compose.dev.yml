@@ -82,13 +82,27 @@ services:
       - uploads_data:/app/Dataset/uploads
     deploy: !reset {}
 
+  # ── pgweb (PostgreSQL web UI) ──────────────────────────────────────────────
+  pgweb:
+    image: ghcr.io/sosedoff/pgweb:latest
+    container_name: mycoai-pgweb
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://mycoai:mycoai@postgres:5432/mycoai?sslmode=disable
+    ports:
+      - "8081:8081"
+    networks:
+      - backend
+    depends_on:
+      - postgres
+
   # ── Frontend ───────────────────────────────────────────────────────────────
   frontend:
     build:
       target: dev
     restart: unless-stopped
     environment:
-      VITE_API_URL: http://localhost:8000
+      VITE_API_URL: http://backend:8000
     ports:
       - "5173:5173"
     volumes:
@@ -96,3 +110,5 @@ services:
       - ./frontend/public:/app/public:ro
       - ./frontend/index.html:/app/index.html:ro
       - ./frontend/vite.config.ts:/app/vite.config.ts:ro
+    deploy: !reset {}
+    mem_limit: 512m

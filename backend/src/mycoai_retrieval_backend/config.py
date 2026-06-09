@@ -3,7 +3,6 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,10 +18,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     api_prefix: str = "/api/v1"
-    database_url: str = Field(
-        default="postgresql+asyncpg://mycoai:mycoai@localhost:5432/mycoai",
-        validation_alias="DATABASE_URL",
-    )
+    database_url: str = "postgresql+asyncpg://mycoai:mycoai@localhost:5432/mycoai"
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
     qdrant_api_key: str = ""

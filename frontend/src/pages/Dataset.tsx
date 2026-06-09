@@ -8,9 +8,12 @@ import { Select } from '@/components/ui/select'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { datasetImages } from '@/lib/mock-data'
 import { useSpeciesList, useMediaList } from '@/hooks/use-taxonomy'
+import { useAuth } from '@/lib/use-auth'
 import { Search, Download, Archive, RotateCcw, Edit } from 'lucide-react'
 
 export default function DatasetPage() {
+  const { user } = useAuth()
+  const isOwner = user?.role === 'owner'
   const [search, setSearch] = useState('')
   const [filterSpecies, setFilterSpecies] = useState('')
   const [filterMedia, setFilterMedia] = useState('')
@@ -40,7 +43,9 @@ export default function DatasetPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm"><Download className="h-4 w-4" /> Export CSV</Button>
-          <Button size="sm" onClick={() => { window.location.href = '/index' }}>Index New Data</Button>
+          {isOwner && (
+            <Button size="sm" onClick={() => { window.location.href = '/index' }}>Index New Data</Button>
+          )}
         </div>
       </div>
 
@@ -128,14 +133,18 @@ export default function DatasetPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => setEditItem(img.image_id)}><Edit className="h-4 w-4" /></Button>
-                        {isArchived ? (
-                          <Button variant="ghost" size="sm"><RotateCcw className="h-4 w-4" /></Button>
-                        ) : (
-                          <Button variant="ghost" size="sm" className="text-destructive"><Archive className="h-4 w-4" /></Button>
-                        )}
-                      </div>
+                      {isOwner ? (
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => setEditItem(img.image_id)}><Edit className="h-4 w-4" /></Button>
+                          {isArchived ? (
+                            <Button variant="ghost" size="sm"><RotateCcw className="h-4 w-4" /></Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" className="text-destructive"><Archive className="h-4 w-4" /></Button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 )

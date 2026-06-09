@@ -26,7 +26,7 @@ function Router() {
 
   if (!user) return <LoginPage />
 
-  const isOwner = user.role === 'owner'
+  const isOwner = user.role === 'owner' || user.role === 'dataowner'
 
   const renderPage = () => {
     switch (path) {

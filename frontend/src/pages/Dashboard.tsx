@@ -9,6 +9,7 @@ import {
   useMediaDistribution,
   useQdrantStatus,
 } from '@/hooks/use-dashboard'
+import { useAuth } from '@/lib/use-auth'
 import { FlaskConical, Database, AlertTriangle, Image, Tags } from 'lucide-react'
 
 const COLORS = ['#3B82F6', '#D97706', '#16A34A', '#DC2626', '#8B5CF6', '#06B6D4', '#F59E0B', '#EC4899', '#6366F1', '#10B981']
@@ -119,6 +120,8 @@ function PieChart({ data }: { data: Array<{ name: string; count: number }> }) {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth()
+  const isOwner = user?.role === 'owner'
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
   const { data: qdrantStatus, isLoading: qdrantLoading } = useQdrantStatus()
   const { data: speciesDist, isLoading: speciesLoading } = useSpeciesDistribution()
@@ -204,7 +207,7 @@ export default function DashboardPage() {
                 </div>
                 <Separator />
                 <div className="space-y-1 text-sm">
-                  {Object.entries(qdrantStatus.changes_since_last).map(([key, val]) => (
+                  {Object.entries(qdrantStatus.changes_since_last ?? {}).map(([key, val]) => (
                     <div key={key} className="flex justify-between">
                       <span className="capitalize">{key.replace(/_/g, ' ')}</span>
                       <span className="font-mono">{val}</span>
@@ -222,7 +225,9 @@ export default function DashboardPage() {
                     </div>
                   </>
                 )}
-                <Button size="sm" className="w-full">Re-index Qdrant</Button>
+                {isOwner && (
+                  <Button size="sm" className="w-full">Re-index Qdrant</Button>
+                )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">No index status available.</p>
