@@ -17,7 +17,7 @@ from mycoai_retrieval_backend.models import User
 
 
 def create_dataowner(email: str) -> None:
-    engine = _get_engine()
+    _ = _get_engine()  # trigger engine init
     sessionmaker = _get_sessionmaker()
 
     async def _run():
