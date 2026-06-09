@@ -19,9 +19,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 try:
-    from .parser import parse_image_filename, SpeciesStrainInfo
+    from .parser import parse_image_filename
 except ImportError:
-    from src.utils.dataset_ingestion.parser import parse_image_filename, SpeciesStrainInfo
+    from src.utils.dataset_ingestion.parser import parse_image_filename
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".jpe", ".tif", ".tiff", ".bmp", ".webp"}
 SKIP_FILES = {"thumbs.db", "desktop.ini", ".ds_store"}
