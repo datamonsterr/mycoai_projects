@@ -1,11 +1,15 @@
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/misc'
-import { speciesList, mediaList, datasetImages, indexStatus, users } from '@/lib/mock-data'
-import { FlaskConical, Database, AlertTriangle, Image, Tags, Users } from 'lucide-react'
+import {
+  useDashboardStats,
+  useSpeciesDistribution,
+  useMediaDistribution,
+  useQdrantStatus,
+} from '@/hooks/use-dashboard'
+import { FlaskConical, Database, AlertTriangle, Image, Tags } from 'lucide-react'
 
 const COLORS = ['#3B82F6', '#D97706', '#16A34A', '#DC2626', '#8B5CF6', '#06B6D4', '#F59E0B', '#EC4899', '#6366F1', '#10B981']
 
@@ -115,32 +119,49 @@ function PieChart({ data }: { data: Array<{ name: string; count: number }> }) {
 }
 
 export default function DashboardPage() {
-  const strainCount = new Set(datasetImages.map((d) => d.strain)).size
+  const { data: stats, isLoading: statsLoading } = useDashboardStats()
+  const { data: qdrantStatus, isLoading: qdrantLoading } = useQdrantStatus()
+  const { data: speciesDist, isLoading: speciesLoading } = useSpeciesDistribution()
+  const { data: mediaDist, isLoading: mediaLoading } = useMediaDistribution()
+
   const metrics = [
-    { label: 'Total Strains', value: strainCount, icon: FlaskConical, color: 'text-primary' },
-    { label: 'Total Images', value: datasetImages.length, icon: Image, color: 'text-secondary' },
-    { label: 'Images / Strain', value: (datasetImages.length / strainCount).toFixed(1), icon: Image, color: 'text-secondary' },
-    { label: 'Total Species', value: speciesList.filter((s) => !s.is_archived).length, icon: Tags, color: 'text-success' },
-    { label: 'Media Types', value: mediaList.filter((m) => !m.is_archived).length, icon: Database, color: 'text-warning' },
-    { label: 'Active Users', value: users.filter((u) => u.account_status === 'active').length, icon: Users, color: 'text-primary' },
-    { label: 'Needs Reindex', value: indexStatus.changes_since_last_index.items_updated, icon: AlertTriangle, color: 'text-destructive' },
+    { label: 'Total Strains', value: statsLoading ? '…' : stats?.total_strains ?? '-', icon: FlaskConical, color: 'text-primary' },
+    { label: 'Total Images', value: statsLoading ? '…' : stats?.total_images ?? '-', icon: Image, color: 'text-secondary' },
+    {
+      label: 'Images / Strain',
+      value: statsLoading || !stats || stats.total_strains === 0
+        ? '…'
+        : (stats.total_images / stats.total_strains).toFixed(1),
+      icon: Image,
+      color: 'text-secondary',
+    },
+    { label: 'Total Species', value: statsLoading ? '…' : stats?.total_species ?? '-', icon: Tags, color: 'text-success' },
+    { label: 'Media Types', value: statsLoading ? '…' : stats?.total_media ?? '-', icon: Database, color: 'text-warning' },
+    {
+      label: 'Needs Reindex',
+      value: qdrantLoading ? '…' : qdrantStatus?.qdrant_index_status !== 'current' ? 'Yes' : 'No',
+      icon: AlertTriangle,
+      color: 'text-destructive',
+    },
   ]
 
-  const speciesData = speciesList
-    .filter((s) => !s.is_archived)
-    .map((species) => ({
-      name: species.name,
-      count: datasetImages.filter((d) => d.species_id === species.species_id && d.data_update_status !== 'archived').length,
-    }))
-    .filter((d) => d.count > 0)
+  const speciesData = useMemo(
+    () =>
+      speciesDist?.map((d) => ({
+        name: d.species_name ?? 'Unknown',
+        count: d.image_count,
+      })).filter((d) => d.count > 0) ?? [],
+    [speciesDist],
+  )
 
-  const mediaData = mediaList
-    .filter((m) => !m.is_archived)
-    .map((media) => ({
-      name: media.name,
-      count: datasetImages.filter((d) => d.media_id === media.media_id && d.data_update_status !== 'archived').length,
-    }))
-    .filter((d) => d.count > 0)
+  const mediaData = useMemo(
+    () =>
+      mediaDist?.map((d) => ({
+        name: d.media_name ?? 'Unknown',
+        count: d.image_count,
+      })).filter((d) => d.count > 0) ?? [],
+    [mediaDist],
+  )
 
   return (
     <div className="space-y-6">
@@ -171,33 +192,41 @@ export default function DashboardPage() {
             <CardTitle className="font-heading text-base">Index Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Qdrant Index</span>
-              <Badge variant={indexStatus.qdrant_index_status === 'current' ? 'success' : 'warning'}>
-                {indexStatus.qdrant_index_status === 'needs_reindex' ? 'Needs Re-index' : indexStatus.qdrant_index_status}
-              </Badge>
-            </div>
-            <Separator />
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between"><span>Items Updated</span> <span className="font-mono">{indexStatus.changes_since_last_index.items_updated}</span></div>
-              <div className="flex justify-between"><span>Items Archived</span> <span className="font-mono">{indexStatus.changes_since_last_index.items_archived}</span></div>
-              <div className="flex justify-between"><span>Feedback Accepted</span> <span className="font-mono">{indexStatus.changes_since_last_index.feedback_accepted}</span></div>
-              <div className="flex justify-between"><span>Contributions Accepted</span> <span className="font-mono">{indexStatus.changes_since_last_index.contributions_accepted}</span></div>
-            </div>
-            <Separator />
-            <div>
-              <span className="text-sm">Current Model:</span>
-              <span className="ml-2 font-mono text-sm">{indexStatus.current_model_version}</span>
-            </div>
-            {indexStatus.external_retraining_recommended && (
-              <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/20 rounded-md">
-                <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
-                <p className="text-xs text-foreground">
-                  External deep feature-extractor retraining is recommended. Many reference-data changes have accumulated.
-                </p>
-              </div>
+            {qdrantLoading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : qdrantStatus ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Qdrant Index</span>
+                  <Badge variant={qdrantStatus.qdrant_index_status === 'current' ? 'success' : 'warning'}>
+                    {qdrantStatus.qdrant_index_status}
+                  </Badge>
+                </div>
+                <Separator />
+                <div className="space-y-1 text-sm">
+                  {Object.entries(qdrantStatus.changes_since_last).map(([key, val]) => (
+                    <div key={key} className="flex justify-between">
+                      <span className="capitalize">{key.replace(/_/g, ' ')}</span>
+                      <span className="font-mono">{val}</span>
+                    </div>
+                  ))}
+                </div>
+                {qdrantStatus.external_retraining_recommended && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/20 rounded-md">
+                      <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
+                      <p className="text-xs text-foreground">
+                        External deep feature-extractor retraining is recommended. Many reference-data changes have accumulated.
+                      </p>
+                    </div>
+                  </>
+                )}
+                <Button size="sm" className="w-full">Re-index Qdrant</Button>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No index status available.</p>
             )}
-            <Button size="sm" className="w-full">Re-index Qdrant</Button>
           </CardContent>
         </Card>
 
@@ -207,7 +236,9 @@ export default function DashboardPage() {
             <CardTitle className="font-heading text-base">Species Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            {speciesData.length === 0 ? (
+            {speciesLoading ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+            ) : speciesData.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No species data available.</p>
             ) : (
               <PieChart data={speciesData} />
@@ -221,7 +252,9 @@ export default function DashboardPage() {
             <CardTitle className="font-heading text-base">Media Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            {mediaData.length === 0 ? (
+            {mediaLoading ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+            ) : mediaData.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No media data available.</p>
             ) : (
               <PieChart data={mediaData} />
@@ -229,50 +262,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Data Update Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-heading text-base">Data Update Status</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Image ID</TableHead>
-                <TableHead>Strain</TableHead>
-                <TableHead>Species</TableHead>
-                <TableHead>Media</TableHead>
-                <TableHead>Segments</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {datasetImages.map((img) => {
-                const species = speciesList.find((s) => s.species_id === img.species_id)
-                const media = mediaList.find((m) => m.media_id === img.media_id)
-                return (
-                  <TableRow key={img.image_id}>
-                    <TableCell className="font-mono text-xs">{img.image_id}</TableCell>
-                    <TableCell className="font-mono text-xs">{img.strain}</TableCell>
-                    <TableCell>{species?.name ?? '-'}</TableCell>
-                    <TableCell>{media?.name ?? '-'}</TableCell>
-                    <TableCell>{img.segments.length}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        img.data_update_status === 'current' ? 'success' :
-                          img.data_update_status === 'updated_requires_reindex' ? 'warning' : 'destructive'
-                      }>
-                        {img.data_update_status === 'updated_requires_reindex' ? 'Needs Reindex' : img.data_update_status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   )
 }
