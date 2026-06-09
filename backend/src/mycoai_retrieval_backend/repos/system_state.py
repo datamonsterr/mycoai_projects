@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import SystemState
@@ -14,9 +14,7 @@ COUNTER_FIELDS = ("images_added", "bbox_corrections", "items_archived", "species
 
 
 async def _ensure_counter(db: AsyncSession) -> SystemState:
-    result = await db.execute(
-        select(SystemState).where(SystemState.key == COUNTER_KEY)
-    )
+    result = await db.execute(select(SystemState).where(SystemState.key == COUNTER_KEY))
     row = result.scalar_one_or_none()
     if row is None:
         row = SystemState(
@@ -40,7 +38,9 @@ async def get_counter(db: AsyncSession) -> dict[str, Any]:
     return dict(row.value)
 
 
-async def increment_counter(db: AsyncSession, field: str, amount: int = 1) -> dict[str, Any]:
+async def increment_counter(
+    db: AsyncSession, field: str, amount: int = 1
+) -> dict[str, Any]:
     if field not in COUNTER_FIELDS:
         raise ValueError(f"Unknown counter field: {field}")
     row = await _ensure_counter(db)

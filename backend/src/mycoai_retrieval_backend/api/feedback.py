@@ -73,7 +73,7 @@ async def list_my_feedback(
 async def feedback_inbox(
     params: PageParams = Depends(),
     status: str | None = Query(None),
-    user: User = Depends(require_owner()),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     items = await FeedbackRepository.list_inbox(
