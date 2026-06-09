@@ -5,17 +5,70 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
-import { users } from '@/lib/mock-data'
-import { UserPlus, Shield, ShieldOff, Ban, CheckCircle, Search } from 'lucide-react'
+import { useUsersList, useUpdateUserRole, useUpdateUserStatus } from '@/hooks/use-admin'
+import type { AdminUserResponse } from '@/services/types'
+import { UserPlus, Shield, ShieldOff, Ban, CheckCircle, Search, Loader2 } from 'lucide-react'
 
 export default function UserManagementPage() {
   const [search, setSearch] = useState('')
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [promoteOpen, setPromoteOpen] = useState<string | null>(null)
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] = useState<'promote' | 'demote' | 'activate' | 'deactivate' | null>(null)
+
+  const { data, isLoading, isError } = useUsersList()
+  const roleMutation = useUpdateUserRole()
+  const statusMutation = useUpdateUserStatus()
+
+  const users = data?.items ?? []
 
   const filtered = users.filter((u) =>
     !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
   )
+
+  const activeOwners = users.filter((u) => u.role === 'owner' && u.is_active).length
+
+  const pendingUser = users.find((u) => u.id === pendingUserId) ?? null
+
+  const openConfirm = (userId: string, action: 'promote' | 'demote' | 'activate' | 'deactivate') => {
+    setPendingUserId(userId)
+    setPendingAction(action)
+  }
+
+  const closeConfirm = () => {
+    setPendingUserId(null)
+    setPendingAction(null)
+  }
+
+  const handleConfirm = () => {
+    if (!pendingUserId || !pendingAction) return
+    if (pendingAction === 'promote') {
+      roleMutation.mutate({ userId: pendingUserId, data: { role: 'owner' } })
+    } else if (pendingAction === 'demote') {
+      roleMutation.mutate({ userId: pendingUserId, data: { role: 'user' } })
+    } else if (pendingAction === 'activate') {
+      statusMutation.mutate({ userId: pendingUserId, data: { is_active: true } })
+    } else if (pendingAction === 'deactivate') {
+      statusMutation.mutate({ userId: pendingUserId, data: { is_active: false } })
+    }
+    closeConfirm()
+  }
+
+  const dialogTitle =
+    pendingAction === 'promote' ? 'Promote to Data Owner' :
+    pendingAction === 'demote' ? 'Demote to User' :
+    pendingAction === 'activate' ? 'Reactivate User' :
+    pendingAction === 'deactivate' ? 'Deactivate User' : ''
+
+  const dialogBody =
+    pendingAction === 'promote'
+      ? `Grant ${pendingUser?.name ?? ''} full governance capabilities including metadata management, dataset control, feedback review, and user management.`
+    : pendingAction === 'demote'
+      ? `Downgrade ${pendingUser?.name ?? ''} to regular User. They will lose Data Owner privileges.`
+    : pendingAction === 'activate'
+      ? `Reactivate ${pendingUser?.name ?? ''}'s account. They will be able to log in again.`
+    : pendingAction === 'deactivate'
+      ? `Deactivate ${pendingUser?.name ?? ''}'s account. They will not be able to log in.`
+    : ''
 
   return (
     <div className="space-y-6">
@@ -34,63 +87,97 @@ export default function UserManagementPage() {
         <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((u) => (
-                <TableRow key={u.user_id} className={u.account_status === 'inactive' ? 'opacity-50' : ''}>
-                  <TableCell className="font-medium">{u.name}</TableCell>
-                  <TableCell className="text-sm">{u.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={u.role === 'owner' ? 'default' : 'secondary'}>
-                      {u.role === 'owner' ? 'Data Owner' : 'User'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={u.account_status === 'active' ? 'success' : 'destructive'}>
-                      {u.account_status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">{new Date(u.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {u.role === 'user' ? (
-                        <Button variant="ghost" size="sm" onClick={() => setPromoteOpen(u.user_id)} title="Promote to Data Owner">
-                          <Shield className="h-4 w-4 text-warning" />
-                        </Button>
-                      ) : (
-                        <Button variant="ghost" size="sm" title="Demote to User" disabled={users.filter((x) => x.role === 'owner' && x.account_status === 'active').length <= 1}>
-                          <ShieldOff className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {u.account_status === 'active' ? (
-                        <Button variant="ghost" size="sm" className="text-destructive" title="Deactivate" disabled={u.role === 'owner' && users.filter((x) => x.role === 'owner' && x.account_status === 'active').length <= 1}>
-                          <Ban className="h-4 w-4" />
-                        </Button>
-                      ) : (
-                        <Button variant="ghost" size="sm" className="text-success" title="Reactivate">
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+      {isLoading ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">Loading users...</span>
+          </CardContent>
+        </Card>
+      ) : isError ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-16">
+            <p className="text-sm text-destructive">Failed to load users. Please try again.</p>
+          </CardContent>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-16">
+            <p className="text-sm text-muted-foreground">No users found.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((u: AdminUserResponse) => (
+                  <TableRow key={u.id} className={!u.is_active ? 'opacity-50' : ''}>
+                    <TableCell className="font-medium">{u.name}</TableCell>
+                    <TableCell className="text-sm">{u.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={u.role === 'owner' ? 'default' : 'secondary'}>
+                        {u.role === 'owner' ? 'Data Owner' : 'User'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={u.is_active ? 'success' : 'destructive'}>
+                        {u.is_active ? 'active' : 'inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">{new Date(u.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {u.role === 'user' ? (
+                          <Button variant="ghost" size="sm" onClick={() => openConfirm(u.id, 'promote')} title="Promote to Data Owner">
+                            <Shield className="h-4 w-4 text-warning" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Demote to User"
+                            disabled={activeOwners <= 1}
+                            onClick={() => openConfirm(u.id, 'demote')}
+                          >
+                            <ShieldOff className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {u.is_active ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            title="Deactivate"
+                            disabled={u.role === 'owner' && activeOwners <= 1}
+                            onClick={() => openConfirm(u.id, 'deactivate')}
+                          >
+                            <Ban className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" className="text-success" title="Reactivate" onClick={() => openConfirm(u.id, 'activate')}>
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Invite Dialog */}
       <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)}>
@@ -107,19 +194,25 @@ export default function UserManagementPage() {
         </DialogFooter>
       </Dialog>
 
-      {/* Promote Dialog */}
-      <Dialog open={promoteOpen !== null} onClose={() => setPromoteOpen(null)}>
+      {/* Confirm Dialog */}
+      <Dialog open={pendingUserId !== null} onClose={closeConfirm}>
         <DialogHeader>
-          <DialogTitle>Promote to Data Owner</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
         </DialogHeader>
         <DialogContent>
-          <p className="text-sm text-muted-foreground">
-            This will grant {users.find((u) => u.user_id === promoteOpen)?.name} full governance capabilities including metadata management, dataset control, feedback review, and user management.
-          </p>
+          <p className="text-sm text-muted-foreground">{dialogBody}</p>
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setPromoteOpen(null)}>Cancel</Button>
-          <Button onClick={() => setPromoteOpen(null)}>Promote</Button>
+          <Button variant="outline" onClick={closeConfirm}>Cancel</Button>
+          <Button onClick={handleConfirm} disabled={roleMutation.isPending || statusMutation.isPending}>
+            {roleMutation.isPending || statusMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-1" /> Saving...
+              </>
+            ) : (
+              'Confirm'
+            )}
+          </Button>
         </DialogFooter>
       </Dialog>
     </div>
