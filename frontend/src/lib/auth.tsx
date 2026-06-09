@@ -1,7 +1,12 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import type { Role, UserAccount } from '@/lib/mock-data'
 import { me, users } from '@/lib/mock-data'
 import { AuthContext } from '@/lib/auth-context'
+
+interface MycoAIWindow {
+  __mycoai_logout?: () => void
+  __mycoai_switchRole?: (role: Role) => void
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserAccount | null>(me)
@@ -12,21 +17,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false
   }
 
-  const logout = () => setUser(null)
+  const logout = useCallback(() => setUser(null), [])
 
-  const switchRole = (role: Role) => {
-    if (!user) return
-    setUser({ ...user, role })
-  }
+  const switchRole = useCallback((role: Role) => {
+    setUser((prev) => prev ? { ...prev, role } : null)
+  }, [])
 
   useEffect(() => {
-    ;(window as any).__mycoai_logout = logout
-    ;(window as any).__mycoai_switchRole = switchRole
+    const win = window as unknown as MycoAIWindow
+    win.__mycoai_logout = logout
+    win.__mycoai_switchRole = switchRole
     return () => {
-      delete (window as any).__mycoai_logout
-      delete (window as any).__mycoai_switchRole
+      delete win.__mycoai_logout
+      delete win.__mycoai_switchRole
     }
-  }, [user])
+  }, [logout, switchRole])
 
   return (
     <AuthContext.Provider value={{ user, login, logout, switchRole }}>
