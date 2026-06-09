@@ -98,16 +98,33 @@ export interface UserAccount {
   created_at: string
 }
 
+export interface ReindexStatus {
+  status: 'current' | 'needs_reindex' | 'reindexing' | 'failed'
+  items_updated: number
+  items_archived: number
+  feedback_accepted: number
+  contributions_accepted: number
+}
+
+export interface RetrainingCounter {
+  images_added: number
+  bbox_corrections: number
+  items_archived: number
+  species_added: number
+  last_reset_at: string | null
+}
+
+export interface RetrainingStatus {
+  counter: RetrainingCounter
+  threshold: number
+  warning_active: boolean
+  last_training_completed_at: string | null
+}
+
 export interface IndexStatus {
+  reindex: ReindexStatus
+  retraining: RetrainingStatus
   current_model_version: string
-  qdrant_index_status: 'current' | 'needs_reindex' | 'reindexing' | 'failed'
-  changes_since_last_index: {
-    items_updated: number
-    items_archived: number
-    feedback_accepted: number
-    contributions_accepted: number
-  }
-  external_retraining_recommended: boolean
 }
 
 export interface CandidateModel {
@@ -316,14 +333,25 @@ export const users: UserAccount[] = [
 
 export const indexStatus: IndexStatus = {
   current_model_version: 'efficientnet-b1-v3',
-  qdrant_index_status: 'needs_reindex',
-  changes_since_last_index: {
+  reindex: {
+    status: 'needs_reindex',
     items_updated: 12,
     items_archived: 3,
     feedback_accepted: 5,
     contributions_accepted: 4,
   },
-  external_retraining_recommended: true,
+  retraining: {
+    counter: {
+      images_added: 24,
+      bbox_corrections: 7,
+      items_archived: 5,
+      species_added: 2,
+      last_reset_at: '2025-05-15T10:00:00Z',
+    },
+    threshold: 20,
+    warning_active: true,
+    last_training_completed_at: '2025-05-15T10:00:00Z',
+  },
 }
 
 export const candidateModels: CandidateModel[] = [
