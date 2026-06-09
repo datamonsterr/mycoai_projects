@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Image
@@ -59,3 +59,12 @@ async def mark_bbox_corrected(db: AsyncSession, image_id: UUID) -> Image:
     await db.flush()
     await system_state.increment_counter(db, "bbox_corrections")
     return image
+
+
+class ImageRepository:
+    """Repository class wrapper for backward compatibility with imports."""
+
+    get = staticmethod(get_image)
+    archive = staticmethod(archive_image)
+    restore = staticmethod(restore_image)
+    mark_bbox_corrected = staticmethod(mark_bbox_corrected)

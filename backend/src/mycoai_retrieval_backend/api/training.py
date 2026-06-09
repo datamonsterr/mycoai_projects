@@ -23,7 +23,7 @@ def get_training_status(user: dict = Depends(get_current_user)) -> dict:
 
 
 @router.get("/jobs")
-def list_training_jobs(user: dict = Depends(require_role("owner"))) -> list[dict]:
+def list_training_jobs(user: dict = Depends(get_current_user)) -> list[dict]:
     store = get_training_store()
     return list(store.list())
 

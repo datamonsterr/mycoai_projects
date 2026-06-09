@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..core.dependencies import CurrentOwner
+from ..core.dependencies import CurrentOwner, CurrentUser
 from ..core.exceptions import ConflictError, NotFoundError, ValidationError
 from ..database import get_db
 from ..models import AuditLog, User
@@ -163,7 +163,7 @@ async def update_user_status(
 @router.get("/audit-log", response_model=list[AuditLogResponse])
 async def audit_log(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_owner: CurrentOwner,
+    current_user: CurrentUser,
     entity_type: str | None = Query(None),
     entity_id: str | None = Query(None),
     user_id: str | None = Query(None),

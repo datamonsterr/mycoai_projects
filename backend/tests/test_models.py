@@ -41,6 +41,7 @@ async def test_database_schema_creates_all_specified_tables(
             "segments",
             "species",
             "strains",
+            "system_state",
             "training_jobs",
             "users",
         ]

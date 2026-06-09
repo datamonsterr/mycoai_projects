@@ -6,24 +6,23 @@ Usage:
 """
 
 import argparse
-import secrets
 import asyncio
+import secrets
 
+from sqlalchemy import select
+
+from mycoai_retrieval_backend.core.security import hash_password
 from mycoai_retrieval_backend.database import _get_engine, _get_sessionmaker
 from mycoai_retrieval_backend.models import User
-from mycoai_retrieval_backend.core.security import hash_password
-from sqlalchemy import select
 
 
 def create_dataowner(email: str) -> None:
-    engine = _get_engine()
+    _ = _get_engine()  # trigger engine init
     sessionmaker = _get_sessionmaker()
 
     async def _run():
         async with sessionmaker() as session:
-            existing = await session.scalar(
-                select(User).where(User.email == email)
-            )
+            existing = await session.scalar(select(User).where(User.email == email))
             if existing is not None:
                 print(f"[SKIP] {email} exists (role={existing.role})")
                 return

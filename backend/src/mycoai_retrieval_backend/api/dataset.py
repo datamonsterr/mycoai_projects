@@ -13,13 +13,18 @@ from sqlalchemy.orm import selectinload
 
 from ..core.dependencies import CurrentOwner
 from ..database import get_db
-from ..models import Image, Segment, Species
+from ..models import Image, Segment
 
 router = APIRouter()
 
 
-def _yolo_bbox(seg: Segment, img_w: int = 640, img_h: int = 480) -> tuple[float, float, float, float]:
-    """Convert absolute bbox to YOLO normalized format: x_center, y_center, width, height."""
+def _yolo_bbox(
+    seg: Segment, img_w: int = 640, img_h: int = 480
+) -> tuple[float, float, float, float]:
+    """Convert absolute bbox to YOLO normalized format.
+
+    Returns x_center, y_center, width, height.
+    """
     x_center = (seg.bbox_x + seg.bbox_w / 2) / img_w
     y_center = (seg.bbox_y + seg.bbox_h / 2) / img_h
     width = seg.bbox_w / img_w

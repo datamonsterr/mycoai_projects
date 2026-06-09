@@ -25,6 +25,7 @@ dependencies = [
     "python-multipart>=0.0.20",
     "qdrant-client>=1.16.0",
     "redis>=5.2.1",
+    "scikit-learn>=1.9.0",
     "sqlalchemy[asyncio]>=2.0.41",
     "uvicorn[standard]>=0.44.0",
 ]
