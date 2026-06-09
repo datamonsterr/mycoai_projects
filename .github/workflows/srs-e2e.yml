@@ -27,6 +27,16 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     outputs:
       backend-ready: ${{ steps.health.outputs.success }}
     steps:
@@ -53,7 +63,8 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: "sqlite+aiosqlite://"
-        run: uv run pytest -m integration -q
+          MYCOAI_TEST_REDIS_URL: "redis://localhost:6379/1"
+        run: uv run pytest -m "integration and not (integration_qdrant or integration_postgres)" -q
       - name: Health check
         id: health
         run: echo "success=true" >> "$GITHUB_OUTPUT"
