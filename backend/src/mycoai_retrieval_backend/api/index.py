@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..core.dependencies import CurrentOwner
+from ..core.dependencies import CurrentOwner, CurrentUser
 from ..database import get_db
 from ..models import Feedback, Image, TrainingJob
 from ..repos import system_state
@@ -27,25 +27,108 @@ async def trigger_reindex(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_owner: CurrentOwner,
 ) -> dict:
+    import datetime
+    import logging
+    import uuid
+    from pathlib import Path
+
+    from sqlalchemy.orm import selectinload
+
+    from ..models import QdrantIndexState, Segment
+    from ..services.feature_extraction import extract_features
+    from ..services.qdrant_client import QdrantClientService
+
+    logger = logging.getLogger(__name__)
+
     job = TrainingJob(
         triggered_by=current_owner.id,
         job_type="qdrant_reindex",
-        status="pending",
-        config={"scope": data.scope},
+        status="processing",
+        progress={"scope": data.scope},
+        started_at=datetime.datetime.now(datetime.UTC),
     )
     db.add(job)
     await db.flush()
+
+    # Find unindexed segments (qdrant_point_id IS NULL)
+    stmt = (
+        select(Segment)
+        .options(selectinload(Segment.image))
+        .where(Segment.qdrant_point_id.is_(None))
+        .where(Segment.is_archived.is_(False))
+    )
+
+    result = await db.execute(stmt)
+    segments = list(result.unique().scalars().all())
+
+    indexed = 0
+    errors: list[dict] = []
+
+    qdrant_svc = QdrantClientService()
+
+    for seg in segments:
+        try:
+            crop_path = Path(seg.crop_path)
+            if not crop_path.exists():
+                errors.append(
+                    {"segment_id": str(seg.id), "error": "crop file not found"}
+                )
+                continue
+
+            vectors = extract_features(crop_path)
+            if not vectors:
+                continue
+
+            point_id = uuid.uuid4().int & ((1 << 63) - 1)
+            await qdrant_svc.upsert_point(
+                point_id=point_id,
+                vectors=vectors,
+                payload={
+                    "segment_id": str(seg.id),
+                    "image_id": str(seg.image_id),
+                    "segment_index": seg.segment_index,
+                    "bbox": {
+                        "x": seg.bbox_x,
+                        "y": seg.bbox_y,
+                        "w": seg.bbox_w,
+                        "h": seg.bbox_h,
+                    },
+                },
+            )
+
+            seg.qdrant_point_id = uuid.UUID(int=point_id)
+
+            qis = QdrantIndexState(
+                segment_id=seg.id,
+                qdrant_point_id=seg.qdrant_point_id,
+                collection_name="myco_fungi_features_full_finetuned",
+                is_active=True,
+            )
+            db.add(qis)
+            indexed += 1
+
+        except Exception as exc:
+            logger.error(f"Index failed for segment {seg.id}: {exc}")
+            errors.append({"segment_id": str(seg.id), "error": str(exc)})
+
+    job.status = "completed"
+    job.completed_at = datetime.datetime.now(datetime.UTC)
+    await db.commit()
+
     return {
         "job_id": str(job.id),
-        "status": job.status,
+        "status": "completed",
         "scope": data.scope,
+        "total": len(segments),
+        "indexed": indexed,
+        "errors": len(errors),
     }
 
 
 @router.get("/status", response_model=IndexStatusResponse)
 async def get_index_status(
     db: Annotated[AsyncSession, Depends(get_db)],
-    current_owner: CurrentOwner,
+    current_user: CurrentUser,
 ) -> IndexStatusResponse:
     # Re-index metrics
     items_updated_result = await db.execute(
@@ -89,7 +172,8 @@ async def get_index_status(
     counter_data = await system_state.get_counter(db)
     threshold = await system_state.get_threshold(db)
     total_changes = sum(
-        counter_data.get(f, 0) for f in ("images_added", "bbox_corrections", "items_archived", "species_added")
+        counter_data.get(f, 0)
+        for f in ("images_added", "bbox_corrections", "items_archived", "species_added")
     )
 
     retraining_counter = RetrainingCounter(

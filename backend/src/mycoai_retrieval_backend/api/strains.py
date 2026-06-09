@@ -1,106 +1,123 @@
-from fastapi import APIRouter, Depends, Query
+from typing import Annotated
+from uuid import UUID
 
-from ..core.dependencies import get_current_user, require_role
-from ..core.pagination import PageParams, PaginatedResponse
-from ..schemas import StrainCreateRequest, StrainItem
-from ..services.stores import as_paginated, get_strain_store, new_id, utcnow
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from ..core.dependencies import CurrentOwner, CurrentUser
+from ..database import get_db
+from ..models import Strain
+from ..schemas.strains import StrainCreate, StrainListResponse, StrainResponse
 
 router = APIRouter()
 
 
-@router.get("", response_model=PaginatedResponse[StrainItem])
-def list_strains(
-    params: PageParams = Depends(),
-    user: dict = Depends(get_current_user),
-    species_id: str | None = Query(None),
-    media: str | None = Query(None),
-    is_archived: bool | None = Query(None),
-    search: str | None = Query(None),
-    sort_by: str | None = Query(None),
-    sort_order: str | None = Query(None),
-) -> dict:
-    store = get_strain_store()
-    items = list(store.list())
+async def _get_strain(db: AsyncSession, strain_id: UUID) -> Strain | None:
+    result = await db.execute(
+        select(Strain)
+        .options(selectinload(Strain.images), selectinload(Strain.species))
+        .where(Strain.id == strain_id)
+    )
+    return result.scalar_one_or_none()
+
+
+@router.get("", response_model=StrainListResponse)
+async def list_strains(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentUser,
+    species_id: Annotated[UUID | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
+    is_archived: Annotated[bool, Query()] = False,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> StrainListResponse:
+    stmt = (
+        select(Strain)
+        .options(selectinload(Strain.images), selectinload(Strain.species))
+        .where(Strain.is_archived == is_archived)
+    )
     if species_id:
-        items = [s for s in items if s.get("species_id") == species_id]
-    if is_archived is not None:
-        items = [s for s in items if s.get("is_archived", False) == is_archived]
+        stmt = stmt.where(Strain.species_id == species_id)
     if search:
-        items = [s for s in items if search.lower() in s.get("name", "").lower()]
-    result = [
-        {
-            "id": s["id"],
-            "name": s["name"],
-            "species_id": s["species_id"],
-            "source": s.get("source", "user_upload"),
-            "is_archived": s.get("is_archived", False),
-            "images": s.get("images", []),
-        }
-        for s in items
-    ]
-    page_items, total = as_paginated(result, params.offset, params.limit)
-    return {
-        "items": page_items,
-        "total": total,
-        "offset": params.offset,
-        "limit": params.limit,
-    }
+        stmt = stmt.where(Strain.name.ilike(f"%{search}%"))
+    stmt = stmt.order_by(Strain.name).offset(offset).limit(limit)
+
+    result = await db.execute(stmt)
+    strains = list(result.unique().scalars().all())
+
+    count_result = await db.execute(
+        select(func.count())
+        .select_from(Strain)
+        .where(Strain.is_archived == is_archived)
+    )
+    total = count_result.scalar() or 0
+
+    return StrainListResponse(
+        items=[StrainResponse.model_validate(s) for s in strains],
+        total=total,
+    )
 
 
-@router.post("", response_model=StrainItem, status_code=201)
-def create_strain(
-    data: StrainCreateRequest,
-    user: dict = Depends(require_role("owner")),
-) -> dict:
-    strain_id = new_id()
-    item = {
-        "id": strain_id,
-        "name": data.name,
-        "species_id": data.species_id,
-        "source": data.source,
-        "is_archived": False,
-        "images": data.images,
-        "created_at": utcnow(),
-        "updated_at": utcnow(),
-    }
-    get_strain_store().put(item)
-    return {
-        "id": strain_id,
-        "name": data.name,
-        "species_id": data.species_id,
-        "source": data.source,
-        "is_archived": False,
-        "images": data.images,
-    }
+@router.post("", response_model=StrainResponse, status_code=status.HTTP_201_CREATED)
+async def create_strain(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentOwner,
+    data: StrainCreate,
+) -> StrainResponse:
+    existing = await db.execute(
+        select(Strain).where(
+            Strain.name == data.name, Strain.species_id == data.species_id
+        )
+    )
+    if existing.scalar_one_or_none():
+        from ..core.exceptions import ConflictError
+
+        raise ConflictError(f"Strain '{data.name}' already exists for this species")
+
+    strain = Strain(
+        name=data.name,
+        species_id=data.species_id,
+        source=data.source,
+        is_archived=False,
+    )
+    db.add(strain)
+    await db.commit()
+    await db.refresh(strain)
+    # Reload with relationships
+    strain_obj = await _get_strain(db, strain.id)
+    return StrainResponse.model_validate(strain_obj)
 
 
-@router.get("/{strain_id}", response_model=StrainItem)
-def get_strain(strain_id: str, user: dict = Depends(get_current_user)) -> dict:
+@router.get("/{strain_id}", response_model=StrainResponse)
+async def get_strain(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentUser,
+    strain_id: UUID,
+) -> StrainResponse:
     from ..core.exceptions import NotFoundError
 
-    s = get_strain_store().get(strain_id)
-    if not s:
+    strain = await _get_strain(db, strain_id)
+    if not strain:
         raise NotFoundError(f"Strain {strain_id} not found")
-    return {
-        "id": s["id"],
-        "name": s["name"],
-        "species_id": s["species_id"],
-        "source": s.get("source", "user_upload"),
-        "is_archived": s.get("is_archived", False),
-        "images": s.get("images", []),
-    }
+    return StrainResponse.model_validate(strain)
 
 
-@router.delete("/{strain_id}", status_code=204)
-def delete_strain(
-    strain_id: str,
-    user: dict = Depends(require_role("owner")),
+@router.delete("/{strain_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def archive_strain(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentOwner,
+    strain_id: UUID,
 ) -> None:
     from ..core.exceptions import NotFoundError
 
-    store = get_strain_store()
-    s = store.get(strain_id)
-    if not s:
+    strain = await _get_strain(db, strain_id)
+    if not strain:
         raise NotFoundError(f"Strain {strain_id} not found")
-    s["is_archived"] = True
-    store.put(s)
+    strain.is_archived = True
+    import datetime
+
+    strain.archived_at = datetime.datetime.now(datetime.UTC)
+    strain.updated_at = datetime.datetime.now(datetime.UTC)
+    await db.commit()

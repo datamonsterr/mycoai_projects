@@ -64,7 +64,8 @@ RUN addgroup --gid 1001 --system appgroup && \
     adduser --uid 1001 --system appuser --ingroup appgroup
 
 COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH="/app/src"
 
 WORKDIR /app
 COPY --chown=appuser:appgroup . .

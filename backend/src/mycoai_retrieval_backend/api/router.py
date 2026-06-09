@@ -7,6 +7,7 @@ from .dataset import router as dataset_router
 from .feedback import router as feedback_router
 from .images import router as images_router
 from .index import router as index_router
+from .media import router as media_router
 from .models import router as models_router
 from .retrieval import router as retrieval_router
 from .species import router as species_router
@@ -18,6 +19,7 @@ router.include_router(auth_router, prefix="/auth", tags=["Auth"])
 router.include_router(images_router, prefix="/images", tags=["Images"])
 router.include_router(retrieval_router, prefix="/retrieval", tags=["Retrieval"])
 router.include_router(species_router, prefix="/species", tags=["Species"])
+router.include_router(media_router, prefix="/media", tags=["Media"])
 router.include_router(strains_router, prefix="/strains", tags=["Strains"])
 router.include_router(feedback_router, prefix="/feedback", tags=["Feedback"])
 router.include_router(training_router, prefix="/training", tags=["Training"])
