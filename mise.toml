@@ -49,6 +49,10 @@ run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-c
 description = "Rebuild all dev Docker images"
 run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache"
 
+[tasks.compose-dev-build-frontend]
+description = "Rebuild frontend dev Docker image (no cache)"
+run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache frontend"
+
 [tasks.compose-prod-up]
 description = "Start production Docker Compose stack"
 run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose up -d"
