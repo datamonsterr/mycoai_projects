@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
-import { speciesList, mediaList, datasetImages } from '@/lib/mock-data'
+import { datasetImages } from '@/lib/mock-data'
+import { useSpeciesList, useMediaList } from '@/hooks/use-taxonomy'
 import { Search, Download, Archive, RotateCcw, Edit } from 'lucide-react'
 
 export default function DatasetPage() {
@@ -16,6 +17,11 @@ export default function DatasetPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [groupBy, setGroupBy] = useState('none')
   const [editItem, setEditItem] = useState<string | null>(null)
+
+  const { data: speciesData } = useSpeciesList()
+  const { data: mediaData } = useMediaList()
+  const speciesList = speciesData?.items ?? []
+  const mList = mediaData?.items ?? []
 
   const filtered = datasetImages.filter((img) => {
     if (search && !img.strain.toLowerCase().includes(search.toLowerCase())) return false
@@ -54,13 +60,13 @@ export default function DatasetPage() {
             <Select value={filterSpecies} onChange={(e) => setFilterSpecies(e.target.value)} className="w-48">
               <option value="">All Species</option>
               {speciesList.filter((s) => !s.is_archived).map((s) => (
-                <option key={s.species_id} value={s.species_id}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </Select>
             <Select value={filterMedia} onChange={(e) => setFilterMedia(e.target.value)} className="w-40">
               <option value="">All Media</option>
-              {mediaList.filter((m) => !m.is_archived).map((m) => (
-                <option key={m.media_id} value={m.media_id}>{m.name}</option>
+              {mList.filter((m) => !m.is_archived).map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
               ))}
             </Select>
             <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-44">
@@ -99,8 +105,8 @@ export default function DatasetPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((img) => {
-                const species = speciesList.find((s) => s.species_id === img.species_id)
-                const media = mediaList.find((m) => m.media_id === img.media_id)
+                const species = speciesList.find((s) => s.id === img.species_id)
+                const media = mList.find((m) => m.id === img.media_id)
                 const isArchived = img.data_update_status === 'archived'
                 return (
                   <TableRow key={img.image_id} className={isArchived ? 'opacity-50' : ''}>
@@ -161,7 +167,7 @@ export default function DatasetPage() {
               <label className="text-sm font-medium">Species</label>
               <Select defaultValue={datasetImages.find((d) => d.image_id === editItem)?.species_id ?? ''}>
                 {speciesList.filter((s) => !s.is_archived).map((s) => (
-                  <option key={s.species_id} value={s.species_id}>{s.name}</option>
+                  <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </Select>
             </div>
@@ -172,8 +178,8 @@ export default function DatasetPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Media</label>
               <Select defaultValue={datasetImages.find((d) => d.image_id === editItem)?.media_id ?? ''}>
-                {mediaList.filter((m) => !m.is_archived).map((m) => (
-                  <option key={m.media_id} value={m.media_id}>{m.name}</option>
+                {mList.filter((m) => !m.is_archived).map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </Select>
             </div>

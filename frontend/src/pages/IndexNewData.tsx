@@ -5,8 +5,9 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { speciesList, mediaList } from '@/lib/mock-data'
 import { sampleStrains } from '@/lib/sample-assets'
+import { useSpeciesList, useMediaList, useCreateSpecies } from '@/hooks/use-taxonomy'
+import { useToast } from '@/hooks/use-toast'
 import { ArrowRight, ChevronRight, Download, Images, Plus, Trash2, Check, X } from 'lucide-react'
 
 type Step = 'upload' | 'review' | 'done'
@@ -52,11 +53,19 @@ export default function IndexNewDataPage() {
   const [activeStrain, setActiveStrain] = useState(0)
   const [creatingSpecies, setCreatingSpecies] = useState<{ strainIdx: number; name: string; description: string } | null>(null)
 
+  const { data: speciesData } = useSpeciesList()
+  const { data: mediaData } = useMediaList()
+  const speciesList = speciesData?.items ?? []
+  const mList = mediaData?.items ?? []
+  const createSpeciesMutation = useCreateSpecies()
+  const toast = useToast()
+
   const current = strains[activeStrain]
   const totalImages = strains.reduce((sum, s) => sum + s.images.length, 0)
+  const defaultSpeciesId = speciesList.length > 0 ? speciesList[0].id : ''
 
   const addStrain = () => {
-    setStrains([...strains, { strain: '', species: speciesList[0].species_id, images: [] }])
+    setStrains([...strains, { strain: '', species: defaultSpeciesId, images: [] }])
     setActiveStrain(strains.length)
   }
 
@@ -66,19 +75,19 @@ export default function IndexNewDataPage() {
     setActiveStrain(Math.max(0, idx - 1))
   }
 
-  const confirmCreateSpecies = () => {
+  const confirmCreateSpecies = async () => {
     if (!creatingSpecies || !creatingSpecies.name.trim()) return
-    const newId = `sp-new-${crypto.randomUUID().slice(0, 8)}`
-    speciesList.push({
-      species_id: newId,
-      name: creatingSpecies.name.trim(),
-      description: creatingSpecies.description || null,
-      created_at: new Date().toISOString().split('T')[0],
-      updated_at: new Date().toISOString().split('T')[0],
-      is_archived: false,
-    })
-    updateStrain(creatingSpecies.strainIdx, { species: newId })
-    setCreatingSpecies(null)
+    try {
+      const result = await createSpeciesMutation.mutateAsync({
+        name: creatingSpecies.name.trim(),
+        description: creatingSpecies.description || null,
+      })
+      updateStrain(creatingSpecies.strainIdx, { species: result.id })
+      setCreatingSpecies(null)
+      toast.success('Species created')
+    } catch (err) {
+      toast.apiError(err, 'Failed to create species')
+    }
   }
 
   const cancelCreateSpecies = () => setCreatingSpecies(null)
@@ -87,12 +96,15 @@ export default function IndexNewDataPage() {
     setStrains(strains.map((s, i) => (i === idx ? { ...s, ...field } : s)))
   }
 
+  const findSpeciesByName = (name: string) => speciesList.find((sp) => sp.name === name)?.id
+
   const loadSample = () => {
-    setStrains((sampleStrains as unknown as Array<{ strain: string; species: string; images: Array<{ id: string; fileName: string; media: string; original: string }> }>).map((s) => ({
+    const mapped = (sampleStrains as unknown as Array<{ strain: string; species: string; images: Array<{ id: string; fileName: string; media: string; original: string }> }>).map((s) => ({
       strain: s.strain,
-      species: speciesList.find((sp) => sp.name === s.species)?.species_id ?? speciesList[0].species_id,
+      species: findSpeciesByName(s.species) ?? defaultSpeciesId,
       images: s.images.map((img) => ({ id: img.id, fileName: img.fileName, media: img.media, original: img.original })),
-    })))
+    }))
+    setStrains(mapped)
     setActiveStrain(0)
   }
 
@@ -102,7 +114,7 @@ export default function IndexNewDataPage() {
     const img: StrainImage = {
       id: crypto.randomUUID(),
       fileName: sample?.fileName ?? `image_${strains[strainIdx].images.length + 1}.jpg`,
-      media: sample?.media ?? mediaList[0].name,
+      media: sample?.media ?? (mList.length > 0 ? mList[0].name : 'MEA'),
       original: sample?.original,
     }
     updateStrain(strainIdx, { images: [...strains[strainIdx].images, img] })
@@ -179,7 +191,7 @@ export default function IndexNewDataPage() {
                     <Label className="text-xs">Species *</Label>
                     <Select value={current.species} onChange={(e) => updateStrain(activeStrain, { species: e.target.value })} className="h-9 text-xs">
                       {speciesList.filter((s) => !s.is_archived).map((s) => (
-                        <option key={s.species_id} value={s.species_id}>{s.name}</option>
+                        <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </Select>
                   </div>
@@ -225,8 +237,8 @@ export default function IndexNewDataPage() {
                                   images: current.images.map((i) => (i.id === img.id ? { ...i, media: e.target.value } : i)),
                                 })
                               }} className="h-8 text-xs">
-                                {mediaList.filter((m) => !m.is_archived).map((m) => (
-                                  <option key={m.media_id} value={m.name}>{m.name}</option>
+                                {mList.filter((m) => !m.is_archived).map((m) => (
+                                  <option key={m.id} value={m.name}>{m.name}</option>
                                 ))}
                               </Select>
                             </div>
@@ -263,7 +275,7 @@ export default function IndexNewDataPage() {
                 </thead>
                 <tbody>
                   {strains.map((s, idx) => {
-                    const speciesName = speciesList.find((sp) => sp.species_id === s.species)?.name ?? '-'
+                    const speciesName = speciesList.find((sp) => sp.id === s.species)?.name ?? '-'
                     return (
                       <tr key={idx} className="border-b border-border transition-colors hover:bg-muted/50">
                         <td className="p-4 align-middle font-mono text-xs">{s.strain || `Strain ${idx + 1}`}</td>
@@ -283,7 +295,7 @@ export default function IndexNewDataPage() {
                                 value={creatingSpecies.description}
                                 onChange={(e) => setCreatingSpecies({ ...creatingSpecies, description: e.target.value })}
                               />
-                              <Button size="sm" className="h-8 px-2" onClick={confirmCreateSpecies}><Check className="h-3 w-3" /></Button>
+                              <Button size="sm" className="h-8 px-2" onClick={confirmCreateSpecies} disabled={createSpeciesMutation.isPending}><Check className="h-3 w-3" /></Button>
                               <Button size="sm" variant="ghost" className="h-8 px-2 text-destructive" onClick={cancelCreateSpecies}><X className="h-3 w-3" /></Button>
                             </div>
                           ) : (
@@ -300,7 +312,7 @@ export default function IndexNewDataPage() {
                                 className="h-8 w-44 text-xs"
                               >
                                 {speciesList.filter((sp) => !sp.is_archived).map((sp) => (
-                                  <option key={sp.species_id} value={sp.species_id}>{sp.name}</option>
+                                  <option key={sp.id} value={sp.id}>{sp.name}</option>
                                 ))}
                                 <option value="__create__">+ Create new species</option>
                               </Select>
