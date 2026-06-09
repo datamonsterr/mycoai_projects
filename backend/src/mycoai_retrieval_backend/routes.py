@@ -11,10 +11,10 @@ from tempfile import NamedTemporaryFile
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -23,6 +23,7 @@ from .database import get_db
 from .image_models import BoundingBox, ImageRecord, ImageResponse
 from .image_models import Segment as SegModel
 from .models import Image, Media, Segment, Species, Strain
+from .schemas import ImageListItem, ImageListResponse
 from .segmentation import ImageStore as FileStore
 from .segmentation import SegmentationPipeline
 
@@ -38,6 +39,95 @@ def create_image_router(
     pipeline: SegmentationPipeline,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/v1/images", tags=["images"])
+
+    # ------------------------------------------------------------------
+    # List images with filters
+    # ------------------------------------------------------------------
+    @router.get("", response_model=ImageListResponse)
+    async def list_images(
+        species_id: Annotated[list[str] | None, Query()] = None,
+        media_id: Annotated[list[str] | None, Query()] = None,
+        status: Annotated[str | None, Query()] = None,
+        search: Annotated[str | None, Query()] = None,
+        include_archived: Annotated[bool, Query()] = False,
+        offset: Annotated[int, Query(ge=0)] = 0,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+        db=Depends(get_db),
+        user=Depends(get_current_user),
+    ) -> ImageListResponse:
+        stmt = (
+            select(Image)
+            .options(
+                selectinload(Image.strain),
+                selectinload(Image.species),
+                selectinload(Image.media),
+                selectinload(Image.segments).selectinload(Segment.qdrant_index_state),
+            )
+        )
+
+        if not include_archived:
+            stmt = stmt.where(Image.is_archived.is_(False))
+
+        if species_id:
+            species_uuids = []
+            for sid in species_id:
+                try:
+                    species_uuids.append(UUID(sid))
+                except ValueError:
+                    pass
+            if species_uuids:
+                stmt = stmt.where(Image.species_id.in_(species_uuids))
+
+        if media_id:
+            media_uuids = []
+            for mid in media_id:
+                try:
+                    media_uuids.append(UUID(mid))
+                except ValueError:
+                    pass
+            if media_uuids:
+                stmt = stmt.where(Image.media_id.in_(media_uuids))
+
+        if status:
+            stmt = stmt.where(Image.data_update_status == status)
+
+        if search:
+            stmt = stmt.join(Image.strain).where(Strain.name.ilike(f"%{search}%"))
+
+        # Count total
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        count_result = await db.execute(count_stmt)
+        total = count_result.scalar() or 0
+
+        stmt = stmt.order_by(Image.created_at.desc()).offset(offset).limit(limit)
+        result = await db.execute(stmt)
+        images = result.unique().scalars().all()
+
+        items: list[ImageListItem] = []
+        for img in images:
+            # Determine if any segment is indexed in qdrant
+            indexed = any(
+                seg.qdrant_index_state is not None and seg.qdrant_index_state.is_active
+                for seg in img.segments
+            ) if img.segments else False
+
+            items.append(ImageListItem(
+                id=str(img.id),
+                strain_name=img.strain.name if img.strain else "unknown",
+                species_id=str(img.species_id),
+                species_name=img.species.name if img.species else "unknown",
+                media_id=str(img.media_id),
+                media_name=img.media.name if img.media else "unknown",
+                file_path=img.file_path,
+                angle=img.angle,
+                segments_count=len(img.segments) if img.segments else 0,
+                data_update_status=img.data_update_status,
+                indexed_in_qdrant=indexed,
+                is_archived=img.is_archived,
+                created_at=img.created_at,
+            ))
+
+        return ImageListResponse(items=items, total=total)
 
     # ------------------------------------------------------------------
     # Upload single image with segmentation

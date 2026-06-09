@@ -61,6 +61,27 @@ export interface ImageDetail {
   segments: SegmentDetail[]
 }
 
+export interface ImageListItem {
+  id: string
+  strain_name: string
+  species_id: string
+  species_name: string
+  media_id: string
+  media_name: string
+  file_path: string
+  angle: string | null
+  segments_count: number
+  data_update_status: string
+  indexed_in_qdrant: boolean
+  is_archived: boolean
+  created_at: string
+}
+
+export interface ImageListResponse {
+  items: ImageListItem[]
+  total: number
+}
+
 export interface RetrievalQueryRequest {
   image_id: string
   k: number

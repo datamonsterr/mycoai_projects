@@ -2,8 +2,31 @@ import { api } from '@/services/api-client'
 import type {
   ImageUploadResponse,
   ImageDetail,
+  ImageListResponse,
   SegmentDetail,
 } from '@/services/types'
+
+export interface ImageListParams {
+  species_id?: string[]
+  media_id?: string[]
+  status?: string
+  search?: string
+  include_archived?: boolean
+  offset?: number
+  limit?: number
+}
+
+export function listImages(params?: ImageListParams): Promise<ImageListResponse> {
+  const sp = new URLSearchParams()
+  sp.set('offset', String(params?.offset ?? 0))
+  sp.set('limit', String(params?.limit ?? 50))
+  if (params?.include_archived) sp.set('include_archived', 'true')
+  if (params?.status) sp.set('status', params.status)
+  if (params?.search) sp.set('search', params.search)
+  params?.species_id?.forEach((sid) => sp.append('species_id', sid))
+  params?.media_id?.forEach((mid) => sp.append('media_id', mid))
+  return api.get<ImageListResponse>(`/images?${sp.toString()}`)
+}
 
 export function uploadImage(
   image: File,
