@@ -29,20 +29,20 @@ interface NavItem {
 }
 
 const userNav: NavItem[] = [
-  { label: 'Retrieve Species', href: '/retrieve', icon: Search, roles: ['user', 'owner'] },
-  { label: 'My Feedback', href: '/my-feedback', icon: MessageSquareText, roles: ['user', 'owner'] },
+  { label: 'Retrieve Species', href: '/retrieve', icon: Search, roles: ['user', 'owner', 'dataowner'] },
+  { label: 'My Feedback', href: '/my-feedback', icon: MessageSquareText, roles: ['user', 'owner', 'dataowner'] },
 ]
 
 const ownerNav: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['owner'] },
-  { label: 'Retrieve Species', href: '/retrieve', icon: Search, roles: ['owner'] },
-  { label: 'Index New Data', href: '/index', icon: Upload, roles: ['owner'] },
-  { label: 'Dataset Browser', href: '/dataset', icon: Database, roles: ['owner'] },
-  { label: 'Manage Metadata', href: '/metadata', icon: Tags, roles: ['owner'] },
-  { label: 'Feedback Inbox', href: '/feedback-inbox', icon: MessageSquareText, roles: ['owner'] },
-  { label: 'Model & Index', href: '/model', icon: FlaskConical, roles: ['owner'] },
-  { label: 'User Management', href: '/users', icon: Users, roles: ['owner'] },
-  { label: 'Audit Log', href: '/audit', icon: FileText, roles: ['owner'] },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['owner', 'dataowner'] },
+  { label: 'Retrieve Species', href: '/retrieve', icon: Search, roles: ['owner', 'dataowner'] },
+  { label: 'Index New Data', href: '/index', icon: Upload, roles: ['owner', 'dataowner'] },
+  { label: 'Dataset Browser', href: '/dataset', icon: Database, roles: ['owner', 'dataowner'] },
+  { label: 'Manage Metadata', href: '/metadata', icon: Tags, roles: ['owner', 'dataowner'] },
+  { label: 'Feedback Inbox', href: '/feedback-inbox', icon: MessageSquareText, roles: ['owner', 'dataowner'] },
+  { label: 'Model & Index', href: '/model', icon: FlaskConical, roles: ['owner', 'dataowner'] },
+  { label: 'User Management', href: '/users', icon: Users, roles: ['owner', 'dataowner'] },
+  { label: 'Audit Log', href: '/audit', icon: FileText, roles: ['owner', 'dataowner'] },
 ]
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -57,7 +57,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   const pathname = window.location.pathname
-  const isOwner = user?.role === 'owner'
+  const isOwner = user?.role === 'owner' || user?.role === 'dataowner'
   const navItems = isOwner ? ownerNav : userNav
 
   return (
@@ -149,7 +149,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground">{user?.role === 'owner' ? 'Data Owner' : 'User'}</p>
+                  <p className="text-xs text-muted-foreground">{user?.role === 'owner' || user?.role === 'dataowner' ? 'Data Owner' : 'User'}</p>
                 </div>
               </div>
               <div className="flex gap-1">
