@@ -58,14 +58,14 @@ Choices:
 
 **Execution flow:**
 
-    1. User uploads image
-    2. Backend saves image to Dataset/uploads/{user_id}/{strain}/{media}/
-    3. Celery task: runs segmentation script
-       - Input: image path, method ("kmeans")
-       - Output: JSON with bboxes, segment crop paths, pipeline image path
-    4. Backend reads JSON output, creates DB records for segments
-    5. Backend returns segment info to frontend (bboxes + crop URLs)
-    6. Frontend renders bbox overlay on image
+     1. User uploads image
+     2. Backend saves image to Dataset/uploads/{strain}/{media}/{image_id}/
+     3. Segmentation runs synchronously (KMeans or Contour via OpenCV/sklearn)
+        - No Celery needed for CPU-bound KMeans (< 3s per image)
+        - Output: bounding boxes, segment crops, pipeline visualization
+     4. Backend creates DB records for image + segments
+     5. Backend returns segment info to frontend (bboxes + crop URLs)
+     6. Frontend renders bbox overlay on image
 
 ---
 

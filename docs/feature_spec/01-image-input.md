@@ -43,7 +43,41 @@ Folder that includes restructuring instructions.
 **I want** to upload a folder of images with metadata
 **So that** I can retrieve Species predictions for many samples at once
 
-**Template folder structure:**
+**Folder upload structure (client-side):**
+
+    mycoai_new_species/
+    +-- metadata.json            # Optional batch metadata
+    +-- {strain_name}/
+    |   +-- image_01.jpg
+    |   +-- image_02.jpg
+    |   +-- image_03.png
+    +-- {another_strain}/
+        +-- image_04.jpg
+
+**metadata.json schema (optional, at root):**
+
+    {
+      "batch_name": "string",
+      "strains": {
+        "strain_001": {
+          "species": "Penicillium commune",
+          "media": "MEA"
+        },
+        "strain_002": {
+          "species": "Aspergillus niger",
+          "media": "CYA"
+        }
+      }
+    }
+
+When metadata.json is absent, strain/species/media are parsed from filenames
+and folder structure (see `_parse_filename_metadata` in routes.py).
+
+**API endpoint:** `POST /api/v1/images/batch-upload`
+- Accepts multipart form data: `files` (list of images), `metadata` (JSON string), `default_media`, `default_species`
+- Returns `202 Accepted` with job summary: image_id, strain, media, species, segments per image
+
+**Legacy batch template folder (server-side import):**
 
     batch_upload/
     +-- template.json          # Column mappings + config

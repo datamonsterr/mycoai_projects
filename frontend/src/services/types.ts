@@ -69,6 +69,7 @@ export interface ImageListItem {
   media_id: string
   media_name: string
   file_path: string
+  source_url: string
   angle: string | null
   segments_count: number
   data_update_status: string

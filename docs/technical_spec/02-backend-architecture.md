@@ -161,3 +161,22 @@ Choices:
 - B) Upload -> synchronous processing -> return results (times out for
   large batches)
 - C) WebSocket streaming progress — more complex but real-time
+
+---
+
+## Storage Service
+
+**[DECISION: File storage backend]**
+
+Choices:
+- A) **Local filesystem** — `Dataset/uploads/` (configurable via
+  `MYCOAI_BACKEND_UPLOAD_ROOT`). Images stored as
+  `{strain}/{media}/{image_id}/source.jpg`. Served via FastAPI
+  StaticFiles at `/static/`. **(Recommended for dev)**
+- B) S3 / MinIO — object storage, pre-signed URLs, cloud-ready
+- C) Hybrid — metadata in DB, files on local/S3
+
+**Current implementation:** Local filesystem at `Dataset/uploads/`.
+SegmentationPipeline writes artifacts (source, prepared, bbox, pipeline,
+segments) into per-image directories. ImageStore keeps in-memory cache
+of recent uploads. No S3/MinIO integration exists yet.

@@ -37,6 +37,7 @@ class ImageListItem(BaseModel):
     media_id: str
     media_name: str
     file_path: str
+    source_url: str = ""
     angle: str | None = None
     segments_count: int = 0
     data_update_status: str

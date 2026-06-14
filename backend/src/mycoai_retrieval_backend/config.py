@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -58,3 +59,27 @@ def get_settings() -> Settings:
 @lru_cache(maxsize=1)
 def get_qdrant_settings() -> QdrantSettings:
     return QdrantSettings()
+
+
+class StorageSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="MYCOAI_BACKEND_STORAGE_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    backend: Literal["local", "s3"] = "local"
+    upload_root: Path = Path("Dataset/uploads")
+
+    s3_endpoint: str = "minio:9000"
+    s3_access_key: str = "minioadmin"
+    s3_secret_key: str = "minioadmin"
+    s3_bucket: str = "mycoai-images"
+    s3_secure: bool = False
+    s3_public_endpoint: str = "http://localhost:9000"
+    s3_presigned_expiry: int = 3600
+
+
+@lru_cache(maxsize=1)
+def get_storage_settings() -> StorageSettings:
+    return StorageSettings()
