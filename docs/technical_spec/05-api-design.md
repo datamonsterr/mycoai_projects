@@ -51,11 +51,16 @@ Convention:
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/api/v1/images/upload` | User | Upload single image |
-| POST | `/api/v1/images/batch` | User | Upload batch folder |
+| GET | `/api/v1/images` | User | List images (filterable) |
+| POST | `/api/v1/images` | User | Upload single image |
+| POST | `/api/v1/images/upload` | User | Upload single image (alias) |
+| POST | `/api/v1/images/batch` | Owner | Import batch from server folder |
+| POST | `/api/v1/images/batch-upload` | Owner | Upload folder (multipart files + metadata JSON) |
 | GET | `/api/v1/images/{id}` | User | Image detail + segments |
-| DELETE | `/api/v1/images/{id}` | User | Soft-delete image (owner only) |
-| GET | `/api/v1/images/{id}/segments` | User | List segments for image |
+| PATCH | `/api/v1/images/{id}/segments` | Owner | Update segment bounding boxes |
+| GET | `/api/v1/images/{id}/segments/{idx}/crop` | User | Segment crop image |
+| GET | `/api/v1/images/{id}/pipeline` | User | Pipeline visualization image |
+| DELETE | `/api/v1/images/{id}` | Owner | Soft-delete image |
 
 ### Retrieval
 
@@ -162,16 +167,52 @@ Request (multipart/form-data):
     image: <binary>
     strain: "DTO 148-D1"
     media: "MEA"
-    max_colonies: null
+    species: "Penicillium commune"
+    method: "kmeans"
 
 Response (201):
 
     {
       "image_id": "uuid",
-      "strain": "DTO 148-D1",
-      "media": "MEA",
-      "status": "pending_segmentation",
-      "job_id": "uuid"
+      "source_url": "/static/DTO 148-D1/MEA/uuid/source.jpg",
+      "segments": [...],
+      "segmentation_method": "kmeans"
+    }
+
+### POST /api/v1/images/batch-upload
+
+Upload a folder of images with optional metadata JSON.
+
+Request (multipart/form-data):
+
+    files: [<image1.jpg>, <image2.png>, ...]   # multiple file fields
+    metadata: '{"batch_name": "mycoai_new_species", "strains": {...}}'  (optional)
+    default_media: "MEA"              (default: "MEA")
+    default_species: "unknown-species" (default: "unknown-species")
+    method: "kmeans"                  (default: "kmeans")
+
+Folder path in filenames is used to infer strain:
+`mycoai_new_species/DTO_148-D1/image_01.jpg` → strain=DTO_148-D1
+
+Response (202):
+
+    {
+      "status": "completed",
+      "batch_name": "mycoai_new_species",
+      "total": 3,
+      "successful": 3,
+      "failed": 0,
+      "results": [
+        {
+          "image_id": "uuid",
+          "strain": "DTO_148-D1",
+          "media": "MEA",
+          "species": "Penicillium commune",
+          "segments": 2,
+          "filename": "mycoai_new_species/DTO_148-D1/image_01.jpg"
+        }
+      ],
+      "errors": []
     }
 
 ### POST /api/v1/retrieval/query

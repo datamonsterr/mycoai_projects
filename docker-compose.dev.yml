@@ -52,6 +52,18 @@ services:
     restart: unless-stopped
     deploy: !reset {}
 
+  # ── MinIO ───────────────────────────────────────────────────────────────────
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    restart: unless-stopped
+    deploy: !reset {}
+
+  # ── MinIO Setup ─────────────────────────────────────────────────────────────
+  minio-setup:
+    restart: "no"
+
   # ── Backend ────────────────────────────────────────────────────────────────
   backend:
     build:

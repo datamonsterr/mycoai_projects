@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from tempfile import mkdtemp
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import cv2 as cv
@@ -9,6 +11,9 @@ import numpy as np
 from sklearn.cluster import KMeans  # type: ignore[import-untyped]
 
 from .image_models import BoundingBox, ImageRecord, Segment, SegmentPatchRequest
+
+if TYPE_CHECKING:
+    from .services.storage import ObjectStorage
 
 ALLOWED_METHODS = {"kmeans", "contour"}
 
@@ -26,9 +31,30 @@ class ImageStore:
 
 
 class SegmentationPipeline:
-    def __init__(self, upload_root: Path) -> None:
+    def __init__(
+        self,
+        upload_root: Path,
+        storage: ObjectStorage | None = None,
+    ) -> None:
         self.upload_root = upload_root
+        self._storage = storage
 
+    @property
+    def _use_storage(self) -> bool:
+        return self._storage is not None
+
+    def _storage_key(self, *parts: str) -> str:
+        return "/".join(parts)
+
+    def _upload_artifact(self, key: str, path: Path) -> str:
+        data = path.read_bytes()
+        if self._storage:
+            return self._storage.upload_bytes(key, data)
+        return f"/static/{key}"
+
+    # ------------------------------------------------------------------
+    # Upload + segment
+    # ------------------------------------------------------------------
     def segment_upload(
         self,
         source_path: Path,
@@ -41,53 +67,96 @@ class SegmentationPipeline:
             raise ValueError(f"unsupported segmentation method: {method}")
 
         image_id = uuid4().hex
-        artifact_dir = self.upload_root / strain / media / image_id
-        segments_dir = artifact_dir / "segments"
-        segments_dir.mkdir(parents=True, exist_ok=True)
+        prefix = f"{strain}/{media}/{image_id}"
+        work_dir = Path(mkdtemp(prefix="seg_"))
 
-        stored_source = artifact_dir / "source.jpg"
-        shutil.copyfile(source_path, stored_source)
-        prepared_path = artifact_dir / "prepared.jpg"
-        shutil.copyfile(stored_source, prepared_path)
-        bbox_path = artifact_dir / f"bbox_{method}.jpg"
-        pipeline_path = artifact_dir / f"pipeline_{method}.jpg"
+        try:
+            artifact_dir = (
+                self.upload_root / strain / media / image_id
+                if not self._use_storage
+                else work_dir
+            )
+            segments_dir = artifact_dir / "segments"
+            segments_dir.mkdir(parents=True, exist_ok=True)
 
-        img = cv.imread(str(stored_source))
-        if img is None:
-            bboxes: list[BoundingBox] = []
-        elif method == "kmeans":
-            bboxes = self._kmeans_bboxes(img, bbox_path)
-        else:
-            bboxes = self._contour_bboxes(img, bbox_path)
+            stored_source = artifact_dir / "source.jpg"
+            shutil.copyfile(source_path, stored_source)
+            prepared_path = artifact_dir / "prepared.jpg"
+            shutil.copyfile(stored_source, prepared_path)
+            bbox_path = artifact_dir / f"bbox_{method}.jpg"
+            pipeline_path = artifact_dir / f"pipeline_{method}.jpg"
 
-        segments = [
-            self._write_segment(
+            img = cv.imread(str(stored_source))
+            if img is None:
+                bboxes: list[BoundingBox] = []
+            elif method == "kmeans":
+                bboxes = self._kmeans_bboxes(img, bbox_path)
+            else:
+                bboxes = self._contour_bboxes(img, bbox_path)
+
+            segments = [
+                self._write_segment(
+                    image_id=image_id,
+                    segment_index=index,
+                    bbox=bbox,
+                    source_path=stored_source,
+                    segments_dir=segments_dir,
+                    method=method,
+                )
+                for index, bbox in enumerate(bboxes)
+            ]
+
+            if segments:
+                self._compose_pipeline(
+                    stored_source, prepared_path, bbox_path, pipeline_path
+                )
+            else:
+                shutil.copyfile(stored_source, pipeline_path)
+
+            if self._use_storage:
+                assert self._storage is not None
+                self._storage.upload_bytes(
+                    self._storage_key(prefix, "source.jpg"),
+                    stored_source.read_bytes(),
+                )
+                self._storage.upload_bytes(
+                    self._storage_key(prefix, "prepared.jpg"),
+                    prepared_path.read_bytes(),
+                )
+                if bbox_path.exists():
+                    self._storage.upload_bytes(
+                        self._storage_key(prefix, f"bbox_{method}.jpg"),
+                        bbox_path.read_bytes(),
+                    )
+                self._storage.upload_bytes(
+                    self._storage_key(prefix, f"pipeline_{method}.jpg"),
+                    pipeline_path.read_bytes(),
+                )
+                for seg in segments:
+                    crop_path = segments_dir / f"segment_{seg.segment_index}.jpg"
+                    if crop_path.exists():
+                        self._storage.upload_bytes(
+                            self._storage_key(
+                                prefix, "segments", f"segment_{seg.segment_index}.jpg"
+                            ),
+                            crop_path.read_bytes(),
+                        )
+
+            return ImageRecord(
                 image_id=image_id,
-                segment_index=index,
-                bbox=bbox,
-                source_path=stored_source,
-                segments_dir=segments_dir,
-                method=method,
+                source_path=(Path(prefix) / "source.jpg" if self._use_storage else stored_source),
+                artifact_dir=(Path(prefix) if self._use_storage else artifact_dir),
+                source_url=f"/api/v1/images/{image_id}/source",
+                segments=segments,
+                segmentation_method=method,
             )
-            for index, bbox in enumerate(bboxes)
-        ]
+        finally:
+            if self._use_storage:
+                shutil.rmtree(work_dir, ignore_errors=True)
 
-        if segments:
-            self._compose_pipeline(
-                stored_source, prepared_path, bbox_path, pipeline_path
-            )
-        else:
-            shutil.copyfile(stored_source, pipeline_path)
-
-        return ImageRecord(
-            image_id=image_id,
-            source_path=stored_source,
-            artifact_dir=artifact_dir,
-            source_url=f"/static/{strain}/{media}/{image_id}/source.jpg",
-            segments=segments,
-            segmentation_method=method,
-        )
-
+    # ------------------------------------------------------------------
+    # Update segments (PATCH)
+    # ------------------------------------------------------------------
     def update_segments(
         self,
         record: ImageRecord,
@@ -96,17 +165,40 @@ class SegmentationPipeline:
         deleted = set(patch.deleted_segments)
         by_index = {segment.segment_index: segment for segment in record.segments}
 
-        for segment_patch in patch.segments:
-            if segment_patch.segment_index in deleted:
-                continue
-            by_index[segment_patch.segment_index] = self._write_segment(
-                image_id=record.image_id,
-                segment_index=segment_patch.segment_index,
-                bbox=segment_patch.bbox,
-                source_path=record.source_path,
-                segments_dir=record.artifact_dir / "segments",
-                method=record.segmentation_method,
-            )
+        source_path_local: Path | None = None
+        if not self._use_storage:
+            source_path_local = record.source_path
+        elif self._storage:
+            src_key = self._storage_key(str(record.artifact_dir), "source.jpg")
+            tmp = Path(mkdtemp(prefix="seg_")) / "source.jpg"
+            data = self._read_from_storage(src_key)
+            if data is not None:
+                tmp.parent.mkdir(parents=True, exist_ok=True)
+                tmp.write_bytes(data)
+                source_path_local = tmp
+
+        segments_dir = (
+            self.upload_root / record.artifact_dir / "segments"
+            if not self._use_storage
+            else Path(mkdtemp(prefix="seg_")) / "segments"
+        )
+        segments_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            for segment_patch in patch.segments:
+                if segment_patch.segment_index in deleted:
+                    continue
+                by_index[segment_patch.segment_index] = self._write_segment(
+                    image_id=record.image_id,
+                    segment_index=segment_patch.segment_index,
+                    bbox=segment_patch.bbox,
+                    source_path=source_path_local or record.source_path,
+                    segments_dir=segments_dir,
+                    method=record.segmentation_method,
+                )
+        finally:
+            if source_path_local and source_path_local != record.source_path:
+                shutil.rmtree(source_path_local.parent, ignore_errors=True)
 
         record.segments = [
             segment
@@ -114,6 +206,21 @@ class SegmentationPipeline:
             if segment.segment_index not in deleted
         ]
         return record
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def _read_from_storage(self, key: str) -> bytes | None:
+        if self._storage and self._storage.object_exists(key):
+            import urllib.request
+
+            url = self._storage.get_url(key)
+            try:
+                with urllib.request.urlopen(url) as resp:
+                    return resp.read()
+            except Exception:
+                return None
+        return None
 
     def _write_segment(
         self,
@@ -149,7 +256,7 @@ class SegmentationPipeline:
         )
 
     # ------------------------------------------------------------------
-    # KMeans segmentation (reimplemented from research/src/preprocessing/kmeans.py)
+    # KMeans segmentation
     # ------------------------------------------------------------------
     @staticmethod
     def _kmeans_bboxes(
@@ -157,12 +264,10 @@ class SegmentationPipeline:
     ) -> list[BoundingBox]:
         h, w = img.shape[:2]
 
-        # Preprocess: reduce to 256x256 for speed, create plate mask
         small = cv.resize(img, (256, 256))
         mask = SegmentationPipeline._plate_mask(small)
         hsv = cv.cvtColor(small, cv.COLOR_BGR2HSV)
 
-        # K=3 on HSV pixels inside mask
         masked_pixels = hsv[mask > 0].astype(np.float32)
         if len(masked_pixels) < 10:
             return []
@@ -171,18 +276,15 @@ class SegmentationPipeline:
         labels = kmeans.fit_predict(masked_pixels)
         centers = kmeans.cluster_centers_
 
-        # Darkness: pick darkest cluster as background (lowest V)
         bg_label = int(np.argmin(centers[:, 2]))
         fg_mask: np.ndarray = np.zeros((256, 256), dtype=np.uint8)
         selection = labels != bg_label
         fg_mask[mask > 0] = selection.astype(np.uint8) * 255
 
-        # Clean up
         kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
         fg_mask = cv.morphologyEx(fg_mask, cv.MORPH_CLOSE, kernel)
         fg_mask = cv.morphologyEx(fg_mask, cv.MORPH_OPEN, kernel)
 
-        # Find connected components → bounding boxes
         num_labels, label_map, stats, _ = cv.connectedComponentsWithStats(
             fg_mask, connectivity=8
         )
@@ -202,7 +304,6 @@ class SegmentationPipeline:
         bboxes_raw.sort(key=lambda b: b[0], reverse=True)
         top = bboxes_raw[:3]
 
-        # Scale back to original dimensions
         sx, sy = w / 256.0, h / 256.0
         results: list[BoundingBox] = []
         for _, bx, by, bw, bh in top:
@@ -215,7 +316,6 @@ class SegmentationPipeline:
                 )
             )
 
-        # Draw bbox visualization
         if out_path and results:
             vis = small.copy()
             for _, bx, by, bw, bh in top:

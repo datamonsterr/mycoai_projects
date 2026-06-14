@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { resolveImageUrl } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +31,7 @@ export default function DatasetPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [editItem, setEditItem] = useState<string | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [fullscreenImage, setFullscreenImage] = useState<{ src: string; alt: string } | null>(null)
 
   const { data: speciesData } = useSpeciesList()
   const { data: mediaData } = useMediaList()
@@ -252,7 +254,7 @@ export default function DatasetPage() {
                         </TableCell>
                         <TableCell>
                           <img
-                            src={img.file_path}
+                            src={img.source_url || resolveImageUrl(img.file_path)}
                             alt=""
                             className="h-12 w-12 rounded object-cover border border-border"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
@@ -278,44 +280,57 @@ export default function DatasetPage() {
                         <TableRow key={`${img.id}-expanded`}>
                           <TableCell />
                           <TableCell colSpan={isOwner ? 5 : 4} className="bg-muted/30">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-1 text-xs">
-                              <div>
-                                <span className="text-muted-foreground">Image ID</span>
-                                <p className="font-mono mt-0.5 truncate max-w-[200px]" title={img.id}>{img.id}</p>
+                            <div className="flex gap-4 py-2 min-h-64">
+                              <div className="flex-shrink-0 w-72 self-stretch">
+                                <img
+                                  src={img.source_url || resolveImageUrl(img.file_path)}
+                                  alt={img.strain_name ?? 'Plate'}
+                                  className="w-full h-full object-cover rounded-md border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => setFullscreenImage({ src: img.source_url || resolveImageUrl(img.file_path), alt: img.strain_name ?? 'Plate' })}
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                />
                               </div>
-                              <div>
-                                <span className="text-muted-foreground">Segments</span>
-                                <p className="font-mono mt-0.5">{img.segments_count}</p>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Qdrant</span>
-                                <p className="mt-0.5">
-                                  {img.indexed_in_qdrant
-                                    ? <Badge variant="success">Indexed</Badge>
-                                    : <Badge variant="secondary">No</Badge>}
-                                </p>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Status</span>
-                                <p className="mt-0.5">
-                                  <Badge variant={
-                                    img.data_update_status === 'current' ? 'success'
-                                      : img.data_update_status === 'updated_requires_reindex' ? 'warning'
-                                      : 'destructive'
-                                  }>
-                                    {img.data_update_status === 'updated_requires_reindex' ? 'Needs Reindex' : img.data_update_status}
-                                  </Badge>
-                                </p>
-                              </div>
-                              {img.angle && (
-                                <div>
-                                  <span className="text-muted-foreground">Angle</span>
-                                  <p className="mt-0.5">{img.angle}</p>
+                              <div className="flex-1 min-w-0">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-1 text-xs">
+                                  <div>
+                                    <span className="text-muted-foreground">Image ID</span>
+                                    <p className="font-mono mt-0.5 truncate max-w-[200px]" title={img.id}>{img.id}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Segments</span>
+                                    <p className="font-mono mt-0.5">{img.segments_count}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Qdrant</span>
+                                    <p className="mt-0.5">
+                                      {img.indexed_in_qdrant
+                                        ? <Badge variant="success">Indexed</Badge>
+                                        : <Badge variant="secondary">No</Badge>}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Status</span>
+                                    <p className="mt-0.5">
+                                      <Badge variant={
+                                        img.data_update_status === 'current' ? 'success'
+                                          : img.data_update_status === 'updated_requires_reindex' ? 'warning'
+                                          : 'destructive'
+                                      }>
+                                        {img.data_update_status === 'updated_requires_reindex' ? 'Needs Reindex' : img.data_update_status}
+                                      </Badge>
+                                    </p>
+                                  </div>
+                                  {img.angle && (
+                                    <div>
+                                      <span className="text-muted-foreground">Angle</span>
+                                      <p className="mt-0.5">{img.angle}</p>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <span className="text-muted-foreground">Created</span>
+                                    <p className="mt-0.5">{new Date(img.created_at).toLocaleDateString()}</p>
+                                  </div>
                                 </div>
-                              )}
-                              <div>
-                                <span className="text-muted-foreground">Created</span>
-                                <p className="mt-0.5">{new Date(img.created_at).toLocaleDateString()}</p>
                               </div>
                             </div>
                           </TableCell>
@@ -340,7 +355,7 @@ export default function DatasetPage() {
             <p className="text-xs font-mono">Image: {editItem}</p>
             {images.find((img) => img.id === editItem) && (
               <img
-                src={images.find((img) => img.id === editItem)!.file_path}
+                src={resolveImageUrl(images.find((img) => img.id === editItem)!.file_path)}
                 alt="Selected plate"
                 className="w-full max-h-64 rounded-md object-contain border border-border bg-muted"
               />
@@ -375,6 +390,27 @@ export default function DatasetPage() {
           <Button onClick={() => setEditItem(null)}>Save Changes</Button>
         </DialogFooter>
       </Dialog>
+
+      {/* Fullscreen image preview */}
+      {fullscreenImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 cursor-pointer"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <img
+            src={fullscreenImage.src}
+            alt={fullscreenImage.alt}
+            className="max-w-full max-h-full object-contain"
+          />
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors"
+            onClick={() => setFullscreenImage(null)}
+            aria-label="Close fullscreen preview"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

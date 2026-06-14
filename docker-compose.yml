@@ -129,6 +129,50 @@ services:
           cpus: "0.5"
           memory: 512M
 
+  # ── MinIO — S3-compatible Object Storage ─────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: mycoai-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_SERVER_URL: ${MINIO_SERVER_URL:-http://localhost:9000}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # ── MinIO Bucket Setup (run-once init container) ─────────────────────────────
+  minio-setup:
+    image: minio/mc:latest
+    container_name: mycoai-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin};
+      mc mb --ignore-existing myminio/${MINIO_BUCKET:-mycoai-images};
+      echo 'Bucket ready';
+      "
+    networks:
+      - backend
+
   # ── Backend (FastAPI + uvicorn) ────────────────────────────────────────────
   backend:
     build:
@@ -146,6 +190,13 @@ services:
       MYCOAI_BACKEND_CELERY_BROKER_URL: redis://redis:6379/0
       MYCOAI_BACKEND_CELERY_RESULT_BACKEND: redis://redis:6379/0
       MYCOAI_BACKEND_JWT_SECRET_KEY: ${MYCOAI_BACKEND_JWT_SECRET_KEY:-dev-secret-not-for-production}
+      MYCOAI_BACKEND_STORAGE_BACKEND: s3
+      MYCOAI_BACKEND_STORAGE_S3_ENDPOINT: minio:9000
+      MYCOAI_BACKEND_STORAGE_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MYCOAI_BACKEND_STORAGE_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MYCOAI_BACKEND_STORAGE_S3_BUCKET: ${MINIO_BUCKET:-mycoai-images}
+      MYCOAI_BACKEND_STORAGE_S3_SECURE: "false"
+      MYCOAI_BACKEND_STORAGE_S3_PUBLIC_ENDPOINT: http://localhost:9000
       MYCOAI_QDRANT_HOST: qdrant-product
       MYCOAI_QDRANT_PORT: "6333"
       MYCOAI_QDRANT_GRPC_PORT: "6334"
@@ -161,6 +212,8 @@ services:
       redis:
         condition: service_healthy
       qdrant-product:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     deploy:
       resources:
@@ -218,6 +271,13 @@ services:
       MYCOAI_QDRANT_HOST: qdrant-product
       MYCOAI_QDRANT_PORT: "6333"
       MYCOAI_QDRANT_GRPC_PORT: "6334"
+      MYCOAI_BACKEND_STORAGE_BACKEND: s3
+      MYCOAI_BACKEND_STORAGE_S3_ENDPOINT: minio:9000
+      MYCOAI_BACKEND_STORAGE_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MYCOAI_BACKEND_STORAGE_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MYCOAI_BACKEND_STORAGE_S3_BUCKET: ${MINIO_BUCKET:-mycoai-images}
+      MYCOAI_BACKEND_STORAGE_S3_SECURE: "false"
+      MYCOAI_BACKEND_STORAGE_S3_PUBLIC_ENDPOINT: http://localhost:9000
     volumes:
       - uploads_data:/app/Dataset/uploads
     networks:
@@ -226,6 +286,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     deploy:
       resources:
@@ -265,3 +327,5 @@ volumes:
     name: mycoai_qdrant_product_data
   uploads_data:
     name: mycoai_uploads_data
+  minio_data:
+    name: mycoai_minio_data

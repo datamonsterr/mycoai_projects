@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { resolveImageUrl } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
@@ -211,8 +212,8 @@ export default function FeedbackInboxPage() {
                   .slice(0, 5)
                   .map((img) => (
                     <img
-                      key={img.image_id}
-                      src={img.file_path}
+                       key={img.image_id}
+                       src={resolveImageUrl(img.file_path)}
                       alt={`${reviewItem.query_strain} plate`}
                       className="h-24 w-32 rounded-md object-contain border border-border bg-muted flex-shrink-0"
                     />
