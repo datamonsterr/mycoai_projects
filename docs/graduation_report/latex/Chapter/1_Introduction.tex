@@ -1,0 +1,40 @@
+\section{Chapter 1: Problem Statement}\label{chapter-1-problem-statement}
+
+\subsection{1.1 Overview}\label{overview}
+
+Fungal species identification is a critical yet challenging task in mycology, often requiring expert knowledge and time-consuming manual analysis. The \textbf{MycoAI Retrieval} system addresses this by automating the identification process through an image-based retrieval system, allowing users to find matching species from a reference database based on visual similarity.
+
+\subsection{1.2 Dataset Description}\label{dataset-description}
+
+The project utilizes a curated dataset of fungal strain images. Each record consists of: - \textbf{Images}: High-resolution photographs of fungal colonies. - \textbf{Metadata}: Associated species names, growth media (e.g., PDA, MEA), and strain identifiers. The dataset is stored in \texttt{Dataset/original/} and is used both for building the reference index in Qdrant and for evaluating the retrieval accuracy in the \texttt{research/} module.
+
+\subsection{1.3 Scope of Work}\label{scope-of-work}
+
+The scope of this thesis encompasses three primary domains:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Algorithmic Research}: Developing and optimizing a retrieval pipeline including K-means segmentation and KNN-based species prediction.
+\item
+  \textbf{System Engineering}: Implementing a production-ready web application with authenticated access, dataset governance, and real-time retrieval.
+\item
+  \textbf{Process Innovation}: Applying ``Agentic Engineering'' to the development process, using a multi-agent system (Autolab) to iteratively optimize the retrieval model.
+\end{enumerate}
+
+\subsection{1.4 Proposed Solution}\label{proposed-solution}
+
+The proposed solution is a hybrid retrieval system: - \textbf{Frontend}: A React 19 application for intuitive image upload and bounding-box review. - \textbf{Backend}: A FastAPI server managing the logic between the user and the data stores. - \textbf{Retrieval Engine}: A pipeline that segments the image, extracts high-dimensional embeddings, and performs a nearest-neighbor search in \textbf{Qdrant}. - \textbf{Governance}: A data-owner role to manage the species catalog and promote candidate models.
+
+\subsection{1.5 Rationale}\label{rationale}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{KNN over Classification}: Standard classifiers are limited to a fixed number of classes. A retrieval (KNN) approach allows the system to handle new species by simply adding reference images to the database without retraining the entire model.
+\item
+  \textbf{Qdrant Vector DB}: Qdrant is used for its efficiency in handling high-dimensional vectors and its ability to perform filtered searches (e.g., filtering by growth media).
+\item
+  \textbf{Dual-DB Architecture}: PostgreSQL is used for structured metadata (Users, Species, Audit logs) to ensure ACID compliance, while Qdrant handles the unstructured vector data for speed.
+\end{itemize}
