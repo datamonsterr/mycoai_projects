@@ -1,0 +1,64 @@
+\contentsline {section}{\numberline {0.1}Acknowledgment}{i}{section.0.1}%
+\contentsline {section}{\numberline {0.2}Abstract}{ii}{section.0.2}%
+\ttl@change@i {\@ne }{chapter}{0.0cm}{\bfseries \vspace {0.3cm}}{{\bfseries {\scshape } CHAPTER \thecontentslabel .\ }}{}{\titlerule *[0.3pc]{.}\contentspage }\relax 
+\ttl@change@v {chapter}{}{}{}\relax 
+\ttl@change@i {\@ne }{section}{0.0cm}{\vspace {0.3cm}}{\thecontentslabel \ }{}{\titlerule *[0.3pc]{.}\contentspage }\relax 
+\ttl@change@v {section}{}{}{}\relax 
+\ttl@change@i {\@ne }{subsection}{1.0cm}{\vspace {0.3cm}}{\thecontentslabel \ }{}{\titlerule *[0.3pc]{.}\contentspage }\relax 
+\ttl@change@v {subsection}{}{}{}\relax 
+\contentsline {chapter}{\numberline {1}INTRODUCTION}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Chapter 1: Problem Statement}{1}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}1.1 Overview}{1}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}1.2 Dataset Description}{1}{subsection.1.1.2}%
+\contentsline {subsection}{\numberline {1.1.3}1.3 Scope of Work}{1}{subsection.1.1.3}%
+\contentsline {subsection}{\numberline {1.1.4}1.4 Proposed Solution}{1}{subsection.1.1.4}%
+\contentsline {subsection}{\numberline {1.1.5}1.5 Rationale}{2}{subsection.1.1.5}%
+\contentsline {chapter}{\numberline {2}LITERATURE REVIEW \& PROBLEM STATEMENT}{3}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Chapter 2: Fungal Species Retrieval Model}{3}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}2.1 Motivation}{3}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}2.2 Related Work}{3}{subsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.1.3}2.3 Methodology}{3}{subsection.2.1.3}%
+\contentsline {subsubsection}{2.3.1 K-Means Segmentation}{3}{subsubsection*.4}%
+\contentsline {subsubsection}{2.3.2 Feature Extraction \& Embedding}{4}{subsubsection*.5}%
+\contentsline {subsubsection}{2.3.3 KNN Strategies}{4}{subsubsection*.6}%
+\contentsline {subsection}{\numberline {2.1.4}2.4 Experiments \& Results}{4}{subsection.2.1.4}%
+\contentsline {subsubsection}{2.4.1 Experiment Setup}{4}{subsubsection*.7}%
+\contentsline {subsubsection}{2.4.2 Segmentation Experiments}{4}{subsubsection*.8}%
+\contentsline {subsubsection}{2.4.3 Retrieval Experiments}{4}{subsubsection*.9}%
+\contentsline {subsection}{\numberline {2.1.5}2.5 Discussion}{5}{subsection.2.1.5}%
+\contentsline {chapter}{\numberline {3}FUNGAL SPECIES RETRIEVAL MODEL}{6}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Chapter 3: Web Application}{6}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}3.1 Requirements Analysis}{6}{subsection.3.1.1}%
+\contentsline {subsubsection}{3.1.1 Functional Requirements}{6}{subsubsection*.10}%
+\contentsline {subsubsection}{3.1.2 Non-Functional Requirements}{6}{subsubsection*.11}%
+\contentsline {subsection}{\numberline {3.1.2}3.2 High-Level Architecture}{6}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}3.3 Database Design \& Optimization}{6}{subsection.3.1.3}%
+\contentsline {subsubsection}{3.3.1 Relational Database (PostgreSQL)}{6}{subsubsection*.12}%
+\contentsline {subsubsection}{3.3.2 Vector Database (Qdrant)}{6}{subsubsection*.13}%
+\contentsline {subsubsection}{3.3.3 Why Dual-DB?}{7}{subsubsection*.14}%
+\contentsline {subsection}{\numberline {3.1.4}3.4 API Design}{7}{subsection.3.1.4}%
+\contentsline {subsubsection}{3.4.1 Authentication}{7}{subsubsection*.15}%
+\contentsline {subsubsection}{3.4.2 Retrieval Endpoint}{7}{subsubsection*.16}%
+\contentsline {subsubsection}{3.4.3 Indexing Endpoint}{7}{subsubsection*.17}%
+\contentsline {subsection}{\numberline {3.1.5}3.5 UI/UX Design}{7}{subsection.3.1.5}%
+\contentsline {chapter}{\numberline {4}WEB APPLICATION DESIGN \& IMPLEMENTATION}{9}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Chapter 4: Agentic Engineering}{9}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}4.1 Motivation}{9}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}4.2 Multi-Agent Architecture}{9}{subsection.4.1.2}%
+\contentsline {subsubsection}{4.2.1 Delegation Map}{9}{subsubsection*.18}%
+\contentsline {subsection}{\numberline {4.1.3}4.3 Reducing Hallucinations}{13}{subsection.4.1.3}%
+\contentsline {subsection}{\numberline {4.1.4}4.4 Overcoming Context Window Limits}{13}{subsection.4.1.4}%
+\contentsline {subsubsection}{4.4.1 Caveman Mode}{13}{subsubsection*.19}%
+\contentsline {subsubsection}{4.4.2 Subagents and Worktrees}{14}{subsubsection*.20}%
+\contentsline {subsubsection}{4.4.3 Reusable Skills}{14}{subsubsection*.21}%
+\contentsline {chapter}{\numberline {5}AGENTIC ENGINEERING \& EVALUATION}{15}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Chapter 5: Conclusion}{15}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Summary}{15}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Future Work}{15}{subsection.5.1.2}%
+\contentsline {chapter}{\numberline {6}CONCLUSION}{16}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Summary}{16}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Future Work}{16}{section.6.2}%
+\contentsline {chapter}{REFERENCE}{17}{section*.22}%
+\contentsline {chapter}{\numberline {A}USE CASE DESCRIPTIONS}{18}{chapter.1.A}%
+\contentsline {section}{\numberline {A.1}Use Case Details}{18}{section.1.A.1}%
+\contentsfinish 
