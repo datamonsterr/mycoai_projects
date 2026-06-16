@@ -2,6 +2,7 @@ import { api } from '@/services/api-client'
 import type {
   AdminUserResponse,
   AuditLogResponse,
+  InviteUserResponse,
   PaginatedResponse,
   UserRoleUpdate,
   UserStatusUpdate,
@@ -46,4 +47,10 @@ export function getAuditLog(
   params?: AuditLogParams,
 ): Promise<PaginatedResponse<AuditLogResponse>> {
   return api.get<PaginatedResponse<AuditLogResponse>>('/admin/audit-log', { params: params as Record<string, string | number | boolean | undefined> })
+}
+
+export function inviteUser(
+  email: string,
+): Promise<InviteUserResponse> {
+  return api.post<InviteUserResponse>('/admin/users/invite', { email })
 }

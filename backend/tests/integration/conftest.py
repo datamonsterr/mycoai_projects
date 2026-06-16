@@ -84,7 +84,7 @@ async def qdrant_client():
         from qdrant_client import QdrantClient
 
         client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
-        client.health_check()
+        client.get_collections()
     except Exception:
         pytest.skip("Qdrant not available")
 

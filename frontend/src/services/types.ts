@@ -218,11 +218,14 @@ export interface DashboardStats {
   total_strains: number
   total_species: number
   total_media: number
+  total_environments?: number
 }
 
 export interface DistributionItem {
   species_name?: string
   media_name?: string
+  strain_name?: string
+  environment_name?: string
   image_count: number
 }
 
@@ -276,6 +279,13 @@ export interface AuditLogResponse {
   changes: Record<string, unknown> | null
   ip_address: string | null
   created_at: string
+}
+
+export interface InviteUserResponse {
+  user_id: string
+  email: string
+  invite_token: string
+  invite_link: string
 }
 
 export interface ProblemDetails {

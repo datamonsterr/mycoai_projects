@@ -63,6 +63,7 @@ RUN apt-get update && \
 RUN addgroup --gid 1001 --system appgroup && \
     adduser --uid 1001 --system appuser --ingroup appgroup
 
+COPY --from=uv-base /usr/local/bin/uv /usr/local/bin/uv
 COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONPATH="/app/src"

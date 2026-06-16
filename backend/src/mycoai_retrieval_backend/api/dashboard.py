@@ -9,8 +9,10 @@ from ..database import get_db
 from ..models import Image, Media, Species, Strain
 from ..schemas.dashboard import (
     DashboardStats,
+    EnvironmentDistributionItem,
     MediaDistributionItem,
     SpeciesDistributionItem,
+    StrainDistributionItem,
 )
 
 router = APIRouter()
@@ -80,6 +82,62 @@ async def media_distribution(
 
 
 @router.get(
+    "/charts/strain-distribution",
+    response_model=list[StrainDistributionItem],
+)
+async def strain_distribution(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentUser,
+) -> list[StrainDistributionItem]:
+    result = await db.execute(
+        select(Strain.name, func.count(Image.id).label("image_count"))
+        .outerjoin(Image, Image.strain_id == Strain.id)
+        .where(Strain.is_archived.is_(False))
+        .group_by(Strain.id, Strain.name)
+        .order_by(func.count(Image.id).desc())
+        .limit(20)
+    )
+    rows = result.all()
+    return [
+        StrainDistributionItem(strain_name=row.name or "unknown", image_count=row.image_count)
+        for row in rows
+    ]
+
+
+@router.get(
+    "/charts/environment-distribution",
+    response_model=list[EnvironmentDistributionItem],
+)
+async def environment_distribution(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentUser,
+) -> list[EnvironmentDistributionItem]:
+    from ..models import Image as ImageModel
+
+    result = await db.execute(
+        select(ImageModel.angle, func.count(ImageModel.id).label("image_count"))
+        .where(ImageModel.angle.isnot(None))
+        .group_by(ImageModel.angle)
+        .order_by(func.count(ImageModel.id).desc())
+        .limit(15)
+    )
+    rows = result.all()
+    if not rows:
+        return [
+            EnvironmentDistributionItem(
+                environment_name=name, image_count=0
+            )
+            for name in ["top", "bottom", "side"]
+        ]
+    return [
+        EnvironmentDistributionItem(
+            environment_name=row.angle or "unknown", image_count=row.image_count
+        )
+        for row in rows
+    ]
+
+
+@router.get(
     "/charts/timeline",
     response_model=list[dict],
 )
@@ -93,4 +151,19 @@ async def timeline(
 async def qdrant_status(
     user: CurrentUser,
 ) -> dict:
-    return {"learned": 0, "unlearned": 0}
+    try:
+        from ..qdrant.client import get_qdrant_client, get_collection_name
+
+        qdrant = get_qdrant_client()
+        collection = get_collection_name()
+        info = qdrant.get_collection(collection_name=collection)
+        points_count = getattr(info, "points_count", None) or 0
+        indexed_vectors_count = getattr(info, "indexed_vectors_count", None) or 0
+        return {
+            "collection_name": collection,
+            "points_count": points_count,
+            "indexed_vectors_count": indexed_vectors_count,
+            "status": "healthy" if indexed_vectors_count > 0 else "empty",
+        }
+    except Exception:
+        return {"status": "unavailable", "points_count": 0, "indexed_vectors_count": 0}

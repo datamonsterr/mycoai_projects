@@ -7,6 +7,8 @@ import {
   useDashboardStats,
   useSpeciesDistribution,
   useMediaDistribution,
+  useStrainDistribution,
+  useEnvironmentDistribution,
   useQdrantStatus,
 } from '@/hooks/use-dashboard'
 import { useAuth } from '@/lib/use-auth'
@@ -121,11 +123,13 @@ function PieChart({ data }: { data: Array<{ name: string; count: number }> }) {
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const isOwner = user?.role === 'owner'
+  const isOwner = user?.role === 'owner' || user?.role === 'dataowner'
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
   const { data: qdrantStatus, isLoading: qdrantLoading } = useQdrantStatus()
   const { data: speciesDist, isLoading: speciesLoading } = useSpeciesDistribution()
   const { data: mediaDist, isLoading: mediaLoading } = useMediaDistribution()
+  const { data: strainDist, isLoading: strainLoading } = useStrainDistribution()
+  const { data: envDist, isLoading: envLoading } = useEnvironmentDistribution()
 
   const metrics = [
     { label: 'Total Strains', value: statsLoading ? '…' : stats?.total_strains ?? '-', icon: FlaskConical, color: 'text-primary' },
@@ -140,6 +144,7 @@ export default function DashboardPage() {
     },
     { label: 'Total Species', value: statsLoading ? '…' : stats?.total_species ?? '-', icon: Tags, color: 'text-success' },
     { label: 'Media Types', value: statsLoading ? '…' : stats?.total_media ?? '-', icon: Database, color: 'text-warning' },
+    { label: 'Environments', value: statsLoading ? '…' : stats?.total_environments ?? '-', icon: FlaskConical, color: 'text-primary' },
     {
       label: 'Needs Reindex',
       value: qdrantLoading ? '…' : qdrantStatus?.qdrant_index_status !== 'current' ? 'Yes' : 'No',
@@ -166,6 +171,24 @@ export default function DashboardPage() {
     [mediaDist],
   )
 
+  const strainData = useMemo(
+    () =>
+      strainDist?.map((d) => ({
+        name: d.strain_name ?? 'Unknown',
+        count: d.image_count,
+      })).filter((d) => d.count > 0) ?? [],
+    [strainDist],
+  )
+
+  const envData = useMemo(
+    () =>
+      envDist?.map((d) => ({
+        name: d.environment_name ?? 'Unknown',
+        count: d.image_count,
+      })).filter((d) => d.count > 0) ?? [],
+    [envDist],
+  )
+
   return (
     <div className="space-y-6">
       <div>
@@ -174,9 +197,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Metrics */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr">
         {metrics.map((m) => (
-          <Card key={m.label} className="flex items-stretch">
+          <Card key={m.label} className="h-full">
             <CardContent className="p-4 flex items-center gap-4 w-full">
               <m.icon className={`h-8 w-8 flex-shrink-0 ${m.color}`} />
               <div>
@@ -188,53 +211,53 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Index Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-heading text-base">Index Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {qdrantLoading ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            ) : qdrantStatus ? (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Qdrant Index</span>
-                  <Badge variant={qdrantStatus.qdrant_index_status === 'current' ? 'success' : 'warning'}>
-                    {qdrantStatus.qdrant_index_status}
-                  </Badge>
-                </div>
-                <Separator />
-                <div className="space-y-1 text-sm">
-                  {Object.entries(qdrantStatus.changes_since_last ?? {}).map(([key, val]) => (
-                    <div key={key} className="flex justify-between">
-                      <span className="capitalize">{key.replace(/_/g, ' ')}</span>
-                      <span className="font-mono">{val}</span>
-                    </div>
-                  ))}
-                </div>
-                {qdrantStatus.external_retraining_recommended && (
-                  <>
-                    <Separator />
-                    <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/20 rounded-md">
-                      <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
-                      <p className="text-xs text-foreground">
-                        External deep feature-extractor retraining is recommended. Many reference-data changes have accumulated.
-                      </p>
-                    </div>
-                  </>
-                )}
-                {isOwner && (
-                  <Button size="sm" className="w-full">Re-index Qdrant</Button>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">No index status available.</p>
-            )}
-          </CardContent>
-        </Card>
+      {/* Index Status — dedicated row */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-heading text-base">Index Status</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {qdrantLoading ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : qdrantStatus ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Qdrant Index</span>
+                <Badge variant={qdrantStatus.qdrant_index_status === 'current' ? 'success' : 'warning'}>
+                  {qdrantStatus.qdrant_index_status}
+                </Badge>
+              </div>
+              <Separator />
+              <div className="space-y-1 text-sm">
+                {Object.entries(qdrantStatus.changes_since_last ?? {}).map(([key, val]) => (
+                  <div key={key} className="flex justify-between">
+                    <span className="capitalize">{key.replace(/_/g, ' ')}</span>
+                    <span className="font-mono">{val}</span>
+                  </div>
+                ))}
+              </div>
+              {qdrantStatus.external_retraining_recommended && (
+                <>
+                  <Separator />
+                  <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/20 rounded-md">
+                    <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
+                    <p className="text-xs text-foreground">
+                      External deep feature-extractor retraining is recommended. Many reference-data changes have accumulated.
+                    </p>
+                  </div>
+                </>
+              )}
+              {isOwner && (
+                <Button size="sm" className="w-full">Re-index Qdrant</Button>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">No index status available.</p>
+          )}
+        </CardContent>
+      </Card>
 
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Species Distribution */}
         <Card>
           <CardHeader>
@@ -263,6 +286,38 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground text-center py-8">No media data available.</p>
             ) : (
               <PieChart data={mediaData} />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Strain Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-heading text-base">Strain Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {strainLoading ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+            ) : strainData.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No strain data available.</p>
+            ) : (
+              <PieChart data={strainData} />
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Environment Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-heading text-base">Environment Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {envLoading ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+            ) : envData.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No environment data available.</p>
+            ) : (
+              <PieChart data={envData} />
             )}
           </CardContent>
         </Card>

@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { mediaList } from '@/lib/mock-data'
 import { sampleStrains } from '@/lib/sample-assets'
-import { uploadImage } from '@/services/images'
-import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Loader2, Plus, Trash2 } from 'lucide-react'
+import { downloadTemplate, INDEX_TEMPLATE_CSV, downloadAgentsMd, downloadTemplateZip } from '@/lib/template'
+import { uploadImage, uploadBatchZip, autoSegment } from '@/services/images'
+import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Loader2, Plus, Trash2, FileText, FileArchive } from 'lucide-react'
 import { useStartRetrieval, useJobStatus, useJobResults } from '@/hooks/use-retrieval'
 import type { RetrievalRanking, RetrievalNeighbor } from '@/services/types'
 
@@ -465,6 +466,14 @@ export default function RetrievePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingStrainIndex = useRef(0)
   const [uploading, setUploading] = useState(false)
+  const [isZipUploading, setIsZipUploading] = useState(false)
+  const [autoSegmenting, setAutoSegmenting] = useState(false)
+  const [zipResult, setZipResult] = useState<{
+    successful: number
+    failed: number
+    total: number
+    results: Array<{ strain: string; media: string; filename: string; image_id: string }>
+  } | null>(null)
 
   const [jobId, setJobId] = useState<string | null>(null)
 
@@ -549,6 +558,81 @@ export default function RetrievePage() {
     }
     e.target.value = ''
     setUploading(false)
+  }
+
+  const handleBatchZipUpload = async (file: File) => {
+    setIsZipUploading(true)
+    setZipResult(null)
+    try {
+      const result = await uploadBatchZip(file)
+      setZipResult({ successful: result.successful, failed: result.failed, total: result.total, results: result.results.map((r) => ({ strain: r.strain, media: r.media, filename: r.filename, image_id: r.image_id })) })
+
+      const batchStrains: StrainDraft[] = []
+      const strainMap = new Map<string, StrainDraft>()
+      for (const r of result.results) {
+        const key = r.strain || 'unknown'
+        if (!strainMap.has(key)) {
+          strainMap.set(key, { strain: key, images: [] })
+          batchStrains.push(strainMap.get(key)!)
+        }
+        strainMap.get(key)!.images.push({
+          id: r.image_id || crypto.randomUUID(),
+          fileName: r.filename,
+          media: r.media || 'MEA',
+          mediaIsNew: false,
+          maxColonies: 'default',
+          original: undefined,
+        })
+      }
+      setStrains(batchStrains)
+      setIsBatch(batchStrains.length > 1)
+      setActiveStrain(0)
+    } catch {
+      /* continue */
+    } finally {
+      setIsZipUploading(false)
+    }
+  }
+
+  const runAutoSegment = async () => {
+    setAutoSegmenting(true)
+    let successCount = 0
+    try {
+      for (const strain of strains) {
+        for (const img of strain.images) {
+          if (!img.id) continue
+          try {
+            const result = await autoSegment(img.id, 'kmeans')
+            setStrains((prev) => prev.map((s) => ({
+              ...s,
+              images: s.images.map((i) => {
+                if (i.id !== img.id) return i
+                return {
+                  ...i,
+                  segments: result.segments.map((seg) => ({
+                    url: seg.crop_url,
+                    bbox: { x: seg.bbox.x, y: seg.bbox.y, w: seg.bbox.w, h: seg.bbox.h },
+                  })),
+                  yoloBboxes: result.segments.map((seg) => ({
+                    x: seg.bbox.x, y: seg.bbox.y, w: seg.bbox.w, h: seg.bbox.h,
+                  })),
+                }
+              }),
+            })))
+            successCount++
+          } catch {
+            /* skip failed */
+          }
+        }
+      }
+      if (successCount > 0) {
+        setStep('segmentation')
+      }
+    } catch {
+      /* handle silently */
+    } finally {
+      setAutoSegmenting(false)
+    }
   }
 
   const updateImage = (strainIndex: number, imageId: string, field: Partial<StrainImage>) => {
@@ -692,7 +776,100 @@ export default function RetrievePage() {
             className="hidden"
             onChange={handleFilesSelected}
           />
+          {/* --- Batch ZIP Upload Section --- */}
+          <Card className="mb-4">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="font-heading text-base">Batch Upload (ZIP)</CardTitle>
+              <CardDescription>
+                Download the template zip with AGENTS.md instructions, organize images by strain, re-zip, and upload.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => downloadTemplateZip()}>
+                  <Download className="h-4 w-4" /> Download Template (ZIP)
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadAgentsMd}><FileText className="h-4 w-4" /> AGENTS.md</Button>
+              </div>
+
+              <label
+                className={`flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
+                  isZipUploading ? 'border-primary bg-primary/5' : 'border-border hover:border-primary'
+                }`}
+                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-primary') }}
+                onDragLeave={(e) => { e.currentTarget.classList.remove('border-primary') }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.currentTarget.classList.remove('border-primary')
+                  const file = e.dataTransfer.files?.[0]
+                  if (file?.name.endsWith('.zip')) handleBatchZipUpload(file)
+                }}
+              >
+                <input
+                  type="file"
+                  accept=".zip"
+                  className="hidden"
+                  disabled={isZipUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) handleBatchZipUpload(file)
+                    e.target.value = ''
+                  }}
+                />
+                {isZipUploading ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <span className="text-sm text-muted-foreground">Processing batch...</span>
+                  </div>
+                ) : (
+                  <>
+                    <FileArchive className="mb-2 h-8 w-8 text-muted-foreground" />
+                    <span className="text-sm font-medium">Drop ZIP here or click to browse</span>
+                    <span className="text-xs text-muted-foreground">mycoai_batch_template.zip with AGENTS.md</span>
+                  </>
+                )}
+              </label>
+
+              {zipResult && (
+                <div className="rounded-lg border border-border p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={zipResult.failed > 0 ? 'warning' : 'success'}>
+                      {zipResult.successful} successful, {zipResult.failed} failed
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {zipResult.total} total images in batch
+                    </span>
+                  </div>
+                  {zipResult.results.length > 0 && (
+                    <div className="max-h-36 overflow-auto text-xs">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="text-left text-muted-foreground">
+                            <th className="pb-1 pr-2">Strain</th>
+                            <th className="pb-1 pr-2">Media</th>
+                            <th className="pb-1">File</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {zipResult.results.map((r, i) => (
+                            <tr key={i} className="border-t border-border">
+                              <td className="py-1 pr-2">{r.strain}</td>
+                              <td className="py-1 pr-2">{r.media}</td>
+                              <td className="py-1 text-muted-foreground">{r.filename}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => downloadTemplate('mycoai_retrieve_template.csv', INDEX_TEMPLATE_CSV)}><Download className="h-4 w-4" /> Download Template</Button>
+            <Button variant="outline" size="sm" onClick={downloadAgentsMd}><FileText className="h-4 w-4" /> AGENTS.md</Button>
             <Button variant={!isBatch ? 'default' : 'outline'} size="sm" onClick={() => { setIsBatch(false); setActiveStrain(0) }}>
               <FlaskConical className="h-4 w-4" /> Single Strain
             </Button>
@@ -730,6 +907,13 @@ export default function RetrievePage() {
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" disabled={uploading} onClick={() => addImage(activeStrain)}><Plus className="h-4 w-4" /> {uploading ? 'Uploading...' : 'Add Image'}</Button>
+                    <Button variant="default" size="sm" disabled={autoSegmenting || current.images.length === 0} onClick={runAutoSegment}>
+                      {autoSegmenting ? (
+                        <><Loader2 className="h-4 w-4 animate-spin" /> Segmenting...</>
+                      ) : (
+                        <><Images className="h-4 w-4" /> Auto Segment</>
+                      )}
+                    </Button>
                     {isBatch && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeStrain(activeStrain)}><Trash2 className="h-4 w-4" /></Button>}
                   </div>
                 </div>

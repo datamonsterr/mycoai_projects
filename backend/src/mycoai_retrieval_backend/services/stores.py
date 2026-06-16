@@ -49,6 +49,15 @@ def utcnow() -> datetime:
 def seed_data() -> None:
     if _user_store.items:
         return
+    alice = {
+        "id": new_id(),
+        "email": "alice@mycoai.org",
+        "password_hash": hash_password("adminpass"),
+        "name": "Dr. Alice Chen",
+        "role": "owner",
+        "is_active": True,
+        "created_at": utcnow(),
+    }
     owner = {
         "id": new_id(),
         "email": "owner@mycoai.dev",
@@ -56,6 +65,24 @@ def seed_data() -> None:
         "name": "Owner",
         "role": "owner",
         "is_active": True,
+        "created_at": utcnow(),
+    }
+    jane = {
+        "id": new_id(),
+        "email": "jane@university.edu",
+        "password_hash": hash_password("password123"),
+        "name": "Jane Smith",
+        "role": "user",
+        "is_active": True,
+        "created_at": utcnow(),
+    }
+    inactive = {
+        "id": new_id(),
+        "email": "inactive@mycoai.org",
+        "password_hash": hash_password("password123"),
+        "name": "Inactive User",
+        "role": "user",
+        "is_active": False,
         "created_at": utcnow(),
     }
     user = {
@@ -67,7 +94,10 @@ def seed_data() -> None:
         "is_active": True,
         "created_at": utcnow(),
     }
+    _user_store.put(alice)
     _user_store.put(owner)
+    _user_store.put(jane)
+    _user_store.put(inactive)
     _user_store.put(user)
     species = {
         "id": new_id(),

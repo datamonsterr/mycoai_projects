@@ -18,7 +18,7 @@ function statusBadgeVariant(status: string) {
 
 export default function ModelIndexPage() {
   const { user } = useAuth()
-  const isOwner = user?.role === 'owner'
+  const isOwner = user?.role === 'owner' || user?.role === 'dataowner'
   const [reindexOpen, setReindexOpen] = useState(false)
   const [retrainOpen, setRetrainOpen] = useState(false)
 

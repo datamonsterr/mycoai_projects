@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_seconds: int = 3600
     refresh_token_expire_seconds: int = 2592000
+    frontend_url: str = "http://localhost:5173"
 
 
 @lru_cache(maxsize=1)

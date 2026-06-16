@@ -23,13 +23,18 @@ from mycoai_retrieval_backend.models import (
 
 pytestmark = [pytest.mark.integration, pytest.mark.integration_postgres]
 
+import os
+
+POSTGRES_URL = os.getenv(
+    "MYCOAI_TEST_DB_URL",
+    "postgresql+asyncpg://mycoai:mycoai@localhost:5432/mycoai_test",
+)
+
 
 # ── Connection helpers ───────────────────────────────────────────────
 
 
 def _create_engine():
-    from conftest_integration import POSTGRES_URL
-
     return create_async_engine(POSTGRES_URL, echo=False)
 
 
@@ -114,6 +119,7 @@ async def test_pg_transaction_rollback(
     )
     pg_session.add(user)
     await pg_session.flush()
+    await pg_session.commit()
 
     rollback_session: AsyncSession
     async_session = async_sessionmaker(

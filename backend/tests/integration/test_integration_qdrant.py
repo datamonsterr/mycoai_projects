@@ -21,8 +21,8 @@ def _collection_name() -> str:
 
 @pytest.mark.asyncio
 async def test_qdrant_connection_health(qdrant_client) -> None:
-    result = qdrant_client.health_check()
-    assert result is not None
+    cols = qdrant_client.get_collections()
+    assert cols is not None
 
 
 @pytest.mark.asyncio

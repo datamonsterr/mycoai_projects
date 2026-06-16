@@ -10,6 +10,7 @@ from mycoai_retrieval_backend.models import (
     AuditLog,
     Feedback,
     Image,
+    InviteToken,  # noqa: F401  # registered in Base.metadata for table parity test
     Media,
     QdrantIndexState,
     RetrievalJob,
@@ -32,6 +33,7 @@ async def test_database_schema_creates_all_specified_tables(
             "audit_log",
             "feedback",
             "images",
+            "invite_tokens",
             "media",
             "qdrant_index_state",
             "refresh_tokens",

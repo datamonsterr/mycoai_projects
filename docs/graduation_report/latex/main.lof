@@ -1,6 +1,16 @@
 \addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Three fungal strains across five growth media (oblique view). Green border = same species as reference strain; red border = different species. All images from \texttt {Dataset/original/}.}}{3}{figure.caption.5}%
 \addvspace {10\p@ }
-\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces System Overview}}{15}{figure.caption.14}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces Preprocessing Pipeline}}{17}{figure.caption.19}%
+\contentsline {figure}{\numberline {2.3}{\ignorespaces Training Curves}}{19}{figure.caption.24}%
+\contentsline {figure}{\numberline {2.4}{\ignorespaces Staircase Chart}}{23}{figure.caption.37}%
+\contentsline {figure}{\numberline {2.5}{\ignorespaces Accuracy vs K}}{25}{figure.caption.41}%
+\contentsline {figure}{\numberline {2.6}{\ignorespaces Fold Variance Box Plot}}{25}{figure.caption.43}%
+\contentsline {figure}{\numberline {2.7}{\ignorespaces Heatmap: env (\times ) strategy vs K}}{26}{figure.caption.44}%
+\contentsline {figure}{\numberline {2.8}{\ignorespaces E1 vs E2 Bar Chart}}{26}{figure.caption.45}%
+\contentsline {figure}{\numberline {2.9}{\ignorespaces Confusion Matrix}}{28}{figure.caption.49}%
+\contentsline {figure}{\numberline {2.10}{\ignorespaces Left: Correct prediction (\textit {P. polonicum} DTO 148-D1). Right: Incorrect prediction (\textit {P. melanoconidium} DTO 158-D1 misclassified as \textit {P. aurantiogriseum}).}}{29}{figure.caption.51}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }

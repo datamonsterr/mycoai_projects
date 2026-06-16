@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -12,76 +14,43 @@ def fixture_headers(client: TestClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_start_query(client: TestClient, headers: dict[str, str]) -> None:
+_VALID_UUID = str(uuid.uuid4())
+
+
+def test_start_query_image_not_found(client: TestClient, headers: dict[str, str]) -> None:
+    """New DB-based retrieval returns 404 when image not found."""
     resp = client.post(
         "/api/v1/retrieval/query",
         json={
-            "image_id": "fake-image-id",
+            "image_id": _VALID_UUID,
             "k": 5,
             "aggregation": "weighted",
             "environment_strategy": "E1",
         },
         headers=headers,
     )
-    assert resp.status_code == 202
-    data = resp.json()
-    assert data["status"] == "processing"
-    assert "job_id" in data
-    assert data["estimated_seconds"] == 5
-
-
-def test_get_job_status(client: TestClient, headers: dict[str, str]) -> None:
-    start = client.post(
-        "/api/v1/retrieval/query",
-        json={
-            "image_id": "fake-image-id",
-            "k": 5,
-            "aggregation": "weighted",
-            "environment_strategy": "E1",
-        },
-        headers=headers,
-    )
-    job_id = start.json()["job_id"]
-    resp = client.get(f"/api/v1/retrieval/jobs/{job_id}", headers=headers)
-    assert resp.status_code == 200
-    assert resp.json()["job_id"] == job_id
-
-
-def test_get_job_status_not_found(client: TestClient, headers: dict[str, str]) -> None:
-    resp = client.get("/api/v1/retrieval/jobs/nonexistent", headers=headers)
     assert resp.status_code == 404
 
 
-def test_get_job_results(client: TestClient, headers: dict[str, str]) -> None:
-    start = client.post(
-        "/api/v1/retrieval/query",
-        json={
-            "image_id": "fake-image-id",
-            "k": 5,
-            "aggregation": "weighted",
-            "environment_strategy": "E1",
-        },
-        headers=headers,
-    )
-    job_id = start.json()["job_id"]
-    resp = client.get(f"/api/v1/retrieval/jobs/{job_id}/results", headers=headers)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "completed"
-    assert len(data["rankings"]) == 1
-    assert data["rankings"][0]["species"] == "Penicillium commune"
+def test_get_job_status_not_found(client: TestClient, headers: dict[str, str]) -> None:
+    resp = client.get(f"/api/v1/retrieval/jobs/{_VALID_UUID}", headers=headers)
+    assert resp.status_code == 404
 
 
-def test_query_sync(client: TestClient, headers: dict[str, str]) -> None:
+def test_get_job_results_not_found(client: TestClient, headers: dict[str, str]) -> None:
+    resp = client.get(f"/api/v1/retrieval/jobs/{_VALID_UUID}/results", headers=headers)
+    assert resp.status_code == 404
+
+
+def test_query_sync_image_not_found(client: TestClient, headers: dict[str, str]) -> None:
     resp = client.post(
         "/api/v1/retrieval/query-sync",
         json={
-            "image_id": "fake-image-id",
+            "image_id": _VALID_UUID,
             "k": 3,
             "aggregation": "avg",
             "environment_strategy": "E2",
         },
         headers=headers,
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "completed"
+    assert resp.status_code == 404

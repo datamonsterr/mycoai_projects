@@ -48,6 +48,35 @@ export function batchUpload(): Promise<{ job_id: string; status: string }> {
   return api.post<{ job_id: string; status: string }>('/images/batch')
 }
 
+export type BatchZipResult = {
+  status: string
+  batch_name: string
+  total: number
+  successful: number
+  failed: number
+  results: Array<{
+    image_id: string
+    strain: string
+    media: string
+    species: string
+    segments: number
+    filename: string
+  }>
+  errors: Array<{ file: string; error: string }>
+}
+
+export function uploadBatchZip(
+  zipFile: File,
+  options?: { defaultMedia?: string; defaultSpecies?: string; method?: string },
+): Promise<BatchZipResult> {
+  const formData = new FormData()
+  formData.append('zipfile', zipFile)
+  if (options?.defaultMedia) formData.append('default_media', options.defaultMedia)
+  if (options?.defaultSpecies) formData.append('default_species', options.defaultSpecies)
+  if (options?.method) formData.append('method', options.method)
+  return api.post<BatchZipResult>('/images/batch-zip', formData)
+}
+
 export function getImage(imageId: string): Promise<ImageDetail> {
   return api.get<ImageDetail>(`/images/${imageId}`)
 }
@@ -58,4 +87,25 @@ export function deleteImage(imageId: string): Promise<void> {
 
 export function listSegments(imageId: string): Promise<SegmentDetail[]> {
   return api.get<SegmentDetail[]>(`/images/${imageId}/segments`)
+}
+
+export interface AutoSegmentResult {
+  image_id: string
+  source_url: string
+  segments: Array<{
+    segment_id: string
+    segment_index: number
+    bbox: { x: number; y: number; w: number; h: number }
+    crop_url: string
+    pipeline_url: string
+  }>
+  segmentation_method: string
+}
+
+export interface AutoSegmentRequest {
+  method: string
+}
+
+export function autoSegment(imageId: string, method: string = 'kmeans'): Promise<AutoSegmentResult> {
+  return api.post<AutoSegmentResult>(`/images/${imageId}/segment`, { method })
 }
