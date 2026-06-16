@@ -50,12 +50,15 @@ def require_role(required_role: str):
     return role_checker
 
 
+_ADMIN_ROLES = {"owner", "dataowner"}
+
+
 def require_owner():
     async def owner_checker(
         user: Annotated[User, Depends(get_current_user)],
     ) -> User:
-        if user.role != "owner":
-            raise AuthorizationError("Role 'owner' required")
+        if user.role not in _ADMIN_ROLES:
+            raise AuthorizationError("Role 'owner' or 'dataowner' required")
         return user
 
     return owner_checker

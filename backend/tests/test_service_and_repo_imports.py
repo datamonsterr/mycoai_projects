@@ -20,7 +20,8 @@ class TestServiceImports:
 
     def test_import_services_storage(self) -> None:
         from mycoai_retrieval_backend.services.storage import (
-            StorageService,  # noqa: F401
+            LocalStorage,
+            create_storage,  # noqa: F401
         )
 
     def test_import_services_stores(self) -> None:

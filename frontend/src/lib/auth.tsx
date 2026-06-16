@@ -65,6 +65,7 @@ const store = authStore()
 
 interface MycoAIWindow {
   __mycoai_logout?: () => void
+  __mycoai_switchRole?: (role: string) => Promise<void>
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -87,8 +88,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const win = window as unknown as MycoAIWindow
     win.__mycoai_logout = () => { store.logout() }
+    win.__mycoai_switchRole = async (role: string) => {
+      if (role === 'user') {
+        clearToken()
+        await store.login('jane@university.edu', 'password123')
+      } else if (role === 'owner') {
+        clearToken()
+        await store.login('alice@mycoai.org', 'adminpass')
+      }
+    }
     return () => {
       delete win.__mycoai_logout
+      delete win.__mycoai_switchRole
     }
   }, [])
 

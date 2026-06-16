@@ -1,6 +1,17 @@
 \addvspace {10\p@ }
+\contentsline {table}{\numberline {1.1}{\ignorespaces Design Decisions at a Glance}}{13}{table.caption.13}%
 \addvspace {10\p@ }
-\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Summary of hand-crafted feature extractors}}{17}{table.caption.21}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Deep learning feature extractors: architecture and performance}}{18}{table.caption.22}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces Fine-tuning hyperparameters}}{18}{table.caption.23}%
+\contentsline {table}{\numberline {2.4}{\ignorespaces Training convergence summary}}{19}{table.caption.25}%
+\contentsline {table}{\numberline {2.5}{\ignorespaces Environment evaluation strategies}}{20}{table.caption.29}%
+\contentsline {table}{\numberline {2.6}{\ignorespaces Dataset statistics}}{21}{table.caption.32}%
+\contentsline {table}{\numberline {2.7}{\ignorespaces Species and strain distribution}}{21}{table.caption.33}%
+\contentsline {table}{\numberline {2.8}{\ignorespaces Segmentation approach comparison}}{22}{table.caption.35}%
+\contentsline {table}{\numberline {2.9}{\ignorespaces Comprehensive accuracy comparison across all feature extractors}}{24}{table.caption.39}%
+\contentsline {table}{\numberline {2.10}{\ignorespaces Cross-validation top configurations}}{24}{table.caption.42}%
+\contentsline {table}{\numberline {2.11}{\ignorespaces Per-species accuracy — EfficientNetB1 (Fine-tuned)}}{27}{table.caption.48}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }

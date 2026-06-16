@@ -2,6 +2,10 @@
 \usepackage{scrextend}
 \changefontsizes{13pt}
 \usepackage[utf8]{vietnam}
+\renewcommand{\chaptername}{CHAPTER}
+\renewcommand{\figurename}{Figure}
+\renewcommand{\tablename}{Table}
+\renewcommand{\appendixname}{APPENDIX}
 \usepackage[top=2cm, bottom=2cm, left=3.5cm, right=2.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{fancybox}
@@ -23,10 +27,12 @@
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{capt-of}
 \usepackage{multirow}
+\usepackage{booktabs}
 \usepackage{fancyhdr}
 \usepackage{appendix}
 \usepackage{outlines}
 \usepackage[font=small,labelfont=bf]{caption}
+\usepackage{xcolor}
 \usepackage{listings}
 \usepackage{float}
 \usepackage{subcaption}
@@ -53,7 +59,7 @@
 
 \setlength{\headheight}{10pt}
 \def \TITLE{GRADUATION THESIS}
-\def \AUTHOR{NGUYEN DOAN ABC}
+\def \AUTHOR{Pham Thanh Dat}
 
 \titleformat{\chapter}[hang]{\centering\bfseries}{CHAPTER \thechapter.\ }{0pt}{}[]
 \titlespacing*{\chapter}{0pt}{-20pt}{20pt}
@@ -68,7 +74,7 @@
 \titleformat{\subsubsection}[hang]{\bfseries}{\alph{subsubsection}, \ }{0pt}{}[]
 \titlespacing{\subsubsection}{50pt}{\parskip}{0.5\parskip}
 
-\usepackage{hyperref}
+\usepackage[hidelinks]{hyperref}
 \hypersetup{pdfborder = {0 0 0}, pdftitle={\TITLE}, pdfauthor={\AUTHOR}}
 \usepackage[all]{hypcap}
 \graphicspath{{figures/}}
@@ -80,7 +86,6 @@
 
 \begin{document}
 \subfile{Cover}
-\subfile{Cover2}
 
 \pagenumbering{roman}
 \newpage
@@ -120,20 +125,17 @@
 \chapter{INTRODUCTION}
 \subfile{Chapter/1_Introduction}
 
-\chapter{LITERATURE REVIEW \& PROBLEM STATEMENT}
+\chapter{FUNGAL SPECIES RETRIEVAL MODEL}
 \subfile{Chapter/2_Literature_Review}
 
-\chapter{FUNGAL SPECIES RETRIEVAL MODEL}
+\chapter{WEB APPLICATION DESIGN \& IMPLEMENTATION}
 \subfile{Chapter/3_Methodology}
 
-\chapter{WEB APPLICATION DESIGN \& IMPLEMENTATION}
+\chapter{AGENTIC ENGINEERING \& EVALUATION}
 \subfile{Chapter/4_Implementation}
 
-\chapter{AGENTIC ENGINEERING \& EVALUATION}
-\subfile{Chapter/5_Evaluation}
-
 \chapter{CONCLUSION}
-\subfile{Chapter/6_Conclusion}
+\subfile{Chapter/5_Evaluation}
 
 \newpage
 \printbibliography

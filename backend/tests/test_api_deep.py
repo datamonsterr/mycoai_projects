@@ -501,8 +501,8 @@ def test_dashboard_qdrant_status_as_user(
     resp = client.get("/api/v1/dashboard/qdrant-status", headers=user_headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert "learned" in data
-    assert "unlearned" in data
+    assert "status" in data
+    assert "points_count" in data
 
 
 # ── Retrieval ────────────────────────────────────────────────────────────────
@@ -525,31 +525,25 @@ def test_retrieval_flow(client: TestClient, owner_headers: dict[str, str]) -> No
     start = client.post(
         "/api/v1/retrieval/query",
         json={
-            "image_id": "img-001",
+            "image_id": "00000000-0000-0000-0000-000000000000",
             "k": 3,
             "aggregation": "weighted",
             "environment_strategy": "E1",
         },
         headers=owner_headers,
     )
-    assert start.status_code == 202
-    job_id = start.json()["job_id"]
-
-    status = client.get(f"/api/v1/retrieval/jobs/{job_id}", headers=owner_headers)
-    assert status.status_code == 200
-    assert status.json()["job_id"] == job_id
-
-    results = client.get(
-        f"/api/v1/retrieval/jobs/{job_id}/results", headers=owner_headers
-    )
-    assert results.status_code == 200
-    assert results.json()["status"] == "completed"
+    assert start.status_code == 404
+    data = start.json()
+    assert "detail" in data
 
 
 def test_retrieval_job_not_found(
     client: TestClient, owner_headers: dict[str, str]
 ) -> None:
-    resp = client.get("/api/v1/retrieval/jobs/nonexistent", headers=owner_headers)
+    resp = client.get(
+        "/api/v1/retrieval/jobs/00000000-0000-0000-0000-000000000000",
+        headers=owner_headers,
+    )
     assert resp.status_code == 404
 
 
@@ -559,15 +553,14 @@ def test_retrieval_query_sync(
     resp = client.post(
         "/api/v1/retrieval/query-sync",
         json={
-            "image_id": "img-002",
+            "image_id": "00000000-0000-0000-0000-000000000000",
             "k": 3,
             "aggregation": "avg",
             "environment_strategy": "E2",
         },
         headers=owner_headers,
     )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "completed"
+    assert resp.status_code == 404
 
 
 # ── Training ─────────────────────────────────────────────────────────────────

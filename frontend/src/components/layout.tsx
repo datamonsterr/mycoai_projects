@@ -71,8 +71,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className={cn(
         'fixed inset-y-0 left-0 z-50 h-screen border-r border-border bg-card flex flex-col transition-all duration-200 overflow-hidden',
         collapsed ? 'w-16' : 'w-64',
-        'lg:relative lg:translate-x-0',
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
       )}>
         <div className="flex items-center h-14 px-3 border-b border-border flex-shrink-0">
           {!collapsed && (
@@ -166,7 +165,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+      <div className={cn(
+        'flex-1 flex flex-col min-w-0 h-screen overflow-y-auto',
+        collapsed ? 'lg:ml-16' : 'lg:ml-64',
+      )}>
         {/* Mobile menu trigger */}
         <button
           className="lg:hidden fixed top-3 left-3 z-30 h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card shadow-sm cursor-pointer"
@@ -174,7 +176,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <main className="flex-1 p-4 pt-14 lg:pt-4 lg:p-6 max-w-7xl w-full mx-auto overflow-x-hidden">
+        <main className="flex-1 p-4 pt-14 lg:pt-4 lg:p-6 max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>

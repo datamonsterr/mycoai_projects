@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { resolveImageUrl } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -254,7 +253,7 @@ export default function DatasetPage() {
                         </TableCell>
                         <TableCell>
                           <img
-                            src={img.source_url || resolveImageUrl(img.file_path)}
+                            src={img.source_url}
                             alt=""
                             className="h-12 w-12 rounded object-cover border border-border"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
@@ -283,10 +282,10 @@ export default function DatasetPage() {
                             <div className="flex gap-4 py-2 min-h-64">
                               <div className="flex-shrink-0 w-72 self-stretch">
                                 <img
-                                  src={img.source_url || resolveImageUrl(img.file_path)}
+                                  src={img.source_url}
                                   alt={img.strain_name ?? 'Plate'}
                                   className="w-full h-full object-cover rounded-md border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                                  onClick={() => setFullscreenImage({ src: img.source_url || resolveImageUrl(img.file_path), alt: img.strain_name ?? 'Plate' })}
+                                  onClick={() => setFullscreenImage({ src: img.source_url, alt: img.strain_name ?? 'Plate' })}
                                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                                 />
                               </div>
@@ -355,7 +354,7 @@ export default function DatasetPage() {
             <p className="text-xs font-mono">Image: {editItem}</p>
             {images.find((img) => img.id === editItem) && (
               <img
-                src={resolveImageUrl(images.find((img) => img.id === editItem)!.file_path)}
+                src={images.find((img) => img.id === editItem)!.source_url}
                 alt="Selected plate"
                 className="w-full max-h-64 rounded-md object-contain border border-border bg-muted"
               />

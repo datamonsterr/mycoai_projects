@@ -6,18 +6,23 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { useUsersList, useUpdateUserRole, useUpdateUserStatus } from '@/hooks/use-admin'
+import { inviteUser } from '@/services/admin'
+import { useToast } from '@/hooks/use-toast'
 import type { AdminUserResponse } from '@/services/types'
 import { UserPlus, Shield, ShieldOff, Ban, CheckCircle, Search, Loader2 } from 'lucide-react'
 
 export default function UserManagementPage() {
   const [search, setSearch] = useState('')
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviting, setInviting] = useState(false)
   const [pendingUserId, setPendingUserId] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<'promote' | 'demote' | 'activate' | 'deactivate' | null>(null)
 
   const { data, isLoading, isError } = useUsersList()
   const roleMutation = useUpdateUserRole()
   const statusMutation = useUpdateUserStatus()
+  const toast = useToast()
 
   const users = data?.items ?? []
 
@@ -25,7 +30,7 @@ export default function UserManagementPage() {
     !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
   )
 
-  const activeOwners = users.filter((u) => u.role === 'owner' && u.is_active).length
+  const activeOwners = users.filter((u) => (u.role === 'owner' || u.role === 'dataowner') && u.is_active).length
 
   const pendingUser = users.find((u) => u.id === pendingUserId) ?? null
 
@@ -69,6 +74,21 @@ export default function UserManagementPage() {
     : pendingAction === 'deactivate'
       ? `Deactivate ${pendingUser?.name ?? ''}'s account. They will not be able to log in.`
     : ''
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return
+    setInviting(true)
+    try {
+      const result = await inviteUser(inviteEmail.trim())
+      setInviteOpen(false)
+      setInviteEmail('')
+      toast.success(`Invite sent to ${result.email}. Link: ${result.invite_link}`)
+    } catch (err) {
+      toast.apiError(err, 'Failed to invite user')
+    } finally {
+      setInviting(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -126,8 +146,8 @@ export default function UserManagementPage() {
                     <TableCell className="font-medium">{u.name}</TableCell>
                     <TableCell className="text-sm">{u.email}</TableCell>
                     <TableCell>
-                      <Badge variant={u.role === 'owner' ? 'default' : 'secondary'}>
-                        {u.role === 'owner' ? 'Data Owner' : 'User'}
+                      <Badge variant={u.role === 'owner' || u.role === 'dataowner' ? 'default' : 'secondary'}>
+                        {u.role === 'owner' || u.role === 'dataowner' ? 'Data Owner' : 'User'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -159,7 +179,7 @@ export default function UserManagementPage() {
                             size="sm"
                             className="text-destructive"
                             title="Deactivate"
-                            disabled={u.role === 'owner' && activeOwners <= 1}
+                            disabled={(u.role === 'owner' || u.role === 'dataowner') && activeOwners <= 1}
                             onClick={() => openConfirm(u.id, 'deactivate')}
                           >
                             <Ban className="h-4 w-4" />
@@ -180,17 +200,24 @@ export default function UserManagementPage() {
       )}
 
       {/* Invite Dialog */}
-      <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)}>
+      <Dialog open={inviteOpen} onClose={() => { setInviteOpen(false); setInviteEmail('') }}>
         <DialogHeader>
           <DialogTitle>Invite User</DialogTitle>
         </DialogHeader>
         <DialogContent>
           <p className="text-sm text-muted-foreground mb-3">Send an onboarding email to invite a new User.</p>
-          <Input placeholder="user@example.com" type="email" />
+          <Input
+            placeholder="user@example.com"
+            type="email"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+          />
         </DialogContent>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-          <Button onClick={() => setInviteOpen(false)}>Send Invitation</Button>
+          <Button variant="outline" onClick={() => { setInviteOpen(false); setInviteEmail('') }}>Cancel</Button>
+          <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}>
+            {inviting ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Sending...</> : 'Send Invitation'}
+          </Button>
         </DialogFooter>
       </Dialog>
 

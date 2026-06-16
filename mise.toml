@@ -3,7 +3,6 @@ python = "3.13"
 uv = "latest"
 node = "25"
 gh = "latest"
-docker-compose = "latest"
 rclone = "latest"
 
 [env]
@@ -15,11 +14,11 @@ run = "uv --directory research sync"
 
 [tasks.qdrant-up]
 description = "Start Qdrant services via Compose"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d qdrant-research"
+run = "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d qdrant-research"
 
 [tasks.qdrant-down]
 description = "Stop Qdrant services via Compose"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-compose.yml -f docker-compose.dev.yml down"
+run = "docker compose -f docker-compose.yml -f docker-compose.dev.yml down"
 
 [tasks.threshold]
 description = "Run threshold experiment prepare flow"
@@ -39,34 +38,34 @@ run = "pnpm --dir frontend install"
 
 [tasks.compose-dev-up]
 description = "Start development Docker Compose stack"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d"
+run = "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d"
 
 [tasks.compose-dev-down]
 description = "Stop development Docker Compose stack"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-compose.yml -f docker-compose.dev.yml down"
+run = "docker compose -f docker-compose.yml -f docker-compose.dev.yml down"
 
 [tasks.compose-dev-build]
 description = "Rebuild all dev Docker images"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache"
+run = "docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache"
 
 [tasks.compose-dev-build-frontend]
 description = "Rebuild frontend dev Docker image (no cache)"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache frontend"
+run = "docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache frontend"
 
 [tasks.compose-dev-build-backend]
 description = "Rebuild backend + celery-worker dev Docker images (no cache)"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache backend celery-worker"
+run = "docker compose -f docker-compose.yml -f docker-compose.dev.yml build --no-cache backend celery-worker"
 [tasks.compose-prod-up]
 description = "Start production Docker Compose stack"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose up -d"
+run = "docker compose up -d"
 
 [tasks.compose-prod-down]
 description = "Stop production Docker Compose stack"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose down"
+run = "docker compose down"
 
 [tasks.compose-migrate]
 description = "Run Alembic migrations inside containers"
-run = "$(mise where docker-compose)/docker-cli-plugin-docker-compose run --rm --profile migrate db-migrate"
+run = "docker compose run --rm --profile migrate db-migrate"
 
 [tasks.backend-lint]
 description = "Run backend lint, typecheck, and tests"

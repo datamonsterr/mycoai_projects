@@ -28,8 +28,8 @@ test.describe('Auth', () => {
   test('shows error on failed login', async ({ page }) => {
     await lo(page)
     await page.fill('input#email', 'bad@test.com')
-    await page.fill('input#password', 'badpass')
+    await page.fill('input#password', 'badpassword')
     await page.click('button[type="submit"]')
-    await expect(page.locator('text=Invalid credentials or inactive account.')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('text=Invalid credentials')).toBeVisible({ timeout: 5000 })
   })
 })

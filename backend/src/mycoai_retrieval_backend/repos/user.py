@@ -50,7 +50,7 @@ class UserRepository:
         result = await db.execute(
             select(func.count())
             .select_from(User)
-            .where(User.role == "owner", User.is_active.is_(True))
+            .where(User.role.in_(["owner", "dataowner"]), User.is_active.is_(True))
         )
         return result.scalar_one()
 

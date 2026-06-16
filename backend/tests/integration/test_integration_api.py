@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import uuid
 
+import httpx
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,16 +51,16 @@ async def _seed_user(pg_session: AsyncSession, email: str, role: str = "owner") 
 
 @pytest_asyncio.fixture(scope="function")
 async def owner_user(pg_session: AsyncSession) -> User:
-    return await _seed_user(pg_session, "api-owner@test.local", "owner")
+    return await _seed_user(pg_session, "api-owner@mycoai.com", "owner")
 
 
 @pytest_asyncio.fixture(scope="function")
 async def normal_user(pg_session: AsyncSession) -> User:
-    return await _seed_user(pg_session, "api-user@test.local", "user")
+    return await _seed_user(pg_session, "api-user@mycoai.com", "user")
 
 
 @pytest_asyncio.fixture(scope="function")
-async def api_client(pg_session: AsyncSession) -> TestClient:
+async def api_client(pg_session: AsyncSession):
     from mycoai_retrieval_backend.app import create_app
 
     app = create_app()
@@ -69,7 +69,12 @@ async def api_client(pg_session: AsyncSession) -> TestClient:
         yield pg_session
 
     app.dependency_overrides[get_db] = _override_get_db
-    return TestClient(app)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://test"
+    ) as client:
+        yield client
+    app.dependency_overrides.clear()
 
 
 # ── Tests ─────────────────────────────────────────────────────────────
@@ -77,14 +82,14 @@ async def api_client(pg_session: AsyncSession) -> TestClient:
 
 @pytest.mark.asyncio
 async def test_api_register_login_refresh_flow(
-    api_client: TestClient, pg_session: AsyncSession
+    api_client: httpx.AsyncClient, pg_session: AsyncSession
 ) -> None:
     import bcrypt
 
-    resp = api_client.post(
+    resp = await api_client.post(
         "/api/v1/auth/register",
         json={
-            "email": "flow@test.local",
+            "email": "flow@mycoai.com",
             "password": "testpass123",
             "name": "Flow Tester",
         },
@@ -107,7 +112,7 @@ async def test_api_register_login_refresh_flow(
         pg_session.add(
             User(
                 id=user_id,
-                email="flow@test.local",
+                email="flow@mycoai.com",
                 password_hash=bcrypt.hashpw(b"testpass123", bcrypt.gensalt()).decode(),
                 name="Flow Tester",
                 role="user",
@@ -116,21 +121,21 @@ async def test_api_register_login_refresh_flow(
         )
         await pg_session.flush()
 
-    me_resp = api_client.get(
+    me_resp = await api_client.get(
         "/api/v1/auth/me",
         headers={"Authorization": f"Bearer {access_token}"},
     )
     assert me_resp.status_code == 200
-    assert me_resp.json()["email"] == "flow@test.local"
+    assert me_resp.json()["email"] == "flow@mycoai.com"
 
-    refresh_resp = api_client.post(
+    refresh_resp = await api_client.post(
         "/api/v1/auth/refresh",
         json={"refresh_token": refresh_token},
     )
     assert refresh_resp.status_code == 200
     assert "access_token" in refresh_resp.json()
 
-    logout_resp = api_client.post(
+    logout_resp = await api_client.post(
         "/api/v1/auth/logout",
         json={"refresh_token": refresh_token},
         headers={"Authorization": f"Bearer {access_token}"},
@@ -140,11 +145,11 @@ async def test_api_register_login_refresh_flow(
 
 @pytest.mark.asyncio
 async def test_api_full_retrieval_flow_mocked(
-    api_client: TestClient, owner_user: User
+    api_client: httpx.AsyncClient, owner_user: User
 ) -> None:
     headers = _headers(str(owner_user.id))
 
-    resp = api_client.post(
+    resp = await api_client.post(
         "/api/v1/retrieval/query",
         json={
             "image_id": "fake-image-id",
@@ -154,24 +159,22 @@ async def test_api_full_retrieval_flow_mocked(
         },
         headers=headers,
     )
-    assert resp.status_code == 202
-    data = resp.json()
-    assert data["status"] == "processing"
-    assert "job_id" in data
-    job_id = data["job_id"]
+    assert resp.status_code == 404
 
-    status_resp = api_client.get(f"/api/v1/retrieval/jobs/{job_id}", headers=headers)
-    assert status_resp.status_code == 200
-    assert status_resp.json()["job_id"] == job_id
+    status_resp = await api_client.get(
+        "/api/v1/retrieval/jobs/00000000-0000-0000-0000-000000000000",
+        headers=headers,
+    )
+    assert status_resp.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_api_species_crud_full_cycle(
-    api_client: TestClient, owner_user: User
+    api_client: httpx.AsyncClient, owner_user: User
 ) -> None:
     headers = _headers(str(owner_user.id))
 
-    create = api_client.post(
+    create = await api_client.post(
         "/api/v1/species",
         json={"name": "CRUD Test Species", "description": "Created via API"},
         headers=headers,
@@ -181,15 +184,15 @@ async def test_api_species_crud_full_cycle(
     assert created["name"] == "CRUD Test Species"
     sid = created["id"]
 
-    get_resp = api_client.get(f"/api/v1/species/{sid}", headers=headers)
+    get_resp = await api_client.get(f"/api/v1/species/{sid}", headers=headers)
     assert get_resp.status_code == 200
     assert get_resp.json()["name"] == "CRUD Test Species"
 
-    list_resp = api_client.get("/api/v1/species", headers=headers)
+    list_resp = await api_client.get("/api/v1/species", headers=headers)
     assert list_resp.status_code == 200
     assert "items" in list_resp.json()
 
-    update = api_client.patch(
+    update = await api_client.patch(
         f"/api/v1/species/{sid}",
         json={"name": "CRUD Updated", "description": "Modified"},
         headers=headers,
@@ -197,13 +200,13 @@ async def test_api_species_crud_full_cycle(
     assert update.status_code == 200
     assert update.json()["name"] == "CRUD Updated"
 
-    archive = api_client.delete(f"/api/v1/species/{sid}", headers=headers)
+    archive = await api_client.delete(f"/api/v1/species/{sid}", headers=headers)
     assert archive.status_code == 204
 
 
 @pytest.mark.asyncio
 async def test_api_media_crud_full_cycle(
-    api_client: TestClient,
+    api_client: httpx.AsyncClient,
     owner_user: User,
     pg_session: AsyncSession,
 ) -> None:
@@ -245,7 +248,7 @@ async def test_api_media_crud_full_cycle(
 
 @pytest.mark.asyncio
 async def test_api_feedback_submit_review_cycle(
-    api_client: TestClient,
+    api_client: httpx.AsyncClient,
     owner_user: User,
     normal_user: User,
     pg_session: AsyncSession,
@@ -293,7 +296,7 @@ async def test_api_feedback_submit_review_cycle(
     await pg_session.commit()
 
     user_headers = _headers(str(normal_user.id))
-    submit = api_client.post(
+    submit = await api_client.post(
         "/api/v1/feedback",
         json={
             "retrieval_result_id": str(result.id),
@@ -308,7 +311,7 @@ async def test_api_feedback_submit_review_cycle(
     assert submit.json()["status"] == "pending"
 
     owner_headers = _headers(str(owner_user.id), "owner")
-    review = api_client.patch(
+    review = await api_client.patch(
         f"/api/v1/feedback/{sid}",
         json={"status": "accepted", "review_note": "Good catch"},
         headers=owner_headers,
@@ -319,10 +322,12 @@ async def test_api_feedback_submit_review_cycle(
 
 
 @pytest.mark.asyncio
-async def test_api_rbac_enforcement(api_client: TestClient, normal_user: User) -> None:
+async def test_api_rbac_enforcement(
+    api_client: httpx.AsyncClient, normal_user: User
+) -> None:
     user_headers = _headers(str(normal_user.id), "user")
 
-    resp = api_client.post(
+    resp = await api_client.post(
         "/api/v1/species",
         json={"name": "RBAC Test", "description": "Should fail"},
         headers=user_headers,

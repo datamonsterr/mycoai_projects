@@ -6,13 +6,16 @@ POST /api/v1/images/upload       − alias for single image upload
 GET  /api/v1/images/{id}         − get image detail from db
 POST /api/v1/images/batch        − import batch from server folder
 POST /api/v1/images/batch-upload − upload folder (multipart files + metadata)
+POST /api/v1/images/batch-zip    − upload ZIP batch (extract + segment + db)
 """
 
 from __future__ import annotations
 
 import json
+import shutil
+import zipfile
 from pathlib import Path
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, mkdtemp
 from typing import TYPE_CHECKING, Annotated, Any
 from uuid import UUID
 
@@ -29,7 +32,7 @@ from .image_models import BoundingBox, ImageRecord, ImageResponse
 from .image_models import Segment as SegModel
 from .models import Image, Media, Segment, Species, Strain
 from .schemas import ImageListItem, ImageListResponse
-from .segmentation import ImageStore as FileStore
+from .segmentation import ALLOWED_METHODS, ImageStore as FileStore
 from .segmentation import SegmentationPipeline
 
 if TYPE_CHECKING:
@@ -122,6 +125,16 @@ def create_image_router(
                 else False
             )
 
+            source_url: str
+            if storage:
+                candidate = storage.get_url(img.file_path)
+                if candidate.startswith(("http://", "https://")):
+                    source_url = candidate
+                else:
+                    source_url = f"/api/v1/images/{img.id}/source"
+            else:
+                source_url = f"/api/v1/images/{img.id}/source"
+
             items.append(
                 ImageListItem(
                     id=str(img.id),
@@ -131,7 +144,7 @@ def create_image_router(
                     media_id=str(img.media_id),
                     media_name=img.media.name if img.media else "unknown",
                     file_path=img.file_path,
-                    source_url=f"/api/v1/images/{img.id}/source",
+                    source_url=source_url,
                     angle=img.angle,
                     segments_count=len(img.segments) if img.segments else 0,
                     data_update_status=img.data_update_status,
@@ -258,7 +271,10 @@ def create_image_router(
                 errors.append(
                     {
                         "file": str(img_path),
-                        "error": f"Rejected: species name '{meta.get('species')}' is an artifact filename",
+                        "error": (
+                            f"Rejected: species name "
+                            f"'{meta.get('species')}' is an artifact filename"
+                        ),
                     }
                 )
                 continue
@@ -413,6 +429,117 @@ def create_image_router(
         }
 
     # ------------------------------------------------------------------
+    # Batch ZIP upload: accept a ZIP file, extract, segment, and persist
+    # ------------------------------------------------------------------
+    @router.post("/batch-zip", status_code=202)
+    async def batch_zip_upload(
+        zipfile_file: Annotated[UploadFile, File(alias="zipfile")],
+        default_media: Annotated[str, Form()] = "MEA",
+        default_species: Annotated[str, Form()] = "unknown-species",
+        method: Annotated[str, Form()] = "kmeans",
+        db=Depends(get_db),
+        user=Depends(require_owner()),
+    ) -> dict[str, Any]:
+        if (
+            not zipfile_file.filename
+            or not zipfile_file.filename.lower().endswith(".zip")
+        ):
+            raise HTTPException(
+                status_code=422, detail="Only .zip files are accepted"
+            )
+
+        work_dir = Path(mkdtemp(prefix="batch_zip_"))
+        zip_path = work_dir / "upload.zip"
+        results: list[dict[str, Any]] = []
+        errors: list[dict[str, Any]] = []
+
+        try:
+            # Save uploaded ZIP to temp file
+            with zip_path.open("wb") as out:
+                while chunk := await zipfile_file.read(1024 * 1024):
+                    out.write(chunk)
+
+            # Extract ZIP
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(work_dir)
+
+            # Find all image files in extracted content
+            image_extensions = {".jpg", ".jpeg", ".png", ".jpe"}
+            skip_names = {"thumbs.db", ".ds_store", "desktop.ini", ".gitkeep"}
+            image_files: list[Path] = []
+
+            for img_path in sorted(work_dir.rglob("*")):
+                if not img_path.is_file():
+                    continue
+                if img_path == zip_path:
+                    continue
+                if img_path.suffix.lower() not in image_extensions:
+                    continue
+                if img_path.name.lower() in skip_names:
+                    continue
+                if _is_artifact_filename(img_path.name):
+                    continue
+                image_files.append(img_path)
+
+            batch_name = Path(zipfile_file.filename or "batch").stem
+
+            for img_path in image_files:
+                try:
+                    # Extract strain from folder structure: .../images/{strain}/file.jpg
+                    rel_path = img_path.relative_to(work_dir)
+                    strain = _extract_strain_from_path(rel_path)
+                    meta = _parse_filename_metadata(img_path.name, str(rel_path))
+                    media_name = meta.get("media", default_media)
+                    if media_name == "unknown":
+                        media_name = default_media
+                    species = meta.get("species", default_species)
+
+                    record = pipeline.segment_upload(
+                        img_path,
+                        strain=strain,
+                        media=media_name,
+                        method=method,
+                    )
+                    species_obj = await _ensure_species(db, species)
+                    media_obj = await _ensure_media(db, media_name)
+                    strain_obj = await _ensure_strain(db, strain, species_obj.id)
+                    image_obj = await _create_image(
+                        db, record, strain_obj, species_obj, media_obj
+                    )
+                    results.append(
+                        {
+                            "image_id": str(image_obj.id),
+                            "strain": strain_obj.name,
+                            "media": media_obj.name,
+                            "species": species_obj.name,
+                            "segments": len(record.segments),
+                            "filename": str(rel_path),
+                        }
+                    )
+                except Exception as e:
+                    errors.append({
+                        "file": str(img_path.relative_to(work_dir)),
+                        "error": str(e),
+                    })
+
+        except zipfile.BadZipFile:
+            raise HTTPException(
+                status_code=422, detail="Invalid or corrupted ZIP file"
+            ) from None
+        finally:
+            shutil.rmtree(work_dir, ignore_errors=True)
+
+        return {
+            "status": "completed",
+            "batch_name": batch_name,
+            "total": len(results) + len(errors),
+            "successful": len(results),
+            "failed": len(errors),
+            "results": results[:200],
+            "errors": errors[:100],
+        }
+
+    # ------------------------------------------------------------------
     # Get image detail
     # ------------------------------------------------------------------
     @router.get("/{image_id}", response_model=ImageResponse)
@@ -487,6 +614,100 @@ def create_image_router(
         updated = pipeline.update_segments(record, patch)
         store.add(updated)
         return ImageResponse.model_validate(updated.model_dump())
+
+    # ------------------------------------------------------------------
+    # POST auto-segment (kmeans / contour / yolo)
+    # ------------------------------------------------------------------
+    class AutoSegmentRequest(BaseModel):
+        method: str = "kmeans"
+
+    @router.post("/{image_id}/segment", response_model=ImageResponse)
+    async def auto_segment(
+        image_id: str,
+        body: AutoSegmentRequest = AutoSegmentRequest(),
+        db=Depends(get_db),
+        user=Depends(require_owner()),
+    ) -> ImageResponse:
+        if body.method not in ALLOWED_METHODS:
+            allowed = sorted(ALLOWED_METHODS)
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported method '{body.method}'. Allowed: {allowed}",
+            )
+
+        try:
+            img_uuid = UUID(image_id)
+        except ValueError as err:
+            raise HTTPException(status_code=404, detail="image not found") from err
+
+        result = await db.execute(
+            select(Image)
+            .options(
+                selectinload(Image.segments),
+                selectinload(Image.strain),
+                selectinload(Image.media),
+            )
+            .where(Image.id == img_uuid)
+        )
+        img = result.scalar_one_or_none()
+        if not img:
+            raise HTTPException(status_code=404, detail="image not found")
+
+        source_path = Path(img.file_path)
+        if not source_path.exists():
+            raise HTTPException(status_code=404, detail="source file not found on disk")
+
+        strain_name = img.strain.name if img.strain else "unknown"
+        media_name = img.media.name if img.media else "unknown"
+
+        # Run segmentation
+        record = pipeline.segment_upload(
+            source_path,
+            strain=strain_name,
+            media=media_name,
+            method=body.method,
+        )
+
+        # Archive old segments
+        for seg in img.segments:
+            seg.is_archived = True
+        await db.flush()
+
+        # Create new segments
+        for seg_model in record.segments:
+            segment = Segment(
+                image_id=img.id,
+                segment_index=seg_model.segment_index,
+                crop_path=str(
+                    record.artifact_dir
+                    / "segments"
+                    / f"segment_{seg_model.segment_index}.jpg"
+                ),
+                bbox_x=seg_model.bbox.x,
+                bbox_y=seg_model.bbox.y,
+                bbox_w=seg_model.bbox.w,
+                bbox_h=seg_model.bbox.h,
+                segmentation_method=body.method,
+            )
+            db.add(segment)
+
+        img.data_update_status = "updated_requires_reindex"
+        await db.commit()
+
+        record.image_id = str(img.id)
+        record.source_url = f"/api/v1/images/{record.image_id}/source"
+        for seg in record.segments:
+            seg.crop_url = (
+                f"/api/v1/images/{record.image_id}"
+                f"/segments/{seg.segment_index}/crop"
+            )
+            seg.pipeline_url = (
+                f"/api/v1/images/{record.image_id}"
+                f"/pipeline?method={record.segmentation_method}"
+            )
+        store.add(record)
+
+        return ImageResponse.model_validate(record.model_dump())
 
     # ------------------------------------------------------------------
     # GET source image
@@ -896,3 +1117,25 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
         "media": media or "unknown",
         "angle": angle or "unknown",
     }
+
+
+def _extract_strain_from_path(rel_path: Path) -> str:
+    """Extract strain identifier from the relative path of a file in a ZIP.
+
+    Looks for a folder named after a strain identifier.
+    Expected structure: .../images/{strain}/image.jpg or .../{strain}/image.jpg
+    Falls back to 'unknown-strain' if no meaningful folder found.
+    """
+    parts = rel_path.parts
+    # Skip root-level entries like AGENTS.md, scripts/, images/
+    skip_prefixes = {"images", "mycoai_batch", "mycoai_batch_template"}
+    meaningful = [
+        p for p in parts[:-1]  # exclude filename
+        if p.lower() not in skip_prefixes and not p.startswith(".")
+    ]
+    if meaningful:
+        return meaningful[-1]  # innermost folder = strain
+    # Fallback: use parent folder if not root
+    if len(parts) >= 2:
+        return parts[-2]
+    return "unknown-strain"

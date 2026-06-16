@@ -18,11 +18,12 @@ from ..core.security import (
     verify_password,
 )
 from ..database import get_db
-from ..models import RefreshToken, User
+from ..models import InviteToken, RefreshToken, User
 from ..schemas.auth import (
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
+    RegisterWithTokenRequest,
     TokenResponse,
     UserResponse,
 )
@@ -46,6 +47,64 @@ async def register(
         role="user",
     )
     db.add(user)
+    await db.flush()
+
+    user_id_str = str(user.id)
+    settings = get_settings()
+    access_token = create_access_token(user_id_str, user.role)
+    refresh_token = create_refresh_token(user_id_str)
+
+    rt = RefreshToken(
+        user_id=user.id,
+        token_hash=hash_token(refresh_token),
+        expires_at=datetime.now(UTC)
+        + timedelta(seconds=settings.refresh_token_expire_seconds),
+    )
+    db.add(rt)
+    await db.commit()
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=settings.access_token_expire_seconds,
+    )
+
+
+@router.post("/register-with-token", response_model=TokenResponse, status_code=201)
+async def register_with_token(
+    data: RegisterWithTokenRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TokenResponse:
+    token_hash_val = hash_token(data.token)
+    invite = await db.scalar(
+        select(InviteToken)
+        .where(InviteToken.token_hash == token_hash_val)
+        .where(InviteToken.email == data.email)
+        .where(InviteToken.is_used.is_(False))
+    )
+    if invite is None:
+        raise AuthenticationError("Invalid or expired invite token")
+
+    existing = await db.scalar(select(User).where(User.email == data.email))
+    if existing is not None:
+        if existing.is_active:
+            raise ConflictError("User with this email already exists")
+        existing.password_hash = hash_password(data.password)
+        existing.name = data.name
+        existing.is_active = True
+        user = existing
+    else:
+        user = User(
+            email=data.email,
+            password_hash=hash_password(data.password),
+            name=data.name,
+            role="user",
+            is_active=True,
+        )
+        db.add(user)
+    await db.flush()
+
+    invite.is_used = True
     await db.flush()
 
     user_id_str = str(user.id)

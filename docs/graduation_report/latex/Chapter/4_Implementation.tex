@@ -1,52 +1,44 @@
-\section{Chapter 4: Agentic Engineering}\label{chapter-4-agentic-engineering}
+\section{Agentic Engineering}\label{chapter-4-agentic-engineering}
 
-\subsection{4.1 Motivation}\label{motivation}
+\subsection{Motivation}\label{motivation}
 
 Modern software development is often bottlenecked by the manual cycle of ``hypothesis \(\rightarrow\) implementation \(\rightarrow\) testing''. Agentic Engineering seeks to automate this loop by using LLM-based agents that can write code, run tests, and analyze results autonomously.
 
-\subsection{4.2 Multi-Agent Architecture}\label{multi-agent-architecture}
+\subsection{Multi-Agent Architecture}\label{multi-agent-architecture}
 
 The project implemented the \textbf{Autolab} system, a five-agent orchestration layer: 1. \textbf{Autolab (Orchestrator)}: Delegates tasks to subagents. 2. \textbf{Researcher}: Scouts literature and suggests new hypotheses. 3. \textbf{Planner}: Manages the experiment queue and assigns IDs. 4. \textbf{Worker}: Implements the hypothesis in an isolated git worktree and runs the experiment. 5. \textbf{Reporter}: Summarizes the results and identifies the new ``Best F1'' score.
 
-\subsubsection{4.2.1 Delegation Map}\label{delegation-map}
+\subsubsection{Delegation Map}\label{delegation-map}
 
-{\def\LTcaptype{none} % do not increment counter
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.2857}}
-  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.7143}}@{}}
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Role
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Responsibility
-\end{minipage} \\
-\midrule\noalign{}
-\endhead
-\bottomrule\noalign{}
-\endlastfoot
+\begin{center}
+\begin{tabular}{@{}p{4.5cm} p{9cm}@{}}
+\toprule
+\textbf{Role} & \textbf{Responsibility} \\
+\midrule
 \textbf{Researcher} & Performs literature research and paper synthesis to suggest hypotheses. \\
 \textbf{Planner} & Coordinates the experiment queue and assigns IDs to workers. \\
 \textbf{Worker} & Executes isolated experiments in git worktrees to prevent state corruption. \\
 \textbf{Reporter} & Summarizes results and updates the staircase accuracy charts. \\
-\end{longtable}
-}
+\bottomrule
+\end{tabular}
+\end{center}
 
-\subsection{4.3 Reducing Hallucinations}\label{reducing-hallucinations}
+\subsection{Reducing Hallucinations}\label{reducing-hallucinations}
 
 To ensure the AI agents produced reliable code, three guardrails were implemented: - \textbf{Spec-Driven Development (SDD)}: Using \texttt{speckit} to create a ``Living Spec''. Agents must follow the spec, and any drift is detected and resolved. - \textbf{Test-Driven Development (TDD)}: Agents are required to write a failing test before implementing a fix, ensuring that every change is verified. - \textbf{Specialized Skills}: Instead of relying on general knowledge, agents are provided with ``Skills'' (e.g., \texttt{vercel-react-best-practices}) which act as bounded, high-quality instructions.
 
-\subsection{4.4 Overcoming Context Window Limits}\label{overcoming-context-window-limits}
+\subsection{Overcoming Context Window Limits}\label{overcoming-context-window-limits}
 
 As the codebase grew, managing the LLM's context window became critical:
 
-\subsubsection{4.4.1 Caveman Mode}\label{caveman-mode}
+\subsubsection{Caveman Mode}\label{caveman-mode}
 
 A token-compression communication style that removes fluff and articles, reducing input size by approximately 75\% without losing technical substance.
 
-\subsubsection{4.4.2 Subagents and Worktrees}\label{subagents-and-worktrees}
+\subsubsection{Subagents and Worktrees}\label{subagents-and-worktrees}
 
 Using isolated git worktrees and a routing layer to direct queries to the most appropriate subagent, ensuring each agent only receives context relevant to its specific task.
 
-\subsubsection{4.4.3 Reusable Skills}\label{reusable-skills}
+\subsubsection{Reusable Skills}\label{reusable-skills}
 
 Encoding complex workflows (e.g., \texttt{vercel-react-best-practices}, \texttt{fastapi}) into bounded, high-quality skill definitions that constrain agent behavior to validated patterns.

@@ -43,5 +43,17 @@ def test_qdrant_status(client: TestClient, headers: dict[str, str]) -> None:
     resp = client.get("/api/v1/dashboard/qdrant-status", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert "learned" in data
-    assert "unlearned" in data
+    assert "status" in data
+    assert "points_count" in data
+
+
+def test_chart_strain(client: TestClient, headers: dict[str, str]) -> None:
+    resp = client.get("/api/v1/dashboard/charts/strain-distribution", headers=headers)
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+
+def test_chart_environment(client: TestClient, headers: dict[str, str]) -> None:
+    resp = client.get("/api/v1/dashboard/charts/environment-distribution", headers=headers)
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
