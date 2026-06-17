@@ -129,7 +129,11 @@ def create_image_router(
             if storage:
                 candidate = storage.get_url(img.file_path)
                 if candidate.startswith(("http://", "https://")):
-                    source_url = candidate
+                    # Rewrite internal MinIO host to nginx proxy path
+                    # so browser can load images without auth
+                    source_url = candidate.replace(
+                        "http://minio:9000/", "/minio/"
+                    )
                 else:
                     source_url = f"/api/v1/images/{img.id}/source"
             else:
@@ -327,7 +331,7 @@ def create_image_router(
         default_species: Annotated[str, Form()] = "unknown-species",
         method: Annotated[str, Form()] = "kmeans",
         db=Depends(get_db),
-        user=Depends(require_owner()),
+        user=Depends(get_current_user),
     ) -> dict[str, Any]:
         batch_meta: dict[str, Any] = {}
         if metadata:
@@ -438,7 +442,7 @@ def create_image_router(
         default_species: Annotated[str, Form()] = "unknown-species",
         method: Annotated[str, Form()] = "kmeans",
         db=Depends(get_db),
-        user=Depends(require_owner()),
+        user=Depends(get_current_user),
     ) -> dict[str, Any]:
         if (
             not zipfile_file.filename
@@ -626,7 +630,7 @@ def create_image_router(
         image_id: str,
         body: AutoSegmentRequest = AutoSegmentRequest(),
         db=Depends(get_db),
-        user=Depends(require_owner()),
+        user=Depends(get_current_user),
     ) -> ImageResponse:
         if body.method not in ALLOWED_METHODS:
             allowed = sorted(ALLOWED_METHODS)

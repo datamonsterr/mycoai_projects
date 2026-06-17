@@ -10,94 +10,95 @@
 \contentsline {section}{\numberline {1.1}Problem Statement}{1}{section.1.1}%
 \contentsline {subsection}{\numberline {1.1.1}Overview}{1}{subsection.1.1.1}%
 \contentsline {subsection}{\numberline {1.1.2}Dataset Description}{1}{subsection.1.1.2}%
-\contentsline {subsubsection}{Dataset Structure}{1}{subsubsection*.4}%
-\contentsline {subsubsection}{Exploratory Data Analysis}{3}{subsubsection*.6}%
-\contentsline {subsubsection}{The Few-Shot Classification Challenge}{7}{subsubsection*.7}%
+\contentsline {subsubsection}{Dataset Structure}{1}{subsubsection*.6}%
+\contentsline {subsubsection}{Exploratory Data Analysis}{3}{subsubsection*.8}%
+\contentsline {subsubsection}{The Few-Shot Classification Challenge}{7}{subsubsection*.9}%
 \contentsline {subsection}{\numberline {1.1.3}Scope of Work}{8}{subsection.1.1.3}%
-\contentsline {subsubsection}{Out of Scope}{8}{subsubsection*.8}%
+\contentsline {subsubsection}{Out of Scope}{8}{subsubsection*.10}%
 \contentsline {subsection}{\numberline {1.1.4}Proposed Solution}{9}{subsection.1.1.4}%
-\contentsline {subsubsection}{Why a Retrieval Pipeline?}{10}{subsubsection*.9}%
+\contentsline {subsubsection}{Why a Retrieval Pipeline?}{10}{subsubsection*.11}%
 \contentsline {subsection}{\numberline {1.1.5}Rationale}{11}{subsection.1.1.5}%
-\contentsline {subsubsection}{Retrieval over Fixed Classification}{11}{subsubsection*.10}%
-\contentsline {subsubsection}{Modularity and Versatility}{11}{subsubsection*.11}%
-\contentsline {subsubsection}{Design Decisions at a Glance}{13}{subsubsection*.12}%
+\contentsline {subsubsection}{Retrieval over Fixed Classification}{11}{subsubsection*.12}%
+\contentsline {subsubsection}{Modularity and Versatility}{11}{subsubsection*.13}%
+\contentsline {subsubsection}{Design Decisions at a Glance}{13}{subsubsection*.14}%
 \contentsline {chapter}{\numberline {2}FUNGAL SPECIES RETRIEVAL MODEL}{14}{chapter.2}%
 \contentsline {section}{\numberline {2.1}Fungal Species Retrieval Model}{14}{section.2.1}%
 \contentsline {subsection}{\numberline {2.1.1}Motivation}{14}{subsection.2.1.1}%
 \contentsline {subsection}{\numberline {2.1.2}Related Work}{14}{subsection.2.1.2}%
 \contentsline {subsection}{\numberline {2.1.3}Methodology}{14}{subsection.2.1.3}%
-\contentsline {subsubsection}{Preprocessing Pipeline}{14}{subsubsection*.15}%
-\contentsline {paragraph}{K-Means Clustering Segmentation}{15}{paragraph*.16}%
-\contentsline {paragraph}{Contour-Based Segmentation}{16}{paragraph*.17}%
-\contentsline {paragraph}{YOLO-Based Segmentation}{16}{paragraph*.18}%
-\contentsline {subsubsection}{Feature Extraction and Embedding}{16}{subsubsection*.20}%
-\contentsline {subsubsection}{Vector Database Retrieval}{19}{subsubsection*.26}%
-\contentsline {subsubsection}{Aggregation Strategy}{20}{subsubsection*.27}%
-\contentsline {subsubsection}{Ensemble Methods}{21}{subsubsection*.30}%
-\contentsline {subsection}{\numberline {2.1.4}Experiments and Results}{21}{subsection.2.1.4}%
-\contentsline {subsubsection}{Dataset and Split Strategy}{21}{subsubsection*.31}%
-\contentsline {subsubsection}{Segmentation Experiments}{22}{subsubsection*.34}%
-\contentsline {subsubsection}{Retrieval Experiments: Staircase Chart}{22}{subsubsection*.36}%
-\contentsline {subsubsection}{Overall Performance Comparison}{22}{subsubsection*.38}%
-\contentsline {subsubsection}{Cross-Validation Results}{23}{subsubsection*.40}%
-\contentsline {subsubsection}{Feature Space Analysis (t-SNE)}{24}{subsubsection*.46}%
-\contentsline {subsubsection}{Confusion Matrix and Per-Species Analysis}{27}{subsubsection*.47}%
-\contentsline {subsubsection}{Prediction Examples}{27}{subsubsection*.50}%
+\contentsline {subsubsection}{Preprocessing Pipeline}{14}{subsubsection*.17}%
+\contentsline {paragraph}{K-Means Clustering Segmentation}{15}{paragraph*.18}%
+\contentsline {paragraph}{Contour-Based Segmentation}{16}{paragraph*.19}%
+\contentsline {paragraph}{YOLO-Based Segmentation}{16}{paragraph*.20}%
+\contentsline {subsubsection}{Feature Extraction and Embedding}{16}{subsubsection*.22}%
+\contentsline {subsubsection}{Vector Database Retrieval}{20}{subsubsection*.28}%
+\contentsline {subsubsection}{Aggregation Strategy}{20}{subsubsection*.29}%
+\contentsline {subsubsection}{Environment Selection Strategies}{21}{subsubsection*.30}%
+\contentsline {subsubsection}{Ensemble Methods}{21}{subsubsection*.32}%
+\contentsline {subsection}{\numberline {2.1.4}Experiments and Results}{22}{subsection.2.1.4}%
+\contentsline {subsubsection}{Dataset and Split Strategy}{22}{subsubsection*.33}%
+\contentsline {subsubsection}{Segmentation Experiments}{22}{subsubsection*.36}%
+\contentsline {subsubsection}{Retrieval Experiments: Staircase Chart}{23}{subsubsection*.38}%
+\contentsline {subsubsection}{Overall Performance Comparison}{24}{subsubsection*.40}%
+\contentsline {subsubsection}{Cross-Validation Results}{24}{subsubsection*.42}%
+\contentsline {subsubsection}{Feature Space Analysis (t-SNE)}{27}{subsubsection*.48}%
+\contentsline {subsubsection}{Confusion Matrix and Per-Species Analysis}{28}{subsubsection*.49}%
+\contentsline {subsubsection}{Prediction Examples}{28}{subsubsection*.52}%
 \contentsline {subsection}{\numberline {2.1.5}Discussion}{28}{subsection.2.1.5}%
-\contentsline {chapter}{\numberline {3}WEB APPLICATION DESIGN \& IMPLEMENTATION}{30}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Web Application}{30}{section.3.1}%
-\contentsline {subsection}{\numberline {3.1.1}Requirements Analysis}{30}{subsection.3.1.1}%
-\contentsline {subsubsection}{Actor Model and Permissions}{30}{subsubsection*.53}%
-\contentsline {subsubsection}{Use Case Diagram}{31}{subsubsection*.54}%
-\contentsline {subsubsection}{Functional Requirements Summary}{31}{subsubsection*.55}%
-\contentsline {subsubsection}{Non-Functional Requirements}{33}{subsubsection*.56}%
-\contentsline {subsection}{\numberline {3.1.2}System Architecture}{33}{subsection.3.1.2}%
-\contentsline {subsubsection}{High-Level Architecture}{33}{subsubsection*.57}%
-\contentsline {subsubsection}{Technology Stack}{35}{subsubsection*.58}%
-\contentsline {subsubsection}{Backend Package Structure}{35}{subsubsection*.59}%
-\contentsline {subsubsection}{Frontend Route Hierarchy}{36}{subsubsection*.60}%
-\contentsline {subsection}{\numberline {3.1.3}Database Design}{37}{subsection.3.1.3}%
-\contentsline {subsubsection}{Entity-Relationship Diagram}{37}{subsubsection*.61}%
-\contentsline {subsubsection}{Key Design Decisions}{38}{subsubsection*.62}%
-\contentsline {subsubsection}{Data Update Status Lifecycle}{39}{subsubsection*.63}%
-\contentsline {subsubsection}{Dual-Database Strategy}{39}{subsubsection*.64}%
-\contentsline {subsection}{\numberline {3.1.4}API Design}{40}{subsection.3.1.4}%
-\contentsline {subsubsection}{Endpoint Catalog}{40}{subsubsection*.65}%
-\contentsline {subsubsection}{Authentication Flow}{41}{subsubsection*.66}%
-\contentsline {subsubsection}{Retrieval Query Sequence}{42}{subsubsection*.67}%
-\contentsline {subsubsection}{Feedback Workflow Sequence}{43}{subsubsection*.68}%
-\contentsline {subsubsection}{Error Response Format}{44}{subsubsection*.69}%
-\contentsline {subsection}{\numberline {3.1.5}Frontend Architecture}{45}{subsection.3.1.5}%
-\contentsline {subsubsection}{Component Architecture}{45}{subsubsection*.70}%
-\contentsline {subsubsection}{Key Page: Retrieve (Species Retrieval)}{47}{subsubsection*.71}%
-\contentsline {subsubsection}{Key Page: Dataset Browser (Data Owner)}{47}{subsubsection*.72}%
-\contentsline {subsubsection}{Key Page: Dashboard (Data Owner)}{48}{subsubsection*.73}%
-\contentsline {subsubsection}{Key Page: User Management \& Audit Log (Data Owner)}{48}{subsubsection*.74}%
-\contentsline {subsection}{\numberline {3.1.6}Core Backend Pipelines}{48}{subsection.3.1.6}%
-\contentsline {subsubsection}{Segmentation Pipeline}{48}{subsubsection*.75}%
-\contentsline {subsubsection}{Retrieval Pipeline}{49}{subsubsection*.76}%
-\contentsline {subsubsection}{Qdrant Vector Database Design}{50}{subsubsection*.77}%
-\contentsline {subsubsection}{Model and Index Maintenance}{50}{subsubsection*.78}%
-\contentsline {subsection}{\numberline {3.1.7}Deployment Architecture}{51}{subsection.3.1.7}%
-\contentsline {subsubsection}{Docker Compose Topology}{51}{subsubsection*.79}%
-\contentsline {subsubsection}{CI/CD Pipeline}{52}{subsubsection*.80}%
-\contentsline {subsection}{\numberline {3.1.8}Data Visualization Charts}{52}{subsection.3.1.8}%
-\contentsline {subsection}{\numberline {3.1.9}Summary}{53}{subsection.3.1.9}%
-\contentsline {chapter}{\numberline {4}AGENTIC ENGINEERING \& EVALUATION}{55}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Agentic Engineering}{55}{section.4.1}%
-\contentsline {subsection}{\numberline {4.1.1}Motivation}{55}{subsection.4.1.1}%
-\contentsline {subsection}{\numberline {4.1.2}Multi-Agent Architecture}{55}{subsection.4.1.2}%
-\contentsline {subsubsection}{Delegation Map}{55}{subsubsection*.81}%
-\contentsline {subsection}{\numberline {4.1.3}Reducing Hallucinations}{55}{subsection.4.1.3}%
-\contentsline {subsection}{\numberline {4.1.4}Overcoming Context Window Limits}{56}{subsection.4.1.4}%
-\contentsline {subsubsection}{Caveman Mode}{56}{subsubsection*.82}%
-\contentsline {subsubsection}{Subagents and Worktrees}{56}{subsubsection*.83}%
-\contentsline {subsubsection}{Reusable Skills}{56}{subsubsection*.84}%
-\contentsline {chapter}{\numberline {5}CONCLUSION}{57}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Conclusion}{57}{section.5.1}%
-\contentsline {subsection}{\numberline {5.1.1}Summary}{57}{subsection.5.1.1}%
-\contentsline {subsection}{\numberline {5.1.2}Future Work}{57}{subsection.5.1.2}%
-\contentsline {chapter}{REFERENCE}{59}{section*.85}%
-\contentsline {chapter}{\numberline {A}USE CASE DESCRIPTIONS}{60}{chapter.1.A}%
-\contentsline {section}{\numberline {A.1}Use Case Details}{60}{section.1.A.1}%
+\contentsline {chapter}{\numberline {3}WEB APPLICATION DESIGN \& IMPLEMENTATION}{31}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Web Application}{31}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Requirements Analysis}{31}{subsection.3.1.1}%
+\contentsline {subsubsection}{Actor Model and Permissions}{31}{subsubsection*.55}%
+\contentsline {subsubsection}{Use Case Diagram}{32}{subsubsection*.56}%
+\contentsline {subsubsection}{Functional Requirements Summary}{32}{subsubsection*.57}%
+\contentsline {subsubsection}{Non-Functional Requirements}{34}{subsubsection*.58}%
+\contentsline {subsection}{\numberline {3.1.2}System Architecture}{34}{subsection.3.1.2}%
+\contentsline {subsubsection}{High-Level Architecture}{34}{subsubsection*.59}%
+\contentsline {subsubsection}{Technology Stack}{36}{subsubsection*.60}%
+\contentsline {subsubsection}{Backend Package Structure}{36}{subsubsection*.61}%
+\contentsline {subsubsection}{Frontend Route Hierarchy}{37}{subsubsection*.62}%
+\contentsline {subsection}{\numberline {3.1.3}Database Design}{38}{subsection.3.1.3}%
+\contentsline {subsubsection}{Entity-Relationship Diagram}{38}{subsubsection*.63}%
+\contentsline {subsubsection}{Key Design Decisions}{39}{subsubsection*.64}%
+\contentsline {subsubsection}{Data Update Status Lifecycle}{40}{subsubsection*.65}%
+\contentsline {subsubsection}{Dual-Database Strategy}{40}{subsubsection*.66}%
+\contentsline {subsection}{\numberline {3.1.4}API Design}{41}{subsection.3.1.4}%
+\contentsline {subsubsection}{Endpoint Catalog}{41}{subsubsection*.67}%
+\contentsline {subsubsection}{Authentication Flow}{42}{subsubsection*.68}%
+\contentsline {subsubsection}{Retrieval Query Sequence}{43}{subsubsection*.69}%
+\contentsline {subsubsection}{Feedback Workflow Sequence}{44}{subsubsection*.70}%
+\contentsline {subsubsection}{Error Response Format}{45}{subsubsection*.71}%
+\contentsline {subsection}{\numberline {3.1.5}Frontend Architecture}{46}{subsection.3.1.5}%
+\contentsline {subsubsection}{Component Architecture}{46}{subsubsection*.72}%
+\contentsline {subsubsection}{Key Page: Retrieve (Species Retrieval)}{48}{subsubsection*.73}%
+\contentsline {subsubsection}{Key Page: Dataset Browser (Data Owner)}{48}{subsubsection*.74}%
+\contentsline {subsubsection}{Key Page: Dashboard (Data Owner)}{49}{subsubsection*.75}%
+\contentsline {subsubsection}{Key Page: User Management \& Audit Log (Data Owner)}{49}{subsubsection*.76}%
+\contentsline {subsection}{\numberline {3.1.6}Core Backend Pipelines}{49}{subsection.3.1.6}%
+\contentsline {subsubsection}{Segmentation Pipeline}{49}{subsubsection*.77}%
+\contentsline {subsubsection}{Retrieval Pipeline}{50}{subsubsection*.78}%
+\contentsline {subsubsection}{Qdrant Vector Database Design}{51}{subsubsection*.79}%
+\contentsline {subsubsection}{Model and Index Maintenance}{51}{subsubsection*.80}%
+\contentsline {subsection}{\numberline {3.1.7}Deployment Architecture}{52}{subsection.3.1.7}%
+\contentsline {subsubsection}{Docker Compose Topology}{52}{subsubsection*.81}%
+\contentsline {subsubsection}{CI/CD Pipeline}{53}{subsubsection*.82}%
+\contentsline {subsection}{\numberline {3.1.8}Data Visualization Charts}{53}{subsection.3.1.8}%
+\contentsline {subsection}{\numberline {3.1.9}Summary}{54}{subsection.3.1.9}%
+\contentsline {chapter}{\numberline {4}AGENTIC ENGINEERING \& EVALUATION}{56}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Agentic Engineering}{56}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Motivation}{56}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Multi-Agent Architecture}{56}{subsection.4.1.2}%
+\contentsline {subsubsection}{Delegation Map}{56}{subsubsection*.83}%
+\contentsline {subsection}{\numberline {4.1.3}Reducing Hallucinations}{56}{subsection.4.1.3}%
+\contentsline {subsection}{\numberline {4.1.4}Overcoming Context Window Limits}{57}{subsection.4.1.4}%
+\contentsline {subsubsection}{Caveman Mode}{57}{subsubsection*.84}%
+\contentsline {subsubsection}{Subagents and Worktrees}{57}{subsubsection*.85}%
+\contentsline {subsubsection}{Reusable Skills}{57}{subsubsection*.86}%
+\contentsline {chapter}{\numberline {5}CONCLUSION}{58}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Conclusion}{58}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Summary}{58}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Future Work}{58}{subsection.5.1.2}%
+\contentsline {chapter}{REFERENCE}{60}{section*.88}%
+\contentsline {chapter}{\numberline {A}USE CASE DESCRIPTIONS}{62}{chapter.1.A}%
+\contentsline {section}{\numberline {A.1}Use Case Details}{62}{section.1.A.1}%
 \contentsfinish 

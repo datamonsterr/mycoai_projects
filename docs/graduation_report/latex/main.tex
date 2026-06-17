@@ -45,11 +45,13 @@
 \usepackage{tocbasic}
 \usepackage{blindtext}
 \usepackage[backend=bibtex,style=ieee]{biblatex}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 \renewcommand{\bibname}{REFERENCE}
 \addbibresource{reference.bib}
-\include{lstlisting}
+\input{lstlisting}
 \input{glossary}
+\makenoidxglossaries
 
 \fancypagestyle{plain}{%
 \fancyhf{}
@@ -57,7 +59,7 @@
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}}
 
-\setlength{\headheight}{10pt}
+\setlength{\headheight}{15.6pt}
 \def \TITLE{GRADUATION THESIS}
 \def \AUTHOR{Pham Thanh Dat}
 

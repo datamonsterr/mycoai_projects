@@ -40,11 +40,11 @@ Key functional requirements driving the web application implementation:
 \textbf{FR ID} & \textbf{Requirement} & \textbf{Implementation Status} \\
 \midrule
 FR-001 & JWT authentication for all protected workflows & \texttt{backend/auth.py} --- OAuth2 password flow with python-jose + bcrypt \\
-FR-006 & Species retrieval from single uploaded strain images & \texttt{backend/routes.py:449–530} --- \texttt{/api/v1/retrieval/query} \\
-FR-007 & Species retrieval from batch uploaded folders & \texttt{backend/routes.py:245–415} --- \texttt{/api/v1/images/batch-upload} \\
+FR-006 & Species retrieval from single uploaded strain images & \texttt{backend/routes.py:449-530} --- \texttt{/api/v1/retrieval/query} \\
+FR-007 & Species retrieval from batch uploaded folders & \texttt{backend/routes.py:245-415} --- \texttt{/api/v1/images/batch-upload} \\
 FR-009 & Auto-segmentation with editable bounding boxes & \texttt{backend/segmentation.py} --- KMeans + Contour pipeline; frontend \texttt{Retrieve.tsx} canvas overlay \\
 FR-010/011 & Same-media / all-media KNN strategy & \texttt{backend/qdrant\_client.py} --- environment filter construction \\
-FR-013/014 & Feedback submission and contribution proposals & \texttt{backend/routes.py:532–645} --- \texttt{/api/v1/feedback} \\
+FR-013/014 & Feedback submission and contribution proposals & \texttt{backend/routes.py:532-645} --- \texttt{/api/v1/feedback} \\
 FR-015 & Data Owner feedback review (accept/reject/defer) & Frontend \texttt{FeedbackInbox.tsx} page \\
 FR-017 & Data Owner index new reference data & Frontend \texttt{IndexNewData.tsx} --- reuses upload + segmentation \\
 FR-019 & CRUD Species and Media metadata & Frontend \texttt{Metadata.tsx} --- owner-only metadata management \\
@@ -64,9 +64,9 @@ FR-034 & Role-based API enforcement (403 for Users) & \texttt{backend/core/depen
 \toprule
 \textbf{NFR ID} & \textbf{Requirement} & \textbf{Target} \\
 \midrule
-NFR-002 & Single retrieval response ≤ 5 seconds & After segmentation completes \\
-NFR-003 & Batch progress visible ≤ 2 seconds after start & Async job status polling \\
-NFR-004 & Upload validation (type, size, dimensions) & JPEG/PNG/TIFF, 50MB max, ≥256×256 \\
+NFR-002 & Single retrieval response $\leq$ 5 seconds & After segmentation completes \\
+NFR-003 & Batch progress visible $\leq$ 2 seconds after start & Async job status polling \\
+NFR-004 & Upload validation (type, size, dimensions) & JPEG/PNG/TIFF, 50MB max, $\geq$256$\times$256 \\
 NFR-006 & All Data Owner mutations audit logged & \texttt{audit\_log} table \\
 NFR-009 & Consistent JSON error format & RFC 7807 Problem Details \\
 NFR-012 & JWT access token expiry + refresh & 1h access / 30d refresh, httpOnly cookie for refresh token \\
@@ -94,7 +94,7 @@ The system follows a decoupled client-server architecture with six containerized
 \midrule
 \textbf{Frontend} & React 19 + Vite + TypeScript & SPA with HMR, type safety \\
 \textbf{UI Kit} & shadcn/ui + Tailwind CSS v4 & Pre-built accessible components, utility-first styling \\
-\textbf{Routing} & Client-side hash routing in \texttt{App.tsx:17–49} & Simple, no SSR needed \\
+\textbf{Routing} & Client-side hash routing in \texttt{App.tsx:17-49} & Simple, no SSR needed \\
 \textbf{Data Fetching} & TanStack Query (\texttt{useQuery}, \texttt{useMutation}) & Caching, background refetch, optimistic updates \\
 \textbf{Forms} & React Hook Form + Zod & Performant form state, schema validation \\
 \textbf{Charts} & Custom SVG pie/bar charts (Dashboard) & Lightweight, no external dependency \\
@@ -229,7 +229,7 @@ All API errors follow RFC 7807 (Problem Details for HTTP APIs):
 
 \begin{verbatim}
 POST /api/v1/images
-→ 400 Bad Request
+-> 400 Bad Request
 {
   "type": "https://api.mycoai.dev/errors/validation",
   "title": "Validation Error",
@@ -288,7 +288,7 @@ The Retriever page (\texttt{frontend/src/pages/Retrieve.tsx}, 895 lines) impleme
 
 \emph{Figure 3.11: Three-step retrieve workflow.}
 
-\textbf{How to capture:} 1. Run \texttt{docker\ compose\ up} from project root to start all services 2. Open \texttt{http://localhost:5173} in Chrome 3. Log in as a test user (\texttt{user@example.com}) 4. Navigate to Retrieve page 5. Screenshot (a): Upload state with an image selected, strain filled, media dropdown open 6. Click ``Process'' → Screenshot (b): Segmentation review state with bounding boxes visible 7. Click ``Retrieve'' → wait for results → Screenshot (c): Results table with expanded neighbor detail
+\textbf{How to capture:} 1. Run \texttt{docker\ compose\ up} from project root to start all services 2. Open \texttt{http://localhost:5173} in Chrome 3. Log in as a test user (\texttt{user@example.com}) 4. Navigate to Retrieve page 5. Screenshot (a): Upload state with an image selected, strain filled, media dropdown open 6. Click ``Process'' $ightarrow$ Screenshot (b): Segmentation review state with bounding boxes visible 7. Click ``Retrieve'' $ightarrow$ wait for results $ightarrow$ Screenshot (c): Results table with expanded neighbor detail
 \end{quote}
 
 \subsubsection{Key Page: Dataset Browser (Data Owner)}\label{key-page-dataset-browser-data-owner}
@@ -339,14 +339,14 @@ The pipeline produces the following artifact layout per image:
 
 \begin{verbatim}
 uploads/{strain}/{media}/{image_id}/
-├── source.jpg              # Original uploaded image
-├── prepared.jpg            # 256×256 preprocessed (plate mask applied)
-├── bbox_kmeans.jpg         # Bounding box overlay visualization
-├── pipeline_kmeans.jpg     # 3-panel visualization (source | prep | bbox)
-└── segments/
-    ├── segment_0.jpg       # Cropped colony segment
-    ├── segment_1.jpg
-    └── segment_2.jpg
++-- source.jpg              # Original uploaded image
++-- prepared.jpg            # 256x256 preprocessed (plate mask applied)
++-- bbox_kmeans.jpg         # Bounding box overlay visualization
++-- pipeline_kmeans.jpg     # 3-panel visualization (source | prep | bbox)
+\-- segments/
+    +-- segment_0.jpg       # Cropped colony segment
+    +-- segment_1.jpg
+    \-- segment_2.jpg
 \end{verbatim}
 
 \begin{quote}
@@ -381,7 +381,7 @@ All-media & No filter & New/other media \\
 \toprule
 \textbf{Strategy} & \textbf{Formula} & \textbf{Default} \\
 \midrule
-Weighted & Score(species) = sum(cosine\_similarity) for all neighbors & ✓ \\
+Weighted & Score(species) = sum(cosine\_similarity) for all neighbors & $\checkmark$ \\
 Uniform & Score(species) = count(neighbors of that species) / k & \\
 Manual Weighted & Score(species) = sum(weight{[}species{]}{[}extractor{]} * similarity) & \\
 \bottomrule
@@ -432,7 +432,7 @@ The Model Index page (\texttt{frontend/src/pages/ModelIndex.tsx}) manages the Qd
 
 \subsubsection{CI/CD Pipeline}\label{cicd-pipeline}
 
-GitHub Actions run on every push and pull request: - \textbf{Backend}: ruff check + format check → mypy (strict) → pytest - \textbf{Frontend}: ESLint → TypeScript typecheck → vite build - \textbf{Docker}: Image build dry-run verification
+GitHub Actions run on every push and pull request: - \textbf{Backend}: ruff check + format check $ightarrow$ mypy (strict) $ightarrow$ pytest - \textbf{Frontend}: ESLint $ightarrow$ TypeScript typecheck $ightarrow$ vite build - \textbf{Docker}: Image build dry-run verification
 
 Deployment to production is manual (\texttt{docker\ compose\ pull\ \&\&\ docker\ compose\ up\ -d}), triggered after PR approval and merge to \texttt{main}.
 
@@ -460,6 +460,6 @@ Run with: \texttt{uv\ -\/-directory\ backend\ run\ python\ /tmp/opencode/gen\_ch
 
 \subsection{Summary}\label{summary}
 
-The MycoAI Retrieval web application comprises 11 frontend pages, 47 REST API endpoints, 14 database tables, a 13-vector Qdrant collection, and a 6-service Docker Compose deployment. The system enforces RBAC across two actor roles and supports the complete lifecycle: upload → segment → retrieve → provide feedback → review → index → maintain model. Every Data Owner mutation is audit-logged, no permanent deletion is permitted, and the dual-database architecture (PostgreSQL for governance, Qdrant for search) balances consistency with performance.
+The MycoAI Retrieval web application comprises 11 frontend pages, 47 REST API endpoints, 14 database tables, a 13-vector Qdrant collection, and a 6-service Docker Compose deployment. The system enforces RBAC across two actor roles and supports the complete lifecycle: upload $ightarrow$ segment $ightarrow$ retrieve $ightarrow$ provide feedback $ightarrow$ review $ightarrow$ index $ightarrow$ maintain model. Every Data Owner mutation is audit-logged, no permanent deletion is permitted, and the dual-database architecture (PostgreSQL for governance, Qdrant for search) balances consistency with performance.
 
 The implementation is grounded in 103 lines of use case design documentation, 275 lines of database design, 371 lines of API contract, and 482 lines of SQLAlchemy ORM models --- all referenced against the SRS and verified by the CI pipeline.

@@ -33,6 +33,14 @@ function getToken(): string | null {
   }
 }
 
+function getRefreshToken(): string | null {
+  try {
+    return localStorage.getItem('refresh_token')
+  } catch {
+    return null
+  }
+}
+
 export function setToken(token: string) {
   localStorage.setItem('access_token', token)
 }
@@ -40,6 +48,41 @@ export function setToken(token: string) {
 export function clearToken() {
   localStorage.removeItem('access_token')
   localStorage.removeItem('refresh_token')
+}
+
+let refreshPromise: Promise<string | null> | null = null
+
+async function tryRefreshToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise
+
+  const rt = getRefreshToken()
+  if (!rt) return null
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: rt }),
+      })
+      if (!res.ok) {
+        clearToken()
+        return null
+      }
+      const data = await res.json() as { access_token: string; refresh_token?: string }
+      setToken(data.access_token)
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token)
+      }
+      return data.access_token
+    } catch {
+      return null
+    } finally {
+      refreshPromise = null
+    }
+  })()
+
+  return refreshPromise
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -52,21 +95,35 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     })
   }
 
-  const headers: HeadersInit = { ...initHeaders as Record<string, string> }
-  const token = getToken()
-  if (token) {
-    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+  const buildHeaders = (token: string | null): HeadersInit => {
+    const h: HeadersInit = { ...initHeaders as Record<string, string> }
+    if (token) {
+      (h as Record<string, string>)['Authorization'] = `Bearer ${token}`
+    }
+    if (body && !(body instanceof FormData)) {
+      (h as Record<string, string>)['Content-Type'] = 'application/json'
+    }
+    return h
   }
 
-  if (body && !(body instanceof FormData)) {
-    (headers as Record<string, string>)['Content-Type'] = 'application/json'
+  const doFetch = async (token: string | null) => {
+    const headers = buildHeaders(token)
+    const res = await fetch(url.toString(), {
+      ...init,
+      headers,
+      body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+    })
+    return res
   }
 
-  const res = await fetch(url.toString(), {
-    ...init,
-    headers,
-    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
-  })
+  let res = await doFetch(getToken())
+
+  if (res.status === 401 && getRefreshToken() && path !== '/auth/refresh' && path !== '/auth/login') {
+    const newToken = await tryRefreshToken()
+    if (newToken) {
+      res = await doFetch(newToken)
+    }
+  }
 
   if (res.status === 204) {
     return undefined as T
