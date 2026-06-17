@@ -24,9 +24,9 @@ The retrieval pipeline consists of four main stages: (1) preprocessing and colon
 
 \subsubsection{Preprocessing Pipeline}\label{preprocessing-pipeline}
 
-Raw Petri dish images undergo a multi-stage preprocessing pipeline to isolate individual fungal colonies. Given an original microscopy image (I\_\{\text{raw}\} \in \mathbb{R}\^{}\{H \times W \times 3\}), the pipeline operates as follows:
+Raw Petri dish images undergo a multi-stage preprocessing pipeline to isolate individual fungal colonies. Given an original microscopy image \(I_{\text{raw}} \in \mathbb{R}^{H \times W \times 3}\), the pipeline operates as follows:
 
-\textbf{Stage 1 --- Full-Image Preprocessing:} 1. \textbf{Resizing}: Images are standardized to (256 \times 256) pixels to ensure consistent input dimensions. 2. \textbf{Circle Detection}: The Hough Circle Transform detects the circular Petri dish boundary, producing a center ((c\_x, c\_y)) and radius (R). 3. \textbf{Background Masking}: Pixels outside the detected dish are masked to black, removing irrelevant background (labels, shadows, bench surface). 4. \textbf{Cropping}: The dish region is extracted, discarding the remainder.
+\textbf{Stage 1 --- Full-Image Preprocessing:} 1. \textbf{Resizing}: Images are standardized to ($256 \times 256$) pixels to ensure consistent input dimensions. 2. \textbf{Circle Detection}: The Hough Circle Transform detects the circular Petri dish boundary, producing a center (\(c_x, c_y\)) and radius (R). 3. \textbf{Background Masking}: Pixels outside the detected dish are masked to black, removing irrelevant background (labels, shadows, bench surface). 4. \textbf{Cropping}: The dish region is extracted, discarding the remainder.
 
 \textbf{Stage 2 --- Colony Segmentation:}
 
@@ -34,11 +34,11 @@ Three complementary approaches were developed for colony segmentation:
 
 \paragraph{K-Means Clustering Segmentation}\label{k-means-clustering-segmentation}
 
-The image is converted from RGB to HSV color space to better separate fungal colonies from the agar medium. A Gaussian blur with kernel size (9 \times 9) and (\sigma = 1.5) reduces high-frequency noise. K-Means clustering partitions pixels into foreground (colony) and background (agar) clusters.
+The image is converted from RGB to HSV color space to better separate fungal colonies from the agar medium. A Gaussian blur with kernel size ($9 \times 9$) and ($\sigma = 1.5$) reduces high-frequency noise. K-Means clustering partitions pixels into foreground (colony) and background (agar) clusters.
 
 A key innovation is the \textbf{Local K=2 Shrink} method, which addresses a specific failure mode: bright small colonies that produce light halos on certain media (notably MEA and YES). The flare phenomenon occurs when the agar near a colony appears bright, causing K-Means to group the halo with the colony foreground rather than the background. The Local K=2 method operates as follows:
 
-For each candidate colony region (R\_i) in HSV space: 1. Apply a second K=2 clustering on the V (value) channel pixels within (R\_i) only. 2. Identify the bright cluster (higher mean V value) and the dim cluster. 3. Construct a mask retaining only pixels belonging to the bright cluster. 4. Shrink the mask via morphological erosion to remove borderline halo pixels.
+For each candidate colony region (\(R_i\)) in HSV space: 1. Apply a second K=2 clustering on the V (value) channel pixels within (\(R_i\)) only. 2. Identify the bright cluster (higher mean V value) and the dim cluster. 3. Construct a mask retaining only pixels belonging to the bright cluster. 4. Shrink the mask via morphological erosion to remove borderline halo pixels.
 
 This two-stage approach strips light halos from bright small colonies without affecting larger textured colonies, where the halo is already negligible relative to colony area.
 
@@ -52,11 +52,11 @@ An alternative segmentation pipeline based on edge detection was developed to by
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  \textbf{Canny Edge Detection}: Applied to the blurred grayscale image with thresholds (t\_\{\text{low}\} = 30), (t\_\{\text{high}\} = 80).
+  \textbf{Canny Edge Detection}: Applied to the blurred grayscale image with thresholds (\(t_{\text{low}} = 30\)), (\(t_{\text{high}} = 80\)).
 \item
-  \textbf{Morphological Closing}: Dilation ((5 \times 5) kernel, 3 iterations) followed by erosion ((3 \times 3) kernel, 2 iterations) to seal gaps in colony edges.
+  \textbf{Morphological Closing}: Dilation (($5 \times 5$) kernel, 3 iterations) followed by erosion (($3 \times 3$) kernel, 2 iterations) to seal gaps in colony edges.
 \item
-  \textbf{Circularity Filter}: Contours are scored by (\text{area} \times \text{circularity}), where circularity is defined as (4\pi A / P\^{}2) ((A) = contour area, (P) = perimeter). A perfect circle scores 1.0. Contours are ranked and the top-3 are selected per dish, subject to area constraints ((400 \leq A \leq 23,700) px(\^{}2)).
+  \textbf{Circularity Filter}: Contours are scored by ($\text{area} \times \text{circularity}$), where circularity is defined as \(4\pi A / P^{2}\) ((A) = contour area, (P) = perimeter). A perfect circle scores 1.0. Contours are ranked and the top-3 are selected per dish, subject to area constraints (\(400 \leq A \leq 23,700\) px\(^{2}\)).
 \item
   \textbf{Bounding Box Extraction}: For each selected contour, the axis-aligned bounding rectangle is computed; boxes with area below the minimum threshold are filtered.
 \end{enumerate}
@@ -74,9 +74,9 @@ To leverage modern deep learning for the segmentation task, a YOLOv8 instance se
 \item
   \textbf{Split}: Deterministic random train/test split with no separate validation partition.
 \item
-  \textbf{Model}: YOLOv8n-seg (nano variant, (\sim)3.2M parameters) trained for 50 epochs with image size 640, batch size 16.
+  \textbf{Model}: YOLOv8n-seg (nano variant, ($\sim$3.2M parameters)) trained for 50 epochs with image size 640, batch size 16.
 \item
-  \textbf{Output}: Instance masks and bounding boxes for each detected colony, along with a confidence score (p \in [0,1]).
+  \textbf{Output}: Instance masks and bounding boxes for each detected colony, along with a confidence score (\(p \in [0,1]\)).
 \end{itemize}
 
 YOLO segmentation inherits the train/test split of the underlying labeled dataset, enabling downstream cross-validation experiments where segmentation quality can be assessed per fold.
@@ -89,9 +89,9 @@ YOLO segmentation inherits the train/test split of the underlying labeled datase
 
 \subsubsection{Feature Extraction and Embedding}\label{feature-extraction-and-embedding}
 
-Each segmented colony image is passed through a feature extractor (f\_\theta: \mathbb{R}\^{}\{256 \times 256 \times 3\} \to \mathbb{R}\^{}d) that maps the image to a high-dimensional embedding vector. All extracted features are L2-normalized to unit length for cosine similarity comparison:
+Each segmented colony image is passed through a feature extractor (\(f_\theta: \mathbb{R}^{256 \times 256 \times 3} \to \mathbb{R}^{d}\)) that maps the image to a high-dimensional embedding vector. All extracted features are L2-normalized to unit length for cosine similarity comparison:
 
-{[} \mathbf{v} = \frac{f_\theta(\mathbf{x})}{\|f_\theta(\mathbf{x})\|_2} {]}
+\[ \mathbf{v} = \frac{f_\theta(\mathbf{x})}{\|f_\theta(\mathbf{x})\|_2} \]
 
 \textbf{Hand-Crafted Extractors:}
 
@@ -132,7 +132,7 @@ HS+ResNet50 (Hybrid) & -- & 2,112 & 72\% & -- \\
 \end{tabular}
 \end{table}
 
-The hybrid HS+ResNet50 extractor concatenates ColorHistHS (64-dim) and ResNet50 (2,048-dim) features, with HS weighted 3.0(\times) before concatenation to balance the contribution of color and texture modalities.
+The hybrid HS+ResNet50 extractor concatenates ColorHistHS (64-dim) and ResNet50 (2,048-dim) features, with HS weighted 3.0($\times$) before concatenation to balance the contribution of color and texture modalities.
 
 \textbf{Fine-Tuning Methodology:}
 
@@ -180,11 +180,11 @@ EfficientNetB1 & \(\sim\)2 h & 83.3\% & 35 \\
 
 \textbf{Alternative: Triplet Loss Training:}
 
-A contrastive training approach using triplet margin loss was explored as a theoretically better fit for retrieval tasks. For each anchor image (\mathbf{x}\_a), a positive (\mathbf{x}\_p) (same species) and negative (\mathbf{x}\_n) (different species) form a triplet. The loss optimizes:
+A contrastive training approach using triplet margin loss was explored as a theoretically better fit for retrieval tasks. For each anchor image \(\mathbf{x}_a\), a positive \(\mathbf{x}_p\) (same species) and negative \(\mathbf{x}_n\) (different species) form a triplet. The loss optimizes:
 
-{[} \mathcal{L}\_\{\text{triplet}\} = \max\left(0,; \textbar f(\mathbf{x}\_a) - f(\mathbf{x}\_p)\textbar\_2 - \textbar f(\mathbf{x}\_a) - f(\mathbf{x}\_n)\textbar\_2 + \alpha\right) {]}
+\[ \mathcal{L}_{\text{triplet}} = \max\left(0, \| f(\mathbf{x}_a) - f(\mathbf{x}_p) \|_2 - \| f(\mathbf{x}_a) - f(\mathbf{x}_n) \|_2 + \alpha \right) \]
 
-with margin (\alpha = 1.0) and embedding dimension (d = 128).
+with margin \(\alpha = 1.0\) and embedding dimension \(d = 128\).
 
 \textbf{Result:} Triplet loss achieved only 64.3\% accuracy, a 19\% drop from cross-entropy fine-tuning. Analysis identified several causes:
 
@@ -202,41 +202,41 @@ The cross-entropy fine-tuning approach was therefore selected as the production 
 All 1,305 segmented colony images from training strains are embedded and indexed in a Qdrant vector database. The database supports cosine similarity search with dynamic metadata filtering:
 
 \begin{itemize}
-\item \textbf{Collections:} `myco_fungi_features_full` (pretrained) and `myco_fungi_features_full_finetuned` (fine-tuned).
+\item \textbf{Collections:} \texttt{myco\_fungi\_features\_full} (pretrained) and \texttt{myco\_fungi\_features\_full\_finetuned} (fine-tuned).
 \item \textbf{Payload:} Strain ID, species label, growth medium, camera angle (ob/reverse), segment index.
 \item \textbf{Multi-vector support:} Each image point can store vectors from multiple extractors simultaneously (ResNet50, EfficientNetB1, etc.).
 \item \textbf{Dynamic filtering:} During evaluation, vectors belonging to the query strain are excluded to prevent data leakage ("sibling filtering").
 \end{itemize}
 
-For a query image (\mathbf{x}\_q) with feature (\mathbf{v}\_q), retrieval returns the top-(k) nearest neighbors:
+For a query image \(\mathbf{x}_q\) with feature \(\mathbf{v}_q\), retrieval returns the top-\(k\) nearest neighbors:
 
-{[} \mathcal{N}\_k(\mathbf{v}\_q) = \underset{\mathbf{v} \in \mathcal{D} \setminus \mathcal{D}_{\text{strain}}}{\text{argmax}^{(k)}} ;\frac{\mathbf{v}_q \cdot \mathbf{v}}{\|\mathbf{v}_q\| \cdot \|\mathbf{v}\|} {]}
+\[ \mathcal{N}_k(\mathbf{v}_q) = \underset{\mathbf{v} \in \mathcal{D} \setminus \mathcal{D}_{\text{strain}}}{\text{argmax}^{(k)}} \frac{\mathbf{v}_q \cdot \mathbf{v}}{\|\mathbf{v}_q\| \cdot \|\mathbf{v}\|} \]
 
-where (\mathcal{D}) is the full database and (\mathcal{D}\_\{\text{strain}\}) is the subset of vectors from the test strain.
+where $\mathcal{D}$ is the full database and $\mathcal{D}_{\text{strain}}$ is the subset of vectors from the test strain.
 
 \subsubsection{Aggregation Strategy}\label{aggregation-strategy}
 
-A single strain produces multiple query segments (typically 18 segments: 3 colonies (\times) 2 angles (\times) 3 media conditions). Each segment independently retrieves (k) neighbors. Aggregation combines these results for a single strain-level prediction.
+A single strain produces multiple query segments (typically 18 segments: 3 colonies $\times$ 2 angles $\times$ 3 media conditions). Each segment independently retrieves (k) neighbors. Aggregation combines these results for a single strain-level prediction.
 
 Let the strain produce (m) query segments, and let the (i)-th segment retrieve (k) neighbors with species labels (c\_\{i,1\}, \ldots, c\_\{i,k\}) and similarity scores (s\_\{i,1\}, \ldots, s\_\{i,k\}).
 
 \textbf{Weighted Aggregation (default):} For each candidate species (c),
 
-{[} S\_c\^{}\{\text{weighted}\} = \frac{\sum_{i=1}^{m} \sum_{j=1}^{k} s_{i,j} \cdot \mathbf{1}[c_{i,j} = c]}{\sum_{i=1}^{m} \sum_{j=1}^{k} \mathbf{1}[c_{i,j} = c]} {]}
+\[ S_c^{\text{weighted}} = \frac{\sum_{i=1}^{m} \sum_{j=1}^{k} s_{i,j} \cdot \mathbf{1}[c_{i,j} = c]}{\sum_{i=1}^{m} \sum_{j=1}^{k} \mathbf{1}[c_{i,j} = c]} \]
 
 This normalizes for species that may appear frequently but with low similarity (e.g., common but visually dissimilar species).
 
 \textbf{Uniform Aggregation:} Simple voting counts occurrences:
 
-{[} S\_c\^{}\{\text{uni}\} = \frac{1}{m \cdot k} \sum\emph{\{i=1\}\^{}\{m\} \sum}\{j=1\}\^{}\{k\} \mathbf{1}{[}c\_\{i,j\} = c{]} {]}
+\[ S_c^{\text{uni}} = \frac{1}{m \cdot k} \sum_{i=1}^{m} \sum_{j=1}^{k} \mathbf{1}[c_{i,j} = c] \]
 
 The weighted strategy is more robust to outliers and is used as the default.
 
 The final predicted species is:
 
-{[} \hat{c} = \underset{c}{\arg\max}; S\_c {]}
+\[ \hat{c} = \underset{c}{\arg\max} \; S_c \]
 
-with confidence (\text{conf}(\hat{c}) = S\_\{\hat{c}\}).
+with confidence $\text{conf}(\hat{c}) = S_{\hat{c}}$.
 
 \subsubsection{Environment Selection Strategies}\label{environment-selection-strategies}
 
@@ -263,7 +263,7 @@ E4 (Leave-One-Out) & All media & All except one medium & Test generalization wit
 
 Multiple feature extractors can be combined via weighted score fusion. Given extractors (f\_1, f\_2, \ldots, f\_n) with per-extractor scores (S\_c\^{}\{(t)\}) and weights (w\_t):
 
-{[} S\_c\^{}\{\text{ensemble}\} = \sum\_\{t=1\}\^{}\{n\} w\_t \cdot S\_c\^{}\{(t)\} {]}
+\[ S_c^{\text{ensemble}} = \sum_{t=1}^{n} w_t \cdot S_c^{(t)} \]
 
 Analysis of complementary cases (where one extractor succeeds but another fails) informs weight tuning. For instance, EfficientNetB1 excels at texture discrimination while ColorHistHS captures color profiles critical for separating \textit{P. tricolor} (greenish) from \textit{P. viridicatum}.
 
@@ -343,7 +343,7 @@ The staircase chart (Figure\textasciitilde{}\ref{fig:staircase}) plots experimen
 \begin{figure}
 \centering
 \includegraphics[width=\textwidth,keepaspectratio]{figures/staircase_retrieval.png}
-\caption{Staircase Chart}
+\caption{Staircase Chart}\label{fig:staircase}
 \end{figure}
 
 \subsubsection{Overall Performance Comparison}\label{overall-performance-comparison}
@@ -384,9 +384,9 @@ Key insights:
 
 A 5-fold strain-level cross-validation experiment was conducted to assess stability and sensitivity to hyperparameters. Fixed extractor: EfficientNetB1 (Fine-tuned). Factors:
 
-{[} \text{Folds} = 5,\quad \text{Env strategies} = 2~(\text{E1, E2}),\quad \text{Agg strategies} = 2~(\text{weighted, uni}),\quad K = \{3, 5, 7, 9, 11\} {]}
+\[ \text{Folds} = 5,\quad \text{Env strategies} = 2\ (\text{E1, E2}),\quad \text{Agg strategies} = 2\ (\text{weighted, uni}),\quad K = \{3, 5, 7, 9, 11\} \]
 
-Total: (5 \times 2 \times 2 \times 5 = 100) runs.
+Total: \(5 \times 2 \times 2 \times 5 = 100\) runs.
 
 \begin{figure}
 \centering
@@ -397,7 +397,7 @@ Total: (5 \times 2 \times 2 \times 5 = 100) runs.
 \begin{table}[h]
 \centering
 \caption{Cross-validation top configurations}
-\begin{tabular}{@{}lccrrr@{}}
+\begin{tabular}{@{}lccrrrr@{}}
 \toprule
 \textbf{Env} & \textbf{Agg} & \textbf{K} & \textbf{Mean Acc.} & \textbf{Std} & \textbf{Min} & \textbf{Max} \\
 \midrule
@@ -430,7 +430,7 @@ The fold variance box plot shows accuracy distributions for each configuration. 
 \begin{figure}
 \centering
 \includegraphics[width=\textwidth,keepaspectratio]{figures/heatmap_env_strategy_k.png}
-\caption{Heatmap: env (\times) strategy vs K}
+\caption{Heatmap: env ($\times$) strategy vs K}
 \end{figure}
 
 \begin{figure}
@@ -457,7 +457,7 @@ To understand feature quality, the 2,048-dimensional feature space from fine-tun
 
 \begin{table}[h]
 \centering
-\caption{Per-species accuracy — EfficientNetB1 (Fine-tuned)}
+\caption{Per-species accuracy --- EfficientNetB1 (Fine-tuned)}
 \begin{tabular}{@{}lccc@{}}
 \toprule
 \textbf{Species} & \textbf{Test Sets} & \textbf{Correct} & \textbf{Accuracy} \\
@@ -491,7 +491,7 @@ Recurring confusion patterns:
 
 \subsubsection{Prediction Examples}\label{prediction-examples}
 
-Visualizations show the query colony image (left) alongside its top-7 retrieved neighbors with similarity scores. Successful predictions ((\text{accuracy} \geq 83\%)) show high confidence ((\geq 0.30)) and visually consistent neighbors. Failed predictions show lower confidence (0.15--0.25) and mixed species among retrieved neighbors.
+Visualizations show the query colony image (left) alongside its top-7 retrieved neighbors with similarity scores. Successful predictions (\(\text{accuracy} \geq 83\%\)) show high confidence (\(\geq 0.30\)) and visually consistent neighbors. Failed predictions show lower confidence (0.15--0.25) and mixed species among retrieved neighbors.
 
 \begin{figure}[h]
 \centering
@@ -508,11 +508,11 @@ The results demonstrate that a retrieval-based classification system with fine-t
 
 \textbf{Environment-invariant learning emerges naturally.} The t-SNE analysis confirms that fine-tuned models ignore growth medium variations, a critical requirement for real-world deployment where a query strain may be cultivated on any medium. This justifies the E1 (all environments) training strategy.
 
-\textbf{Efficient architectures are competitive.} MobileNetV2 matches ResNet50 with 7(\times) fewer parameters, making it suitable for edge deployment. EfficientNetB1 provides the best accuracy at a reasonable computational cost.
+\textbf{Efficient architectures are competitive.} MobileNetV2 matches ResNet50 with 7($\times$) fewer parameters, making it suitable for edge deployment. EfficientNetB1 provides the best accuracy at a reasonable computational cost.
 
 \textbf{The triplet loss result is a valuable negative finding.} Despite theoretical alignment with retrieval tasks, triplet loss severely underperformed (64.3\% vs.~83.3\%). This aligns with literature: triplet loss requires very large datasets and hard negative mining, neither of which was feasible with 1,011 training samples.
 
-\textbf{Challenging species remain.} \textit{P. melanoconidium} at 50\% accuracy is the primary bottleneck. Potential solutions include collecting additional strains, implementing hard negative mining, or using a two-stage classifier (genus (\to) species).
+\textbf{Challenging species remain.} \textit{P. melanoconidium} at 50\% accuracy is the primary bottleneck. Potential solutions include collecting additional strains, implementing hard negative mining, or using a two-stage classifier (genus \(\to\) species).
 
 \textbf{Segmentation quality matters.} The K-Means Local K=2 Shrink innovation successfully mitigates agar flare on most images, but plates with extreme lighting remain problematic. Future work could integrate the YOLO-based segmentation with larger manually labeled datasets.
 

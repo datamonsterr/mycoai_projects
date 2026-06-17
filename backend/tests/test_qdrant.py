@@ -143,6 +143,58 @@ def test_aggregate_uni() -> None:
     assert result.top_species in ("spA", "spB")
 
 
+def test_aggregate_relative() -> None:
+    """relative: score share = species_scores[X] / sum(all scores). Sum to 1."""
+    strain_to_specy = {}
+    raw = [
+        {
+            "neighbors": [
+                {"specy": "spA", "score": 0.9},
+                {"specy": "spA", "score": 0.8},
+                {"specy": "spB", "score": 0.3},
+            ]
+        },
+        {
+            "neighbors": [
+                {"specy": "spA", "score": 0.7},
+                {"specy": "spB", "score": 0.2},
+            ]
+        },
+    ]
+    result = aggregate_predictions(raw, strain_to_specy, k=11, strategy="relative")
+    assert result.top_species == "spA"
+    total_share = sum(e.score for e in result.ranking)
+    assert 0.99 <= total_share <= 1.01
+
+
+def test_aggregate_freq_strength() -> None:
+    """freq_strength: (queries_with_X / M) * (avg_score_X). Per-species independent."""
+    strain_to_specy = {}
+    raw = [
+        {
+            "neighbors": [
+                {"specy": "spA", "score": 0.9},
+                {"specy": "spA", "score": 0.8},
+                {"specy": "spB", "score": 0.3},
+            ]
+        },
+        {
+            "neighbors": [
+                {"specy": "spA", "score": 0.7},
+                {"specy": "spB", "score": 0.2},
+            ]
+        },
+    ]
+    result = aggregate_predictions(raw, strain_to_specy, k=11, strategy="freq_strength")
+    spA_entry = next((e for e in result.ranking if e.species == "spA"), None)
+    spB_entry = next((e for e in result.ranking if e.species == "spB"), None)
+    assert spA_entry is not None
+    assert spB_entry is not None
+    assert spA_entry.score > spB_entry.score
+    assert 0.0 < spA_entry.score <= 1.0
+    assert 0.0 < spB_entry.score <= 1.0
+
+
 def test_aggregate_empty() -> None:
     result = aggregate_predictions([], {}, k=11, strategy="weighted")
     assert result.top_species == "unknown"

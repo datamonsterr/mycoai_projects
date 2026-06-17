@@ -17,7 +17,7 @@ The primary dataset consists of 435 high-resolution photographs of fungal coloni
 The data hierarchy follows the natural biological organization:
 
 \begin{verbatim}
-Species → Strain → Growth Medium → Image (oblique / reverse)
+Species $ightarrow$ Strain $ightarrow$ Growth Medium $ightarrow$ Image (oblique / reverse)
 \end{verbatim}
 
 \begin{itemize}
@@ -55,15 +55,15 @@ To understand the dataset's composition and identify challenges for machine lear
 
 \includegraphics[width=\textwidth,keepaspectratio]{figures/eda_species_distribution.png} \emph{Figure 1.3: Number of original dish images per species in the curated dataset.}
 
-\textbf{Strain-level distribution.} Figure 1.4 breaks down the data at the strain level, colored by species. Most strains have exactly 14 images (7 media × 2 angles), with minor variations due to contaminated samples or missing captures. The per-strain consistency is a deliberate experimental design choice, ensuring that each strain contributes comparable evidence for both reference indexing and evaluation.
+\textbf{Strain-level distribution.} Figure 1.4 breaks down the data at the strain level, colored by species. Most strains have exactly 14 images (7 media $\times$ 2 angles), with minor variations due to contaminated samples or missing captures. The per-strain consistency is a deliberate experimental design choice, ensuring that each strain contributes comparable evidence for both reference indexing and evaluation.
 
-\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_strain_distribution.png} \emph{Figure 1.4: Images per strain, colored by species. Most strains contribute 14 images (7 media × 2 angles).}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_strain_distribution.png} \emph{Figure 1.4: Images per strain, colored by species. Most strains contribute 14 images (7 media $\times$ 2 angles).}
 
 \textbf{Growth media coverage.} Figure 1.5 shows that images are evenly distributed across the seven growth media, with each medium contributing between 60 and 64 images. This balanced coverage is important because colony appearance can vary dramatically across media---a species that looks distinctive on CYA may appear nearly identical to another species on DG18. The system must learn features that are robust to these media-induced variations.
 
 \includegraphics[width=\textwidth,keepaspectratio]{figures/eda_media_distribution.png} \emph{Figure 1.5: Distribution of images across seven growth media.}
 
-\textbf{Media × species interaction.} Figure 1.6 provides a heatmap of image counts per species per medium. The near-uniform cell values confirm that the dataset is well-balanced across media for most species. \emph{P. polonicum} has slightly more images per medium due to having more strains. This balanced design means that species-level evaluation is not confounded by unequal media representation.
+\textbf{Media $\times$ species interaction.} Figure 1.6 provides a heatmap of image counts per species per medium. The near-uniform cell values confirm that the dataset is well-balanced across media for most species. \emph{P. polonicum} has slightly more images per medium due to having more strains. This balanced design means that species-level evaluation is not confounded by unequal media representation.
 
 \includegraphics[width=\textwidth,keepaspectratio]{figures/eda_media_species_heatmap.png} \emph{Figure 1.6: Heatmap showing the number of images per species per growth medium.}
 

@@ -1,3 +1,3 @@
 #!/bin/bash
-LATEX_DIR="/home/dat/dev/mycoai_projects/docs/graduation_report/latex"
-docker run --rm -v "$LATEX_DIR":/workdir -w /workdir texlive/texlive:latest bash -c "pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex"
+# Legacy wrapper — delegates to the lightweight render.sh (no Docker)
+exec "$(dirname "$0")/render.sh" --output "$(dirname "$0")/../graduation_report.pdf" "$@"

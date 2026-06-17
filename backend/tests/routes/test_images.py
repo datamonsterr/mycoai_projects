@@ -328,5 +328,5 @@ def test_list_images_presigned_url_with_s3_storage(
     matches = [item for item in data["items"] if item["id"] == image_id]
     assert len(matches) == 1, f"Expected 1 match for {image_id}, got {len(matches)}. Items: {[(i['id'][:8], i.get('source_url','')) for i in data['items']]}"
     item = matches[0]
-    assert item["source_url"].startswith("http://minio:9000/"), f"Got source_url: {item['source_url']}"
+    assert item["source_url"].startswith("/minio/"), f"Got source_url: {item['source_url']}"
     assert "/source.jpg" in item["source_url"]
