@@ -8,11 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.dependencies import CurrentUser
-from ..core.exceptions import NotFoundError, ValidationError
+from ..core.exceptions import NotFoundError
 from ..database import get_db
-from ..models import Image, Segment, RetrievalJob, RetrievalNeighbor, RetrievalResult
+from ..models import Image, RetrievalJob, RetrievalNeighbor, RetrievalResult, Segment
 from ..qdrant.aggregation import aggregate_predictions
-from ..qdrant.client import get_qdrant_client, get_collection_name
+from ..qdrant.client import get_collection_name, get_qdrant_client
 from ..qdrant.models import FilterSpec, NeighborResult, QueryResult
 from ..qdrant.operations import query_points_by_id
 from ..repos.strain import StrainRepository
@@ -21,7 +21,7 @@ from ..schemas import (
     RetrievalQueryRequest,
     RetrievalResultsResponse,
 )
-from ..services.stores import new_id, utcnow
+from ..services.stores import utcnow
 
 router = APIRouter()
 
@@ -29,11 +29,13 @@ router = APIRouter()
 def _parse_uuid(value: str, resource: str = "Resource") -> uuid.UUID:
     try:
         return uuid.UUID(value)
-    except (ValueError, AttributeError):
-        raise NotFoundError(f"{resource} '{value}' not found")
+    except (ValueError, AttributeError) as err:
+        raise NotFoundError(f"{resource} '{value}' not found") from err
 
 
-def _strain_to_species_map(db_neighbors: list, strain_repo: StrainRepository) -> dict[str, str]:
+def _strain_to_species_map(
+    db_neighbors: list, strain_repo: StrainRepository
+) -> dict[str, str]:
     strain_names = {n.get("strain") for n in db_neighbors if n.get("strain")}
     return {s: s for s in strain_names if s}
 
@@ -146,7 +148,11 @@ async def start_query(
             job.status = "completed"
             job.completed_at = utcnow()
             await db.flush()
-            return {"job_id": str(job.id), "status": "completed", "estimated_seconds": 0}
+            return {
+                "job_id": str(job.id),
+                "status": "completed",
+                "estimated_seconds": 0,
+            }
 
         strain_map = _strain_to_species_map(
             [{"strain": n.strain} for n in all_neighbors],

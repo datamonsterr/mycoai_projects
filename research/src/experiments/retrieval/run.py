@@ -105,8 +105,8 @@ def get_all_images_for_strain(
                     "strain": payload.get("strain"),
                     "environment": payload.get("environment"),
                     "angle": payload.get("angle"),
-                    "specy": payload.get("specy"),
-                    "parent_id": payload.get("parent_id"),
+                    "specy": payload.get("specy") or payload.get("species"),
+                    "parent_id": payload.get("parent_id") or payload.get("parent_item_id"),
                     "segment_index": payload.get("segment_index"),
                     "bbox": payload.get("bbox"),
                 }
@@ -120,9 +120,11 @@ def get_all_images_for_strain(
 
 
 def filter_siblings(
-    neighbors: List[Dict[str, Any]], query_parent_id: str
+    neighbors: List[Dict[str, Any]], query_parent_id: Optional[str]
 ) -> List[Dict[str, Any]]:
     """Remove neighbors from the same parent image as the query segment."""
+    if query_parent_id is None:
+        return neighbors
     return [n for n in neighbors if n.get("parent_id") != query_parent_id]
 
 
@@ -133,14 +135,62 @@ def aggregate_predictions(
     min_samples: Optional[int] = None,
     strategy: str = "weighted",
 ) -> List[Tuple[str, float]]:
-    """Aggregate per-segment neighbors into strain-level species ranking."""
-    del k
+    """Aggregate per-segment neighbors into strain-level species ranking.
+
+    Strategies
+    ----------
+    weighted (default)
+        ``scores[X] / total_known_neighbors`` — fraction of total neighbor
+        score-mass belonging to species X.  Susceptible to dilution when
+        similar species split the neighbor pool (values rarely exceed 0.5).
+
+    uni
+        ``count[X] / total_known_neighbors`` — fraction of neighbor *counts*
+        belonging to species X (ignore similarity magnitudes).
+
+    relative
+        ``scores[X] / Σ scores[all]`` — each species gets its share of
+        the *total* raw-evidence sum.  Top species → 1.0 when it dominates;
+        all scores naturally sum to 1.  **Recommended** when you need the
+        ranking score to reflect confidence relative to alternatives.
+
+    per_species_avg
+        ``scores[X] / count[X]`` — mean cosine similarity for species X
+        (natural 0‑1 range).  High-confidence single-hit species can reach
+        scores near 1.0, but a single outlier neighbor can inflate the
+        score of a rare species.
+
+    max_score
+        ``max(neighbor.score for neighbor of species X)`` — single best
+        match (natural 0‑1).  Ignores prevalence across the neighbor set.
+
+    perquery_avg
+        Per query image: ``sum_scores_for_X_in_query / K``, then
+        arithmetic mean across all query images.  Equivalent to *weighted*
+        when every neighbor maps to a known species, but differs when
+        unknown neighbors are present (this strategy always divides by K,
+        not by the count of known neighbors).
+
+    perquery_norm_avg
+        For each query image, normalize intra-query per-species scores so
+        they sum to 1 (soft allocation), then compute the arithmetic mean
+        across query images.  Treats every query as an equal "voter".
+        Natural 0‑1 range.
+
+    freq_strength
+        Independent per-species score (does NOT sum to 1 across species).
+        ``(queries_with_X / M) * (scores[X] / count[X])`` — how often the
+        species appears across query images, multiplied by its average
+        match strength.  Both factors are in [0, 1], product is in [0, 1].
+        Favours species that appear consistently AND match strongly.
+    """
     del min_samples
 
     species_scores: Counter[str] = Counter()
     species_counts: Counter[str] = Counter()
+    queries_with_species: Dict[str, set] = {}
 
-    for result in all_results:
+    for qi, result in enumerate(all_results):
         neighbors = result["neighbors"]
         for neighbor in neighbors:
             specy = neighbor.get("specy")
@@ -154,18 +204,84 @@ def aggregate_predictions(
             if specy and specy != "unknown":
                 species_scores[specy] += score
                 species_counts[specy] += 1
+                if specy not in queries_with_species:
+                    queries_with_species[specy] = set()
+                queries_with_species[specy].add(qi)
 
     aggregated: List[Tuple[str, float]] = []
     total_neighbors = sum(species_counts.values())
+    total_scores = sum(species_scores.values())
+
+    # ── per-query helpers ──────────────────────────────────────────
+    per_query_species: Dict[int, Dict[str, float]] = {}
+    per_query_total: Dict[int, float] = {}
+    for qi, result in enumerate(all_results):
+        qmap: Dict[str, float] = {}
+        for neighbor in result["neighbors"]:
+            specy = neighbor.get("specy")
+            score = neighbor.get("score", 0.0)
+            if not specy or specy == "unknown":
+                strain = neighbor.get("strain")
+                if strain:
+                    specy = strain_to_specy.get(strain, "unknown")
+            if specy and specy != "unknown":
+                qmap[specy] = qmap.get(specy, 0.0) + score
+        per_query_species[qi] = qmap
+        qt = sum(qmap.values())
+        per_query_total[qi] = qt if qt > 0 else 1.0
+
+    num_queries = len(all_results)
 
     for specy, total_score in species_scores.items():
+        count = species_counts.get(specy, 0)
+
         if strategy == "weighted":
             final_score = total_score / total_neighbors if total_neighbors > 0 else 0.0
+
         elif strategy == "uni":
-            count = species_counts[specy]
             final_score = count / total_neighbors if total_neighbors > 0 else 0.0
+
+        elif strategy == "relative":
+            final_score = total_score / total_scores if total_scores > 0 else 0.0
+
+        elif strategy == "per_species_avg":
+            final_score = total_score / count if count > 0 else 0.0
+
+        elif strategy == "max_score":
+            best = 0.0
+            for result in all_results:
+                for neighbor in result["neighbors"]:
+                    nb_specy = neighbor.get("specy")
+                    if not nb_specy or nb_specy == "unknown":
+                        nb_strain = neighbor.get("strain")
+                        if nb_strain:
+                            nb_specy = strain_to_specy.get(nb_strain, "unknown")
+                    if nb_specy == specy:
+                        best = max(best, neighbor.get("score", 0.0))
+            final_score = best
+
+        elif strategy == "perquery_avg":
+            accum = 0.0
+            for qi in range(num_queries):
+                qs = per_query_species[qi].get(specy, 0.0)
+                accum += qs / k
+            final_score = accum / num_queries if num_queries > 0 else 0.0
+
+        elif strategy == "freq_strength":
+            freq = len(queries_with_species.get(specy, set())) / num_queries if num_queries > 0 else 0.0
+            strength = total_score / count if count > 0 else 0.0
+            final_score = freq * strength
+
+        elif strategy == "perquery_norm_avg":
+            accum = 0.0
+            for qi in range(num_queries):
+                qs = per_query_species[qi].get(specy, 0.0)
+                accum += qs / per_query_total[qi]
+            final_score = accum / num_queries if num_queries > 0 else 0.0
+
         else:
             final_score = float(total_score)
+
         aggregated.append((specy, final_score))
 
     aggregated.sort(key=lambda x: x[1], reverse=True)
@@ -964,7 +1080,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     comprehensive.add_argument("--env_strategies", nargs="+", default=["E1", "E2"])
     comprehensive.add_argument(
-        "--agg_strategies", nargs="+", default=["weighted", "uni"]
+        "--agg_strategies",
+        nargs="+",
+        default=["weighted", "uni", "relative", "per_species_avg", "max_score", "perquery_norm_avg"],
     )
     comprehensive.add_argument("--k", type=int, default=5)
     comprehensive.add_argument("--max_visualizations", type=int, default=20)
