@@ -543,7 +543,7 @@ class ResNet50FinetunedExtractor(ResNet50Extractor):
     ):
         super().__init__(weights_path=weights_path)
         # Override name to match the vector name in Qdrant
-        self.name = "ResNet50_finetuned"
+        self.name = "resnet50_finetuned"
 
 
 class MobileNetV2FinetunedExtractor(MobileNetV2Extractor):
@@ -554,8 +554,7 @@ class MobileNetV2FinetunedExtractor(MobileNetV2Extractor):
         weights_path: Optional[str] = str(WEIGHTS_DIR / "MobileNetV2_finetuned.pth"),
     ):
         super().__init__(weights_path=weights_path)
-        # Override name to match the vector name in Qdrant
-        self.name = "MobileNetV2_finetuned"
+        self.name = "mobilenetv2_finetuned"
 
 
 class EfficientNetB1FinetunedExtractor(EfficientNetB1Extractor):
@@ -567,7 +566,7 @@ class EfficientNetB1FinetunedExtractor(EfficientNetB1Extractor):
     ):
         super().__init__(weights_path=weights_path)
         # Override name to match the vector name in Qdrant
-        self.name = "EfficientNetB1_finetuned"
+        self.name = "efficientnetb1_finetuned"
 
 
 class EfficientNetB1TripletExtractor(EfficientNetB1Extractor):

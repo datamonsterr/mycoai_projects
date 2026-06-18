@@ -390,7 +390,7 @@ function ResultDetail({
   strain: string
   images: StrainImage[]
   knnK: number
-  aggMethod: 'weighted' | 'uni'
+  aggMethod: 'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'
   rankings?: RetrievalRanking[]
   topNeighbors?: RetrievalNeighbor[]
 }) {
@@ -461,7 +461,7 @@ export default function RetrievePage() {
   const [activeStrain, setActiveStrain] = useState(0)
   const [detailStrain, setDetailStrain] = useState(0)
   const [knnK, setKnnK] = useState(5)
-  const [aggMethod, setAggMethod] = useState<'weighted' | 'uni'>('weighted')
+  const [aggMethod, setAggMethod] = useState<'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'>('freq_strength')
   const [strains, setStrains] = useState<StrainDraft[]>([{ strain: '', images: [] }])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingStrainIndex = useRef(0)
@@ -1016,6 +1016,12 @@ export default function RetrievePage() {
               >
                 uni
               </button>
+              <button
+                onClick={() => setAggMethod('freq_strength')}
+                className={`rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${aggMethod === 'freq_strength' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`}
+              >
+                freq_strength
+              </button>
             </div>
           </div>
           {isBatch ? (
@@ -1060,7 +1066,7 @@ export default function RetrievePage() {
                 {
                   image_id: queryImageId,
                   k: knnK,
-                  aggregation: aggMethod === 'weighted' ? 'weighted' : 'uni',
+                  aggregation: aggMethod,
                   environment_strategy: 'mean',
                 },
                 {
