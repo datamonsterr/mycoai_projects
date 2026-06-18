@@ -216,38 +216,14 @@ def _aggregate_predictions(
     k: int,
     strategy: str = "weighted",
 ) -> List[Tuple[str, float]]:
-    """Aggregate per-segment neighbours into species ranking."""
-    from collections import Counter
+    """Aggregate per-segment neighbours into species ranking.
 
-    species_scores = Counter()
-    species_counts = Counter()
+    Delegates to the canonical implementation in
+    ``src.experiments.retrieval.run``.
+    """
+    from src.experiments.retrieval.run import aggregate_predictions
 
-    for result in raw_results:
-        for neighbor in result["neighbors"]:
-            specy = neighbor.get("specy")
-            score = neighbor.get("score", 0.0)
-            if not specy or specy == "unknown":
-                strain = neighbor.get("strain")
-                if strain:
-                    specy = strain_to_specy.get(strain, "unknown")
-            if specy and specy != "unknown":
-                species_scores[specy] += score
-                species_counts[specy] += 1
-
-    total_neighbors = sum(species_counts.values())
-    aggregated: List[Tuple[str, float]] = []
-    for specy, total_score in species_scores.items():
-        if strategy == "weighted":
-            final_score = total_score / total_neighbors if total_neighbors > 0 else 0.0
-        elif strategy == "uni":
-            count = species_counts[specy]
-            final_score = count / total_neighbors if total_neighbors > 0 else 0.0
-        else:
-            final_score = float(total_score)
-        aggregated.append((specy, final_score))
-
-    aggregated.sort(key=lambda x: x[1], reverse=True)
-    return aggregated
+    return aggregate_predictions(raw_results, strain_to_specy, k, strategy=strategy)
 
 
 def _collect_testset(
