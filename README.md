@@ -142,10 +142,16 @@ bash tools/workspace_bootstrap.sh prepare
 bash tools/workspace_bootstrap.sh smoke-check
 bash tools/workspace_bootstrap.sh recover --instance-id <vast-instance-id>
 
+mise run gdrive-auth
+mise run data-sync-down
+mise run data-sync-up
+
 uv run python tools/dataset_sync.py plan --direction import --remote mydrive:mycoai-dataset --scope curated_primary/sample
 uv run python tools/dataset_sync.py import --remote mydrive:mycoai-dataset --scope curated_primary/sample
 uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --scope prepared/segments
 ```
+
+The `mise` Google Drive tasks mirror repo-root `Dataset/`, `results/`, and `weights/` through `mydrive:mycoai-data`; override destination root with `MYCOAI_GDRIVE_REMOTE` when needed. On headless remote machines, run `rclone authorize "drive" "<client_id>" "<client_secret>"` on your local machine, export the returned JSON as `RCLONE_DRIVE_TOKEN`, then run `mise run gdrive-auth`.
 
 ## Vast.ai Remote Workspace Setup
 

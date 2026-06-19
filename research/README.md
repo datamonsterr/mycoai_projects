@@ -88,15 +88,16 @@ local SSH config.
 ### Preview and run dataset sync
 
 ```bash
+mise run gdrive-auth
+mise run data-sync-down
+mise run data-sync-up
+
 uv run python tools/dataset_sync.py plan --direction import --remote mydrive:mycoai-dataset --scope curated_primary/sample
 uv run python tools/dataset_sync.py import --remote mydrive:mycoai-dataset --scope curated_primary/sample
 uv run python tools/dataset_sync.py export --remote mydrive:mycoai-dataset --scope prepared/segments
 ```
 
-The sync CLI uses non-destructive `rclone copy` operations, expects credentials
-to live outside the repo, and writes summaries under `results/dataset_sync/`
-when run from the monorepo root. Run the `plan` command first to verify remote
-access and scope before starting an `import` or `export`.
+The `mise` sync tasks mirror repo-root `Dataset/`, `results/`, and `weights/` directories through Google Drive, while the dataset sync CLI keeps its non-destructive `rclone copy` behavior for scoped dataset transfers. Both flows expect credentials to live outside the repo and write summaries under `results/dataset_sync/` when the dataset CLI runs from the monorepo root. On headless remote machines, generate a token with local `rclone authorize`, export it as `RCLONE_DRIVE_TOKEN`, then run `mise run gdrive-auth`.
 
 ## Canonical Commands
 
