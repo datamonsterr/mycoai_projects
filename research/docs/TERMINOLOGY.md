@@ -10,7 +10,9 @@ This document defines the key terms, strategies, and concepts used throughout th
 A single fungal colony growing on a petri dish plate. A plate may contain **1–3 colonies** depending on the experimental setup. Each colony is photographed from two sides (obverse / reverse) and under various imaging conditions.
 
 ### Strain
-A specific fungal isolate (culture) used in experiments. Each strain belongs to exactly one species. Strains are identified by a unique identifier, e.g., `DTO 123-A1`. Strains are the **unit of test/train splitting** — in cross-validation, one strain per species is held out as the test set.
+A specific fungal isolate (culture) used in experiments. Each strain belongs to exactly one species. Strains are identified by a unique identifier, e.g., `DTO 123-A1`. Strains are the **unit of test/train splitting** — in cross-validation, evaluation is **leave-one-strain-out**: one held-out strain is tested at a time while all remaining strains stay in the training/reference pool for that fold.
+
+**Leakage rule:** a held-out test strain must never appear in the fine-tuning training set or in the retrieval candidate pool for the same benchmark fold.
 
 ### Species
 The taxonomic classification target. The project classifies **5 *Penicillium* species**:
@@ -22,8 +24,10 @@ The taxonomic classification target. The project classifies **5 *Penicillium* sp
 
 A species may have multiple strains.
 
-### Environment (Growth Medium)
-The growth medium used to culture the colony. Each strain is grown on multiple media, which act as independent "environments" that increase retrieval diversity. Common environments: `MEA`, `CYA`, `DG18`.
+### Media
+The growth medium used to culture the colony. Each strain is grown on multiple Media values, which increase retrieval diversity. Common Media: `MEA`, `CYA`, `DG18`.
+
+`environment` remains an internal code field and experiment label. User-facing docs should prefer `Media`.
 
 ### Plate / Petri Dish
 The physical container on which a colony grows. One plate typically contains one colony, photographed from two angles.
@@ -32,7 +36,7 @@ The physical container on which a colony grows. One plate typically contains one
 
 ## Environment Strategies (E1–E4)
 
-These strategies control **which environments are included in the candidate pool** when retrieving neighbours for a query image.
+These internal experiment strategies control **which Media values are included in the candidate pool** when retrieving neighbours for a query image.
 
 ### E1 — Same Environment (Default)
 > **Query images are matched only against neighbours from the same growth medium.**
@@ -108,21 +112,27 @@ Useful when similarity scores are unreliable or when you want to give rare speci
 ```
 Query Plate Image
   → Preprocess (crop petri dish)
-  → Segment (KMeans / Contour → 1–3 colonies)
-  → Feature Extraction (EfficientNetB1_finetuned, etc.)
+  → Segment (KMeans / Contour / YOLO, or full-image baseline)
+  → Feature Extraction (hand-crafted / pretrained / finetuned)
   → Qdrant KNN Retrieval (k neighbours)
-  → Filter siblings (exclude same-plate neighbours)
-  → Aggregate per-segment neighbours (weighted / uni)
-  → Species Ranking  ← FINAL OUTPUT
+  → Exclude held-out test strain from candidate pool
+  → Aggregate per-segment or per-image neighbours
+  → Species Ranking + Unknown Threshold + Evidence  ← FINAL OUTPUT
 ```
+
+**Benchmark rule:** evaluation queries must be processed fresh from image files. Do not benchmark by looking up a held-out query image already stored inside Qdrant.
 
 ---
 
 ## Train / Test Split
 
-**One strain per species is held out as the test set** (marked `Test=True` in `strain_to_specy.csv`). All other strains are in the training/candidate pool.
+Closed-set evaluation uses **leave-one-strain-out** testing. One held-out strain is evaluated at a time; all remaining strains are the allowed training/reference pool for that fold.
 
-In **cross-validation**, this is rotated round-robin across all strains of each species (5-fold by default).
+Open-set evaluation uses two separate tracks:
+- **Unseen-strain track** — known species, unseen held-out strains
+- **Unseen-species track** — species absent from the reference database
+
+In cross-validation, held-out strains rotate round-robin across all strains of each species.
 
 ---
 

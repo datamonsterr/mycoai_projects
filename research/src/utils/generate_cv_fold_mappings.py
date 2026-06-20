@@ -18,6 +18,7 @@ import pandas as pd
 
 from src.config import DATASET_ROOT, STRAIN_SPECIES_MAPPING_PATH
 from src.experiments.cross_validation.run import N_FOLDS, generate_cv_folds
+from src.utils.build_fold_manifests import write_fold_manifests
 
 
 def generate_fold_mapping_files(
@@ -70,7 +71,8 @@ def generate_fold_mapping_files(
 def main() -> None:
     print("Generating fold-specific strain mapping files...")
     generated = generate_fold_mapping_files()
-    print(f"Done. Generated {len(generated)} files.")
+    manifests = write_fold_manifests()
+    print(f"Done. Generated {len(generated)} mapping files and {len(manifests)} manifests.")
 
 
 if __name__ == "__main__":

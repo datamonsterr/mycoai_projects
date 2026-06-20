@@ -25,7 +25,7 @@ def test_start_query_image_not_found(client: TestClient, headers: dict[str, str]
             "image_id": _VALID_UUID,
             "k": 5,
             "aggregation": "weighted",
-            "environment_strategy": "E1",
+            "environment_strategy": "same_media",
         },
         headers=headers,
     )
@@ -48,8 +48,8 @@ def test_query_sync_image_not_found(client: TestClient, headers: dict[str, str])
         json={
             "image_id": _VALID_UUID,
             "k": 3,
-            "aggregation": "avg",
-            "environment_strategy": "E2",
+            "aggregation": "weighted",
+            "environment_strategy": "same_media",
         },
         headers=headers,
     )

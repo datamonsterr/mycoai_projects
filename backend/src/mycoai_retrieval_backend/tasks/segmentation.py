@@ -55,8 +55,7 @@ async def run(
         return {"error": f"Source file not found: {img.file_path}"}
 
     # Load strain/media for artifact path
-    strain_result = await db.execute(select(img.strain))
-    strain = strain_result.scalar_one_or_none()
+    strain = img.strain
     strain_name = strain.name if strain else "unknown"
 
     media_name = "unknown"

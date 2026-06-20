@@ -34,6 +34,7 @@ For experiment runners, the main result is the mean accuracy:
 from __future__ import annotations
 
 import csv
+import json
 import threading
 from collections import defaultdict
 from pathlib import Path
@@ -43,6 +44,7 @@ import pandas as pd
 from qdrant_client import QdrantClient
 
 from src.config import (
+    DATASET_ROOT,
     QDRANT_API_KEY,
     QDRANT_URL,
     STRAIN_SPECIES_MAPPING_PATH,
@@ -203,6 +205,51 @@ def _get_all_images_for_strain(
     return all_images
 
 
+def _load_prepared_segments_metadata(
+    metadata_path: Path = DATASET_ROOT / "prepared_segments_metadata.json",
+) -> Dict[str, Dict[str, Any]]:
+    if not metadata_path.exists():
+        return {}
+    payload = json.loads(metadata_path.read_text())
+    return {row["id"]: row for row in payload if row.get("id")}
+
+
+def _load_fold_manifest(
+    fold_idx: int,
+    strain: str,
+    folds_dir: Path = DATASET_ROOT / "folds",
+) -> Dict[str, Any]:
+    target = folds_dir / f"fold_{fold_idx}_{strain.replace(' ', '_')}.json"
+    if not target.exists():
+        raise FileNotFoundError(f"Fold manifest not found: {target}")
+    return json.loads(target.read_text())
+
+
+def _build_query_group_from_manifest(
+    segment_ids: List[str],
+    prepared_segments: Dict[str, Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    query_group: List[Dict[str, Any]] = []
+    for segment_id in segment_ids:
+        row = prepared_segments.get(segment_id)
+        if not row:
+            continue
+        data = row.get("data", {})
+        query_group.append(
+            {
+                "image_id": segment_id,
+                "image_path": str(DATASET_ROOT.parent / row["segment_path"])
+                if isinstance(row.get("segment_path"), str)
+                else None,
+                "parent_id": row.get("parent_id") or data.get("parent_id"),
+                "environment": data.get("environment", "unknown"),
+                "angle": data.get("angle", "unknown"),
+                "segment_index": row.get("index", 0),
+            }
+        )
+    return query_group
+
+
 def _filter_siblings(
     neighbors: List[Dict[str, Any]], query_parent_id: str
 ) -> List[Dict[str, Any]]:
@@ -327,13 +374,35 @@ def _predict_segment_group(
     strain_to_specy: Dict[str, str],
 ) -> Dict[str, Any]:
     """Predict species from a test segment group; returns per-result dict."""
-    from src.utils.qdrant_query import find_nearest_neighbors_by_id
+    from src.experiments.feature_extraction.feature_extractors import (
+        EfficientNetB1Extractor,
+        EfficientNetB1FinetunedExtractor,
+        MobileNetV2Extractor,
+        MobileNetV2FinetunedExtractor,
+        ResNet50Extractor,
+        ResNet50FinetunedExtractor,
+    )
+    from src.utils.qdrant_query import find_nearest_neighbors_by_id, find_nearest_neighbors_by_image
+
+    extractor_map = {
+        'efficientnetb1_finetuned': EfficientNetB1FinetunedExtractor,
+        'efficientnetb1': EfficientNetB1Extractor,
+        'resnet50_finetuned': ResNet50FinetunedExtractor,
+        'resnet50': ResNet50Extractor,
+        'mobilenetv2_finetuned': MobileNetV2FinetunedExtractor,
+        'mobilenetv2': MobileNetV2Extractor,
+    }
+    extractor_cls = extractor_map.get(extractor_name.lower())
+    if extractor_cls is None:
+        raise ValueError(f"Unknown extractor for fresh-query evaluation: {extractor_name}")
+    feature_extractor = extractor_cls()
 
     ground_truth = strain_to_specy.get(strain, "unknown")
     raw_results: List[Dict[str, Any]] = []
 
     for query_img in test_group:
         image_id = query_img["image_id"]
+        image_path = query_img.get("image_path")
         parent_id = query_img["parent_id"]
         img_env = query_img.get("environment", "unknown")
 
@@ -341,16 +410,28 @@ def _predict_segment_group(
             environment if environment and environment.lower() != "all" else None
         )
 
-        neighbors = find_nearest_neighbors_by_id(
-            client=client,
-            collection_name=collection_name,
-            query_image_id=image_id,
-            feature_type=extractor_name,
-            num_neighbors=k * 10,
-            environment=search_env,
-            exclude_self=True,
-            exclude_strain=strain,
-        )
+        if image_path:
+            neighbors = find_nearest_neighbors_by_image(
+                client=client,
+                collection_name=collection_name,
+                image_path=image_path,
+                extractor=feature_extractor,
+                feature_type=extractor_name,
+                num_neighbors=k * 10,
+                environment=search_env,
+                exclude_strain=strain,
+            )
+        else:
+            neighbors = find_nearest_neighbors_by_id(
+                client=client,
+                collection_name=collection_name,
+                query_image_id=image_id,
+                feature_type=extractor_name,
+                num_neighbors=k * 10,
+                environment=search_env,
+                exclude_self=True,
+                exclude_strain=strain,
+            )
         neighbors = _filter_siblings(neighbors, parent_id)
         neighbors = neighbors[:k]
         raw_results.append(
@@ -400,11 +481,21 @@ def _run_fold(
     Run one CV fold and return per-strain result dicts with correct/incorrect.
     """
     from src.experiments.feature_extraction.feature_extractors import (
+        EfficientNetB1Extractor,
         EfficientNetB1FinetunedExtractor,
+        MobileNetV2Extractor,
+        MobileNetV2FinetunedExtractor,
+        ResNet50Extractor,
+        ResNet50FinetunedExtractor,
     )
 
     extractor_map = {
         "efficientnetb1_finetuned": EfficientNetB1FinetunedExtractor,
+        "efficientnetb1": EfficientNetB1Extractor,
+        "resnet50_finetuned": ResNet50FinetunedExtractor,
+        "resnet50": ResNet50Extractor,
+        "mobilenetv2_finetuned": MobileNetV2FinetunedExtractor,
+        "mobilenetv2": MobileNetV2Extractor,
     }
     extractor_cls = extractor_map.get(extractor_key, EfficientNetB1FinetunedExtractor)
     extractor = extractor_cls()
@@ -417,13 +508,19 @@ def _run_fold(
     env_label = "E1" if environment is None else "E2"
     results: List[Dict[str, Any]] = []
 
+    prepared_segments = _load_prepared_segments_metadata()
     for species, strain in fold_strains.items():
-        test_sets = _collect_testset(
-            client=client,
-            collection_name=collection_name,
-            strain=strain,
-            environment=environment,
-        )
+        try:
+            manifest = _load_fold_manifest(fold_idx, strain)
+            query_group = _build_query_group_from_manifest(manifest.get("query_image_ids", []), prepared_segments)
+            test_sets = [query_group] if query_group else []
+        except FileNotFoundError:
+            test_sets = _collect_testset(
+                client=client,
+                collection_name=collection_name,
+                strain=strain,
+                environment=environment,
+            )
 
         for i, test_group in enumerate(test_sets):
             res = _predict_segment_group(

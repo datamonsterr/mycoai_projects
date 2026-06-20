@@ -20,6 +20,8 @@ from src.config import (
     INCOMING_SOURCE_DATASET_PATH,
     LETTER_RANGE_PATTERN,
     PREPARED_DATASET_DIR,
+    PREPARED_ITEMS_METADATA_PATH,
+    PREPARED_SEGMENTS_METADATA_PATH,
     SOURCE_COLLECTIONS,
     STRAIN_SPECIES_MAPPING_PATH,
     TARGET_SIZE,
@@ -412,12 +414,13 @@ def iter_source_images(source_collection: SourceCollection) -> list[Path]:
     return iter_curated_images(source_collection)
 
 
-def build_item_id(instance_info: InstanceInfo) -> str:
+def build_item_id(instance_info: InstanceInfo, source_filename: str) -> str:
     seed = "|".join([
         instance_info.species,
         instance_info.strain,
         instance_info.environment,
         instance_info.angle,
+        source_filename,
     ])
     return uuid.uuid5(uuid.NAMESPACE_URL, seed).hex
 
@@ -439,14 +442,9 @@ def build_artifact_root(
     prepared_root: Path,
     metadata: ParsedMetadata,
     image_stem: str,
+    item_id: str,
 ) -> Path:
-    return (
-        prepared_root
-        / slugify(metadata.species)
-        / slugify(metadata.strain)
-        / slugify(metadata.environment)
-        / image_stem
-    )
+    return build_leaf_dir(prepared_root, metadata) / f"{image_stem}-{item_id[:8]}"
 
 
 def _save_segment_crops(
@@ -526,6 +524,41 @@ def _build_pipeline_visualization(
     return np.hstack([src, prepared_image, bbox_image])
 
 
+def _write_prepared_metadata(item_records: list[DatasetItemRecord]) -> None:
+    with open(PREPARED_ITEMS_METADATA_PATH, "w") as handle:
+        json.dump([item.to_dict() for item in item_records], handle, indent=2)
+
+    segment_rows: list[dict[str, object]] = []
+    for item in item_records:
+        instance_info = asdict(item.instance_info)
+        for idx, seg_path in enumerate(item.paths.get("segments", [])):
+            seg_id = f"{item.item_id}_seg{idx}"
+            segment_rows.append(
+                {
+                    "id": seg_id,
+                    "item_id": item.item_id,
+                    "segment_id": seg_id,
+                    "segment_path": seg_path,
+                    "parent_id": item.item_id,
+                    "instance_info": instance_info,
+                    "data": {
+                        "species": item.instance_info.species,
+                        "specy": item.instance_info.species,
+                        "strain": item.instance_info.strain,
+                        "environment": item.instance_info.environment,
+                        "angle": item.instance_info.angle,
+                        "segment_path": seg_path,
+                        "parent_id": item.item_id,
+                    },
+                    "segmentation": item.segmentation,
+                    "index": idx,
+                }
+            )
+
+    with open(PREPARED_SEGMENTS_METADATA_PATH, "w") as handle:
+        json.dump(segment_rows, handle, indent=2)
+
+
 def prepare_dataset(
     *,
     source_collections: list[str] | None = None,
@@ -567,12 +600,13 @@ def prepare_dataset(
                 environment=metadata.environment,
                 angle=metadata.angle,
             )
-            item_id = build_item_id(instance_info)
-            leaf_dir = build_leaf_dir(prepared_root, metadata)
-            leaf_dir.mkdir(parents=True, exist_ok=True)
+            image_stem = sanitize_stem(image_path.name)
+            item_id = build_item_id(instance_info, image_path.name)
+            artifact_root = build_artifact_root(prepared_root, metadata, image_stem, item_id)
+            artifact_root.mkdir(parents=True, exist_ok=True)
 
-            source_output_path = leaf_dir / f"source{FILE_EXTENSION}"
-            prepared_output_path = leaf_dir / f"prepared{FILE_EXTENSION}"
+            source_output_path = artifact_root / f"source{FILE_EXTENSION}"
+            prepared_output_path = artifact_root / f"prepared{FILE_EXTENSION}"
             shutil.copyfile(image_path, source_output_path)
             prepared_image = process_image(image, output_size=TARGET_SIZE[0])
             cv2.imwrite(str(prepared_output_path), prepared_image)
@@ -611,6 +645,8 @@ def prepare_dataset(
         with open(metadata_path, "w") as handle:
             json.dump([item.to_dict() for item in items], handle, indent=2)
 
+    _write_prepared_metadata(all_items)
+
     return all_items
 
 
@@ -645,7 +681,6 @@ def segment_item(
 
     source_image = cv2.imread(str(source_path)) if source_path and source_path.exists() else None
 
-    segments_dir = leaf_dir / "segments"
     all_segments: list[str] = []
     results: list[dict] = []
 
@@ -666,6 +701,7 @@ def segment_item(
             results.append({"method": method, "status": "empty", "bboxes": []})
             continue
 
+        segments_dir = leaf_dir / f"segments_{method}"
         seg_paths = _save_segment_crops(prepared_image, bboxes, segments_dir)
         all_segments.extend(seg_paths)
 
@@ -716,6 +752,8 @@ def run_segmentation(
                     break
         with open(metadata_path, "w") as handle:
             json.dump(existing, handle, indent=2)
+
+    _write_prepared_metadata(item_records)
 
 
 def resolve_source_collection_names(selected: list[str] | None) -> list[str]:

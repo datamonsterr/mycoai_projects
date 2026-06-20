@@ -18,10 +18,9 @@ def _default_workspace_root() -> Path:
     )
 
     search_roots = [project_root.parent, project_root.parent.parent]
-    if project_root.name == "fungal-cv-qdrant":
-        for candidate in search_roots:
-            if any((candidate / marker).exists() for marker in monorepo_markers):
-                return candidate
+    for candidate in search_roots:
+        if any((candidate / marker).exists() for marker in monorepo_markers):
+            return candidate
 
     return project_root
 
@@ -112,12 +111,9 @@ FEATURES_JSON_PATH = DATASET_ROOT / "segmented_features.json"
 # Qdrant Configuration
 QDRANT_URL = os.getenv(
     "QDRANT_URL",
-    "https://dcb3eb29-ce49-4e3c-adb4-c980e48488b3.eu-central-1-0.aws.cloud.qdrant.io:6333",
+    "http://127.0.0.1:6333",
 )
-QDRANT_API_KEY = os.getenv(
-    "QDRANT_API_KEY",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.por1vDH3JOHaLYwrL_Eu_21ZGuF5mXca7pxGSBUvMDI",
-)
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 COLLECTION_NAME = "myco_fungi_features_full"
 
 # Image Processing

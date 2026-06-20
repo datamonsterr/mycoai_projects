@@ -11,6 +11,7 @@ from src.config import (
     COLLECTION_NAME,
     QDRANT_API_KEY,
     QDRANT_URL,
+    STRAIN_SPECIES_MAPPING_PATH,
 )
 
 
@@ -36,6 +37,24 @@ def _build_path_lookup(
                 "index": idx,
             }
     return lookup
+
+
+def _load_strain_species_mapping() -> dict[str, str]:
+    if not STRAIN_SPECIES_MAPPING_PATH.exists():
+        return {}
+    with open(STRAIN_SPECIES_MAPPING_PATH, 'r') as f:
+        reader = json.load(f) if STRAIN_SPECIES_MAPPING_PATH.suffix == '.json' else None
+    if reader is not None:
+        return {}
+    import csv
+    mapping: dict[str, str] = {}
+    with open(STRAIN_SPECIES_MAPPING_PATH, newline='') as f:
+        for row in csv.DictReader(f):
+            strain = row.get('Strain', '').strip()
+            species = row.get('Species', '').strip()
+            if strain and species:
+                mapping[strain] = species
+    return mapping
 
 
 def _build_id_lookup(
@@ -94,6 +113,7 @@ def upload_features_to_qdrant(
 
     items = _load_all_items()
     id_lookup = _build_id_lookup(items)
+    strain_species_mapping = _load_strain_species_mapping()
     print(f"Loaded {len(items)} items from consolidated metadata ({len(id_lookup)} segment lookups)")
 
     if not features_data:
@@ -137,14 +157,17 @@ def upload_features_to_qdrant(
             for feat_name, feat_data in record["features"].items()
         }
 
+        strain = inst.get("strain", "unknown")
+        canonical_species = strain_species_mapping.get(strain, inst.get("species", "unknown"))
         payload = {
             "image_id": segment_id,
             "feature_types": list(vectors.keys()),
             "parent_item_id": segment_id.rsplit("_seg", 1)[0] if "_seg" in segment_id else segment_id,
             "segment_index": seg_idx,
             "bbox": bbox,
-            "species": inst.get("species", "unknown"),
-            "strain": inst.get("strain", "unknown"),
+            "species": canonical_species,
+            "specy": canonical_species,
+            "strain": strain,
             "environment": inst.get("environment", "unknown"),
             "angle": inst.get("angle", "unknown"),
         }

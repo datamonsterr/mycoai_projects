@@ -20,12 +20,13 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from src.config import (
+    DATASET_ROOT,
     RESULTS_DIR,
     SEGMENTED_IMAGE_DIR,
     STRAIN_SPECIES_MAPPING_PATH,
 )
 from src.experiments.feature_extraction.feature_extractors import FeatureExtractor
-from src.utils.qdrant_query import find_nearest_neighbors_by_id
+from src.utils.qdrant_query import find_nearest_neighbors_by_id, find_nearest_neighbors_by_image
 
 
 def get_extractor_by_name(name: str) -> Optional[FeatureExtractor]:
@@ -117,6 +118,51 @@ def get_all_images_for_strain(
         offset = next_offset
 
     return all_images
+
+
+def load_prepared_segments_metadata(
+    metadata_path: Path = DATASET_ROOT / "prepared_segments_metadata.json",
+) -> Dict[str, Dict[str, Any]]:
+    if not metadata_path.exists():
+        return {}
+    payload = json.loads(metadata_path.read_text())
+    return {row["id"]: row for row in payload if row.get("id")}
+
+
+def load_fold_manifest(
+    fold: int,
+    strain: str,
+    folds_dir: Path = DATASET_ROOT / "folds",
+) -> Dict[str, Any]:
+    target = folds_dir / f"fold_{fold}_{strain.replace(' ', '_')}.json"
+    if not target.exists():
+        raise FileNotFoundError(f"Fold manifest not found: {target}")
+    return json.loads(target.read_text())
+
+
+def build_query_group_from_manifest(
+    segment_ids: Sequence[str],
+    prepared_segments: Dict[str, Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    query_group: List[Dict[str, Any]] = []
+    for segment_id in segment_ids:
+        row = prepared_segments.get(segment_id)
+        if not row:
+            continue
+        data = row.get("data", {})
+        query_group.append(
+            {
+                "image_id": segment_id,
+                "image_path": str(DATASET_ROOT.parent / row["segment_path"])
+                if isinstance(row.get("segment_path"), str)
+                else None,
+                "parent_id": row.get("parent_id") or data.get("parent_id"),
+                "environment": data.get("environment", "unknown"),
+                "angle": data.get("angle", "unknown"),
+                "segment_index": row.get("index", 0),
+            }
+        )
+    return query_group
 
 
 def filter_siblings(
@@ -367,6 +413,7 @@ def predict(
                 environment if environment and environment.lower() != "all" else None
             ),
             exclude_self=True,
+            exclude_strain=strain,
         )
 
         if without_siblings:
@@ -419,6 +466,8 @@ def draw_confusion_matrix(
     figsize: Tuple[int, int] = (12, 10),
 ) -> None:
     """Render and save confusion matrix for species predictions."""
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import seaborn as sns
     from sklearn.metrics import confusion_matrix
@@ -454,6 +503,7 @@ def draw_confusion_matrix(
 
 def print_selection_report(selected: Dict[str, str], output_dir: str) -> str:
     """Write selected strain-per-species report."""
+    os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     report_path = os.path.join(output_dir, f"strain_selection_report_{timestamp}.txt")
     with open(report_path, "w") as f:
@@ -465,6 +515,7 @@ def print_selection_report(selected: Dict[str, str], output_dir: str) -> str:
 
 def print_prediction_results(results: List[Dict[str, Any]], output_dir: str) -> str:
     """Write human-readable and JSON prediction summaries."""
+    os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     report_path = os.path.join(output_dir, f"prediction_report_{timestamp}.txt")
 
@@ -741,6 +792,7 @@ def predict_segment_group(
     raw_results: List[Dict[str, Any]] = []
     for query_img in test_group:
         image_id = query_img["image_id"]
+        image_path = query_img.get("image_path")
         parent_id = query_img["parent_id"]
         img_environment = query_img.get("environment", "unknown")
 
@@ -759,17 +811,29 @@ def predict_segment_group(
         else:
             search_environment = environment
 
-        neighbors = find_nearest_neighbors_by_id(
-            client=client,
-            collection_name=collection_name,
-            query_image_id=image_id,
-            feature_type=feature_extractor.name,
-            num_neighbors=k * 10,
-            environment=search_environment,
-            exclude_self=True,
-            exclude_environment=exclude_environment,
-            exclude_strain=strain,
-        )
+        if image_path:
+            neighbors = find_nearest_neighbors_by_image(
+                client=client,
+                collection_name=collection_name,
+                image_path=image_path,
+                extractor=feature_extractor,
+                feature_type=feature_extractor.name,
+                num_neighbors=k * 10,
+                environment=search_environment,
+                exclude_strain=strain,
+            )
+        else:
+            neighbors = find_nearest_neighbors_by_id(
+                client=client,
+                collection_name=collection_name,
+                query_image_id=image_id,
+                feature_type=feature_extractor.name,
+                num_neighbors=k * 10,
+                environment=search_environment,
+                exclude_self=True,
+                exclude_environment=exclude_environment,
+                exclude_strain=strain,
+            )
 
         if without_siblings:
             neighbors = filter_siblings(neighbors, parent_id)
@@ -863,12 +927,19 @@ def run_species_evaluation(
         print(f"Evaluating {species} (Strain: {strain})...")
         env_strategy = environment if environment else "E1"
 
-        test_sets = collect_testset(
-            client=client,
-            collection_name=collection_name,
-            strain=strain,
-            environment_strategy=env_strategy,
-        )
+        prepared_segments = load_prepared_segments_metadata()
+        manifest_matches = sorted((DATASET_ROOT / "folds").glob(f"fold_*_{strain.replace(' ', '_')}.json"))
+        if manifest_matches and prepared_segments:
+            manifest = json.loads(manifest_matches[0].read_text())
+            query_group = build_query_group_from_manifest(manifest.get("query_image_ids", []), prepared_segments)
+            test_sets = [query_group] if query_group else []
+        else:
+            test_sets = collect_testset(
+                client=client,
+                collection_name=collection_name,
+                strain=strain,
+                environment_strategy=env_strategy,
+            )
 
         if not test_sets:
             print(f"  No test sets found for {strain} with strategy {env_strategy}")
@@ -952,6 +1023,7 @@ def run_comprehensive_report(
     max_visualizations: int = 20,
     visualize_correct: bool = True,
     visualize_incorrect: bool = True,
+    collection_name: str = 'qdrant-research',
 ) -> None:
     """Run a multi-configuration retrieval benchmark and optional visualization."""
     from src.analysis.visualization.visualize_prediction import (
@@ -991,7 +1063,7 @@ def run_comprehensive_report(
                 print(f"\\nRunning evaluation for: {subfolder_name}")
                 results, _ = run_species_evaluation(
                     client=client,
-                    collection_name=COLLECTION_NAME,
+                    collection_name=collection_name,
                     feature_extractor=extractor,
                     k=k,
                     without_siblings=True,
@@ -1197,7 +1269,8 @@ def run(params: ExperimentParams) -> ExperimentResult:
     log_dir.mkdir(exist_ok=True)
 
     try:
-        from src.config import COLLECTION_NAME, QDRANT_API_KEY, QDRANT_URL
+        from src.config import QDRANT_API_KEY, QDRANT_URL
+
         from qdrant_client import QdrantClient as _QC
 
         client = _QC(url=QDRANT_URL, api_key=QDRANT_API_KEY)
@@ -1206,7 +1279,7 @@ def run(params: ExperimentParams) -> ExperimentResult:
             raise ValueError("resnet50 extractor unavailable")
         results, report_path = run_species_evaluation(
             client=client,
-            collection_name=COLLECTION_NAME,
+            collection_name='qdrant-research',
             feature_extractor=extractor,
             output_dir=str(output_root / "artifacts"),
         )

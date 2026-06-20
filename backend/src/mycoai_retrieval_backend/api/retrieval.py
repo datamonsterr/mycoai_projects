@@ -98,6 +98,7 @@ async def start_query(
             "k": data.k,
             "aggregation": data.aggregation,
             "environment_strategy": data.environment_strategy,
+            "research_verified_default": "weighted+same_media",
             "segment_count": len(segments),
         },
     )
@@ -107,8 +108,8 @@ async def start_query(
     try:
         qdrant = get_qdrant_client()
         collection = get_collection_name()
-        all_neighbors: list[dict] = []
-        raw_results: list[dict] = []
+        all_neighbors: list[NeighborResult] = []
+        raw_results: list[dict[str, object]] = []
 
         for seg in segments:
             if seg.qdrant_point_id is None:
@@ -127,7 +128,7 @@ async def start_query(
             except (ValueError, RuntimeError):
                 continue
 
-            seg_neighbors = []
+            seg_neighbors: list[dict[str, object]] = []
             for neighbor in result.neighbors:
                 species = await _resolve_species_name(db, neighbor.strain or "unknown")
                 seg_neighbors.append(
@@ -166,7 +167,7 @@ async def start_query(
             strategy=data.aggregation,
         )
 
-        rankings = []
+        rankings: list[object] = []
         for rank_entry in aggregation_result.ranking:
             rank_neighbors = [
                 n
@@ -187,7 +188,7 @@ async def start_query(
                     )
                 )
 
-            result = RetrievalResult(
+            retrieval_result = RetrievalResult(
                 job_id=job.id,
                 strain_name=image.strain.name if image.strain else "unknown",
                 rank=len(rankings) + 1,
@@ -195,7 +196,7 @@ async def start_query(
                 score=rank_entry.score,
                 neighbors=neighbors_list,
             )
-            db.add(result)
+            db.add(retrieval_result)
             rankings.append(rank_entry)
 
         job.status = "completed"

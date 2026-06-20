@@ -442,7 +442,7 @@ def create_image_router(
         default_species: Annotated[str, Form()] = "unknown-species",
         method: Annotated[str, Form()] = "kmeans",
         db=Depends(get_db),
-        user=Depends(get_current_user),
+        user=Depends(require_owner()),
     ) -> dict[str, Any]:
         if (
             not zipfile_file.filename

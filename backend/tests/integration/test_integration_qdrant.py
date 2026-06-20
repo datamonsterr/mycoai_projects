@@ -45,7 +45,12 @@ async def test_qdrant_get_collection_info(qdrant_client) -> None:
 
     info = qdrant_client.get_collection(collection_name=collection)
     assert info is not None
-    vector_size = info.config.params.vectors.size
+    vectors = info.config.params.vectors
+    if isinstance(vectors, dict):
+        first_vector = next(iter(vectors.values()))
+        vector_size = first_vector.size
+    else:
+        vector_size = vectors.size
     assert isinstance(vector_size, int)
     assert vector_size > 0
 

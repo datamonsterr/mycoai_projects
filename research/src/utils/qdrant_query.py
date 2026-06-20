@@ -174,6 +174,7 @@ def find_nearest_neighbors_by_image(
     angle: Optional[str] = None,
     strain: Optional[str] = None,
     specy: Optional[str] = None,
+    exclude_strain: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Find nearest neighbors using a new image file (not in collection).
@@ -181,19 +182,24 @@ def find_nearest_neighbors_by_image(
     query_vector = get_image_features(image_path, extractor)
 
     search_filter = build_filter(
-        environment=environment, angle=angle, strain=strain, specy=specy
+        environment=environment,
+        angle=angle,
+        strain=strain,
+        specy=specy,
+        exclude_strain=exclude_strain,
     )
 
-    results = client.search(
+    response = client.query_points(
         collection_name=collection_name,
-        query_vector=(feature_type, query_vector.tolist()),
+        query=query_vector.tolist(),
+        using=feature_type,
         query_filter=search_filter,
         limit=num_neighbors,
         with_payload=True,
     )
 
     neighbors = []
-    for result in results:
+    for result in response.points:
         neighbor_data = {
             "image_id": result.payload.get("image_id"),
             "score": result.score,

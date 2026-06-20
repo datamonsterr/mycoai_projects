@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List as _List_autolab
 
 from src.config import RESULTS_DIR, WEIGHTS_DIR
+from src.utils.coco_to_yolo_seg import build_yolo_seg_dataset_from_coco_export
 from src.utils.yolo_dataset_pipeline import (
     default_output_root,
     write_train_test_manifest,
@@ -21,8 +22,13 @@ def run_yolo_segmentation(
     imgsz: int = 640,
     batch: int = 16,
     patience: int = 10,
+    coco_export_root: Path | None = None,
 ) -> dict[str, object]:
     root = dataset_root or default_output_root()
+    if coco_export_root is not None:
+        root.mkdir(parents=True, exist_ok=True)
+        build_yolo_seg_dataset_from_coco_export(coco_export_root, root)
+
     yaml_path = root / "dataset.yaml"
 
     if not yaml_path.exists():
@@ -138,6 +144,7 @@ def run_yolo_segmentation(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train YOLO segmentation model")
     parser.add_argument("--dataset-root", type=Path, default=default_output_root())
+    parser.add_argument("--coco-export-root", type=Path, default=None)
     parser.add_argument(
         "--model-size",
         type=str,
@@ -158,6 +165,7 @@ def main() -> None:
         imgsz=args.imgsz,
         batch=args.batch,
         patience=args.patience,
+        coco_export_root=args.coco_export_root,
     )
     print(json.dumps(result, indent=2))
 

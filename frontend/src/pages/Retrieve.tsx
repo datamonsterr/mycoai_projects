@@ -461,7 +461,7 @@ export default function RetrievePage() {
   const [activeStrain, setActiveStrain] = useState(0)
   const [detailStrain, setDetailStrain] = useState(0)
   const [knnK, setKnnK] = useState(5)
-  const [aggMethod, setAggMethod] = useState<'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'>('freq_strength')
+  const [aggMethod, setAggMethod] = useState<'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'>('weighted')
   const [strains, setStrains] = useState<StrainDraft[]>([{ strain: '', images: [] }])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingStrainIndex = useRef(0)
@@ -1067,7 +1067,7 @@ export default function RetrievePage() {
                   image_id: queryImageId,
                   k: knnK,
                   aggregation: aggMethod,
-                  environment_strategy: 'mean',
+                  environment_strategy: 'same_media',
                 },
                 {
                   onSuccess: (data) => setJobId(data.job_id),

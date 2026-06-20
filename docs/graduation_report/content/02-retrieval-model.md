@@ -61,14 +61,16 @@ This approach is more robust to uneven illumination but less reliable when colon
 
 #### YOLO-Based Segmentation
 
-To leverage modern deep learning for the segmentation task, a YOLOv8 instance segmentation model was trained on a relabeled dataset:
+To leverage modern deep learning for the segmentation task, a YOLOv8 instance segmentation model was prepared from a Roboflow COCO export and converted to an Ultralytics segmentation dataset inside the research pipeline.
 
-- **Dataset**: `Dataset/manual_labeled_data_roboflow_species/`, annotated with colony bounding boxes and species labels derived from `Dataset/strain_to_specy.csv`.
-- **Split**: Deterministic random train/test split with no separate validation partition.
-- **Model**: YOLOv8n-seg (nano variant, \(\sim\)3.2M parameters) trained for 50 epochs with image size 640, batch size 16.
-- **Output**: Instance masks and bounding boxes for each detected colony, along with a confidence score \(p \in [0,1]\).
+- **Dataset source**: Roboflow COCO export with `train/`, `valid/`, and `test/` splits.
+- **Conversion step**: polygons from `_annotations.coco.json` are converted to YOLO segmentation labels before training.
+- **Model**: YOLOv8n-seg (nano variant, \(\sim\)3.2M parameters).
+- **Verified smoke run**: 1 epoch, image size 640, batch size 2.
+- **Verified metrics**: box mAP50 = 0.9522, box mAP50-95 = 0.7495, mask mAP50 = 0.9437, mask mAP50-95 = 0.6329.
+- **Artifact**: `weights/segmentation/yolo_segmentation_best.pt`.
 
-YOLO segmentation inherits the train/test split of the underlying labeled dataset, enabling downstream cross-validation experiments where segmentation quality can be assessed per fold.
+This smoke run verifies that the end-to-end COCO\(\rightarrow\)YOLO conversion, training, and checkpoint export path is working. A longer GPU run remains the next step for production-quality segmentation.
 
 ![Preprocessing Pipeline](figures/pipeline_montage.jpg)
 

@@ -72,9 +72,11 @@ def test_parse_incoming_metadata_falls_back() -> None:
 
 def test_build_item_id_stable() -> None:
     info = InstanceInfo(species="Penicillium", strain="T230", environment="CREA", angle="ob")
-    id1 = build_item_id(info)
-    id2 = build_item_id(info)
+    id1 = build_item_id(info, "img1.jpg")
+    id2 = build_item_id(info, "img1.jpg")
+    id3 = build_item_id(info, "img2.jpg")
     assert id1 == id2
+    assert id1 != id3
     assert len(id1) == 32
 
 
@@ -144,10 +146,12 @@ def test_prepare_dataset_writes_canonical_tree(tmp_path: Path, monkeypatch) -> N
     assert curated_item.instance_info.angle == "ob"
     assert curated_item.parse_status == "parsed"
 
-    leaf_dir = prepared_root / "penicillium-polonicum" / "dto-148-d1" / "mea" / "ob"
-    assert leaf_dir.exists()
-    assert (leaf_dir / "source.jpg").exists()
-    assert (leaf_dir / "prepared.jpg").exists()
+    artifact_parent = prepared_root / "penicillium-polonicum" / "dto-148-d1" / "mea" / "ob"
+    artifact_dirs = list(artifact_parent.iterdir())
+    assert len(artifact_dirs) == 1
+    artifact_dir = artifact_dirs[0]
+    assert (artifact_dir / "source.jpg").exists()
+    assert (artifact_dir / "prepared.jpg").exists()
 
     stored = json.loads(curated_meta.read_text())
     assert len(stored) == 1
@@ -205,14 +209,16 @@ def test_prepare_dataset_with_letter_range_incoming(tmp_path: Path, monkeypatch)
     assert item.instance_info.environment == "CREA"
     assert item.instance_info.angle == "ob"
 
-    leaf_dir = prepared_root / "penicillium-glandicola" / "t230" / "crea" / "ob"
-    assert leaf_dir.exists()
-    assert (leaf_dir / "source.jpg").exists()
-    assert (leaf_dir / "prepared.jpg").exists()
+    artifact_parent = prepared_root / "penicillium-glandicola" / "t230" / "crea" / "ob"
+    artifact_dirs = list(artifact_parent.iterdir())
+    assert len(artifact_dirs) == 1
+    artifact_dir = artifact_dirs[0]
+    assert (artifact_dir / "source.jpg").exists()
+    assert (artifact_dir / "prepared.jpg").exists()
 
 
 def _make_item(tmp_path: Path) -> tuple[DatasetItemRecord, Path]:
-    leaf_dir = tmp_path / "prepared" / "test-species" / "t230" / "crea" / "ob"
+    leaf_dir = tmp_path / "prepared" / "test-species" / "t230" / "crea" / "ob" / "sample-1"
     leaf_dir.mkdir(parents=True)
 
     source_path = leaf_dir / "source.jpg"
@@ -252,7 +258,7 @@ def test_segment_item_kmeans_writes_to_leaf_segments(tmp_path: Path, monkeypatch
     assert results[0]["method"] == "kmeans"
     assert results[0]["status"] in ("success", "empty")
 
-    segments_dir = leaf_dir / "segments"
+    segments_dir = leaf_dir / "segments_kmeans"
     assert segments_dir.exists()
 
     assert item.segmentation.get("kmeans") is not None
@@ -271,12 +277,12 @@ def test_segment_item_contour_writes_to_leaf_segments(tmp_path: Path, monkeypatc
     assert results[0]["method"] == "contour"
     assert results[0]["status"] in ("success", "empty")
 
-    segments_dir = leaf_dir / "segments"
+    segments_dir = leaf_dir / "segments_contour"
     assert segments_dir.exists()
     assert "bbox_contour" in item.paths or results[0]["status"] == "empty"
 
 
-def test_segment_item_both_methods_shares_segments_dir(tmp_path: Path, monkeypatch) -> None:
+def test_segment_item_both_methods_writes_method_specific_segment_dirs(tmp_path: Path, monkeypatch) -> None:
     item, leaf_dir = _make_item(tmp_path)
     monkeypatch.setattr("src.config.WORKSPACE_ROOT", tmp_path)
     monkeypatch.setattr("src.prepare.dataset.relative_to_workspace", lambda p: str(p))
@@ -284,10 +290,10 @@ def test_segment_item_both_methods_shares_segments_dir(tmp_path: Path, monkeypat
     results = segment_item(item, methods=["kmeans", "contour"])
 
     assert len(results) == 2
-    segments_dir = leaf_dir / "segments"
-    assert segments_dir.exists()
+    assert (leaf_dir / "segments_kmeans").exists() or results[0]["status"] == "empty"
+    assert (leaf_dir / "segments_contour").exists() or results[1]["status"] == "empty"
 
-    if results[0]["status"] == "success":
+    if any(result["status"] == "success" for result in results):
         assert item.paths.get("segments")
 
 
@@ -298,7 +304,7 @@ def test_segment_item_segment_naming_is_1_indexed(tmp_path: Path, monkeypatch) -
 
     segment_item(item, methods=["kmeans"])
 
-    segments_dir = leaf_dir / "segments"
+    segments_dir = leaf_dir / "segments_kmeans"
     if segments_dir.exists():
         for seg_file in segments_dir.iterdir():
             assert seg_file.name.startswith("segment_")
@@ -307,7 +313,7 @@ def test_segment_item_segment_naming_is_1_indexed(tmp_path: Path, monkeypatch) -
 
 
 def test_segment_item_missing_image_returns_failed(tmp_path: Path, monkeypatch) -> None:
-    leaf_dir = tmp_path / "prepared" / "test-species" / "t230" / "crea" / "ob"
+    leaf_dir = tmp_path / "prepared" / "test-species" / "t230" / "crea" / "ob" / "sample-missing"
     leaf_dir.mkdir(parents=True)
 
     item = DatasetItemRecord(
@@ -342,6 +348,8 @@ def test_run_segmentation_updates_items_in_place(tmp_path: Path, monkeypatch) ->
         "src.prepare.dataset.COLLECTION_METADATA_PATHS",
         {},
     )
+    monkeypatch.setattr("src.prepare.dataset.PREPARED_ITEMS_METADATA_PATH", tmp_path / "prepared_items_metadata.json")
+    monkeypatch.setattr("src.prepare.dataset.PREPARED_SEGMENTS_METADATA_PATH", tmp_path / "prepared_segments_metadata.json")
 
     run_segmentation([item], methods=["kmeans"])
 
@@ -349,6 +357,53 @@ def test_run_segmentation_updates_items_in_place(tmp_path: Path, monkeypatch) ->
     segments = item.paths.get("segments", [])
     if segments:
         assert all("segment_" in p for p in segments)
+
+    prepared_segments = tmp_path / "prepared_segments_metadata.json"
+    assert prepared_segments.exists()
+
+
+def test_prepare_dataset_keeps_duplicate_capture_artifacts_separate(tmp_path: Path, monkeypatch) -> None:
+    dataset_root = tmp_path / "Dataset"
+    curated_root = dataset_root / "curated_primary"
+    prepared_root = dataset_root / "prepared"
+    curated_meta = dataset_root / "curated_primary_metadata.json"
+    incoming_meta = dataset_root / "incoming_low_quality_metadata.json"
+    mapping_path = dataset_root / "strain_to_specy.csv"
+
+    species_dir = curated_root / "DTO 148-D1 Penicillium polonicum"
+    _write_image(species_dir / "DTO 148-D1 MEAob.jpg")
+    _write_image(species_dir / "DTO 148-D1 MEAob_edited.jpg")
+    mapping_path.write_text("Strain,Species\nDTO 148-D1,Penicillium polonicum\n")
+
+    monkeypatch.setattr(
+        "src.prepare.dataset.SOURCE_COLLECTIONS",
+        {
+            "curated": {
+                "display_name": "curated_primary",
+                "quality_tier": "curated",
+                "path": curated_root,
+            },
+            "incoming": {
+                "display_name": "incoming_low_quality",
+                "quality_tier": "incoming",
+                "path": dataset_root / "incoming_low_quality",
+            },
+        },
+    )
+    monkeypatch.setattr("src.prepare.dataset.STRAIN_SPECIES_MAPPING_PATH", mapping_path)
+    monkeypatch.setattr("src.prepare.dataset.PREPARED_DATASET_DIR", prepared_root)
+    monkeypatch.setattr(
+        "src.prepare.dataset.COLLECTION_METADATA_PATHS",
+        {"curated": curated_meta, "incoming": incoming_meta},
+    )
+    monkeypatch.setattr("src.prepare.dataset.PREPARED_ITEMS_METADATA_PATH", dataset_root / "prepared_items_metadata.json")
+    monkeypatch.setattr("src.prepare.dataset.PREPARED_SEGMENTS_METADATA_PATH", dataset_root / "prepared_segments_metadata.json")
+
+    items = prepare_dataset(source_collections=["curated"], prepared_root=prepared_root)
+
+    assert len(items) == 2
+    assert items[0].item_id != items[1].item_id
+    assert Path(items[0].paths["source"]).parent != Path(items[1].paths["source"]).parent
 
 
 def test_item_to_dict_contains_required_fields() -> None:
