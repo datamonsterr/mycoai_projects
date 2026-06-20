@@ -1,11 +1,12 @@
-from __future__ import annotations
-
+import uuid as _uuid
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import get_storage_settings
 from ..core.dependencies import CurrentOwner, CurrentUser
 from ..database import get_db
 from ..models import Feedback, Image, TrainingJob
@@ -17,6 +18,7 @@ from ..schemas.index import (
     RetrainingCounter,
     RetrainingStatus,
 )
+from ..services.storage import create_storage
 
 router = APIRouter()
 
@@ -65,21 +67,36 @@ async def trigger_reindex(
     errors: list[dict] = []
 
     qdrant_svc = QdrantClientService()
+    storage = create_storage(get_storage_settings())
 
     for seg in segments:
         try:
             crop_path = Path(seg.crop_path)
-            if not crop_path.exists():
+            crop_key = str(crop_path)
+            crop_data = None
+
+            if crop_path.exists():
+                crop_data = crop_path.read_bytes()
+            else:
+                crop_data = storage.get_bytes(crop_key)
+                if crop_data is None:
+                    relative_key = str(Path(*crop_path.parts[-3:]))
+                    crop_data = storage.get_bytes(relative_key)
+
+            if crop_data is None:
                 errors.append(
                     {"segment_id": str(seg.id), "error": "crop file not found"}
                 )
                 continue
 
-            vectors = extract_features(crop_path)
+            tmp = Path(f"/tmp/opencode/reindex_{seg.id}.jpg")
+            tmp.write_bytes(crop_data)
+            vectors = extract_features(tmp)
+            tmp.unlink(missing_ok=True)
             if not vectors:
                 continue
 
-            point_id = uuid.uuid4().int & ((1 << 63) - 1)
+            point_id = _uuid.uuid4().int & ((1 << 63) - 1)
             await qdrant_svc.upsert_point(
                 point_id=point_id,
                 vectors=vectors,

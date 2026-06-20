@@ -1,0 +1,31 @@
+{
+  "templates": [
+    {
+      "id": "mycoai-thesis",
+      "label": "MycoAI Graduation Thesis",
+      "mainFile": "main.tex",
+      "category": "thesis",
+      "description": "MycoAI Retrieval 毕业论文章节模板 — 基于 report 文档类",
+      "descriptionEn": "MycoAI Retrieval graduation thesis — report-based LaTeX template with cover, chapters, glossary, and Vietnamese encoding",
+      "tags": ["Thesis", "MycoAI", "Computer Vision", "Retrieval"],
+      "author": "Pham Thanh Dat",
+      "featured": true
+    },
+    {
+      "id": "mycoai-slides",
+      "label": "MycoAI Defense Slides",
+      "mainFile": "main.tex",
+      "category": "presentation",
+      "description": "MycoAI Retrieval 答辩演示 — 30 张 Beamer 幻灯片",
+      "descriptionEn": "MycoAI Retrieval defense presentation — 30 beamer slides with custom forest-green theme",
+      "tags": ["Presentation", "Beamer", "MycoAI", "Defense"],
+      "author": "Pham Thanh Dat",
+      "featured": true
+    }
+  ],
+  "categories": [
+    { "id": "all", "label": "所有", "labelEn": "All" },
+    { "id": "thesis", "label": "学位论文", "labelEn": "Thesis" },
+    { "id": "presentation", "label": "演示文稿", "labelEn": "Presentation" }
+  ]
+}

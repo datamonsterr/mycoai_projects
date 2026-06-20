@@ -3,9 +3,10 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ..core.dependencies import CurrentUser
 from ..core.exceptions import NotFoundError
@@ -52,18 +53,10 @@ async def _resolve_species_name(db: AsyncSession, strain_name: str) -> str:
     return row if row else strain_name
 
 
-def _format_neighbor(neighbor: NeighborResult, species_name: str) -> dict:
-    return {
-        "strain": neighbor.strain or "unknown",
-        "species": species_name,
-        "similarity": round(neighbor.score, 4),
-        "media": neighbor.environment or "unknown",
-        "image_thumbnail_url": (
-            f"/api/v1/images/{neighbor.image_id}/thumbnail"
-            if neighbor.image_id
-            else ""
-        ),
-    }
+def _get_filter_spec(image: Image, environment_strategy: str) -> FilterSpec:
+    if environment_strategy == "same_media" and image.media is not None:
+        return FilterSpec(environment=image.media.name, environment_strategy=environment_strategy)
+    return FilterSpec(environment_strategy=environment_strategy)
 
 
 @router.post("/query", response_model=RetrievalJobResponse, status_code=202)
@@ -73,7 +66,11 @@ async def start_query(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     image_uuid = _parse_uuid(data.image_id, "Image")
-    image = await db.scalar(select(Image).where(Image.id == image_uuid))
+    image = await db.scalar(
+        select(Image)
+        .options(selectinload(Image.media))
+        .where(Image.id == image_uuid)
+    )
     if image is None:
         raise NotFoundError(f"Image {data.image_id} not found")
 
@@ -98,7 +95,7 @@ async def start_query(
             "k": data.k,
             "aggregation": data.aggregation,
             "environment_strategy": data.environment_strategy,
-            "research_verified_default": "weighted+same_media",
+            "research_verified_default": "freq_strength+same_media+EfficientNetB1_finetuned",
             "segment_count": len(segments),
         },
     )
@@ -110,6 +107,7 @@ async def start_query(
         collection = get_collection_name()
         all_neighbors: list[NeighborResult] = []
         raw_results: list[dict[str, object]] = []
+        filter_spec = _get_filter_spec(image, data.environment_strategy)
 
         for seg in segments:
             if seg.qdrant_point_id is None:
@@ -120,7 +118,7 @@ async def start_query(
                     qdrant,
                     point_id,
                     k=data.k,
-                    filter_spec=FilterSpec(),
+                    filter_spec=filter_spec,
                     exclude_self=True,
                     exclude_siblings=True,
                     collection_name=collection,
@@ -180,11 +178,12 @@ async def start_query(
                 species = _resolve_species_sync(n, strain_map)
                 neighbors_list.append(
                     RetrievalNeighbor(
+                        neighbor_image_id=n.image_id,
                         neighbor_strain=n.strain or "unknown",
                         neighbor_species=species,
                         similarity=round(n.score, 4),
                         media=n.environment or "unknown",
-                        segment_index=0,
+                        segment_index=n.segment_index or 0,
                     )
                 )
 
@@ -202,10 +201,13 @@ async def start_query(
         job.status = "completed"
         job.completed_at = utcnow()
         await db.flush()
+        await db.commit()
 
     except Exception:
         job.status = "failed"
         await db.flush()
+        await db.commit()
+        raise
 
     return {
         "job_id": str(job.id),
@@ -280,7 +282,9 @@ async def get_job_results(
                     "similarity": round(n.similarity, 4),
                     "media": n.media,
                     "image_thumbnail_url": (
-                        f"/api/v1/images/{n.id}/thumbnail"
+                        f"/api/v1/images/{n.neighbor_image_id}/source"
+                        if n.neighbor_image_id
+                        else ""
                     ),
                 }
                 for n in neighbors

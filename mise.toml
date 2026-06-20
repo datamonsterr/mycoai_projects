@@ -105,15 +105,15 @@ run = "uv run python tools/dataset_sync.py export --help"
 
 [tasks.gdrive-auth]
 description = "Create Google Drive rclone remote"
-run = "bash -lc 'if mise x -- rclone lsd mydrive: >/dev/null 2>&1; then mise x -- rclone lsd mydrive:; exit 0; fi; readarray -t GOOGLE_CREDS < <(python -c \"import json, pathlib; data=json.loads(pathlib.Path.home().joinpath(\\\"client_secret_2_996933128216-paplsqk16tipnjbor73p39bujeij29d6.apps.googleusercontent.com.json\\\").read_text())[\\\"installed\\\"]; print(data[\\\"client_id\\\"]); print(data[\\\"client_secret\\\"])\"); if [ -z \"${RCLONE_DRIVE_TOKEN:-}\" ]; then printf \"Run on local machine and export token before retrying:\n\"; printf \"rclone authorize \\\"drive\\\" \\\"%s\\\" \\\"%s\\\"\n\" \"${GOOGLE_CREDS[0]}\" \"${GOOGLE_CREDS[1]}\"; exit 1; fi; mkdir -p \"$HOME/.config/rclone\"; mise x -- rclone config create mydrive drive client_id \"${GOOGLE_CREDS[0]}\" client_secret \"${GOOGLE_CREDS[1]}\" scope drive token \"$RCLONE_DRIVE_TOKEN\" && mise x -- rclone lsd mydrive:'"
+run = "bash -lc 'if mise x -- rclone lsd mydrive: >/dev/null 2>&1; then mise x -- rclone lsd mydrive:; exit 0; fi; readarray -t GOOGLE_CREDS < <(python -c \"import json, pathlib; data=json.loads(pathlib.Path.home().joinpath(\\\"client_secret_phamthanhdat170904.json\\\").read_text())[\\\"installed\\\"]; print(data[\\\"client_id\\\"]); print(data[\\\"client_secret\\\"])\"); if [ -z \"${RCLONE_DRIVE_TOKEN:-}\" ]; then printf \"Run on local machine and export token before retrying:\n\"; printf \"rclone authorize \\\"drive\\\" \\\"%s\\\" \\\"%s\\\"\n\" \"${GOOGLE_CREDS[0]}\" \"${GOOGLE_CREDS[1]}\"; exit 1; fi; mkdir -p \"$HOME/.config/rclone\"; mise x -- rclone config create mydrive drive client_id \"${GOOGLE_CREDS[0]}\" client_secret \"${GOOGLE_CREDS[1]}\" scope drive token \"$RCLONE_DRIVE_TOKEN\" && mise x -- rclone lsd mydrive:'"
 
 [tasks.data-sync-down]
-description = "Sync Dataset results weights from Google Drive"
-run = "bash -lc 'MYCOAI_GDRIVE_REMOTE=${MYCOAI_GDRIVE_REMOTE:-mydrive:mycoai-data}; mise x -- rclone sync \"$MYCOAI_GDRIVE_REMOTE/Dataset\" Dataset --progress && mise x -- rclone sync \"$MYCOAI_GDRIVE_REMOTE/results\" results --progress && mise x -- rclone sync \"$MYCOAI_GDRIVE_REMOTE/weights\" weights --progress'"
+description = "Sync target from Google Drive"
+run = "bash -lc 'MYCOAI_GDRIVE_REMOTE=${MYCOAI_GDRIVE_REMOTE:-mydrive:mycoai-data}; SCOPE=${MISE_TASK_SCOPE:?usage: MISE_TASK_SCOPE=<folder> mise run data-sync-down}; mise x -- rclone sync \"$MYCOAI_GDRIVE_REMOTE/$SCOPE\" \"$SCOPE\" --progress --skip-links'"
 
 [tasks.data-sync-up]
-description = "Sync Dataset results weights to Google Drive"
-run = "bash -lc 'MYCOAI_GDRIVE_REMOTE=${MYCOAI_GDRIVE_REMOTE:-mydrive:mycoai-data}; mise x -- rclone sync Dataset \"$MYCOAI_GDRIVE_REMOTE/Dataset\" --progress && mise x -- rclone sync results \"$MYCOAI_GDRIVE_REMOTE/results\" --progress && mise x -- rclone sync weights \"$MYCOAI_GDRIVE_REMOTE/weights\" --progress'"
+description = "Sync target to Google Drive"
+run = "bash -lc 'MYCOAI_GDRIVE_REMOTE=${MYCOAI_GDRIVE_REMOTE:-mydrive:mycoai-data}; SCOPE=${MISE_TASK_SCOPE:?usage: MISE_TASK_SCOPE=<folder> mise run data-sync-up}; mise x -- rclone sync \"$SCOPE\" \"$MYCOAI_GDRIVE_REMOTE/$SCOPE\" --progress --skip-links'"
 
 [tasks.install-spec-kit]
 description = "Install the Specify CLI"

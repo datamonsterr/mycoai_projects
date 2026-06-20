@@ -346,7 +346,10 @@ function SegmentCard({
                   {bbox.w}×{bbox.h}
                 </div>
               </div>
+
             ))}
+
+
             <div className="absolute left-2 top-2 rounded bg-card/95 px-2 py-1 text-xs shadow-sm">Drag to move · corner to resize · click-drag to add · hover to see X</div>
           </div>
           <div className="grid grid-cols-3 gap-2 content-start">
@@ -367,6 +370,22 @@ function SegmentCard({
       </CardContent>
     </Card>
   )
+}
+
+function getRetrievalReadyImages(strain: StrainDraft | undefined) {
+  return (strain?.images ?? []).filter((image) => !image.mediaIsNew)
+}
+
+function hasNewMediaImages(strain: StrainDraft | undefined) {
+  return (strain?.images ?? []).some((image) => image.mediaIsNew)
+}
+
+function getDisplayImageUrl(image?: Pick<StrainImage, 'original'> | null) {
+  return image?.original || ''
+}
+
+function getNeighborImageUrl(url: string) {
+  return url || ''
 }
 
 function apiNeighborsToDisplay(neighbors: RetrievalNeighbor[]) {
@@ -428,7 +447,11 @@ function ResultDetail({
           {images.map((image) => (
             <details key={image.id} className="rounded-lg border border-border bg-card" open>
               <summary className="grid cursor-pointer grid-cols-[160px_1fr_120px] items-center gap-3 p-3 text-sm hover:bg-muted/50">
-                <img src={image.original} alt={`${image.fileName} query`} className="h-28 w-40 rounded-md object-contain border border-border bg-muted" />
+                {getDisplayImageUrl(image) ? (
+                  <img src={getDisplayImageUrl(image)} alt={`${image.fileName} query`} className="h-28 w-40 rounded-md object-contain border border-border bg-muted" />
+                ) : (
+                  <div className="flex h-28 w-40 items-center justify-center rounded-md border border-border bg-muted text-xs text-muted-foreground">No preview</div>
+                )}
                 <div>
                   <div className="font-heading font-semibold">{image.fileName}</div>
                   <div className="text-xs text-muted-foreground">Query image · media {image.media} · {image.segments?.length ?? 0} segments</div>
@@ -436,9 +459,14 @@ function ResultDetail({
                 <Badge variant="secondary">K={knnK}</Badge>
               </summary>
               <div className="grid grid-cols-1 gap-3 border-t border-border p-3 md:grid-cols-5">
-                {(displayNeighbors ?? getNeighbors(image, knnK)).map((neighbor, index) => (
-                  <div key={`${image.id}-${neighbor.strain}-${neighbor.media}-${index}`} className="overflow-hidden rounded-lg border border-border bg-muted">
-                    <img src={neighbor.original} alt={`${neighbor.species} ${neighbor.media}`} className="h-32 w-full object-contain" />
+                  {(displayNeighbors ?? getNeighbors(image, knnK)).map((neighbor, index) => (
+                    <div key={`${image.id}-${neighbor.strain}-${neighbor.media}-${index}`} className="overflow-hidden rounded-lg border border-border bg-muted">
+                      {getNeighborImageUrl(neighbor.original) ? (
+                        <img src={getNeighborImageUrl(neighbor.original)} alt={`${neighbor.species} ${neighbor.media}`} className="h-32 w-full object-contain" />
+                      ) : (
+                        <div className="flex h-32 w-full items-center justify-center text-xs text-muted-foreground">No neighbor image</div>
+                      )}
+
                     <div className="space-y-1 bg-card p-2 text-xs">
                       <div className="font-heading font-semibold truncate">#{index + 1} {neighbor.species}</div>
                       <div className="font-mono text-muted-foreground">{neighbor.strain} · {neighbor.media}</div>
@@ -461,7 +489,7 @@ export default function RetrievePage() {
   const [activeStrain, setActiveStrain] = useState(0)
   const [detailStrain, setDetailStrain] = useState(0)
   const [knnK, setKnnK] = useState(5)
-  const [aggMethod, setAggMethod] = useState<'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'>('weighted')
+  const [aggMethod, setAggMethod] = useState<'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'>('freq_strength')
   const [strains, setStrains] = useState<StrainDraft[]>([{ strain: '', images: [] }])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingStrainIndex = useRef(0)
@@ -683,6 +711,8 @@ export default function RetrievePage() {
   const activeResult = resultStrains[detailStrain] ?? resultStrains[0]
 
   const totalSegments = useMemo(() => strains.reduce((sum, strain) => sum + strain.images.reduce((imgSum, image) => imgSum + (image.segments?.length ?? 3), 0), 0), [strains])
+  const retrievalReadyImages = getRetrievalReadyImages(strains[0])
+  const singleHasNewMedia = hasNewMediaImages(strains[0])
 
   return (
     <div className="space-y-5">
@@ -923,20 +953,27 @@ export default function RetrievePage() {
                   <button className="flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary" disabled={uploading} onClick={() => addImage(activeStrain)}>
                     <Images className="mb-2 h-8 w-8" /> {uploading ? 'Uploading...' : 'Add first image for this strain'}
                   </button>
-                ) : (
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {current.images.map((image) => (
-                      <ImageMetaCard
-                        key={image.id}
-                        image={image}
-                        onUpdate={(field) => updateImage(activeStrain, image.id, field)}
-                        onRemove={() => removeImage(activeStrain, image.id)}
-                      />
-                    ))}
+                 ) : (
+                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                     {current.images.map((image) => (
+                       <ImageMetaCard
+                         key={image.id}
+                         image={image}
+                         onUpdate={(field) => updateImage(activeStrain, image.id, field)}
+                         onRemove={() => removeImage(activeStrain, image.id)}
+                       />
+                     ))}
+                   </div>
+                 )}
+                {singleHasNewMedia && !isBatch && (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm text-foreground">
+                    <Badge variant="warning">New media</Badge>
+                    <p>New/other media images upload and display normally, but retrieval ignores them. Research-verified flow only queries same-media indexed images.</p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+               </CardContent>
+             </Card>
+
           )}
         </div>
       )}
@@ -1004,24 +1041,19 @@ export default function RetrievePage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Aggregation:</span>
-              <button
-                onClick={() => setAggMethod('weighted')}
-                className={`rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${aggMethod === 'weighted' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`}
-              >
-                weighted
-              </button>
-              <button
-                onClick={() => setAggMethod('uni')}
-                className={`rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${aggMethod === 'uni' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`}
-              >
-                uni
-              </button>
-              <button
-                onClick={() => setAggMethod('freq_strength')}
-                className={`rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${aggMethod === 'freq_strength' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`}
-              >
-                freq_strength
-              </button>
+               <button
+                 onClick={() => setAggMethod('freq_strength')}
+                 className={`rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${aggMethod === 'freq_strength' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`}
+               >
+                 freq_strength
+               </button>
+               <button
+                 onClick={() => setAggMethod('weighted')}
+                 className={`rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${aggMethod === 'weighted' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`}
+               >
+                 weighted
+               </button>
+
             </div>
           </div>
           {isBatch ? (
@@ -1059,8 +1091,9 @@ export default function RetrievePage() {
           onClick={() => {
             if (step === 'upload') setStep('segmentation')
             if (step === 'segmentation') {
-              const queryImageId = strains[0]?.images[0]?.id
-              if (!queryImageId) return
+               const queryImageId = retrievalReadyImages[0]?.id
+               if (!queryImageId) return
+
               setStep('processing')
               startRetrieval.mutate(
                 {
@@ -1075,7 +1108,7 @@ export default function RetrievePage() {
               )
             }
           }}
-          disabled={step === 'results' || step === 'processing'}
+          disabled={step === 'results' || step === 'processing' || (step === 'segmentation' && retrievalReadyImages.length === 0)}
         >
           {step === 'upload' ? 'Segment All' : step === 'processing' ? 'Running...' : 'Run Retrieval'} <ArrowRight className="h-4 w-4" />
         </Button>

@@ -313,6 +313,7 @@ class RetrievalNeighbor(Base):
         ForeignKey("retrieval_results.id"),
         nullable=False,
     )
+    neighbor_image_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     neighbor_strain: Mapped[str] = mapped_column(String(255), nullable=False)
     neighbor_species: Mapped[str] = mapped_column(String(255), nullable=False)
     similarity: Mapped[float] = mapped_column(Float, nullable=False)

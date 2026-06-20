@@ -1,0 +1,78 @@
+\documentclass[a4paper,13pt,3p,twoside]{report}
+\input{preamble}
+
+\begin{document}
+
+% ── Cover Page ──
+\input{cover}
+
+% ── Front Matter ──
+\pagenumbering{roman}
+
+\newpage
+\input{sec/0_2_Acknowledgment}
+
+\newpage
+\input{sec/0_3_Abstract}
+
+% ── Table of Contents ──
+\newpage
+\renewcommand*\contentsname{TABLE OF CONTENTS}
+\titlecontents{chapter}[0.0cm]{\bfseries\vspace{0.3cm}}{{\bfseries{\scshape} CHAPTER \thecontentslabel.\ }}{}{\titlerule*[0.3pc]{.}\contentspage}
+\titlecontents{section}[0.0cm]{\vspace{0.3cm}}{\thecontentslabel \ }{}{\titlerule*[0.3pc]{.}\contentspage}
+\titlecontents{subsection}[1.0cm]{\vspace{0.3cm}}{\thecontentslabel \ }{}{\titlerule*[0.3pc]{.}\contentspage}
+
+\tableofcontents
+\thispagestyle{empty}
+\cleardoublepage
+
+% ── List of Figures ──
+\renewcommand{\listfigurename}{LIST OF FIGURES}
+{\let\oldnumberline\numberline \renewcommand{\numberline}{Figure~\oldnumberline} \listoffigures}
+\newpage
+
+% ── List of Tables ──
+\renewcommand{\listtablename}{LIST OF TABLES}
+{\let\oldnumberline\numberline \renewcommand{\numberline}{Table~\oldnumberline} \listoftables}
+\newpage
+
+% ── Glossary ──
+\glsaddall
+\renewcommand*{\acronymname}{LIST OF ABBREVIATIONS}
+\printnoidxglossaries
+
+% ── Main Content ──
+\newpage
+\pagenumbering{arabic}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[RE, LO]{\leftmark}
+\fancyfoot[RE, LO]{\thepage}
+
+\chapter{INTRODUCTION}
+\input{sec/1_Introduction}
+
+\chapter{FUNGAL SPECIES RETRIEVAL MODEL}
+\input{sec/2_Literature_Review}
+
+\chapter{WEB APPLICATION DESIGN \& IMPLEMENTATION}
+\input{sec/3_Methodology}
+
+\chapter{AGENTIC ENGINEERING \& EVALUATION}
+\input{sec/4_Implementation}
+
+\chapter{CONCLUSION}
+\input{sec/5_Evaluation}
+
+% ── Bibliography ──
+\newpage
+\printbibliography
+\phantomsection\addcontentsline{toc}{chapter}{REFERENCE}
+
+% ── Appendices ──
+\appendixpage
+\appendices
+\chapter{USE CASE DESCRIPTIONS}
+\input{sec/Appendix_B}
+
+\end{document}
