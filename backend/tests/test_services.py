@@ -4,7 +4,7 @@ from secrets import token_hex
 import jwt
 import pytest
 
-from mycoai_retrieval_backend.core.security import (
+from backend.core.security import (
     create_access_token,
     create_refresh_token,
     decode_access_token,
@@ -92,7 +92,7 @@ class TestDecodeToken:
             "exp": now - 1,
             "jti": token_hex(16),
         }
-        from mycoai_retrieval_backend.core.config import get_settings
+        from backend.core.config import get_settings
 
         settings = get_settings()
         expired_token = jwt.encode(

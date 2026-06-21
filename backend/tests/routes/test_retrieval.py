@@ -69,7 +69,7 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
         aggregation="freq_strength",
         environment_strategy="same_media",
     )
-    from mycoai_retrieval_backend.qdrant.models import NeighborResult, QueryResult
+    from backend.qdrant.models import NeighborResult, QueryResult
 
     query_result = QueryResult(
         neighbors=[
@@ -133,11 +133,12 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
     user = SimpleNamespace(id=uuid.uuid4())
 
     with patch(
-        "mycoai_retrieval_backend.api.retrieval.query_points_by_id",
+        "backend.api.retrieval.query_points_by_id",
         return_value=query_result,
     ) as patched_query:
-        from mycoai_retrieval_backend.api.retrieval import start_query
         import asyncio
+
+        from backend.api.retrieval import start_query
 
         response = asyncio.run(start_query(payload, user, db))
 

@@ -2,7 +2,7 @@
 Provision initial Data Owner by email.
 
 Usage:
-    python -m mycoai_retrieval_backend.create_owner \
+    python -m backend.create_owner \
         --email owner@example.com [--password ...]
 """
 

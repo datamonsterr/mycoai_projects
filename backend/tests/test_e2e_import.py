@@ -10,11 +10,10 @@ import shutil
 import sys
 from pathlib import Path
 from tempfile import mkdtemp
-from unittest.mock import patch
 
 import pytest
 
-from mycoai_retrieval_backend.tasks.batch import _parse_filename_metadata
+from backend.tasks.batch import _parse_filename_metadata
 
 # Make import_dto.py script importable for testing
 _SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -149,7 +148,7 @@ class TestE2ESegmentationFlow:
         """Segmentation of a fixture image should produce crop files."""
         import asyncio
 
-        from mycoai_retrieval_backend.segmentation import SegmentationPipeline
+        from backend.segmentation import SegmentationPipeline
 
         tmp_upload = Path(mkdtemp(prefix="test_seg_"))
         try:

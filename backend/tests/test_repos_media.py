@@ -3,9 +3,9 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mycoai_retrieval_backend.core.exceptions import ConflictError, NotFoundError
-from mycoai_retrieval_backend.repos import media as media_repo
-from mycoai_retrieval_backend.schemas.media import MediaCreate, MediaUpdate
+from backend.core.exceptions import ConflictError, NotFoundError
+from backend.repos import media as media_repo
+from backend.schemas.media import MediaCreate, MediaUpdate
 
 
 @pytest.mark.asyncio

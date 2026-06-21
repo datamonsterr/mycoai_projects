@@ -16,7 +16,7 @@ Default expectations by context:
 - Experiments: run the relevant `uv --directory fungal-cv-qdrant ...` command,
   validate logs or artifacts, and keep reports current.
 - Backend: run `ruff check`, `ruff format --check`, `mypy`, and `pytest` via
-  `uv --directory mycoai_retrieval_backend`.
+  `uv --directory backend`.
 - Frontend: run `lint`, `typecheck`, and `build` via
   `pnpm --dir mycoai_retrieval_frontend`; add unit or e2e coverage when
   behavior changes or explain why narrower validation is acceptable.

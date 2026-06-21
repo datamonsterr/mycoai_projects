@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from mycoai_retrieval_backend.database import Base
+from backend.database import Base
 
 POSTGRES_URL = os.getenv(
     "MYCOAI_TEST_DB_URL",
@@ -104,7 +104,7 @@ TEST_USER_ROLE = "owner"
 
 @pytest_asyncio.fixture(scope="function")
 async def test_user_id(pg_session: AsyncSession) -> uuid.UUID:
-    from mycoai_retrieval_backend.models import User
+    from backend.models import User
 
     user_id = uuid.uuid4()
     user = User(

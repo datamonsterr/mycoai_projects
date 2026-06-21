@@ -72,11 +72,11 @@ Choices:
         environment: [...]
       celery-worker:
         build: backend
-        command: celery -A mycoai_retrieval_backend.tasks worker
+        command: celery -A backend.tasks worker
         depends_on: [redis, postgres]
       celery-beat:
         build: backend
-        command: celery -A mycoai_retrieval_backend.tasks beat
+        command: celery -A backend.tasks beat
         depends_on: [redis, postgres]
       frontend:
         build: frontend

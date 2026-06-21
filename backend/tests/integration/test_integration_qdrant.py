@@ -5,7 +5,7 @@ import uuid
 import pytest
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
-from mycoai_retrieval_backend.config import get_qdrant_settings
+from backend.config import get_qdrant_settings
 
 pytestmark = [pytest.mark.integration, pytest.mark.integration_qdrant]
 

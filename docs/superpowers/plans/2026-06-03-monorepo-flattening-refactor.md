@@ -14,7 +14,7 @@
 
 **Create / move:**
 - `frontend/` from `prototype/`
-- `backend/` from `repos/mycoai_retrieval_backend/`
+- `backend/` from `repos/backend/`
 - `research/` from `repos/fungal-cv-qdrant/`
 
 **Remove:**
@@ -68,7 +68,7 @@ Expected: list of stale refs to update later.
 
 **Files:**
 - Move: `prototype/` -> `frontend/`
-- Move: `repos/mycoai_retrieval_backend/` -> `backend/`
+- Move: `repos/backend/` -> `backend/`
 - Move: `repos/fungal-cv-qdrant/` -> `research/`
 - Remove: `repos/mycoai_retrieval_frontend/`
 

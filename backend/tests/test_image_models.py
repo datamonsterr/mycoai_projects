@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from mycoai_retrieval_backend.image_models import (
+from backend.image_models import (
     BoundingBox,
     ImageRecord,
     ImageResponse,

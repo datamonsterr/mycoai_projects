@@ -49,7 +49,7 @@ COPY . .
 RUN uv sync --frozen --all-groups
 
 EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "mycoai_retrieval_backend.app:app", \
+CMD ["uv", "run", "uvicorn", "backend.app:app", \
      "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 
@@ -77,5 +77,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -sf http://localhost:8000/health || exit 1
 
-CMD ["python", "-m", "uvicorn", "mycoai_retrieval_backend.app:app", \
+CMD ["python", "-m", "uvicorn", "backend.app:app", \
      "--host", "0.0.0.0", "--port", "8000"]

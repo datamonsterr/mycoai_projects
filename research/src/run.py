@@ -66,6 +66,11 @@ EXPERIMENT_REGISTRY: Dict[str, Dict[str, Any]] = {
             "n_folds": 5,
         },
     },
+    "yolo-segmentation": {
+        "module": "src.experiments.yolo_segmentation",
+        "description": "YOLO26-seg colony segmentation inference on prepared images",
+        "default_params": {},
+    },
     "feature-extractor": {
         "module": "src.experiments.retrieval",
         "description": "Feature extractor comparison: EfficientNetB1_finetuned k-fold accuracy",

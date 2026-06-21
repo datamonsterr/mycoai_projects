@@ -397,12 +397,16 @@ export default function IndexNewDataPage() {
           imageId: r.image_id || '',
           fileName: r.filename,
           media: r.media || 'MEA',
-          original: undefined,
+          original: r.source_url || undefined,
           yoloBboxes: [],
           segments: [],
         })
       }
 
+      if (indexed.length === 0) {
+        toast.error('No valid images found in the uploaded ZIP. Ensure the ZIP contains strain folders with .jpg/.jpeg/.png images.')
+        return
+      }
       setStrains(indexed)
       setActiveStrain(0)
 

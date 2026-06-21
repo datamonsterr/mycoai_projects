@@ -96,7 +96,6 @@ class S3Storage:
         )
 
     def get_bytes(self, key: str) -> bytes | None:
-        print(f"DEBUG: S3Storage.get_bytes called for key: {key}")
         try:
             response = self._client.get_object(self._bucket, key)
             return response.read()
@@ -119,7 +118,6 @@ class S3Storage:
 
 
 def create_storage(settings: StorageSettings) -> ObjectStorage:
-    print(f"DEBUG: Initializing storage with backend={settings.backend}")
     if settings.backend == "s3":
         storage = S3Storage(settings)
         storage.ensure_bucket()

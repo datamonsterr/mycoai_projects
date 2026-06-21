@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mycoai_retrieval_backend.models import (
+from backend.models import (
     Feedback,
     Media,
     RefreshToken,

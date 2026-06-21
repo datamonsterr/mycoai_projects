@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mycoai_retrieval_backend.database import Base
-from mycoai_retrieval_backend.models import (
+from backend.database import Base
+from backend.models import (
     AuditLog,
     Feedback,
     Image,

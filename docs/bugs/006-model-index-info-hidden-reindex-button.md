@@ -39,6 +39,6 @@ uv --directory research run python src/experiments/retrieval/run.py
 ## Files to Modify
 
 - Same as Bug 005, plus:
-- `backend/src/mycoai_retrieval_backend/api/training.py` (lines 34, 54, 69, 92, 104)
-- `backend/src/mycoai_retrieval_backend/api/index.py` (lines 28, 216)
-- `backend/src/mycoai_retrieval_backend/api/dashboard.py` (lines 92-96)
+- `backend/src/api/training.py` (lines 34, 54, 69, 92, 104)
+- `backend/src/api/index.py` (lines 28, 216)
+- `backend/src/api/dashboard.py` (lines 92-96)

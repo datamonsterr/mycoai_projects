@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mycoai_retrieval_backend.models import AuditLog, User
+from backend.models import AuditLog, User
 
 
 async def _create_user(session: AsyncSession, *, email: str | None = None) -> User:

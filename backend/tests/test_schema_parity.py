@@ -12,7 +12,7 @@ import pytest_asyncio
 from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from mycoai_retrieval_backend.database import Base
+from backend.database import Base
 
 
 @pytest.fixture(name="model_tables")

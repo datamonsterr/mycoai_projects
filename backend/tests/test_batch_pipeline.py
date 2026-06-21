@@ -15,11 +15,10 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mycoai_retrieval_backend.config import get_settings
-from mycoai_retrieval_backend.database import Base
-from mycoai_retrieval_backend.models import Image, Segment
-from mycoai_retrieval_backend.segmentation import SegmentationPipeline
-from mycoai_retrieval_backend.tasks.batch import run as batch_run
+from backend.database import Base
+from backend.models import Image, Segment
+from backend.segmentation import SegmentationPipeline
+from backend.tasks.batch import run as batch_run
 
 pytestmark = [
     pytest.mark.asyncio,
@@ -96,7 +95,7 @@ class TestBatchPipeline:
         pipeline = SegmentationPipeline(upload_root)
 
         with patch(
-            "mycoai_retrieval_backend.tasks.batch.QdrantClientService",
+            "backend.tasks.batch.QdrantClientService",
             new_callable=AsyncMock,
         ) as mock_qdrant:
             mock_instance = mock_qdrant.return_value
@@ -120,7 +119,7 @@ class TestBatchPipeline:
         pipeline = SegmentationPipeline(upload_root)
 
         with patch(
-            "mycoai_retrieval_backend.tasks.batch.QdrantClientService",
+            "backend.tasks.batch.QdrantClientService",
             new_callable=AsyncMock,
         ) as mock_qdrant:
             mock_instance = mock_qdrant.return_value
@@ -153,7 +152,7 @@ class TestBatchPipeline:
         pipeline = SegmentationPipeline(upload_root)
 
         with patch(
-            "mycoai_retrieval_backend.tasks.batch.QdrantClientService",
+            "backend.tasks.batch.QdrantClientService",
             new_callable=AsyncMock,
         ) as mock_qdrant:
             mock_instance = mock_qdrant.return_value
@@ -185,7 +184,7 @@ class TestBatchImportLimitAndErrors:
         pipeline = SegmentationPipeline(upload_root)
 
         with patch(
-            "mycoai_retrieval_backend.tasks.batch.QdrantClientService",
+            "backend.tasks.batch.QdrantClientService",
             new_callable=AsyncMock,
         ) as mock_qdrant:
             mock_instance = mock_qdrant.return_value

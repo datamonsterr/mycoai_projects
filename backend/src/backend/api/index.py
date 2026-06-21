@@ -32,7 +32,6 @@ async def trigger_reindex(
     import datetime
     import logging
     import uuid
-    from pathlib import Path
 
     from sqlalchemy.orm import selectinload
 

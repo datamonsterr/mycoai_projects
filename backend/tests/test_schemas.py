@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from mycoai_retrieval_backend.schemas import (
+from backend.schemas import (
     AuthLoginRequest,
     AuthRegisterRequest,
     FeedbackCreateRequest,

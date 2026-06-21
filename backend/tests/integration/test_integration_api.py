@@ -8,8 +8,8 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mycoai_retrieval_backend.database import get_db
-from mycoai_retrieval_backend.models import (
+from backend.database import get_db
+from backend.models import (
     Image,
     Media,
     RetrievalJob,
@@ -23,7 +23,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.integration_postgres]
 
 
 def _token(user_id: str, role: str = "owner") -> str:
-    from mycoai_retrieval_backend.core.security import create_access_token
+    from backend.core.security import create_access_token
 
     return create_access_token(user_id, role)
 
@@ -61,7 +61,7 @@ async def normal_user(pg_session: AsyncSession) -> User:
 
 @pytest_asyncio.fixture(scope="function")
 async def api_client(pg_session: AsyncSession):
-    from mycoai_retrieval_backend.app import create_app
+    from backend.app import create_app
 
     app = create_app()
 
@@ -102,7 +102,7 @@ async def test_api_register_login_refresh_flow(
     access_token = data["access_token"]
     refresh_token = data["refresh_token"]
 
-    from mycoai_retrieval_backend.core.security import decode_access_token
+    from core.security import decode_access_token
 
     payload = decode_access_token(access_token)
     user_id = payload["sub"]

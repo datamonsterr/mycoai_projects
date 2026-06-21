@@ -8,14 +8,14 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from qdrant_client.models import FieldCondition, MatchValue, ScoredPoint
 
-from mycoai_retrieval_backend.qdrant.aggregation import aggregate_predictions
-from mycoai_retrieval_backend.qdrant.collections import (
+from backend.qdrant.aggregation import aggregate_predictions
+from backend.qdrant.collections import (
     collection_exists,
     get_collection_stats,
 )
-from mycoai_retrieval_backend.qdrant.filters import build_filter
-from mycoai_retrieval_backend.qdrant.models import FilterSpec, PointUpsertRequest
-from mycoai_retrieval_backend.qdrant.operations import (
+from backend.qdrant.filters import build_filter
+from backend.qdrant.models import FilterSpec, PointUpsertRequest
+from backend.qdrant.operations import (
     delete_points,
     query_points_by_id,
     query_points_by_image,
@@ -334,7 +334,7 @@ def test_get_collection_stats_mocked() -> None:
 # ── router tests ──
 
 
-@patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
+@patch("backend.routers.search.get_qdrant_client")
 def test_stats_endpoint(mock_get_client: MagicMock, client: TestClient) -> None:
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client
@@ -349,7 +349,7 @@ def test_stats_endpoint(mock_get_client: MagicMock, client: TestClient) -> None:
     assert data["total_points"] == 5
 
 
-@patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
+@patch("backend.routers.search.get_qdrant_client")
 def test_search_by_image_endpoint_requires_vector(
     mock_get_client: MagicMock, client: TestClient
 ) -> None:
@@ -357,7 +357,7 @@ def test_search_by_image_endpoint_requires_vector(
     assert response.status_code == 400
 
 
-@patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
+@patch("backend.routers.search.get_qdrant_client")
 def test_search_by_id_endpoint_not_found(
     mock_get_client: MagicMock, client: TestClient
 ) -> None:
@@ -369,7 +369,7 @@ def test_search_by_id_endpoint_not_found(
     assert response.status_code == 404
 
 
-@patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
+@patch("backend.routers.search.get_qdrant_client")
 def test_upsert_endpoint(mock_get_client: MagicMock, client: TestClient) -> None:
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client
@@ -402,7 +402,7 @@ def test_aggregate_router(client: TestClient) -> None:
     assert "top_species" in data
 
 
-@patch("mycoai_retrieval_backend.routers.search.get_qdrant_client")
+@patch("backend.routers.search.get_qdrant_client")
 def test_environments_endpoint(mock_get_client: MagicMock, client: TestClient) -> None:
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client

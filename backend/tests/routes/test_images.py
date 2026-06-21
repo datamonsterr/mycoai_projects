@@ -267,13 +267,13 @@ def fixture_s3_client(test_session_factory):
     """Create a test client with fake S3 storage via monkeypatch."""
     from unittest.mock import patch
 
-    from mycoai_retrieval_backend.app import create_app
-    from mycoai_retrieval_backend.database import get_db
+    from backend.app import create_app
+    from backend.database import get_db
 
     fake_storage = FakeS3Storage()
 
     with patch(
-        "mycoai_retrieval_backend.app.create_storage",
+        "backend.app.create_storage",
         return_value=fake_storage,
     ):
         app = create_app()

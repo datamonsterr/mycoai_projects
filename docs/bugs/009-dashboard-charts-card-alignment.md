@@ -46,8 +46,8 @@ Each Card uses `flex items-stretch` but parent grid doesn't enforce equal height
 
 ## Files to Modify
 
-- `backend/src/mycoai_retrieval_backend/schemas/dashboard.py` (lines 4-9)
-- `backend/src/mycoai_retrieval_backend/api/dashboard.py` (after line 79)
+- `backend/src/schemas/dashboard.py` (lines 4-9)
+- `backend/src/api/dashboard.py` (after line 79)
 - `frontend/src/services/types.ts` (lines 216-221)
 - `frontend/src/hooks/use-dashboard.ts` (lines 7-11, after 29)
 - `frontend/src/services/dashboard.ts` (lines 12-17)

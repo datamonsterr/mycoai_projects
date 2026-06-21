@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from mycoai_retrieval_backend.app import create_app
+from backend.app import create_app
 
 client = TestClient(create_app())
 

@@ -197,11 +197,10 @@ Aim for 85%+ coverage on production code paths. 100% on schemas and core logic. 
 # Coverage report
 DATABASE_URL="sqlite+aiosqlite://" uv --directory backend run pytest \
     -m "not integration" \
-    --cov=mycoai_retrieval_backend \
-    --cov-report=term-missing
+    --cov=backend --cov-report=term-missing
 
 # Annotated source (shows ! for uncovered lines)
-pytest --cov=mycoai_retrieval_backend --cov-report=annotate:cov_annotate
+pytest --cov=backend --cov-report=term-missing --cov-report=annotate:cov_annotate
 ```
 
 ### Interpreting Coverage
@@ -228,7 +227,7 @@ test:
     - run: |
         DATABASE_URL="sqlite+aiosqlite://" uv --directory backend run pytest \
           -m "not integration" \
-          --cov=mycoai_retrieval_backend \
+          --cov=backend --cov-report=term-missing \
           --cov-report=xml
 
     # Integration tests (needs services)

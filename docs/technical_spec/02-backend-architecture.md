@@ -12,17 +12,17 @@ and dependency injection patterns.
 **[DECISION: Backend package layout]**
 
 Choices:
-- A) **Domain-based**: `src/mycoai_retrieval_backend/{api,core,models,
+- A) **Domain-based**: `src/backend/{api,core,models,
   schemas,services,repos}/` with API routers grouped by domain
   (images, retrieval, species, feedback, training, auth)
   **(Recommended)**
-- B) Feature-based: `src/mycoai_retrieval_backend/features/{images,
+- B) Feature-based: `src/backend/features/{images,
   retrieval,...}/` each with own router, service, model, schema
 - C) Flat: all files in one package (current state — not scalable)
 
 **Recommended structure (Option A):**
 
-    src/mycoai_retrieval_backend/
+    src/backend/
     +-- api/                    # FastAPI routers
     |   +-- router.py           # Master router aggregating all sub-routers
     |   +-- images.py           # POST /api/images/upload, batch

@@ -102,9 +102,34 @@ class ParsedMetadata:
     parse_status: str
 
 
-SEGMENT_METHODS = ["kmeans", "contour"]
+SEGMENT_METHODS = ["kmeans", "yolo"]
 SEGMENT_METHOD_KMEANS = "kmeans"
-SEGMENT_METHOD_CONTOUR = "contour"
+SEGMENT_METHOD_YOLO = "yolo"
+
+
+def _iou(box1: dict, box2: dict) -> float:
+    x1 = max(box1["xmin"], box2["xmin"])
+    y1 = max(box1["ymin"], box2["ymin"])
+    x2 = min(box1["xmax"], box2["xmax"])
+    y2 = min(box1["ymax"], box2["ymax"])
+    if x2 <= x1 or y2 <= y1:
+        return 0.0
+    inter = (x2 - x1) * (y2 - y1)
+    area1 = (box1["xmax"] - box1["xmin"]) * (box1["ymax"] - box1["ymin"])
+    area2 = (box2["xmax"] - box2["xmin"]) * (box2["ymax"] - box2["ymin"])
+    return inter / (area1 + area2 - inter)
+
+
+def _filter_non_overlapping(bboxes: list[dict], iou_thresh: float = 0.25, max_boxes: int = 3) -> list[dict]:
+    if not bboxes:
+        return []
+    kept: list[dict] = []
+    for box in bboxes:
+        if all(_iou(box, k) < iou_thresh for k in kept):
+            kept.append(box)
+        if len(kept) >= max_boxes:
+            break
+    return kept
 
 
 def _is_letter_range(name: str) -> bool:
@@ -623,9 +648,8 @@ def prepare_dataset(
                     "prepared": relative_to_workspace(prepared_output_path),
                     "segments": [],
                     "bbox_kmeans": None,
-                    "bbox_contour": None,
+                    "bbox_yolo": None,
                     "pipeline_kmeans": None,
-                    "pipeline_contour": None,
                 },
                 segmentation={},
             )
@@ -661,7 +685,7 @@ def segment_item(
         names = ", ".join(sorted(unknown))
         raise ValueError(f"Unknown segment methods: {names}")
 
-    from src.config import WORKSPACE_ROOT
+    from src.config import WEIGHTS_DIR, WORKSPACE_ROOT
 
     prepared_rel = item_record.paths.get("prepared")
     source_rel = item_record.paths.get("source")
@@ -688,8 +712,25 @@ def segment_item(
         try:
             if method == SEGMENT_METHOD_KMEANS:
                 bboxes, _ = segment_kmeans_image(prepared_image)
-            elif method == SEGMENT_METHOD_CONTOUR:
-                bboxes = _contour_bboxes(prepared_image)
+            elif method == SEGMENT_METHOD_YOLO:
+                from ultralytics import YOLO
+
+                yolo_weights = WEIGHTS_DIR / "segmentation" / "yolo26_seg_best.pt"
+                if not yolo_weights.exists():
+                    results.append({"method": method, "status": "failed", "reason": f"weights not found at {yolo_weights}"})
+                    continue
+                model = YOLO(str(yolo_weights))
+                yolo_results = model(prepared_image, verbose=False, conf=0.15, end2end=False)
+                bboxes = []
+                if yolo_results and yolo_results[0].boxes is not None:
+                    confs = yolo_results[0].boxes.conf
+                    scored = []
+                    for conf_val, box_coords in zip(confs.tolist(), yolo_results[0].boxes.xyxy.tolist()):
+                        x1, y1, x2, y2 = map(int, box_coords)
+                        scored.append((conf_val, {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}))
+                    scored.sort(key=lambda x: -x[0])
+                    all_bboxes = [b for _, b in scored]
+                    bboxes = _filter_non_overlapping(all_bboxes, iou_thresh=0.25, max_boxes=3)
             else:
                 results.append({"method": method, "status": "skipped"})
                 continue
@@ -710,7 +751,7 @@ def segment_item(
         cv2.imwrite(str(bbox_path), bbox_image)
         item_record.paths[f"bbox_{method}"] = relative_to_workspace(bbox_path)
 
-        if source_image is not None:
+        if method == SEGMENT_METHOD_KMEANS and source_image is not None:
             pipeline_path = leaf_dir / f"pipeline_{method}{FILE_EXTENSION}"
             pipeline_img = _build_pipeline_visualization(source_image, prepared_image, bbox_image)
             cv2.imwrite(str(pipeline_path), pipeline_img)

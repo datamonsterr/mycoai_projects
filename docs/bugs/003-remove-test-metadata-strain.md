@@ -36,4 +36,4 @@ Cascade: images → segments → Qdrant entries → strains → orphan species.
 
 ## Files to Modify
 
-- `backend/src/mycoai_retrieval_backend/api/admin.py` — new cleanup endpoint
+- `backend/src/api/admin.py` — new cleanup endpoint

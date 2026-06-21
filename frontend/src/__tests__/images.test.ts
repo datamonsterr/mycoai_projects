@@ -43,18 +43,17 @@ describe('uploadImage', () => {
 describe('getImage', () => {
   it('returns image detail', async () => {
     const detail = {
-      id: 'img-abc',
-      strain: 'T123',
-      media: 'PDA',
-      status: 'ready',
+      image_id: 'img-abc',
+      source_url: '/api/v1/images/img-abc/source',
       segments: [],
+      segmentation_method: 'kmeans',
     }
     mockFetch.mockResolvedValueOnce(mockResponse(detail))
 
     const result = await getImage('img-abc')
 
-    expect(result.id).toBe('img-abc')
-    expect(result.strain).toBe('T123')
+    expect(result.image_id).toBe('img-abc')
+    expect(result.source_url).toBe('/api/v1/images/img-abc/source')
     const [url] = mockFetch.mock.calls[0] as [string]
     expect(url).toContain('/api/v1/images/img-abc')
   })

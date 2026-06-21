@@ -7,8 +7,8 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from mycoai_retrieval_backend.config import get_settings
-from mycoai_retrieval_backend.database import Base
+from backend.config import get_settings
+from backend.database import Base
 
 target_metadata = Base.metadata
 

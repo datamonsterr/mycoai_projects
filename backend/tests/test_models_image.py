@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from mycoai_retrieval_backend.models import (
+from backend.models import (
     Image,
     Media,
     Segment,

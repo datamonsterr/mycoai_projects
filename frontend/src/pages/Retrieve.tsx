@@ -11,6 +11,7 @@ import { downloadTemplate, INDEX_TEMPLATE_CSV, downloadAgentsMd, downloadTemplat
 import { uploadImage, uploadBatchZip, autoSegment } from '@/services/images'
 import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Loader2, Plus, Trash2, FileText, FileArchive } from 'lucide-react'
 import { useStartRetrieval, useJobStatus, useJobResults } from '@/hooks/use-retrieval'
+import { useToast } from '@/hooks/use-toast'
 import type { RetrievalRanking, RetrievalNeighbor } from '@/services/types'
 
 type Step = 'upload' | 'segmentation' | 'processing' | 'results'
@@ -491,6 +492,7 @@ export default function RetrievePage() {
   const [knnK, setKnnK] = useState(5)
   const [aggMethod, setAggMethod] = useState<'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'>('freq_strength')
   const [strains, setStrains] = useState<StrainDraft[]>([{ strain: '', images: [] }])
+  const toast = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingStrainIndex = useRef(0)
   const [uploading, setUploading] = useState(false)
@@ -567,7 +569,7 @@ export default function RetrievePage() {
         const newImage: StrainImage = {
           id: res.image_id,
           fileName: file.name,
-          media: res.media,
+          media: mediaList[0].name,
           mediaIsNew: false,
           maxColonies: 'default',
           original: URL.createObjectURL(file),
@@ -611,6 +613,10 @@ export default function RetrievePage() {
           maxColonies: 'default',
           original: undefined,
         })
+      }
+      if (batchStrains.length === 0) {
+        toast.error('No valid images found in the uploaded ZIP. Ensure the ZIP contains strain folders with .jpg/.jpeg/.png images.')
+        return
       }
       setStrains(batchStrains)
       setIsBatch(batchStrains.length > 1)
@@ -912,17 +918,19 @@ export default function RetrievePage() {
             <div className="ml-auto text-xs text-muted-foreground">{strains.length} strain(s) · {totalImages} image(s)</div>
           </div>
 
-          <div className="flex flex-wrap gap-2 border-b border-border pb-2">
-            {(isBatch ? strains : [strains[0]]).map((strain, index) => (
-              <button
-                key={`${strain.strain}-${index}`}
-                onClick={() => setActiveStrain(index)}
-                className={`rounded-t-md px-3 py-2 text-sm transition-colors cursor-pointer ${activeStrain === index ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-              >
-                {strain.strain || `${title} ${index + 1}`} <span className="text-xs opacity-75">({strain.images.length})</span>
-              </button>
-            ))}
-          </div>
+          {strains.length > 0 && (
+            <div className="flex flex-wrap gap-2 border-b border-border pb-2">
+              {(isBatch ? strains : [strains[0]]).map((strain, index) => (
+                <button
+                  key={`${strain?.strain || 'unnamed'}-${index}`}
+                  onClick={() => setActiveStrain(index)}
+                  className={`rounded-t-md px-3 py-2 text-sm transition-colors cursor-pointer ${activeStrain === index ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                >
+                  {strain?.strain || `${title} ${index + 1}`} <span className="text-xs opacity-75">({strain?.images?.length ?? 0})</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {current && (
             <Card>

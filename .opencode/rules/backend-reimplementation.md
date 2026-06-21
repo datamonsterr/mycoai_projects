@@ -1,13 +1,13 @@
 # Rule: Backend Reimplementation Boundary
 
-When implementing new product behavior in `mycoai_retrieval_backend/` that is
-informed by `fungal-cv-qdrant/` experiments:
+When implementing new product behavior in `backend/` that is
+informed by `research/` experiments:
 
 - Inspect experiment code, reports, and artifacts to understand the validated
   behavior.
-- Reimplement the required behavior inside `mycoai_retrieval_backend/`.
+- Reimplement the required behavior inside `backend/`.
 - Do NOT import Python modules, helpers, or runtime code directly from
-  `fungal-cv-qdrant/`.
+  `research/`.
 - Prefer validated artifacts, documented schemas, and explicit payloads as the
   integration boundary between repos.
 - Name the experiment source paths, producer command, and consumed artifact in

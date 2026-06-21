@@ -11,7 +11,7 @@ The web application translates the MycoAI Retrieval model into a governed, multi
 | **User** | `user` | Upload images, retrieve species predictions, review/edit bounding boxes, download batch results, submit feedback/contribution proposals |
 | **Data Owner** | `owner` | All User capabilities plus: index reference data, CRUD species/media metadata, browse/manage dataset, review feedback, re-index Qdrant, assess/promote Candidate Models, manage users and roles |
 
-The Data Owner role inherits all User permissions. A permission matrix enforced at both the API layer (403 Forbidden) and the UI layer (conditional rendering) gates every endpoint. Backend RBAC is implemented at `backend/src/mycoai_retrieval_backend/auth.py` using FastAPI `Depends(get_current_user)` and `require_role("owner")` dependency chains. The frontend at `frontend/src/App.tsx` conditionally renders owner-restricted pages.
+The Data Owner role inherits all User permissions. A permission matrix enforced at both the API layer (403 Forbidden) and the UI layer (conditional rendering) gates every endpoint. Backend RBAC is implemented at `backend/src/auth.py` using FastAPI `Depends(get_current_user)` and `require_role("owner")` dependency chains. The frontend at `frontend/src/App.tsx` conditionally renders owner-restricted pages.
 
 ### 3.1.2 Use Case Diagram
 
@@ -87,7 +87,7 @@ The system follows a decoupled client-server architecture with six containerized
 
 ### 3.2.3 Backend Package Structure
 
-The backend follows a domain-based layout at `backend/src/mycoai_retrieval_backend/`:
+The backend follows a domain-based layout at `backend/src/`:
 
 | Directory | Purpose | Key Files |
 |-----------|---------|-----------|
@@ -111,7 +111,7 @@ The backend follows a domain-based layout at `backend/src/mycoai_retrieval_backe
 
 ### 3.3.1 Entity-Relationship Diagram
 
-The relational schema is implemented as SQLAlchemy ORM models at `backend/src/mycoai_retrieval_backend/models/__init__.py` (482 lines, 14 tables). Figure 3.4 presents the Entity-Relationship Diagram following UML notation conventions: primary keys marked `PK`, foreign keys with crow's-foot notation, nullable fields marked `*`.
+The relational schema is implemented as SQLAlchemy ORM models at `backend/src/models/__init__.py` (482 lines, 14 tables). Figure 3.4 presents the Entity-Relationship Diagram following UML notation conventions: primary keys marked `PK`, foreign keys with crow's-foot notation, nullable fields marked `*`.
 
 ![Entity-Relationship Diagram](figures/ch03_erd.png)  
 *Figure 3.4: Entity-Relationship Diagram (ERD) for the MycoAI Retrieval PostgreSQL schema — 14 tables with primary/foreign key relationships.*
@@ -282,7 +282,7 @@ The Dashboard (`frontend/src/pages/Dashboard.tsx`, 272 lines) provides an overvi
 
 ### 3.6.1 Segmentation Pipeline
 
-Segmentation is implemented at `backend/src/mycoai_retrieval_backend/segmentation.py` (399 lines) as a `SegmentationPipeline` class with inline OpenCV and scikit-learn calls. Two methods are available:
+Segmentation is implemented at `backend/src/segmentation.py` (399 lines) as a `SegmentationPipeline` class with inline OpenCV and scikit-learn calls. Two methods are available:
 
 **KMeans Method:** (1) Convert to HSV color space, (2) K=3 KMeans clustering on HSV pixels, (3) Select foreground label, (4) Spatial K=2/3 clustering for individual colonies, (5) Bounding box refinement (erosion, contour fitting, halo shrink).
 

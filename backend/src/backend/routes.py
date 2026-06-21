@@ -32,8 +32,8 @@ from .image_models import BoundingBox, ImageRecord, ImageResponse
 from .image_models import Segment as SegModel
 from .models import Image, Media, Segment, Species, Strain
 from .schemas import ImageListItem, ImageListResponse
-from .segmentation import ALLOWED_METHODS, ImageStore as FileStore
-from .segmentation import SegmentationPipeline
+from .segmentation import ALLOWED_METHODS, SegmentationPipeline
+from .segmentation import ImageStore as FileStore
 
 if TYPE_CHECKING:
     from .services.storage import ObjectStorage
@@ -129,8 +129,6 @@ def create_image_router(
             if storage:
                 candidate = storage.get_url(img.file_path)
                 if candidate.startswith(("http://", "https://")):
-                    # Rewrite internal MinIO host to nginx proxy path
-                    # so browser can load images without auth
                     source_url = candidate.replace(
                         "http://minio:9000/", "/minio/"
                     )
@@ -306,6 +304,7 @@ def create_image_router(
                         "media": media_obj.name,
                         "species": species_obj.name,
                         "segments": len(record.segments),
+                        "source_url": f"/api/v1/images/{image_obj.id}/source",
                     }
                 )
             except Exception as e:
@@ -413,6 +412,7 @@ def create_image_router(
                         "species": species_obj.name,
                         "segments": len(record.segments),
                         "filename": filename,
+                        "source_url": f"/api/v1/images/{image_obj.id}/source",
                     }
                 )
             except Exception as e:
@@ -518,6 +518,7 @@ def create_image_router(
                             "species": species_obj.name,
                             "segments": len(record.segments),
                             "filename": str(rel_path),
+                            "source_url": f"/api/v1/images/{image_obj.id}/source",
                         }
                     )
                 except Exception as e:
@@ -594,7 +595,11 @@ def create_image_router(
             image_id=str(img.id),
             source_path=Path(img.file_path),
             artifact_dir=artifact_dir,
-            source_url=f"/static/{img.strain.name}/{img.media.name}/{img.id}/source.jpg",
+            source_url=(
+                f"/api/v1/images/{img.id}/source"
+                if storage
+                else f"/static/{img.strain.name}/{img.media.name}/{img.id}/source.jpg"
+            ),
             segments=segments,
             segmentation_method=img.segments[0].segmentation_method
             if img.segments
@@ -658,19 +663,37 @@ def create_image_router(
             raise HTTPException(status_code=404, detail="image not found")
 
         source_path = Path(img.file_path)
-        if not source_path.exists():
+        _cleanup_source = False
+
+        if storage:
+            source_bytes = _read_source_from_storage(storage, img, source_path)
+            if source_bytes is None:
+                raise HTTPException(
+                    status_code=404, detail="source file not found in storage"
+                )
+            from tempfile import NamedTemporaryFile
+
+            with NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                tmp.write(source_bytes)
+                source_path = Path(tmp.name)
+                _cleanup_source = True
+        elif not source_path.exists():
             raise HTTPException(status_code=404, detail="source file not found on disk")
 
         strain_name = img.strain.name if img.strain else "unknown"
         media_name = img.media.name if img.media else "unknown"
 
-        # Run segmentation
-        record = pipeline.segment_upload(
-            source_path,
-            strain=strain_name,
-            media=media_name,
-            method=body.method,
-        )
+        try:
+            # Run segmentation
+            record = pipeline.segment_upload(
+                source_path,
+                strain=strain_name,
+                media=media_name,
+                method=body.method,
+            )
+        finally:
+            if storage and _cleanup_source:
+                source_path.unlink(missing_ok=True)
 
         # Archive old segments
         for seg in img.segments:
@@ -722,11 +745,8 @@ def create_image_router(
         db=Depends(get_db),
         user=Depends(get_current_user),
     ):
-        print(f"DEBUG get_source: image_id={image_id}")
         record = store.get(image_id)
-        print(f"DEBUG get_source: store.get result = {record is not None}")
         if record:
-            print(f"DEBUG get_source: artifact_dir={record.artifact_dir}")
             return _serve_storage_file(
                 storage, record.artifact_dir, "source.jpg", record.source_url
             )
@@ -779,8 +799,7 @@ def create_image_router(
         if not img:
             raise HTTPException(status_code=404, detail="image not found")
 
-        seg_path = Path(img.segments[0].crop_path) if img.segments else None
-        artifact_dir = seg_path.parent if seg_path else Path(img.file_path).parent
+        artifact_dir = Path(img.file_path).parent
         key = f"segments/segment_{segment_index}.jpg"
         return _serve_storage_file(storage, artifact_dir, key, "")
 
@@ -853,7 +872,6 @@ def _serve_storage_file(
 ):
     if storage:
         key = f"{artifact_dir}/{filename}"
-        print(f"DEBUG: _serve_storage_file called for key: {key}")
         data = storage.get_bytes(key)
         if data is not None:
             from fastapi.responses import Response
@@ -873,6 +891,22 @@ def _serve_storage_file(
 # ---------------------------------------------------------------------------
 # DB helpers
 # ---------------------------------------------------------------------------
+
+
+def _read_source_from_storage(
+    storage: ObjectStorage, img: Image, source_path: Path
+) -> bytes | None:
+    """Read source image bytes from S3 storage, trying multiple key patterns."""
+    candidates = [
+        str(source_path),
+        f"{img.strain.name}/{img.media.name}/{img.id}/source.jpg",
+        f"{img.strain.name}/{img.media.name}/{str(img.id)}/source.jpg",
+    ]
+    for key in candidates:
+        data = storage.get_bytes(key)
+        if data is not None:
+            return data
+    return None
 
 
 async def _ensure_species(db: AsyncSession, name: str) -> Species:

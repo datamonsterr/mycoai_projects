@@ -14,7 +14,7 @@ Import `Dataset/original/` (DTO-xxx folders) into the MycoAI backend
 3. **Qdrant** running: `mise run qdrant-up` (or `docker compose up -d qdrant`)
 4. **Owner account** created:
    ```bash
-   uv run python -m mycoai_retrieval_backend.create_owner --email owner@mycoai.dev --password password123
+   uv run python -m backend.create_owner --email owner@mycoai.dev --password password123
    ```
 5. **Python deps** installed: `uv sync --all-groups`
 

@@ -35,10 +35,15 @@ export interface PaginatedResponse<T> {
 
 export interface ImageUploadResponse {
   image_id: string
-  strain: string
-  media: string
-  status: string
-  job_id: string
+  source_url: string
+  segments: Array<{
+    segment_id: string
+    segment_index: number
+    bbox: { x: number; y: number; w: number; h: number }
+    crop_url: string
+    pipeline_url: string
+  }>
+  segmentation_method: string
 }
 
 export interface SegmentDetail {
@@ -54,11 +59,16 @@ export interface SegmentDetail {
 }
 
 export interface ImageDetail {
-  id: string
-  strain: string
-  media: string
-  status: string
-  segments: SegmentDetail[]
+  image_id: string
+  source_url: string
+  segments: Array<{
+    segment_id: string
+    segment_index: number
+    bbox: { x: number; y: number; w: number; h: number }
+    crop_url: string
+    pipeline_url: string
+  }>
+  segmentation_method: string
 }
 
 export interface ImageListItem {

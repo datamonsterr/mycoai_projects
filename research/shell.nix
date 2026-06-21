@@ -20,6 +20,6 @@ pkgs.mkShell {
   shellHook = ''
     export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.libGL}/lib:${pkgs.glib.out}/lib:${pkgs.libglvnd}/lib:$LD_LIBRARY_PATH"
     echo "NixOS Python environment ready!"
-    echo "Run: uv run reformat_dataset.py"
+    echo "Run: uv run python src/prepare.py --experiment <name>"
   '';
 }

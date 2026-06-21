@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from mycoai_retrieval_backend.core.security import require_role
+from backend.core.security import require_role
 
 
 @dataclass

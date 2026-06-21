@@ -42,7 +42,7 @@ Reimplement retrieval pipeline per `backend-reimplementation.md` rule (reimpleme
 
 ## Files to Modify
 
-- `backend/src/mycoai_retrieval_backend/api/retrieval.py` — replace stubs with real pipeline
-- `backend/src/mycoai_retrieval_backend/services/retrieval.py` — new orchestration layer
-- `backend/src/mycoai_retrieval_backend/qdrant/aggregation.py` — verify/align with research logic
-- `backend/src/mycoai_retrieval_backend/qdrant/operations.py` — expose filtered neighbor queries
+- `backend/src/api/retrieval.py` — replace stubs with real pipeline
+- `backend/src/services/retrieval.py` — new orchestration layer
+- `backend/src/qdrant/aggregation.py` — verify/align with research logic
+- `backend/src/qdrant/operations.py` — expose filtered neighbor queries

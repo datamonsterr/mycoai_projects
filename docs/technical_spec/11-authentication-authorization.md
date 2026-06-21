@@ -16,7 +16,7 @@ role-based access control, and security considerations.
     -> Return access_token + refresh_token
 
     Initial Data Owner provisioning:
-    python -m mycoai_retrieval_backend.create-owner --email owner@example.com
+    python -m create-owner --email owner@example.com
     -> Assign initial role="owner" by internal script
 
     Login:
@@ -150,7 +150,7 @@ The Data Owner role inherits all User permissions. Any endpoint marked
 
 Decision:
 - Initial Data Owner is created by seed script:
-  `python -m mycoai_retrieval_backend.create-owner --email admin@example.com`
+  `python -m create-owner --email admin@example.com`
 - Self-registration remains available for Users.
 - Data Owners can promote Users after bootstrap.
 - Data Owners can invite Users by onboarding email for convenience.

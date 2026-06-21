@@ -4,7 +4,7 @@
 
 ## Root Cause
 
-`backend/src/mycoai_retrieval_backend/core/dependencies.py:57` — `require_owner()` checks only `user.role != "owner"`, rejecting `"dataowner"` role entirely.
+`backend/src/core/dependencies.py:57` — `require_owner()` checks only `user.role != "owner"`, rejecting `"dataowner"` role entirely.
 
 ```python
 if user.role != "owner":
@@ -40,8 +40,8 @@ User `phamdat17092004@gmail.com` has `role = "dataowner"` but the endpoint requi
 
 ## Files to Modify
 
-- `backend/src/mycoai_retrieval_backend/core/dependencies.py` (lines 44, 57)
-- `backend/src/mycoai_retrieval_backend/api/admin.py` (lines 105, 142)
-- `backend/src/mycoai_retrieval_backend/repos/user.py` (line 53)
+- `backend/src/core/dependencies.py` (lines 44, 57)
+- `backend/src/api/admin.py` (lines 105, 142)
+- `backend/src/repos/user.py` (line 53)
 - `frontend/src/pages/Dashboard.tsx` (line 124)
 - `frontend/src/pages/ModelIndex.tsx` (line 21)

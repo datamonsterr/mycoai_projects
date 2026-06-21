@@ -9,7 +9,7 @@ Pipeline: scan → parse → restructure → register species/media → segment 
 
 - Backend running: `docker compose up -d backend`
 - PostgreSQL: `docker compose up -d postgres`
-- Owner account created: `docker compose run --rm backend python -m mycoai_retrieval_backend.create_owner --email YOUR_EMAIL --password YOUR_PASSWORD`
+- Owner account created: `docker compose run --rm backend python -m create_owner --email YOUR_EMAIL --password YOUR_PASSWORD`
 
 ## Quick Start
 

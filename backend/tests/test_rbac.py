@@ -4,11 +4,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mycoai_retrieval_backend.core.security import (
+from backend.core.security import (
     create_access_token,
     create_refresh_token,
 )
-from mycoai_retrieval_backend.models import User
+from backend.models import User
 
 
 async def _create_user(

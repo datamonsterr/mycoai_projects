@@ -2,8 +2,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from mycoai_retrieval_backend.app import create_app
-from mycoai_retrieval_backend.config import get_settings
+from backend.app import create_app
+from backend.config import get_settings
 
 
 def test_upload_get_and_patch_segments(tmp_path: Path, monkeypatch) -> None:

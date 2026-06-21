@@ -152,7 +152,7 @@ async def qdrant_status(
     user: CurrentUser,
 ) -> dict:
     try:
-        from ..qdrant.client import get_qdrant_client, get_collection_name
+        from ..qdrant.client import get_collection_name, get_qdrant_client
 
         qdrant = get_qdrant_client()
         collection = get_collection_name()

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from mycoai_retrieval_backend.auth import (
+from backend._qdrant_factory import create_qdrant_client
+from backend.auth import (
     create_access_token,
     create_refresh_token,
     decode_token,
     hash_password,
     verify_password,
 )
-from mycoai_retrieval_backend.celery_app import create_celery_app
-from mycoai_retrieval_backend.config import Settings
-from mycoai_retrieval_backend.db import create_engine, create_sessionmaker
-from mycoai_retrieval_backend.qdrant_client import create_qdrant_client
+from backend.celery_app import create_celery_app
+from backend.config import Settings
+from backend.db import create_engine, create_sessionmaker
 
 
 def test_config_defaults() -> None:
@@ -65,4 +65,4 @@ def test_qdrant_client_creation() -> None:
 def test_celery_app_creation() -> None:
     celery = create_celery_app()
     assert celery is not None
-    assert celery.main == "mycoai_retrieval_backend"
+    assert celery.main == "mycoai_backend"

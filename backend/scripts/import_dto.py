@@ -288,10 +288,10 @@ class DirectDbImporter:
         return asyncio.run(self._run_async())
 
     async def _run_async(self) -> ImportStats:
-        from mycoai_retrieval_backend.config import get_settings
-        from mycoai_retrieval_backend.database import async_session as _session_factory
-        from mycoai_retrieval_backend.segmentation import SegmentationPipeline
-        from mycoai_retrieval_backend.tasks.batch import run as batch_run
+        from backend.config import get_settings
+        from backend.database import async_session as _session_factory
+        from backend.segmentation import SegmentationPipeline
+        from backend.tasks.batch import run as batch_run
 
         self.stats.start_time = time.time()
         settings = get_settings()

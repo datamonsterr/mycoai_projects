@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from mycoai_retrieval_backend.app import create_app
-from mycoai_retrieval_backend.database import get_db
+from backend.app import create_app
+from backend.database import get_db
 
 
 @pytest.fixture(scope="function")

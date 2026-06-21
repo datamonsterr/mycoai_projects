@@ -15,9 +15,9 @@ The `/init` command must perform this sequence:
 1. `git submodule update --init --recursive`
 2. `git fetch origin`
 3. If current branch is `main`, `git pull --ff-only origin main`
-4. If `mycoai_retrieval_backend/.env.example` exists and `mycoai_retrieval_backend/.env` is missing, copy it to `.env`
+4. If `backend/.env.example` exists and `backend/.env` is missing, copy it to `.env`
 5. If `mycoai_retrieval_frontend/.env.example` exists and `mycoai_retrieval_frontend/.env` is missing, copy it to `.env`
-6. Run `uv --directory mycoai_retrieval_backend sync --all-groups`
+6. Run `uv --directory backend sync --all-groups`
 7. Run `pnpm --dir mycoai_retrieval_frontend install`
 8. Run `mise trust`
 9. If `.env.example` exists and `.env` is missing, copy it to `.env`

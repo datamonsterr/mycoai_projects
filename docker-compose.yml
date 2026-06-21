@@ -258,7 +258,7 @@ services:
     container_name: mycoai-celery-worker
     restart: always
     command: >
-      uv run celery -A mycoai_retrieval_backend.celery_app worker
+      uv run celery -A backend.celery_app worker
       --loglevel=info
       --concurrency=2
     environment:

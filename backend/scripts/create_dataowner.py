@@ -11,9 +11,9 @@ import secrets
 
 from sqlalchemy import select
 
-from mycoai_retrieval_backend.core.security import hash_password
-from mycoai_retrieval_backend.database import _get_engine, _get_sessionmaker
-from mycoai_retrieval_backend.models import User
+from backend.core.security import hash_password
+from backend.database import _get_engine, _get_sessionmaker
+from backend.models import User
 
 
 def create_dataowner(email: str) -> None:

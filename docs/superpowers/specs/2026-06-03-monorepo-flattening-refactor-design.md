@@ -9,7 +9,7 @@ Convert MycoAI from a submodule-based monorepo into a flat source tree. Existing
 ## Final Layout
 
 - `frontend/` contains the existing `prototype/` implementation, renamed in place.
-- `backend/` contains the existing `repos/mycoai_retrieval_backend/` implementation.
+- `backend/` contains the existing `repos/backend/` implementation.
 - `research/` contains the existing `repos/fungal-cv-qdrant/` experiment implementation.
 - `repos/` is removed after migration.
 - `.gitmodules` is removed.
@@ -68,7 +68,7 @@ Update docs and agent instructions to describe the flat tree:
 1. Verify git status and preserve existing uncommitted root changes.
 2. Move `prototype/` to `frontend/`.
 3. Copy or move submodule working trees into root as normal directories:
-   - `repos/mycoai_retrieval_backend/` -> `backend/`
+   - `repos/backend/` -> `backend/`
    - `repos/fungal-cv-qdrant/` -> `research/`
 4. Remove nested git metadata from migrated directories.
 5. Remove `.gitmodules`.

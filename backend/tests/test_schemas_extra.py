@@ -3,17 +3,17 @@ from datetime import UTC
 import pytest
 from pydantic import ValidationError
 
-from mycoai_retrieval_backend.schemas.images import (
+from backend.schemas.images import (
     BatchUploadResponse,
     ImageUploadResponse,
 )
-from mycoai_retrieval_backend.schemas.media import (
+from backend.schemas.media import (
     MediaCreate,
     MediaListResponse,
     MediaResponse,
     MediaUpdate,
 )
-from mycoai_retrieval_backend.schemas.retrieval import (
+from backend.schemas.retrieval import (
     RetrievalHit,
     RetrievalQuery,
     RetrievalResponse,

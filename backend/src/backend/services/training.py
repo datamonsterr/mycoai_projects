@@ -1,4 +1,4 @@
-from mycoai_retrieval_backend.schemas.training import TrainingJobRead
+from ..schemas.training import TrainingJobRead
 
 
 async def trigger_training(reason: str | None) -> TrainingJobRead:

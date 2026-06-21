@@ -66,6 +66,14 @@ def check_experiment_requirements(experiment: str) -> List[tuple[bool, str]]:
 
         results.append(check_dataset_root(ORIGINAL_DATASET_PATH))
 
+    if experiment in ("yolo-segmentation",):
+        from src.config import WEIGHTS_DIR
+
+        yolo_weights = WEIGHTS_DIR / "segmentation" / "yolo26_seg_best.pt"
+        results.append(
+            (yolo_weights.exists(), f"YOLO weights: {yolo_weights}")
+        )
+
     if experiment in ("feature-extractor", "segmentation"):
         # Needs strain mapping
         if not STRAIN_SPECIES_MAPPING_PATH.exists():

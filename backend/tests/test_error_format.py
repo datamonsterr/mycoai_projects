@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mycoai_retrieval_backend.core.security import create_access_token
-from mycoai_retrieval_backend.models import User
+from backend.core.security import create_access_token
+from backend.models import User
 
 
 async def _create_owner(session: AsyncSession) -> User:

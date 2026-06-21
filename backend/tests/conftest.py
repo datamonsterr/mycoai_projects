@@ -13,10 +13,10 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 
-from mycoai_retrieval_backend.app import create_app
-from mycoai_retrieval_backend.core.security import hash_password
-from mycoai_retrieval_backend.database import Base, get_db
-from mycoai_retrieval_backend.models import User
+from backend.app import create_app
+from backend.core.security import hash_password
+from backend.database import Base, get_db
+from backend.models import User
 
 TEST_DB_URL = "sqlite+aiosqlite://"
 

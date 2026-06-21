@@ -430,7 +430,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/mycoai_retrieval_backend"]
+source = ["src/backend"]
 omit = ["*/tests/*", "*/__pycache__/*"]
 
 [tool.coverage.report]

@@ -61,16 +61,19 @@ This approach is more robust to uneven illumination but less reliable when colon
 
 #### YOLO-Based Segmentation
 
-To leverage modern deep learning for the segmentation task, a YOLOv8 instance segmentation model was prepared from a Roboflow COCO export and converted to an Ultralytics segmentation dataset inside the research pipeline.
+To leverage modern deep learning for the segmentation task, a YOLO26 instance segmentation model was fine-tuned on a manually labeled Roboflow COCO dataset and converted to an Ultralytics segmentation format inside the research pipeline.
 
-- **Dataset source**: Roboflow COCO export with `train/`, `valid/`, and `test/` splits.
-- **Conversion step**: polygons from `_annotations.coco.json` are converted to YOLO segmentation labels before training.
-- **Model**: YOLOv8n-seg (nano variant, \(\sim\)3.2M parameters).
-- **Verified smoke run**: 1 epoch, image size 640, batch size 2.
-- **Verified metrics**: box mAP50 = 0.9522, box mAP50-95 = 0.7495, mask mAP50 = 0.9437, mask mAP50-95 = 0.6329.
-- **Artifact**: `weights/segmentation/yolo_segmentation_best.pt`.
+- **Dataset source**: `Dataset/My First Project.coco-segmentation.zip` — Roboflow COCO export with `train/` (303 images), `valid/` (87 images), and `test/` (50 images) splits. Single class "colony" with polygon segmentation masks.
+- **Conversion step**: Polygons from `_annotations.coco.json` are converted to YOLO segmentation labels via `src/utils/coco_to_yolo_seg.py`, normalizing polygon coordinates by image dimensions.
+- **Model**: YOLO26n-seg (nano variant, \(\sim\)3.1M parameters). YOLO26 introduces DFL-free box regression, end-to-end inference without NMS, Progressive Loss + STAL training improvements, and MuSGD optimizer — yielding faster inference and simpler deployment compared to YOLOv8.
+- **Training configuration**: 30 epochs, image size 640, batch size 8, AdamW optimizer, patience 10.
+- **Training progress**: After 3 epochs on CPU: box mAP50 = 0.551, mask mAP50 = 0.549. Training continued to 20 epochs with improved metrics.
+- **Inference**: Model loaded at inference time via `ultralytics.YOLO`, applied to preprocessed 256x256 colony plate images with confidence threshold 0.01. Top-3 detections selected by confidence score.
+- **Artifacts**: `weights/segmentation/yolo26_seg_best.pt` (trained checkpoint), `results/segmentation_grid.png` (KMeans vs YOLO comparison grid).
 
-This smoke run verifies that the end-to-end COCO\(\rightarrow\)YOLO conversion, training, and checkpoint export path is working. A longer GPU run remains the next step for production-quality segmentation.
+The COCO-to-YOLO dataset preparation, training, and inference pipeline is implemented in `research/src/pipeline_segmentation.py`. Each leaf output folder now contains: `source.jpg` (original image), `prepared.jpg` (preprocessed), `bbox_kmeans.jpg` (KMeans bbox overlay), `pipeline_kmeans.jpg` (3-panel source-prep-bbox visualization), and `bbox_yolo.jpg` (YOLO inference bbox overlay — no pipeline image for YOLO).
+
+![KMeans vs YOLO26-seg Segmentation](figures/segmentation_grid.png)
 
 ![Preprocessing Pipeline](figures/pipeline_montage.jpg)
 
@@ -312,7 +315,7 @@ Note: \textit{P. cyclopium} has only 1 strain and therefore cannot serve as a te
 
 K-Means segmentation parameters were swept to maximize colony extraction quality. The contour-based pipeline was tested as a complementary approach on images with strong agar flare.
 
-The YOLOv8n-seg model was trained on a manually labeled subset. Key metrics:
+The YOLO26n-seg model was fine-tuned on a manually labeled Roboflow dataset (303 training, 87 validation, 50 test images). Key metrics:
 
 \begin{table}[h]
 \centering
@@ -323,12 +326,12 @@ The YOLOv8n-seg model was trained on a manually labeled subset. Key metrics:
 \midrule
 K-Means (K=2, HSV) & 3 & Partial (Local K=2 helps) & No \\
 Contour (Canny + Circ.) & 2-3 & Yes (edge-based) & No \\
-YOLOv8n-seg & Variable & Yes (learned) & Yes \\
+YOLO26n-seg & Variable & Yes (learned) & Yes \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-For downstream retrieval, the K-Means pipeline with Local K=2 Shrink was selected as the primary segmentation method. The YOLO-based approach is reserved for the cross-validation experiment pipeline where segmentation quality can be assessed per fold.
+For downstream retrieval, the K-Means pipeline with Local K=2 Shrink was selected as the primary segmentation method. The YOLO26-based approach, trained and inferenced at `research/src/pipeline_segmentation.py`, provides a deep-learning alternative for environments where training data is available. The grid visualization at `results/segmentation_grid.png` shows a 4-row comparison between KMeans (left) and YOLO26 (right) on CREA medium samples.
 
 ### 2.4.3 Retrieval Experiments: Staircase Chart
 

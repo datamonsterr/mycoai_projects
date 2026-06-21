@@ -17,7 +17,7 @@ You write the smallest useful automated tests for the requested change.
 - Keep tests in the owning repo.
 - Prefer focused unit or API tests before broad integration coverage.
 - Reuse existing patterns before introducing new fixtures or helpers.
-- If the requested change is in `mycoai_retrieval_backend/`, use pytest and
+- If the requested change is in `backend/`, use pytest and
   FastAPI `TestClient` patterns already present in the repo.
 - If the requested change is in `mycoai_retrieval_frontend/`, prefer a minimal
   Vitest-style or component-test setup only when the parent agent explicitly

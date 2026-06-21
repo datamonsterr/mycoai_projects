@@ -40,9 +40,9 @@ const [inviteEmail, setInviteEmail] = useState('')
 
 ## Files to Modify
 
-- `backend/src/mycoai_retrieval_backend/api/admin.py` — add invite endpoint
-- `backend/src/mycoai_retrieval_backend/api/auth.py` — add register-with-token endpoint
-- `backend/src/mycoai_retrieval_backend/core/config.py` — add email/SMTP settings
-- `backend/src/mycoai_retrieval_backend/schemas/admin.py` — add InviteRequest schema
+- `backend/src/api/admin.py` — add invite endpoint
+- `backend/src/api/auth.py` — add register-with-token endpoint
+- `backend/src/core/config.py` — add email/SMTP settings
+- `backend/src/schemas/admin.py` — add InviteRequest schema
 - `frontend/src/pages/UserManagement.tsx` — wire input + API call
 - `frontend/src/services/admin.ts` — add invite API function

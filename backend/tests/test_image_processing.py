@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from mycoai_retrieval_backend import image_processing
+from backend import image_processing
 
 
 def test_module_importable() -> None:

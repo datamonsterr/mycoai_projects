@@ -204,3 +204,35 @@ def run(params: ExperimentParams) -> ExperimentResult:
         artifact_paths=[str(output_root / "results.json")],
         run_id=params.run_id,
     )
+
+
+def run_accuracy(**kwargs) -> float:
+    """Run YOLO segmentation inference and return accuracy (0-1)."""
+    import json
+    from pathlib import Path
+
+    from src.config import PREPARED_DATASET_DIR, RESULTS_DIR, WEIGHTS_DIR
+    from src.prepare.dataset import (
+        SEGMENT_METHOD_YOLO,
+        run_segmentation,
+        prepare_dataset,
+    )
+
+    limit = kwargs.get("limit", None)
+    item_records = prepare_dataset(limit=limit)
+    run_segmentation(item_records, methods=[SEGMENT_METHOD_YOLO], limit=limit)
+
+    total = len(item_records)
+    success = sum(1 for r in item_records if "yolo" in r.segmentation and r.segmentation["yolo"])
+
+    accuracy = success / total if total > 0 else 0.0
+
+    results_dir = RESULTS_DIR / "yolo_segmentation"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    (results_dir / "metrics.json").write_text(json.dumps({
+        "total": total,
+        "success": success,
+        "accuracy": accuracy,
+    }, indent=2))
+
+    return accuracy

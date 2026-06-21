@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from mycoai_retrieval_backend.tasks.batch import _parse_filename_metadata
+from backend.tasks.batch import _parse_filename_metadata
 
 
 class TestMetadataParser:

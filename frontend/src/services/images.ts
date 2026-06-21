@@ -61,6 +61,7 @@ export type BatchZipResult = {
     species: string
     segments: number
     filename: string
+    source_url: string
   }>
   errors: Array<{ file: string; error: string }>
 }
