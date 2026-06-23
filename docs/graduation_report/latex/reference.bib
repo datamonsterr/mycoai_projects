@@ -1,37 +1,404 @@
-@article{qdrant2024,
-  author = {Qdrant Team},
-  title = {Qdrant: Vector Database for High-Dimensional Similarity Search},
-  journal = {Technical Documentation},
-  year = {2024}
-}
-@article{kmeans2000,
-  author = {Lloyd, S.},
-  title = {Least squares quantization in PCM},
-  journal = {IEEE Transactions on Information Theory},
-  year = {2000}
-}
-@article{knn2021,
-  author = {Cover, T. and Hart, P.},
-  title = {Nearest Neighbor Pattern Recognition},
-  journal = {IEEE Transactions on Information Theory},
-  year = {2021}
-}
-@article{agentic2024,
-  author = {OpenAI},
-  title = {Agentic Workflows and Multi-Agent Orchestration},
-  journal = {AI Research Blog},
-  year = {2024}
-}
+% ============================================================
+% Graduation Thesis --- MycoAI Retrieval
+% Author: Pham Thanh Dat
+% ============================================================
+
+% ── Deep Learning Architectures ──────────────────────────────────────────
+
 @inproceedings{he2016resnet,
-  author = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
-  title = {Deep Residual Learning for Image Recognition},
+  author    = {Kaiming He and Xiangyu Zhang and Shaoqing Ren and Jian Sun},
+  title     = {Deep Residual Learning for Image Recognition},
   booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
-  year = {2016},
-  pages = {770--778}
+  pages     = {770--778},
+  year      = {2016},
+  doi       = {10.1109/CVPR.2016.90}
 }
+
 @inproceedings{tan2019efficientnet,
-  author = {Tan, Mingxing and Le, Quoc V.},
-  title = {EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks},
+  author    = {Mingxing Tan and Quoc V. Le},
+  title     = {{EfficientNet}: Rethinking Model Scaling for Convolutional Neural Networks},
   booktitle = {Proceedings of the International Conference on Machine Learning (ICML)},
-  year = {2019}
+  pages     = {6105--6114},
+  year      = {2019}
+}
+
+@inproceedings{sandler2018mobilenetv2,
+  author    = {Mark Sandler and Andrew Howard and Menglong Zhu and Andrey Zhmoginov and Liang-Chieh Chen},
+  title     = {{MobileNetV2}: Inverted Residuals and Linear Bottlenecks},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {4510--4520},
+  year      = {2018},
+  doi       = {10.1109/CVPR.2018.00474}
+}
+
+@inproceedings{redmon2016yolo,
+  author    = {Joseph Redmon and Santosh Divvala and Ross Girshick and Ali Farhadi},
+  title     = {You Only Look Once: Unified, Real-Time Object Detection},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {779--788},
+  year      = {2016},
+  doi       = {10.1109/CVPR.2016.91}
+}
+
+@software{yolov8_ultralytics,
+  author = {Glenn Jocher and Ayush Chaurasia and Jing Qiu},
+  title  = {{Ultralytics YOLO} (Version 8.0.0)},
+  year   = {2023},
+  url    = {https://github.com/ultralytics/ultralytics}
+}
+
+% ── Fungal Identification with Computer Vision ───────────────────────────
+
+@article{zielinski2020deep,
+  author    = {Bartosz Zieli{\'n}ski and Agnieszka Sroka-Oleksiak and Dawid Rymarczyk and Adam Piekarczyk and Monika Brzychczy-W{\l}och},
+  title     = {Deep Learning Approach to Description and Classification of Fungi Microscopic Images},
+  journal   = {PLoS ONE},
+  volume    = {15},
+  number    = {6},
+  pages     = {e0234806},
+  year      = {2020},
+  doi       = {10.1371/journal.pone.0234806}
+}
+
+@article{weber2025moldvision,
+  author    = {Lukas Weber and Sarah Brueningk and Bettina Schulthess and others},
+  title     = {Advancing Mold Identification in the Routine Laboratory — {MoldVision}},
+  journal   = {Microbiology Spectrum},
+  year      = {2026},
+  doi       = {10.1128/spectrum.02924-25},
+  note      = {Published December 2025}
+}
+
+@misc{fewshotfungi2019,
+  author = {Jong-Chyi Su and Zezhou Cheng and Subhransu Maji},
+  title  = {A Realistic Evaluation of Semi-Supervised Learning for Fine-Grained Classification},
+  year   = {2021},
+  howpublished = {CVPR 2021 (Oral); arXiv:2104.00679}
+}
+
+@article{agar2021majchrowska,
+  author    = {Sylwia Majchrowska and Jaros{\l}aw Paw{\l}owski and Grzegorz Gu{\l}a and others},
+  title     = {{AGAR}: a Microbial Colony Dataset for Deep Learning Detection},
+  journal   = {arXiv},
+  year      = {2021},
+  eprint    = {2108.01234},
+  note      = {Preprint; 18,000 agar plate images with 336,442 labelled colonies}
+}
+
+@misc{defungi2021,
+  author = {Camilo Javier Pineda Sopo and Farshid Hajati and Soheila Gheisari},
+  title  = {{DeFungi}: Direct Mycological Examination of Microscopic Fungi Images},
+  year   = {2021},
+  howpublished = {arXiv:2109.07322}
+}
+
+@misc{fan2020fungiAttention,
+  author       = {Mengran Fan and Tapabrata Chakrabort and Eric I-Chao Chang and Yan Xu and Jens Rittscher},
+  title        = {Microscopic Fine-Grained Instance Classification through Deep Attention},
+  howpublished = {Proc. MICCAI},
+  year         = {2020},
+  note         = {arXiv:2010.02818}
+}
+
+% ── Colony Detection and Segmentation ────────────────────────────────────
+
+@article{colonyYOLO2025,
+  author  = {Colony-YOLO authors},
+  title   = {{Colony-YOLO}: A Lightweight Micro-Colony Detection Network Based on {StarNet}},
+  journal = {Microorganisms},
+  volume  = {13},
+  number  = {7},
+  pages   = {1617},
+  year    = {2025},
+  doi     = {10.3390/microorganisms13071617}
+}
+
+@inproceedings{silva2025dlColony,
+  author    = {Miguel Silva and Diogo Martinho and Goreti Marreiros},
+  title     = {Deep Learning-Based Microbial Colony Detection on Agar Plates — {YOLOv11}},
+  booktitle = {EPIA 2025},
+  series    = {LNCS},
+  volume    = {16121},
+  publisher = {Springer},
+  year      = {2025},
+  doi       = {10.1007/978-3-032-05176-9_4}
+}
+
+@inproceedings{whipp2022yoloColony,
+  author    = {Jaken Whipp and A. Dong},
+  title     = {{YOLO}-based Deep Learning to Automated Bacterial Colony Counting},
+  booktitle = {IEEE BigMM},
+  year      = {2022},
+  doi       = {10.1109/BigMM55396.2022.00028}
+}
+
+% ── Few-Shot Learning ────────────────────────────────────────────────────
+
+@inproceedings{sung2018relationNet,
+  author    = {Flood Sung and Yongxin Yang and Li Zhang and Tao Xiang and Philip H. S. Torr and Timothy M. Hospedales},
+  title     = {Learning to Compare: Relation Network for Few-Shot Learning},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {1199--1208},
+  year      = {2018},
+  doi       = {10.1109/CVPR.2018.00131}
+}
+
+@inproceedings{snell2017prototypical,
+  author    = {Jake Snell and Kevin Swersky and Richard S. Zemel},
+  title     = {Prototypical Networks for Few-Shot Learning},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2017},
+  pages     = {4077--4087}
+}
+
+@inproceedings{finn2017maml,
+  author    = {Chelsea Finn and Pieter Abbeel and Sergey Levine},
+  title     = {Model-Agnostic Meta-Learning for Fast Adaptation of Deep Networks},
+  booktitle = {Proc. International Conference on Machine Learning (ICML)},
+  pages     = {1126--1135},
+  year      = {2017}
+}
+
+@inproceedings{vinyals2016matching,
+  author    = {Oriol Vinyals and Charles Blundell and Timothy Lillicrap and Koray Kavukcuoglu and Daan Wierstra},
+  title     = {Matching Networks for One Shot Learning},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  pages     = {3630--3638},
+  year      = {2016}
+}
+
+@misc{dawoud2020fewshotMicroscopy,
+  author       = {Youssef Dawoud and Julia Hornauer and Gustavo Carneiro and Vasileios Belagiannis},
+  title        = {Few-Shot Microscopy Image Cell Segmentation},
+  year         = {2020},
+  howpublished = {ECML-PKDD 2020; arXiv:2007.01671}
+}
+
+@misc{inayat2024fewshotDomain,
+  author       = {Sumayya Inayat and Nimra Dilawar and Waqas Sultani and Mohsen Ali},
+  title        = {Few-Shot Domain Adaptive Object Detection for Microscopic Images},
+  year         = {2024},
+  howpublished = {MICCAI 2024; arXiv:2407.07633}
+}
+
+% ── Open-Set Recognition / Threshold Rejection ───────────────────────────
+
+@inproceedings{bendale2016openset,
+  author    = {Abhijit Bendale and Terrance E. Boult},
+  title     = {Towards Open Set Deep Networks},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {1563--1572},
+  year      = {2016},
+  doi       = {10.1109/CVPR.2016.173}
+}
+
+@misc{kareinen2024opensetPlankton,
+  author       = {Joona Kareinen and Annaliina Skytt{\"a} and Tuomas Eerola and others},
+  title        = {Open-Set Plankton Recognition},
+  year         = {2025},
+  howpublished = {ECCV 2024 OOD-CV Workshop; arXiv:2503.11318}
+}
+
+@misc{bao2023energyOpenSet,
+  author       = {Wentao Bao and Qi Yu and Yu Kong},
+  title        = {Latent Space Energy-based Model for Fine-grained Open Set Recognition},
+  year         = {2023},
+  howpublished = {arXiv:2309.10711}
+}
+
+@misc{impio2025aquamonitor,
+  author       = {Mikko Impi{\"o} and Philipp M. Rehsen and Tiina Laamanen and others},
+  title        = {{AquaMonitor}: A Multimodal Multi-View Image Sequence Dataset for Aquatic Invertebrate Biodiversity Monitoring},
+  year         = {2025},
+  howpublished = {arXiv:2505.22065}
+}
+
+% ── Classical Computer Vision & Feature Extraction ───────────────────────
+
+@inproceedings{dalal2005hog,
+  author    = {Navneet Dalal and Bill Triggs},
+  title     = {Histograms of Oriented Gradients for Human Detection},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {886--893},
+  year      = {2005},
+  doi       = {10.1109/CVPR.2005.177}
+}
+
+@article{ouhanoun1998gabor,
+  author    = {J. G. Daugman},
+  title     = {Complete Discrete 2-{D} {G}abor Transforms by Neural Networks for Image Analysis and Compression},
+  journal   = {IEEE Transactions on Acoustics, Speech, and Signal Processing},
+  volume    = {36},
+  number    = {7},
+  pages     = {1169--1179},
+  year      = {1988},
+  doi       = {10.1109/29.1641}
+}
+
+@article{haralick1973texture,
+  author    = {Robert M. Haralick and K. Shanmugam and Its'hak Dinstein},
+  title     = {Textural Features for Image Classification},
+  journal   = {IEEE Transactions on Systems, Man, and Cybernetics},
+  volume    = {3},
+  number    = {6},
+  pages     = {610--621},
+  year      = {1973},
+  doi       = {10.1109/TSMC.1973.4309314}
+}
+
+% ── Foundational Methods ─────────────────────────────────────────────────
+
+@article{macqueen1967kmeans,
+  author    = {J. B. MacQueen},
+  title     = {Some Methods for Classification and Analysis of Multivariate Observations},
+  journal   = {Proceedings of the Fifth Berkeley Symposium on Mathematical Statistics and Probability},
+  volume    = {1},
+  pages     = {281--297},
+  year      = {1967}
+}
+
+@article{cover1967knn,
+  author    = {T. M. Cover and P. E. Hart},
+  title     = {Nearest Neighbor Pattern Classification},
+  journal   = {IEEE Transactions on Information Theory},
+  volume    = {13},
+  number    = {1},
+  pages     = {21--27},
+  year      = {1967},
+  doi       = {10.1109/TIT.1967.1053964}
+}
+
+% ── Software and Tools ───────────────────────────────────────────────────
+
+@article{bradski2000opencv,
+  author  = {Gary Bradski},
+  title   = {The {OpenCV} Library},
+  journal = {Dr. Dobb's Journal of Software Tools},
+  volume  = {25},
+  number  = {11},
+  pages   = {120--125},
+  year    = {2000}
+}
+
+@article{pedregosa2011scikit,
+  author  = {Fabian Pedregosa and Ga{\"e}l Varoquaux and Alexandre Gramfort and Vincent Michel and Bertrand Thirion and Olivier Grisel and Mathieu Blondel and Peter Prettenhofer and Ron Weiss and Vincent Dubourg and Jake Vanderplas and Alexandre Passos and David Cournapeau and Matthieu Brucher and Matthieu Perrot and {\'E}douard Duchesnay},
+  title   = {Scikit-learn: Machine Learning in {Python}},
+  journal = {Journal of Machine Learning Research},
+  volume  = {12},
+  pages   = {2825--2830},
+  year    = {2011}
+}
+
+@article{harris2020array,
+  author  = {Charles R. Harris and K. Jarrod Millman and St{\'e}fan J. van der Walt and Ralf Gommers and Pauli Virtanen and David Cournapeau and Eric Wieser and Julian Taylor and Sebastian Berg and Nathaniel J. Smith and Robert Kern and Matti Picus and Stephan Hoyer and Marten H. van Kerkwijk and Matthew Brett and Allan Haldane and Jaime Fern{\'a}ndez del R{\'\i}o and Mark Wiebe and Pearu Peterson and Pierre G{\'e}rard-Marchant and Kevin Sheppard and Tyler Reddy and Warren Weckesser and Hameer Abbasi and Christoph Gohlke and Travis E. Oliphant},
+  title   = {Array Programming with {NumPy}},
+  journal = {Nature},
+  volume  = {585},
+  number  = {7825},
+  pages   = {357--362},
+  year    = {2020},
+  doi     = {10.1038/s41586-020-2649-2}
+}
+
+@manual{python2024,
+  author = {{Python Software Foundation}},
+  title  = {{Python} Language Reference, Version 3.13},
+  year   = {2024},
+  url    = {https://docs.python.org/3.13/reference/}
+}
+
+@software{qdrant,
+  author = {{Qdrant Team}},
+  title  = {{Qdrant} --- Vector Database},
+  year   = {2021},
+  url    = {https://github.com/qdrant/qdrant}
+}
+
+@software{fastapi,
+  author = {Sebasti{\'a}n Ram{\'\i}rez},
+  title  = {{FastAPI}},
+  year   = {2019},
+  url    = {https://github.com/fastapi/fastapi}
+}
+
+@software{react,
+  author = {{Meta Platforms, Inc.}},
+  title  = {{React}: A {JavaScript} Library for Building User Interfaces},
+  year   = {2013},
+  url    = {https://react.dev}
+}
+
+@software{vite,
+  author = {Evan You},
+  title  = {{Vite}: Next Generation Frontend Tooling},
+  year   = {2020},
+  url    = {https://vitejs.dev}
+}
+
+@article{merkel2014docker,
+  author  = {Dirk Merkel},
+  title   = {{Docker}: Lightweight {Linux} Containers for Consistent Development and Deployment},
+  journal = {Linux Journal},
+  volume  = {2014},
+  number  = {239},
+  pages   = {2},
+  year    = {2014}
+}
+
+% ── Autoresearch and AutoML ──────────────────────────────────────────────
+
+@misc{karpathy2026autoresearch,
+  author = {Andrej Karpathy},
+  title  = {{autoresearch}: Autonomous Experimentation Loop for {AI} Agents},
+  year   = {2026},
+  howpublished = {GitHub repository; \url{https://github.com/karpathy/autoresearch}}
+}
+
+@inproceedings{akiba2019optuna,
+  author    = {Takuya Akiba and Shotaro Sano and Toshihiko Yanase and Takeru Ohta and Masanori Koyama},
+  title     = {{Optuna}: A Next-Generation Hyperparameter Optimization Framework},
+  booktitle = {Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery \& Data Mining},
+  pages     = {2623--2631},
+  year      = {2019},
+  doi       = {10.1145/3292500.3330701}
+}
+
+% ── Agentic Engineering Toolchain ────────────────────────────────────────
+
+@software{openspec,
+  author  = {{OpenSpec Contributors}},
+  title   = {{OpenSpec}: Spec-Driven Development {CLI} and Living Specification Framework},
+  year    = {2025},
+  url     = {https://github.com/Fission-AI/OpenSpec}
+}
+
+@software{speckit,
+  author  = {{Speckit Contributors}},
+  title   = {{Speckit}: Agent Skills for Spec-Driven Development Workflows},
+  year    = {2025},
+  url     = {https://github.com/dceoy/speckit-agent-skills}
+}
+
+@misc{wei2022surveyFewShot,
+  author       = {Jiangtao Wei and others},
+  title        = {A Comprehensive Survey of Few-Shot Learning: Evolution, Applications, Challenges, and Opportunities},
+  year         = {2022},
+  howpublished = {arXiv:2205.06743}
+}
+
+@inproceedings{zhang2021surveyMicroorganism,
+  author    = {Jiawei Zhang and Chen Li and Md Mamunur Rahaman and others},
+  title     = {A Comprehensive Review of Image Analysis Methods for Microorganism Counting},
+  booktitle = {arXiv},
+  year      = {2021},
+  eprint    = {2103.13625}
+}
+
+@article{he2015fcn,
+  author    = {Kaiming He and Georgia Gkioxari and Piotr Doll{\'a}r and Ross Girshick},
+  title     = {Mask {R-CNN}},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  pages     = {2961--2969},
+  year      = {2017},
+  doi       = {10.1109/ICCV.2017.322}
 }

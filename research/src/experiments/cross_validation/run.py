@@ -4,13 +4,13 @@
 Rotates the test strain across all strains for each species (round-robin).
 Fixed extractor: EfficientNetB1_finetuned
 Env strategies : [None/E1, "all"/E2]
-Agg strategies : ["weighted", "uni"]
+Agg strategies : ["weighted", "uni", "freq_strength", "relative"]
 K values       : [3, 5, 7, 9, 11]
-Total runs     : 5 folds × 2 env × 2 agg × 5 K = 100
+Total runs     : 5 folds × 2 env × 4 agg × 5 K = 200
 
-Results are appended to ``report/week_1_2/cv_results.csv`` immediately after
+Results are appended to ``results/cross_validation/cv_results.csv`` immediately after
 each run, so the job is safe to interrupt and resume — already-completed
-(fold, env_strategy, agg_strategy, k) combinations are skipped automatically.
+(fold, media_strategy, agg_strategy, k) combinations are skipped automatically.
 
 Parallel execution: within each fold, all (env × agg × k) combos run concurrently
 using ThreadPoolExecutor. Progress is displayed via tqdm.
@@ -48,7 +48,7 @@ from src.lib.cross_validation import generate_cv_folds as _lib_generate_cv_folds
 # Constants
 # ---------------------------------------------------------------------------
 
-REPORT_DIR = Path(__file__).parent.parent.parent / "report" / "week_1_2"
+REPORT_DIR = RESULTS_DIR / "cross_validation"
 CV_RESULTS_CSV = REPORT_DIR / "cv_results.csv"
 CV_SUMMARY_CSV = REPORT_DIR / "cv_summary_table.csv"
 
@@ -60,7 +60,7 @@ CV_RESULTS_FIELDS = [
     "predicted_specy",
     "correct",
     "test_set_index",
-    "env_strategy",
+    "media_strategy",
     "agg_strategy",
     "k",
     "extractor",
@@ -70,7 +70,7 @@ CV_RESULTS_FIELDS = [
 N_FOLDS = 5
 K_VALUES = [3, 5, 7, 9, 11]
 ENV_STRATEGIES: List[Optional[str]] = [None, "all"]  # E1, E2
-AGG_STRATEGIES = ["uni", "weighted"]  # uni = uniform, weighted = score-weighted
+AGG_STRATEGIES = ["uni", "weighted", "freq_strength", "relative"]
 
 # Thread-safe CSV write lock
 _csv_lock = threading.Lock()
@@ -104,7 +104,7 @@ def _load_completed_runs(csv_path: Path) -> set:
         for row in reader:
             key = (
                 int(row["fold"]),
-                row["env_strategy"],
+                row.get("media_strategy", row.get("env_strategy", "")),
                 row["agg_strategy"],
                 int(row["k"]),
                 row.get("extractor", ""),
@@ -198,7 +198,7 @@ def _run_fold_combo(
             "predicted_specy": res.get("predicted_specy", ""),
             "correct": int(bool(res.get("correct"))),
             "test_set_index": res.get("test_set_index", 0),
-            "env_strategy": env_label,
+            "media_strategy": env_label,
             "agg_strategy": agg,
             "k": k,
             "extractor": extractor_id,
@@ -219,7 +219,7 @@ def _run_fold_combo(
 
 
 def run_cross_validation(
-    collection_name: Optional[str] = None,
+    collection_name: Optional[str] = "myco_fungi_features_full_finetuned",
     extractor_key: str = "efficientnetb1_finetuned",
     use_fold_specific_assets: bool = False,
     collection_template: Optional[str] = None,
@@ -260,15 +260,17 @@ def run_cross_validation(
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     run_output_dir = output_dir or (RESULTS_DIR / "cross_validation")
     run_output_dir.mkdir(parents=True, exist_ok=True)
+    results_csv = run_output_dir / "cv_results.csv"
+    summary_csv = run_output_dir / "cv_summary_table.csv"
 
     folds = generate_cv_folds(n_folds=n_folds)
-    completed = _load_completed_runs(CV_RESULTS_CSV)
+    completed = _load_completed_runs(results_csv)
 
     total = n_folds * len(env_strategies) * len(agg_strategies) * len(k_values)
     segmented_image_dir = str(SEGMENTED_IMAGE_DIR)
 
     print(f"Cross-validation: {total} total runs, max_workers={max_workers}")
-    print(f"Results → {CV_RESULTS_CSV}")
+    print(f"Results → {results_csv}")
 
     with tqdm(total=total, desc="CV runs", unit="run", dynamic_ncols=True) as pbar:
         for fold_idx, fold_strains in enumerate(folds):
@@ -342,7 +344,7 @@ def run_cross_validation(
                 for future in as_completed(futures):
                     try:
                         key, rows, acc, env_label, agg, k = future.result()
-                        _append_rows(CV_RESULTS_CSV, rows)
+                        _append_rows(results_csv, rows)
                         completed.add(key)
                         pbar.update(1)
                         pbar.set_postfix(
@@ -364,10 +366,10 @@ def run_cross_validation(
                         pbar.update(1)
 
     print(f"\nCross-validation complete.  {total} runs processed.")
-    print(f"Results: {CV_RESULTS_CSV}")
+    print(f"Results: {results_csv}")
 
-    _generate_summary(CV_RESULTS_CSV, CV_SUMMARY_CSV)
-    print(f"Summary table: {CV_SUMMARY_CSV}")
+    _generate_summary(results_csv, summary_csv)
+    print(f"Summary table: {summary_csv}")
 
 
 # ---------------------------------------------------------------------------
@@ -376,7 +378,7 @@ def run_cross_validation(
 
 
 def _generate_summary(results_csv: Path, summary_csv: Path) -> None:
-    """Aggregate per-prediction rows into mean/std accuracy per (env, agg, k)."""
+    """Aggregate per-prediction rows into mean/std accuracy per (media, agg, k)."""
     if not results_csv.exists():
         print("No results CSV found; skipping summary.")
         return
@@ -386,12 +388,14 @@ def _generate_summary(results_csv: Path, summary_csv: Path) -> None:
         print("Results CSV is empty; skipping summary.")
         return
 
+    media_col = "media_strategy" if "media_strategy" in df.columns else "env_strategy"
+
     # Compute per-fold accuracy first, then aggregate across folds
     fold_acc = (
         df.groupby(
             [
                 "fold",
-                "env_strategy",
+                media_col,
                 "agg_strategy",
                 "k",
                 "extractor",
@@ -405,7 +409,7 @@ def _generate_summary(results_csv: Path, summary_csv: Path) -> None:
 
     summary = (
         fold_acc.groupby(
-            ["env_strategy", "agg_strategy", "k", "extractor", "collection"]
+            [media_col, "agg_strategy", "k", "extractor", "collection"]
         )["fold_accuracy"]
         .agg(
             mean_accuracy="mean",
@@ -427,7 +431,7 @@ def _generate_summary(results_csv: Path, summary_csv: Path) -> None:
 
 
 def main(
-    collection: Optional[str] = None,
+    collection: Optional[str] = "myco_fungi_features_full_finetuned",
     extractor: str = "efficientnetb1_finetuned",
     use_fold_specific_assets: bool = False,
     collection_template: Optional[str] = None,

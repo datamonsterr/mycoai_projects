@@ -91,11 +91,19 @@ class RetrievalRanking(BaseModel):
     neighbors: list[RetrievalNeighbor]
 
 
+class ThresholdConfidence(BaseModel):
+    formula: str = "gnorm_0_2"
+    confidence: float = 0.0
+    threshold: float = 0.12
+    is_known: bool = True
+
+
 class RetrievalResultsResponse(BaseModel):
     job_id: str
     status: str
     strain: str
     rankings: list[RetrievalRanking]
+    threshold: ThresholdConfidence | None = None
 
 
 from .species import (  # noqa: E402, F401

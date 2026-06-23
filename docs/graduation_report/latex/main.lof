@@ -1,18 +1,48 @@
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {1.1}{\ignorespaces Three fungal strains across five growth media (oblique view). Green border = same species as reference strain; red border = different species. All images from \texttt {Dataset/original/}.}}{3}{figure.caption.7}%
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Three fungal strains across five growth media (oblique view). Green border = same species as reference strain; red border = different species.}}{2}{figure.caption.9}%
+\contentsline {figure}{\numberline {1.2}{\ignorespaces Dataset scale overview showing the relationship between original images, segmented colonies, strains, and species.}}{3}{figure.caption.11}%
+\contentsline {figure}{\numberline {1.3}{\ignorespaces Number of original dish images per species in the curated dataset.}}{3}{figure.caption.12}%
+\contentsline {figure}{\numberline {1.4}{\ignorespaces Images per strain, colored by species. Most strains contribute 14 images (7 media $\times $ 2 angles).}}{4}{figure.caption.13}%
+\contentsline {figure}{\numberline {1.5}{\ignorespaces Distribution of images across seven growth media.}}{5}{figure.caption.14}%
+\contentsline {figure}{\numberline {1.6}{\ignorespaces Heatmap showing the number of images per species per growth medium.}}{5}{figure.caption.15}%
+\contentsline {figure}{\numberline {1.7}{\ignorespaces Few-shot classification challenge. Each point represents one species, positioned by its number of strains and number of images.}}{6}{figure.caption.17}%
+\contentsline {figure}{\numberline {1.8}{\ignorespaces High-level architecture of the retrieval-based classification pipeline. A query image passes through segmentation, feature extraction, vector search, and aggregation to produce a species prediction.}}{8}{figure.caption.19}%
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {2.1}{\ignorespaces System Overview}}{15}{figure.caption.16}%
-\contentsline {figure}{\numberline {2.2}{\ignorespaces Preprocessing Pipeline}}{17}{figure.caption.21}%
-\contentsline {figure}{\numberline {2.3}{\ignorespaces Training Curves}}{19}{figure.caption.26}%
-\contentsline {figure}{\numberline {2.4}{\ignorespaces Staircase Chart}}{23}{figure.caption.39}%
-\contentsline {figure}{\numberline {2.5}{\ignorespaces Accuracy vs K}}{25}{figure.caption.43}%
-\contentsline {figure}{\numberline {2.6}{\ignorespaces Fold Variance Box Plot}}{26}{figure.caption.45}%
-\contentsline {figure}{\numberline {2.7}{\ignorespaces Heatmap: env ($\times $) strategy vs K}}{26}{figure.caption.46}%
-\contentsline {figure}{\numberline {2.8}{\ignorespaces E1 vs E2 Bar Chart}}{27}{figure.caption.47}%
-\contentsline {figure}{\numberline {2.9}{\ignorespaces Confusion Matrix}}{29}{figure.caption.51}%
-\contentsline {figure}{\numberline {2.10}{\ignorespaces Left: Correct prediction (\textit {P. polonicum} DTO 148-D1). Right: Incorrect prediction (\textit {P. melanoconidium} DTO 158-D1 misclassified as \textit {P. aurantiogriseum}).}}{30}{figure.caption.53}%
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Overall fungal retrieval research pipeline from dish image to final species prediction.}}{12}{figure.caption.25}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces KMeans segmentation pipeline --- step-by-step visualization (source, preprocessed dish, colony bounding boxes).}}{14}{figure.caption.29}%
+\contentsline {figure}{\numberline {2.3}{\ignorespaces KMeans (left) vs YOLO (right) bounding box comparison for strain DTO 148-D1 (obverse angle) across four growth media. KMeans boxes (blue) tend to be wider on bright colonies with agar flare, while YOLO boxes (red) track the true colony boundary more tightly.}}{14}{figure.caption.30}%
+\contentsline {figure}{\numberline {2.4}{\ignorespaces Training curves for the supervised fine-tuning stage across 5 folds.}}{16}{figure.caption.32}%
+\contentsline {figure}{\numberline {2.5}{\ignorespaces Feature extractor comparison across three families: fine-tuned deep learning (blue), pretrained deep learning (orange), and traditional hand-crafted (green). All configurations use weighted aggregation, E1 environment strategy, and $K=5$.}}{17}{figure.caption.39}%
+\contentsline {figure}{\numberline {2.6}{\ignorespaces Top retrieval configurations grouped by extractor family (freq\_strength aggregation, $K=5$). Fine-tuned CNNs dominate the top ranks, followed by pretrained CNNs and traditional descriptors.}}{18}{figure.caption.46}%
+\contentsline {figure}{\numberline {2.7}{\ignorespaces Cross-validation heatmaps showing accuracy patterns across $K$ values, aggregation strategies, and environment configurations. Higher accuracy concentrates at small $K$ with freq\_strength aggregation.}}{19}{figure.caption.50}%
+\contentsline {figure}{\numberline {2.8}{\ignorespaces Comparison of base and fine-tuned retrieval configurations. Fine-tuned EfficientNetB1 dominates the ranking and improves mean accuracy by nearly 29 percentage points over the best ImageNet baseline.}}{20}{figure.caption.51}%
+\contentsline {figure}{\numberline {2.9}{\ignorespaces Confusion matrices for top fine-tuned and pretrained configurations. Each cell shows count and row-normalized fraction from 240 aggregated predictions (8 species $\times $ 6 test sets $\times $ 5 folds).}}{21}{figure.caption.53}%
+\contentsline {figure}{\numberline {2.10}{\ignorespaces Confusion matrices for best traditional and worst fine-tuned configurations, illustrating the diagnostic gap between extractor families.}}{22}{figure.caption.54}%
+\contentsline {figure}{\numberline {2.11}{\ignorespaces Distribution of the top retrieval score $s_0$ for known versus unknown incoming test sets. Known samples show a higher mean score (0.252) than unknown samples (0.178), indicating useful but overlapping threshold signal.}}{23}{figure.caption.58}%
+\contentsline {figure}{\numberline {2.12}{\ignorespaces Known-species retrieval accuracy after label normalization. Species names in the incoming dataset omit the ``Penicillium'' prefix, so normalized comparison is required for reliable scoring.}}{23}{figure.caption.59}%
+\contentsline {figure}{\numberline {2.13}{\ignorespaces Top threshold strategies ranked by F1 on the corrected diverse retrieval set.}}{24}{figure.caption.60}%
 \addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Use case diagram for MycoAI Retrieval derived from the generated SRS.}}{26}{figure.caption.64}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces High-level system architecture: React SPA frontend, FastAPI backend, PostgreSQL, Qdrant, Redis, and Celery worker.}}{29}{figure.caption.65}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Frontend route hierarchy from the implemented React application. Green routes are available to Users and Data Owners; red routes are Data Owner governance routes.}}{31}{figure.caption.67}%
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Entity-Relationship Diagram for the MycoAI Retrieval PostgreSQL schema.}}{32}{figure.caption.68}%
+\contentsline {figure}{\numberline {3.5}{\ignorespaces State transition diagram for \texttt {data\_update\_status}, which drives Qdrant re-indexing decisions.}}{33}{figure.caption.69}%
+\contentsline {figure}{\numberline {3.6}{\ignorespaces REST API endpoint groups and role-gated access boundaries.}}{34}{figure.caption.70}%
+\contentsline {figure}{\numberline {3.7}{\ignorespaces Authentication sequence for login, token refresh, logout, and Data Owner provisioning.}}{35}{figure.caption.71}%
+\contentsline {figure}{\numberline {3.8}{\ignorespaces High-level retrieval sequence diagram derived from the SRS and checked against the implemented frontend/backend boundary.}}{36}{figure.caption.72}%
+\contentsline {figure}{\numberline {3.9}{\ignorespaces Data Owner reference-data indexing sequence.}}{37}{figure.caption.73}%
+\contentsline {figure}{\numberline {3.10}{\ignorespaces Feedback submission and Data Owner review sequence.}}{38}{figure.caption.74}%
+\contentsline {figure}{\numberline {3.11}{\ignorespaces Model and index maintenance lifecycle: re-index trigger, external retraining guidance, and candidate model promotion path.}}{40}{figure.caption.75}%
+\contentsline {figure}{\numberline {3.12}{\ignorespaces Production Docker Compose topology: services, network boundaries, and persistent volumes.}}{41}{figure.caption.76}%
+\contentsline {figure}{\numberline {3.13}{\ignorespaces Species distribution in the reference dataset.}}{42}{figure.caption.77}%
+\contentsline {figure}{\numberline {3.14}{\ignorespaces Growth media distribution.}}{42}{figure.caption.78}%
+\contentsline {figure}{\numberline {3.15}{\ignorespaces Retrieval response-time histogram.}}{43}{figure.caption.79}%
 \addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Login page for test account registration and authentication}}{46}{figure.caption.81}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Dashboard showing dataset overview (727 images, 136 species, 5 media types)}}{46}{figure.caption.82}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Retrieve Species upload page with batch ZIP upload, KNN configuration controls}}{47}{figure.caption.83}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Segmentation review page with editable bounding boxes and segment grid}}{47}{figure.caption.84}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Retrieval results: ranked species predictions with threshold confidence (green = known, gnorm\_0\_2 formula), KNN neighbor details per query image.}}{48}{figure.caption.85}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \contentsfinish 

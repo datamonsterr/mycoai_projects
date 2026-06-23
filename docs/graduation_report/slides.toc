@@ -1,6 +1,0 @@
-\beamer@sectionintoc {1}{Preface \& Motivation}{3}{0}{1}
-\beamer@sectionintoc {2}{Problem Statement}{4}{0}{2}
-\beamer@sectionintoc {3}{Retrieval Model}{11}{0}{3}
-\beamer@sectionintoc {4}{Web Application}{20}{0}{4}
-\beamer@sectionintoc {5}{Agentic Engineering}{26}{0}{5}
-\beamer@sectionintoc {6}{Conclusion}{29}{0}{6}

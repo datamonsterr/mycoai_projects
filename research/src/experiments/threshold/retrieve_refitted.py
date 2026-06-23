@@ -20,7 +20,7 @@ from qdrant_client import QdrantClient
 import pandas as pd
 
 from src.config import DATASET_ROOT, QDRANT_API_KEY, QDRANT_URL, RESULTS_DIR, STRAIN_SPECIES_MAPPING_PATH
-from src.utils.qdrant_query import build_filter, get_image_features
+from src.utils.qdrant_query import build_filter
 
 # Override to local Docker Qdrant when QDRANT_URL not set
 import os
@@ -230,7 +230,7 @@ def _query_qdrant_for_set(
     if not all_neighbors:
         return []
     all_neighbors.sort(key=lambda n: float(n["score"]), reverse=True)
-    top = all_neighbors[:TOP_N]
+    all_neighbors = all_neighbors[:TOP_N]
     # aggregate
     totals: dict[str, float] = {}
     for n in all_neighbors:

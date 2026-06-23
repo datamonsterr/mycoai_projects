@@ -10,11 +10,14 @@ import argparse
 import csv
 import json
 import os
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+import pandas as pd
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
@@ -29,30 +32,67 @@ from src.experiments.feature_extraction.feature_extractors import FeatureExtract
 from src.utils.qdrant_query import find_nearest_neighbors_by_id, find_nearest_neighbors_by_image
 
 
+OLD_ENV_LABELS = {
+    None: "E1",
+    "all": "E2",
+}
+
+
+def normalize_environment_label(environment: Optional[str]) -> str:
+    if environment in OLD_ENV_LABELS:
+        return OLD_ENV_LABELS[environment]
+    if isinstance(environment, str) and environment.startswith(("E3_", "E4_")):
+        return environment
+    if isinstance(environment, str):
+        return f"E3_{environment}"
+    return "E1"
+
+
+def summarize_rank_scores(aggregated_results: Sequence[Dict[str, Any]], top_n: int = 5) -> Dict[str, Any]:
+    summary: Dict[str, Any] = {}
+    for index in range(top_n):
+        entry = aggregated_results[index] if index < len(aggregated_results) else None
+        summary[f"s{index}_species"] = entry.get("specy", "unknown") if entry else "unknown"
+        summary[f"s{index}_score"] = float(entry.get("score", 0.0)) if entry else 0.0
+    return summary
+
+
 def get_extractor_by_name(name: str) -> Optional[FeatureExtractor]:
     """Build a feature extractor instance from a normalized short name."""
     from src.experiments.feature_extraction.feature_extractors import (
         ColorHistogramExtractor,
+        ColorHistogramHSExtractor,
         EfficientNetB1Extractor,
+        EfficientNetB1FinetunedExtractor,
         GaborExtractor,
         HOGExtractor,
         MobileNetV2Extractor,
+        MobileNetV2FinetunedExtractor,
         ResNet50Extractor,
+        ResNet50FinetunedExtractor,
     )
 
     normalized = name.lower()
     if normalized == "resnet50":
         return ResNet50Extractor()
+    if normalized == "resnet50_finetuned":
+        return ResNet50FinetunedExtractor()
     if normalized == "mobilenetv2":
         return MobileNetV2Extractor()
-    if normalized == "efficientnetv2":
+    if normalized == "mobilenetv2_finetuned":
+        return MobileNetV2FinetunedExtractor()
+    if normalized in {"efficientnetv2", "efficientnetb1"}:
         return EfficientNetB1Extractor()
+    if normalized == "efficientnetb1_finetuned":
+        return EfficientNetB1FinetunedExtractor()
     if normalized == "hog":
         return HOGExtractor()
     if normalized == "gabor":
         return GaborExtractor()
     if normalized == "colorhistogram":
         return ColorHistogramExtractor()
+    if normalized == "colorhistogramhs":
+        return ColorHistogramHSExtractor()
     return None
 
 
@@ -110,6 +150,7 @@ def get_all_images_for_strain(
                     "parent_id": payload.get("parent_id") or payload.get("parent_item_id"),
                     "segment_index": payload.get("segment_index"),
                     "bbox": payload.get("bbox"),
+                    "image_path": payload.get("segment_path"),
                 }
             )
 
@@ -150,19 +191,89 @@ def build_query_group_from_manifest(
         if not row:
             continue
         data = row.get("data", {})
+        segment_path = row.get("segment_path") or data.get("segment_path")
         query_group.append(
             {
                 "image_id": segment_id,
-                "image_path": str(DATASET_ROOT.parent / row["segment_path"])
-                if isinstance(row.get("segment_path"), str)
+                "image_path": str(DATASET_ROOT.parent / segment_path)
+                if isinstance(segment_path, str)
                 else None,
                 "parent_id": row.get("parent_id") or data.get("parent_id"),
                 "environment": data.get("environment", "unknown"),
                 "angle": data.get("angle", "unknown"),
-                "segment_index": row.get("index", 0),
+                "segment_index": row.get("index", data.get("segment_index", 0)),
             }
         )
     return query_group
+
+
+def collect_testsets_from_images(
+    strain_images: Sequence[Dict[str, Any]],
+    exclude_env: Optional[str] = None,
+) -> List[List[Dict[str, Any]]]:
+    env_segment_angle_images: Dict[str, Dict[Any, Dict[Any, List[Dict[str, Any]]]]] = (
+        defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    )
+
+    for img in strain_images:
+        env = img.get("environment", "unknown")
+        if exclude_env is not None and env == exclude_env:
+            continue
+        segment_idx = img.get("segment_index", 0)
+        image_id = img.get("image_id", "")
+        seg_match = re.search(r"segment_(\d+)", image_id)
+        if seg_match:
+            segment_idx = int(seg_match.group(1)) - 1
+        angle = img.get("angle", "unknown")
+        env_segment_angle_images[env][segment_idx][angle].append(img)
+
+    test_sets: List[List[Dict[str, Any]]] = []
+    test_configs = [
+        (0, "ob"),
+        (0, "rev"),
+        (1, "ob"),
+        (1, "rev"),
+        (2, "ob"),
+        (2, "rev"),
+    ]
+
+    for segment_idx, preferred_angle in test_configs:
+        skip_config = False
+        test_set: List[Dict[str, Any]] = []
+        for env in sorted(env_segment_angle_images.keys()):
+            segment_images = env_segment_angle_images[env]
+            img_selected: Optional[Dict[str, Any]] = None
+
+            if segment_idx in segment_images:
+                angle_variations = {
+                    "ob": ["ob", "obverse"],
+                    "rev": ["rev", "reverse"],
+                }
+                for angle_var in angle_variations.get(preferred_angle, [preferred_angle]):
+                    candidates = segment_images[segment_idx].get(angle_var, [])
+                    if candidates:
+                        img_selected = candidates[0]
+                        break
+
+                if img_selected is None:
+                    for angle in sorted(segment_images[segment_idx].keys()):
+                        candidates = segment_images[segment_idx][angle]
+                        if candidates:
+                            img_selected = candidates[0]
+                            break
+
+            if img_selected is None:
+                skip_config = True
+                break
+
+            test_set.append(img_selected)
+
+        if not skip_config and test_set and len(test_set) == len(env_segment_angle_images):
+            test_sets.append(test_set)
+
+    available_segments = sorted(env_segment_angle_images[env].keys()) if env_segment_angle_images else []
+    print(f"  [collect] available_segments={available_segments}, built_test_sets={len(test_sets)}")
+    return test_sets
 
 
 def filter_siblings(
@@ -445,6 +556,8 @@ def predict(
         confidence = aggregated[0][1]
 
     is_correct = predicted_specy == ground_truth_specy
+    aggregated_results = [{"specy": s, "score": sc} for s, sc in aggregated]
+    score_summary = summarize_rank_scores(aggregated_results)
 
     return {
         "strain": strain,
@@ -452,11 +565,12 @@ def predict(
         "predicted_specy": predicted_specy,
         "correct": is_correct,
         "predicted_confidence": confidence,
-        "aggregated_results": [{"specy": s, "score": sc} for s, sc in aggregated],
+        "aggregated_results": aggregated_results,
         "raw_results": raw_results,
         "feature_extractor": feature_extractor.name,
         "strategy": strategy,
         "environment": environment,
+        **score_summary,
     }
 
 
@@ -513,7 +627,14 @@ def print_selection_report(selected: Dict[str, str], output_dir: str) -> str:
     return report_path
 
 
-def print_prediction_results(results: List[Dict[str, Any]], output_dir: str) -> str:
+def print_prediction_results(
+    results: List[Dict[str, Any]],
+    output_dir: str,
+    collection_name: Optional[str] = None,
+    k: Optional[int] = None,
+    media: Optional[str] = None,
+    strategy: Optional[str] = None,
+) -> str:
     """Write human-readable and JSON prediction summaries."""
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -521,6 +642,7 @@ def print_prediction_results(results: List[Dict[str, Any]], output_dir: str) -> 
 
     correct_count = sum(1 for r in results if r["correct"])
     accuracy = correct_count / len(results) if results else 0.0
+    media_label = normalize_environment_label(media)
 
     with open(report_path, "w") as f:
         f.write(f"Accuracy: {accuracy:.4f}\\n")
@@ -536,6 +658,10 @@ def print_prediction_results(results: List[Dict[str, Any]], output_dir: str) -> 
         "correct_predictions": correct_count,
         "total_strains": len(results),
         "timestamp": timestamp,
+        "collection": collection_name,
+        "k": k,
+        "media_strategy": media_label,
+        "aggregation_strategy": strategy,
         "results": results,
     }
     with open(json_path, "w") as f:
@@ -548,8 +674,10 @@ def write_evaluation_csv(
     results: List[Dict[str, Any]],
     output_dir: str,
     feature_extractor: FeatureExtractor,
-    environment: Optional[str],
+    media: Optional[str],
     strategy: str,
+    collection_name: Optional[str] = None,
+    k: Optional[int] = None,
 ) -> Optional[str]:
     """Write ranked species predictions to CSV."""
     if not results:
@@ -558,12 +686,12 @@ def write_evaluation_csv(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    if environment is None:
+    if media is None:
         media_label = "same"
-    elif isinstance(environment, str) and environment.lower() == "all":
+    elif isinstance(media, str) and media.lower() == "all":
         media_label = "all"
     else:
-        media_label = str(environment)
+        media_label = str(media)
 
     agg_label = "weighted" if strategy == "weighted" else strategy
 
@@ -576,6 +704,10 @@ def write_evaluation_csv(
         "feature_extractor",
         "media",
         "aggregation",
+        "collection",
+        "k",
+        "predicted_species",
+        "predicted_confidence",
     ]
 
     rank_fields: List[str] = []
@@ -599,6 +731,10 @@ def write_evaluation_csv(
                 "feature_extractor": feature_extractor.name,
                 "media": media_label,
                 "aggregation": agg_label,
+                "collection": collection_name or "",
+                "k": k if k is not None else "",
+                "predicted_species": result.get("predicted_specy", "unknown"),
+                "predicted_confidence": result.get("predicted_confidence", 0.0),
             }
 
             aggregated = result.get("aggregated_results", [])
@@ -663,110 +799,10 @@ def collect_testset(
             test_sets.append([img])
         return test_sets
 
-    env_segment_angle_images: Dict[str, Dict[Any, Dict[Any, List[Dict[str, Any]]]]] = (
-        defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    return collect_testsets_from_images(
+        strain_images,
+        exclude_env=exclude_env if is_e4 else None,
     )
-
-    for img in strain_images:
-        env = img.get("environment", "unknown")
-        if is_e4 and env == exclude_env:
-            continue
-        segment_idx = img.get("segment_index", 0)
-        angle = img.get("angle", "unknown")
-        env_segment_angle_images[env][segment_idx][angle].append(img)
-
-    test_sets = []
-    test_configs = [
-        (0, "ob"),
-        (0, "rev"),
-        (1, "ob"),
-        (1, "rev"),
-        (2, "ob"),
-        (2, "rev"),
-    ]
-
-    used_image_angle_per_env: Dict[str, set] = defaultdict(set)
-
-    for segment_idx, preferred_angle in test_configs:
-        test_set: List[Dict[str, Any]] = []
-
-        for env in sorted(env_segment_angle_images.keys()):
-            segment_images = env_segment_angle_images[env]
-            img_selected: Optional[Dict[str, Any]] = None
-
-            if segment_idx in segment_images:
-                angle_variations = {
-                    "ob": ["ob", "obverse"],
-                    "rev": ["rev", "reverse"],
-                }
-                for angle_var in angle_variations.get(
-                    preferred_angle, [preferred_angle]
-                ):
-                    if (
-                        angle_var in segment_images[segment_idx]
-                        and segment_images[segment_idx][angle_var]
-                    ):
-                        candidates = segment_images[segment_idx][angle_var]
-                        for candidate in candidates:
-                            combo_key = (
-                                candidate["image_id"],
-                                candidate.get("angle", "unknown"),
-                            )
-                            if combo_key not in used_image_angle_per_env[env]:
-                                img_selected = candidate
-                                break
-                        if img_selected is None and candidates:
-                            img_selected = candidates[0]
-                        break
-
-                if img_selected is None:
-                    for angle in sorted(segment_images[segment_idx].keys()):
-                        candidates = segment_images[segment_idx][angle]
-                        if candidates:
-                            for candidate in candidates:
-                                combo_key = (
-                                    candidate["image_id"],
-                                    candidate.get("angle", "unknown"),
-                                )
-                                if combo_key not in used_image_angle_per_env[env]:
-                                    img_selected = candidate
-                                    break
-                            if img_selected is None:
-                                img_selected = candidates[0]
-                            break
-
-            if img_selected is None:
-                for seg_idx in sorted(segment_images.keys()):
-                    for angle in sorted(segment_images[seg_idx].keys()):
-                        candidates = segment_images[seg_idx][angle]
-                        if candidates:
-                            for candidate in candidates:
-                                combo_key = (
-                                    candidate["image_id"],
-                                    candidate.get("angle", "unknown"),
-                                )
-                                if combo_key not in used_image_angle_per_env[env]:
-                                    img_selected = candidate
-                                    break
-                            if img_selected is not None:
-                                break
-                    if img_selected is not None:
-                        break
-
-            if img_selected is not None:
-                test_set.append(img_selected)
-                combo_key = (
-                    img_selected["image_id"],
-                    img_selected.get("angle", "unknown"),
-                )
-                used_image_angle_per_env[env].add(combo_key)
-            else:
-                break
-
-        if test_set and len(test_set) == len(env_segment_angle_images):
-            test_sets.append(test_set)
-
-    return test_sets
 
 
 def predict_segment_group(
@@ -783,8 +819,6 @@ def predict_segment_group(
     strain_to_specy_path: str = str(STRAIN_SPECIES_MAPPING_PATH),
 ) -> Dict[str, Any]:
     """Predict species from a provided segment group (one strain test split)."""
-    import pandas as pd
-
     df = pd.read_csv(strain_to_specy_path)
     strain_to_specy = dict(zip(df["Strain"], df["Species"]))
     ground_truth_specy = strain_to_specy.get(strain, "unknown")
@@ -793,6 +827,8 @@ def predict_segment_group(
     for query_img in test_group:
         image_id = query_img["image_id"]
         image_path = query_img.get("image_path")
+        if image_path and not Path(str(image_path)).is_absolute():
+            image_path = str(DATASET_ROOT.parent / str(image_path))
         parent_id = query_img["parent_id"]
         img_environment = query_img.get("environment", "unknown")
 
@@ -820,6 +856,7 @@ def predict_segment_group(
                 feature_type=feature_extractor.name,
                 num_neighbors=k * 10,
                 environment=search_environment,
+                exclude_environment=exclude_environment,
                 exclude_strain=strain,
             )
         else:
@@ -843,6 +880,7 @@ def predict_segment_group(
         raw_results.append(
             {
                 "query_image_id": image_id,
+                "query_image_path": image_path,
                 "query_environment": img_environment,
                 "neighbors": neighbors,
             }
@@ -864,6 +902,8 @@ def predict_segment_group(
         confidence = aggregated[0][1]
 
     is_correct = predicted_specy == ground_truth_specy
+    aggregated_results = [{"specy": s, "score": sc} for s, sc in aggregated]
+    score_summary = summarize_rank_scores(aggregated_results)
 
     return {
         "strain": strain,
@@ -871,11 +911,12 @@ def predict_segment_group(
         "predicted_specy": predicted_specy,
         "correct": is_correct,
         "predicted_confidence": confidence,
-        "aggregated_results": [{"specy": s, "score": sc} for s, sc in aggregated],
+        "aggregated_results": aggregated_results,
         "raw_results": raw_results,
         "feature_extractor": feature_extractor.name,
         "strategy": strategy,
         "environment": environment,
+        **score_summary,
     }
 
 
@@ -932,7 +973,7 @@ def run_species_evaluation(
         if manifest_matches and prepared_segments:
             manifest = json.loads(manifest_matches[0].read_text())
             query_group = build_query_group_from_manifest(manifest.get("query_image_ids", []), prepared_segments)
-            test_sets = [query_group] if query_group else []
+            test_sets = collect_testsets_from_images(query_group) if query_group else []
         else:
             test_sets = collect_testset(
                 client=client,
@@ -947,6 +988,14 @@ def run_species_evaluation(
 
         print(f"  Found {len(test_sets)} test sets for {strain}")
         for i, test_group in enumerate(test_sets):
+            ids = [img.get("image_id", "?") for img in test_group]
+            segments = sorted(set(
+                re.search(r"segment_(\d+)", img_id).group(1) if re.search(r"segment_(\d+)", img_id) else "?"
+                for img_id in ids
+            ))
+            angles = sorted(set(img.get("angle", "?") for img in test_group))
+            envs = sorted(set(img.get("environment", "?") for img in test_group))
+            print(f"    test_set_{i}: {len(ids)} images, segments={segments}, angles={angles}, envs={envs}")
             res = predict_segment_group(
                 client=client,
                 collection_name=collection_name,
@@ -963,15 +1012,24 @@ def run_species_evaluation(
             res["environment_strategy"] = env_strategy
             results.append(res)
 
-    report_path = print_prediction_results(results, output_dir)
+    report_path = print_prediction_results(
+        results,
+        output_dir,
+        collection_name=collection_name,
+        k=k,
+        media=environment,
+        strategy=strategy,
+    )
     draw_confusion_matrix(results, os.path.join(output_dir, "confusion_matrix.png"))
 
     csv_path = write_evaluation_csv(
         results=results,
         output_dir=output_dir,
         feature_extractor=feature_extractor,
-        environment=environment,
+        media=environment,
         strategy=strategy,
+        collection_name=collection_name,
+        k=k,
     )
     if csv_path:
         print(f"CSV saved to: {csv_path}")
@@ -1029,7 +1087,7 @@ def run_comprehensive_report(
     from src.analysis.visualization.visualize_prediction import (
         batch_visualize_predictions,
     )
-    from src.config import COLLECTION_NAME, QDRANT_API_KEY, QDRANT_URL
+    from src.config import QDRANT_API_KEY, QDRANT_URL
 
     print(f"Starting Comprehensive Report: {identifier}")
     print(f"Extractors: {extractors}")
@@ -1049,7 +1107,7 @@ def run_comprehensive_report(
 
         for env_strat in env_strategies:
             for agg_strat in agg_strategies:
-                subfolder_name = f"{ext_name}_{env_strat}_{agg_strat}"
+                subfolder_name = f"{ext_name}_{agg_strat}_{env_strat}"
                 output_dir = base_output_dir / subfolder_name
                 output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1142,15 +1200,23 @@ def _build_parser() -> argparse.ArgumentParser:
         "--extractors",
         nargs="+",
         default=[
+            "efficientnetb1_finetuned",
+            "resnet50_finetuned",
+            "mobilenetv2_finetuned",
+            "efficientnetb1",
             "resnet50",
             "mobilenetv2",
-            "efficientnetv2",
             "hog",
             "gabor",
             "colorhistogram",
+            "colorhistogramhs",
         ],
     )
-    comprehensive.add_argument("--env_strategies", nargs="+", default=["E1", "E2"])
+    comprehensive.add_argument(
+        "--env_strategies",
+        nargs="+",
+        default=["E1", "E2", "E3_CREA", "E3_DG18", "E3_MEA", "E3_YES", "E4_CREA", "E4_DG18", "E4_MEA", "E4_YES"],
+    )
     comprehensive.add_argument(
         "--agg_strategies",
         nargs="+",

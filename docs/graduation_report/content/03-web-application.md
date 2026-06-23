@@ -11,16 +11,14 @@ The web application translates the MycoAI Retrieval model into a governed, multi
 | **User** | `user` | Upload images, retrieve species predictions, review/edit bounding boxes, download batch results, submit feedback/contribution proposals |
 | **Data Owner** | `owner` | All User capabilities plus: index reference data, CRUD species/media metadata, browse/manage dataset, review feedback, re-index Qdrant, assess/promote Candidate Models, manage users and roles |
 
-The Data Owner role inherits all User permissions. A permission matrix enforced at both the API layer (403 Forbidden) and the UI layer (conditional rendering) gates every endpoint. Backend RBAC is implemented at `backend/src/auth.py` using FastAPI `Depends(get_current_user)` and `require_role("owner")` dependency chains. The frontend at `frontend/src/App.tsx` conditionally renders owner-restricted pages.
+The Data Owner role inherits all User permissions. A permission matrix enforced at both the API layer (403 Forbidden) and the UI layer (conditional rendering) gates every endpoint. Backend RBAC uses FastAPI `Depends(get_current_user)` and `require_role("owner")` dependency chains. The frontend conditionally renders owner-restricted pages.
 
 ### 3.1.2 Use Case Diagram
 
-![Use case diagram](figures/ch03_api_map.png)  
-*Figure 3.1: UML Use Case Diagram for MycoAI Retrieval — User and Data Owner actors with shared segmentation pipeline. Source defined in `docs/SRS.md` section 5.*
+The web application design is aligned with the generated Software Requirements Specification in `open-report/output/mycoai_projects/v2`. The diagram keeps the thesis view at use-case level: authenticated Users perform retrieval and feedback workflows, while Data Owners additionally govern reference data, metadata, users, dataset state, and model/index maintenance.
 
-> **Screenshot Placeholder — Figure 3.1 (alt): Dedicated Use Case Diagram**
->
-> The dedicated use case diagram should be rendered separately from `docs/SRS.md` section 5. After capturing, rename to `figures/ch03_usecase_diagram.png` and update this reference.
+![Use case diagram](figures/ch03_usecase_diagram.png)  
+*Figure 3.1: Use case diagram for MycoAI Retrieval derived from the generated SRS.*
 
 ### 3.1.3 Functional Requirements Summary
 
@@ -28,20 +26,20 @@ Key functional requirements driving the web application implementation:
 
 | FR ID | Requirement | Implementation Status |
 |-------|------------|-----------------------|
-| FR-001 | JWT authentication for all protected workflows | `backend/auth.py` — OAuth2 password flow with python-jose + bcrypt |
-| FR-006 | Species retrieval from single uploaded strain images | `backend/routes.py:449–530` — `/api/v1/retrieval/query` |
-| FR-007 | Species retrieval from batch uploaded folders | `backend/routes.py:245–415` — `/api/v1/images/batch-upload` |
-| FR-009 | Auto-segmentation with editable bounding boxes | `backend/segmentation.py` — KMeans + Contour pipeline; frontend `Retrieve.tsx` canvas overlay |
-| FR-010/011 | Same-media / all-media KNN strategy | `backend/qdrant_client.py` — environment filter construction |
-| FR-013/014 | Feedback submission and contribution proposals | `backend/routes.py:532–645` — `/api/v1/feedback` |
-| FR-015 | Data Owner feedback review (accept/reject/defer) | Frontend `FeedbackInbox.tsx` page |
-| FR-017 | Data Owner index new reference data | Frontend `IndexNewData.tsx` — reuses upload + segmentation |
-| FR-019 | CRUD Species and Media metadata | Frontend `Metadata.tsx` — owner-only metadata management |
-| FR-021 | Browse/search/filter/group dataset | Frontend `Dataset.tsx` — filter bar + grouped data table |
-| FR-023 | Archive/restore only, no permanent delete | `is_archived` flag on Images, Species, Media, Segments |
-| FR-025 | In-system Qdrant re-index trigger | Frontend `ModelIndex.tsx` + `/api/v1/index/reindex` |
-| FR-028 | Candidate Model upload, evaluate, promote/reject | `/api/v1/models/candidates/*` endpoints |
-| FR-034 | Role-based API enforcement (403 for Users) | `backend/core/dependencies.py` |
+| FR-001 | JWT authentication for all protected workflows | Implemented through authentication API and role-aware frontend shell |
+| FR-006 | Species retrieval from single uploaded strain images | Implemented as upload, segmentation review, vector retrieval, and ranked result display |
+| FR-007 | Species retrieval from batch uploaded folders | Implemented as asynchronous batch workflow with progress/results state |
+| FR-009 | Auto-segmentation with editable bounding boxes | Implemented through deterministic KMeans segmentation and frontend review; YOLO remains research alternative |
+| FR-010/011 | Same-media / all-media KNN strategy | Implemented through metadata-aware Qdrant filters and fallback search scope |
+| FR-013/014 | Feedback submission and contribution proposals | Implemented as post-retrieval feedback workflow |
+| FR-015 | Data Owner feedback review (accept/reject/defer) | Implemented as owner-only review inbox |
+| FR-017 | Data Owner index new reference data | Implemented as owner-only reference-data indexing workflow |
+| FR-019 | CRUD Species and Media metadata | Implemented as owner-only metadata management |
+| FR-021 | Browse/search/filter/group dataset | Implemented as owner-only dataset governance page |
+| FR-023 | Archive/restore only, no permanent delete | Implemented through reversible archive state |
+| FR-025 | In-system Qdrant re-index trigger | Implemented through model/index maintenance workflow |
+| FR-028 | Candidate Model upload, evaluate, promote/reject | Implemented as owner-controlled candidate model lifecycle |
+| FR-034 | Role-based API enforcement (403 for Users) | Implemented through backend authorization and frontend route gating |
 
 ### 3.1.4 Non-Functional Requirements
 
@@ -69,41 +67,43 @@ The system follows a decoupled client-server architecture with six containerized
 
 | Layer | Technology | Justification |
 |-------|-----------|---------------|
-| **Frontend** | React 19 + Vite + TypeScript | SPA with HMR, type safety |
+| **Frontend** | React 19 + Vite + TypeScript~[Meta, 2013; You, 2020] | SPA with HMR, type safety |
 | **UI Kit** | shadcn/ui + Tailwind CSS v4 | Pre-built accessible components, utility-first styling |
-| **Routing** | Client-side hash routing in `App.tsx:17–49` | Simple, no SSR needed |
+| **Routing** | Client-side hash routing in `App.tsx` | Simple, no SSR needed |
 | **Data Fetching** | TanStack Query (`useQuery`, `useMutation`) | Caching, background refetch, optimistic updates |
 | **Forms** | React Hook Form + Zod | Performant form state, schema validation |
 | **Charts** | Custom SVG pie/bar charts (Dashboard) | Lightweight, no external dependency |
-| **Backend** | FastAPI (Python 3.13) | Async-native, auto-docs (OpenAPI), Pydantic v2 |
+| **Backend** | FastAPI (Python 3.13)~[Ramírez, 2019; Python Software Foundation, 2024] | Async-native, auto-docs (OpenAPI), Pydantic v2 |
 | **ORM** | SQLAlchemy 2.0 async (asyncpg driver) | Mature, async sessions, DeclarativeBase |
 | **Migrations** | Alembic | Auto-generate from model diffs |
-| **Vector DB** | Qdrant (qdrant-client) | Cosine distance, named vectors, rich filtering |
+| **Vector DB** | Qdrant~[Qdrant Team, 2021] | Cosine distance, named vectors, rich filtering |
 | **Task Queue** | Celery + Redis | Mature Python task queue, retries, monitoring |
 | **Auth** | python-jose + passlib (bcrypt) | JWT access/refresh tokens, HTTP-only cookies |
-| **CV Libraries** | OpenCV (cv2) + NumPy + scikit-learn | KMeans and contour-based segmentation |
-| **Deployment** | Docker Compose (single VM) | Self-contained, reproducible |
+| **CV Libraries** | OpenCV, NumPy, scikit-learn~[Bradski, 2000; Harris et al., 2020; Pedregosa et al., 2011] | KMeans and contour-based segmentation |
+| **Deployment** | Docker Compose~[Merkel, 2014] | Self-contained, reproducible |
 | **CI/CD** | GitHub Actions | Lint, typecheck, test, build verification |
 
 ### 3.2.3 Backend Package Structure
 
-The backend follows a domain-based layout at `backend/src/`:
+The backend follows a domain-based layout with clear separation of concerns:
 
-| Directory | Purpose | Key Files |
-|-----------|---------|-----------|
-| `models/` | SQLAlchemy ORM models (14 tables) | `__init__.py` — User, Media, Species, Strain, Image, Segment, RetrievalJob, RetrievalResult, RetrievalNeighbor, Feedback, TrainingJob, AuditLog, QdrantIndexState, SystemState |
-| `core/` | Config, security, dependencies, exceptions | `config.py`, `security.py`, `dependencies.py` |
-| `api/` | FastAPI routers by domain | `auth.py`, `images.py`, `species.py`, `feedback.py`, `retrieval.py`, `training.py`, `dashboard.py` |
-| `schemas/` | Pydantic request/response models | `images.py`, `retrieval.py`, `species.py`, `feedback.py`, `auth.py`, `dashboard.py` |
-| `services/` | Business logic | `segmentation.py`, `feature_extraction.py`, `retrieval.py`, `storage.py` |
-| `repos/` | Database query layer | `species.py`, `strain.py`, `image.py`, `feedback.py`, `user.py` |
-| `tasks/` | Celery async tasks | `segmentation.py`, `feature_extraction.py`, `training.py`, `batch.py` |
-| Root | Application factory | `app.py`, `main.py`, `database.py`, `config.py`, `routes.py` |
+| Directory | Purpose | Content |
+|-----------|---------|---------|
+| `models/` | SQLAlchemy ORM models (14 tables) | User, Media, Species, Strain, Image, Segment, RetrievalJob, RetrievalResult, RetrievalNeighbor, Feedback, TrainingJob, AuditLog, QdrantIndexState, SystemState |
+| `core/` | Config, security, dependencies, exceptions | Application configuration, JWT security, role-based dependency injection, RFC 7807 error types |
+| `api/` | FastAPI routers by domain | Authentication, Image upload/management, Species CRUD, Feedback workflow, Retrieval query, Training orchestration, Dashboard statistics |
+| `schemas/` | Pydantic request/response models | Validated schemas for all API endpoints with strict type checking |
+| `services/` | Business logic | Segmentation pipeline, feature extraction, retrieval orchestration, file storage |
+| `repos/` | Database query layer | Typed repository classes per aggregate root |
+| `tasks/` | Celery async tasks | Background segmentation, feature extraction, model training, batch processing |
+| Root | Application factory | FastAPI app creation, database session management, configuration loading, route registration |
 
 ### 3.2.4 Frontend Route Hierarchy
 
+The implemented frontend is a React 19 and Vite single-page application with role-aware routing. Public access is limited to authentication; authenticated Users are directed to retrieval and personal feedback workflows; Data Owners unlock governance pages for indexing, dataset browsing, metadata, feedback review, model/index maintenance, users, and audit history.
+
 ![Frontend Route Map](figures/ch03_frontend_routes.png)  
-*Figure 3.3: Frontend route hierarchy — 11 pages with role-based access control. Green = User & Data Owner accessible. Red = Data Owner only.*
+*Figure 3.3: Frontend route hierarchy from the implemented React application. Green routes are available to Users and Data Owners; red routes are Data Owner governance routes.*
 
 ---
 
@@ -111,7 +111,7 @@ The backend follows a domain-based layout at `backend/src/`:
 
 ### 3.3.1 Entity-Relationship Diagram
 
-The relational schema is implemented as SQLAlchemy ORM models at `backend/src/models/__init__.py` (482 lines, 14 tables). Figure 3.4 presents the Entity-Relationship Diagram following UML notation conventions: primary keys marked `PK`, foreign keys with crow's-foot notation, nullable fields marked `*`.
+The relational schema is implemented as 14 SQLAlchemy ORM models. Figure 3.4 presents the Entity-Relationship Diagram following UML notation conventions: primary keys marked `PK`, foreign keys with crow's-foot notation, nullable fields marked `*`.
 
 ![Entity-Relationship Diagram](figures/ch03_erd.png)  
 *Figure 3.4: Entity-Relationship Diagram (ERD) for the MycoAI Retrieval PostgreSQL schema — 14 tables with primary/foreign key relationships.*
@@ -146,8 +146,6 @@ The backend maintains a bridge table (`qdrant_index_state`) that maps segment ID
 
 > **Chart — Figure 3.5a: Data Update Status Donut Chart**
 >
-> Run: `uv --directory backend run python /tmp/opencode/gen_ch03_charts.py`
->
 > ![Index Status Distribution](figures/ch03_index_status.png)  
 > *Figure 3.5a: Distribution of `data_update_status` across active dataset items — current, updated_requires_reindex, archived.*
 
@@ -171,17 +169,17 @@ The authentication system uses JWT access tokens (1 hour lifetime, HS256) and re
 
 ### 3.4.3 Retrieval Query Sequence
 
-The system uses an asynchronous job pattern: the client receives a `202 Accepted` response with a `job_id` and polls for status until completion.
+The retrieval sequence follows the generated SRS: the browser uploads image and metadata, the backend validates and persists state, background processing performs segmentation and feature extraction, Qdrant returns nearest neighbours, and the frontend displays ranked species evidence.
 
-![Retrieval Query Sequence](figures/ch03_retrieval_sequence.png)  
-*Figure 3.8: End-to-end retrieval sequence — image upload, segmentation, feature extraction, Qdrant KNN search, aggregation, and results delivery.*
+![Retrieval Query Sequence](figures/ch03_srs_retrieve_sequence.png)  
+*Figure 3.8: High-level retrieval sequence diagram derived from the SRS and checked against the implemented frontend/backend boundary.*
 
 ### 3.4.4 Feedback Workflow Sequence
 
-Feedback is only available from retrieval results — Users cannot browse the reference dataset directly.
+Feedback is only available from retrieval results — Users cannot browse the reference dataset directly. Users submit corrections or contribution proposals after seeing results, and Data Owners review them before any reference data change.
 
-![Feedback Workflow Sequence](figures/ch03_feedback_sequence.png)  
-*Figure 3.9: Feedback lifecycle — submission from retrieval results, Data Owner review, and downstream effects on dataset/index state.*
+![Feedback Workflow Sequence](figures/ch03_srs_feedback_sequence.png)  
+*Figure 3.9: Feedback submission and Data Owner review sequence.*
 
 ### 3.4.5 Error Response Format
 
@@ -220,16 +218,13 @@ POST /api/v1/images
 
 ## 3.5 Frontend Architecture
 
-### 3.5.1 Component Architecture
+### 3.5.1 User Interface Scope
 
-The React SPA uses a flat component tree with client-side hash routing. State management uses TanStack Query for server data and React Context for authentication state, avoiding a global state library.
-
-![Frontend Component Architecture](figures/ch03_component_architecture.png)  
-*Figure 3.10: Frontend component architecture — providers, layout shell, 11 pages, shared hooks, and API services.*
+The thesis describes the interface at workflow level rather than source-code level. The implemented application contains the same major pages identified by the SRS: Retrieve, My Feedback, Dashboard, Index New Data, Dataset, Metadata, Feedback Inbox, Model Index, User Management, and Audit Log. Final screenshots should be inserted only when the deployed interface is frozen, using one page-width montage for (a) retrieval, (b) dataset governance, and (c) dashboard state.
 
 ### 3.5.2 Key Page: Retrieve (Species Retrieval)
 
-The Retriever page (`frontend/src/pages/Retrieve.tsx`, 895 lines) implements the core user workflow in three sequential steps:
+The Retriever page implements the core user workflow in three sequential steps:
 
 **Step 1 — Upload:** User selects single image or batch folder, provides strain identifier and media (dropdown from managed list or free-text for new media), sets max colonies count (1–10). Upload triggers `POST /api/v1/images` which runs segmentation synchronously.
 
@@ -260,7 +255,7 @@ The Retriever page (`frontend/src/pages/Retrieve.tsx`, 895 lines) implements the
 
 ### 3.5.4 Key Page: Dashboard (Data Owner)
 
-The Dashboard (`frontend/src/pages/Dashboard.tsx`, 272 lines) provides an overview of the reference dataset with custom SVG-based pie charts and summary cards. It consumes `GET /dashboard/stats`, `GET /dashboard/charts/species`, `GET /dashboard/charts/media`, and `GET /dashboard/qdrant-status`.
+The Dashboard provides an overview of the reference dataset with custom SVG-based pie charts and summary cards. It consumes the `/dashboard/stats`, `/dashboard/charts/species`, `/dashboard/charts/media`, and `/dashboard/qdrant-status` endpoints.
 
 > **Screenshot Placeholder — Figure 3.13: Dashboard Screenshot**
 >
@@ -282,7 +277,7 @@ The Dashboard (`frontend/src/pages/Dashboard.tsx`, 272 lines) provides an overvi
 
 ### 3.6.1 Segmentation Pipeline
 
-Segmentation is implemented at `backend/src/segmentation.py` (399 lines) as a `SegmentationPipeline` class with inline OpenCV and scikit-learn calls. Two methods are available:
+Segmentation is implemented as a `SegmentationPipeline` class with inline OpenCV and scikit-learn calls. Two methods are available:
 
 **KMeans Method:** (1) Convert to HSV color space, (2) K=3 KMeans clustering on HSV pixels, (3) Select foreground label, (4) Spatial K=2/3 clustering for individual colonies, (5) Bounding box refinement (erosion, contour fitting, halo shrink).
 
@@ -349,7 +344,7 @@ The Qdrant collection `myco_fungi_features_full_finetuned` stores per-segment po
 
 ### 3.6.4 Model and Index Maintenance
 
-The Model Index page (`frontend/src/pages/ModelIndex.tsx`) manages the Qdrant index lifecycle and Candidate Model assessment. Deep feature-extractor retraining is performed externally; the system provides Python guidance for dataset download, retraining, and model reupload.
+The Model Index page manages the Qdrant index lifecycle and Candidate Model assessment. Deep feature-extractor retraining is performed externally; the system provides Python guidance for dataset download, retraining, and model reupload.
 
 ![Model and Index Maintenance Lifecycle](figures/ch03_model_lifecycle.png)  
 *Figure 3.16: Model and Index maintenance lifecycle — Qdrant re-index trigger (in-system), external retraining guidance, Candidate Model upload/evaluate/promote pipeline.*
@@ -378,8 +373,7 @@ Deployment to production is manual (`docker compose pull && docker compose up -d
 
 The dashboard generates species and media distribution charts using custom SVG rendering in the frontend. The following charts were generated using Python (matplotlib/seaborn) for the graduation report:
 
-> **Chart generation script:** `/tmp/opencode/gen_ch03_charts.py`  
-> Run with: `uv --directory backend run python /tmp/opencode/gen_ch03_charts.py`
+> **Chart generation:** Generated from live database metrics using matplotlib and seaborn.
 
 ![Species Distribution](figures/ch03_species_distribution.png)  
 *Figure 3.18: Species distribution in the reference dataset — horizontal bar chart.*

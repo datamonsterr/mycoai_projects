@@ -36,7 +36,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import cv2  # noqa: E402
 
 from src.config import (  # noqa: E402
-    DATASET_ROOT,
+    INCOMING_METADATA_PATH,
+    CURATED_METADATA_PATH,
     QDRANT_API_KEY,
     QDRANT_URL,
     RESULTS_DIR,
@@ -47,6 +48,7 @@ from src.experiments.feature_extraction.feature_extractors import (  # noqa: E40
     EfficientNetB1FinetunedExtractor,
 )
 from src.analysis.visualization.visualize_prediction import (  # noqa: E402
+    _resolve_image_path,
     visualize_prediction_by_environment,
 )
 from src.experiments.retrieval.run import (  # noqa: E402
@@ -71,31 +73,48 @@ except ImportError:
 # Constants
 # ---------------------------------------------------------------------------
 
-DIVERSE_METADATA_PATH = DATASET_ROOT / "diverse_data" / "diverse_data_metadata.json"
+DIVERSE_METADATA_PATH = INCOMING_METADATA_PATH
 OUTPUT_DIR = RESULTS_DIR / "threshold"
 OUTPUT_CSV = OUTPUT_DIR / "diverse_retrieval_results.csv"
 VIS_OUTPUT_DIR = OUTPUT_DIR / "diverse_retrieval_visualizations"
 JSON_OUTPUT_DIR = OUTPUT_DIR / "diverse_retrieval_json"
 
-COLLECTION = "myco_fungi_features_full_finetuned"
-EXTRACTOR_KEY = "EfficientNetB1_finetuned"
+COLLECTION = "full_prepared_features"
+EXTRACTOR_KEY = "efficientnetb1_finetuned"
 K = 11
-TOP_N_SCORES = 5  # Record s0..s4
+TOP_N_SCORES = 5
 
-# Species in diverse data (without "Penicillium" prefix) that are in our DB
-KNOWN_SPECIES_MAP: Dict[str, str] = {
-    "commune": "Penicillium commune",
-    "crustosum": "Penicillium crustosum",
-    "expansum": "Penicillium expansum",
-    "chrysogenum": "Penicillium chrysogenum",
-    "citreonigrum": "Penicillium citreonigrum",
-    # also handle full names if present
-    "Penicillium commune": "Penicillium commune",
-    "Penicillium crustosum": "Penicillium crustosum",
-    "Penicillium expansum": "Penicillium expansum",
-    "Penicillium chrysogenum": "Penicillium chrysogenum",
-    "Penicillium citreonigrum": "Penicillium citreonigrum",
-}
+def _load_known_species_map() -> Dict[str, str]:
+    """Build mapping from stripped species names to full DB names using curated metadata."""
+    if not CURATED_METADATA_PATH.exists():
+        return {}
+    with open(CURATED_METADATA_PATH) as f:
+        curated = json.load(f)
+    mapping: Dict[str, str] = {}
+    seen = set()
+    for item in curated:
+        info = item.get("instance_info", item.get("data", {}))
+        species_full = info.get("species", "")
+        if not species_full or species_full == "unknown":
+            continue
+        stripped = _strip_penicillium(species_full)
+        if stripped and stripped not in seen:
+            seen.add(stripped)
+            mapping[stripped] = species_full
+            mapping[species_full.lower()] = species_full
+    return mapping
+
+
+def _strip_penicillium(label: str) -> str:
+    """Remove 'Penicillium ' or 'penicillium ' prefix from species name."""
+    clean = label.strip().lower()
+    for prefix in ("penicillium ",):
+        if clean.startswith(prefix):
+            return clean[len(prefix):]
+    return clean
+
+
+KNOWN_SPECIES_MAP = _load_known_species_map()
 
 CSV_FIELDS = (
     [
@@ -119,20 +138,20 @@ CSV_FIELDS = (
 
 
 def is_known_species(species_label: str) -> bool:
-    """Return True if the species is one of the 5 known Penicillium species."""
-    label = species_label.strip().lower()
-    for key in KNOWN_SPECIES_MAP:
-        if label == key.lower():
-            return True
-    return False
+    """Return True if species is known (exists in curated DB)."""
+    return map_to_db_species(species_label) is not None
 
 
 def map_to_db_species(species_label: str) -> Optional[str]:
-    """Map diverse-data species name to the DB species name, or None if unknown."""
+    """Map incoming species name to DB species name, or None if no match."""
     label = species_label.strip()
-    for key, val in KNOWN_SPECIES_MAP.items():
-        if label.lower() == key.lower():
-            return val
+    if not label or label.lower() == "unknown":
+        return None
+    stripped = _strip_penicillium(label)
+    if stripped in KNOWN_SPECIES_MAP:
+        return KNOWN_SPECIES_MAP[stripped]
+    if label.lower() in KNOWN_SPECIES_MAP:
+        return KNOWN_SPECIES_MAP[label.lower()]
     return None
 
 
@@ -190,7 +209,8 @@ def group_images_by_strain(
     """Return metadata entries grouped by strain while preserving input order."""
     grouped: dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for entry in images:
-        strain = entry.get("data", {}).get("strain") or entry["id"]
+        info = entry.get("instance_info", entry.get("data", {}))
+        strain = info.get("strain") or entry.get("item_id", entry["id"])
         grouped[strain].append(entry)
     return list(grouped.items())
 
@@ -200,31 +220,28 @@ def build_diverse_segment_candidates(
     strain_entries: List[Dict[str, Any]],
     available_environments: set[str],
 ) -> List[Dict[str, Any]]:
-    """Build per-segment query candidates from diverse metadata."""
+    """Build per-segment query candidates from incoming metadata."""
     segment_candidates: List[Dict[str, Any]] = []
 
     for entry in strain_entries:
-        source_id = entry["id"]
-        data = entry.get("data", {})
-        environment = data.get("environment", "UNKNOWN")
-        angle = data.get("angle", "UNKNOWN")
-        step_images = entry.get("step_images", {})
+        source_id = entry.get("item_id", entry.get("id", ""))
+        info = entry.get("instance_info", entry.get("data", {}))
+        environment = (info.get("environment") or info.get("media", "UNKNOWN")).upper()
+        angle = info.get("angle", "UNKNOWN")
+        paths = entry.get("paths", {})
+        segment_paths = paths.get("segments", [])
 
         if environment not in available_environments:
-            print(f"  SKIP {strain}/{source_id}: environment '{environment}' not in DB")
-            continue
+            env_set = {e.upper() for e in available_environments}
+            if environment not in env_set:
+                continue
 
-        segment_paths = step_images.get("segments") or data.get("segment_paths") or []
         if not segment_paths:
-            print(f"  SKIP {strain}/{source_id}: no segment paths in metadata")
             continue
 
         for segment_index, segment_path_rel in enumerate(segment_paths):
             segment_path = WORKSPACE_ROOT / segment_path_rel
             if not segment_path.exists():
-                print(
-                    f"  SKIP {strain}/{source_id}: segment not found at {segment_path}"
-                )
                 continue
 
             segment_candidates.append(
@@ -357,6 +374,12 @@ def collect_diverse_testsets(
 # ---------------------------------------------------------------------------
 
 
+def _entry_sort_key(entry: Dict[str, Any]) -> tuple:
+    info = entry.get("instance_info", entry.get("data", {}))
+    eid = entry.get("item_id", entry.get("id", ""))
+    return (info.get("environment", ""), info.get("angle", ""), eid)
+
+
 def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
     """
     Run retrieval for all diverse-data strains. Returns path to output CSV.
@@ -376,10 +399,10 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
     with open(DIVERSE_METADATA_PATH) as f:
         metadata = json.load(f)
 
-    images = metadata.get("images", [])
+    images = metadata if isinstance(metadata, list) else metadata.get("images", [])
     strain_groups = group_images_by_strain(images)
     print(
-        f"Loaded {len(images)} images from diverse metadata across {len(strain_groups)} strains"
+        f"Loaded {len(images)} images from incoming metadata across {len(strain_groups)} strains"
     )
 
     # Resume: skip already-processed
@@ -419,16 +442,9 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
         skipped = 0
 
         for strain, strain_entries in strain_groups:
-            sorted_entries = sorted(
-                strain_entries,
-                key=lambda entry: (
-                    entry.get("data", {}).get("environment", ""),
-                    entry.get("data", {}).get("angle", ""),
-                    entry["id"],
-                ),
-            )
-            base_data = sorted_entries[0].get("data", {})
-            species_label = base_data.get("species", "UNKNOWN")
+            sorted_entries = sorted(strain_entries, key=_entry_sort_key)
+            base_info = sorted_entries[0].get("instance_info", sorted_entries[0].get("data", {}))
+            species_label = base_info.get("species", "UNKNOWN")
             is_known = is_known_species(species_label)
             db_species = map_to_db_species(species_label)
 
@@ -494,7 +510,7 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
                         results = client.query_points(
                             collection_name=COLLECTION,
                             query=features.tolist(),
-                            using=EXTRACTOR_KEY,
+                            using=extractor.name,
                             query_filter=env_filter,
                             limit=K,
                             with_payload=True,
@@ -513,8 +529,10 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
                         query_neighbors.append(
                             {
                                 "image_id": image_id,
-                                "image_path": str(
-                                    SEGMENTED_IMAGE_DIR / f"{image_id}.jpg"
+                                "image_path": _resolve_image_path(
+                                    {"image_id": image_id, "image_path": payload.get("segment_path")},
+                                    str(SEGMENTED_IMAGE_DIR),
+                                    "image_id",
                                 ),
                                 "specy": payload.get("specy", "unknown"),
                                 "score": hit.score,
@@ -590,7 +608,10 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
                 predicted_specy = ranked[0]["species"] if ranked else "unknown"
                 predicted_confidence = ranked[0]["score"] if ranked else 0.0
                 is_correct = bool(
-                    is_known and db_species and predicted_specy == db_species
+                    is_known and db_species and (
+                        predicted_specy == db_species
+                        or _strip_penicillium(predicted_specy) == _strip_penicillium(db_species)
+                    )
                 )
 
                 prediction_result: Dict[str, Any] = {
@@ -612,7 +633,7 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
                 }
 
                 vis_output_path = (
-                    VIS_OUTPUT_DIR
+                    VIS_OUTPUT_DIR / ("correct" if is_correct else "incorrect")
                     / f"vis_{safe_filename(strain)}_set{test_set_index}.jpg"
                 )
                 try:
@@ -647,7 +668,68 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
 
     print(f"\nDone. Processed: {processed}, Skipped (resume): {skipped}")
     print(f"Results saved to: {OUTPUT_CSV}")
+
+    _draw_confusion_matrix(OUTPUT_CSV)
     return OUTPUT_CSV
+
+
+def _draw_confusion_matrix(csv_path: Path) -> None:
+    """Draw confusion matrix with unknown class from diverse retrieval results."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    from sklearn.metrics import confusion_matrix
+    import seaborn as sns
+
+    if not csv_path.exists():
+        return
+    df = pd.read_csv(csv_path)
+    if df.empty:
+        return
+
+    y_true = []
+    y_pred = []
+    known_count = 0
+    for _, row in df.iterrows():
+        is_known = int(row.get("is_known", 1))
+        correct_species = str(row.get("correct_species", ""))
+        predicted = str(row.get("predicted_species", "unknown"))
+        if is_known and correct_species:
+            y_true.append(_strip_penicillium(correct_species))
+            known_count += 1
+        else:
+            y_true.append("UNKNOWN")
+        if not is_known:
+            y_pred.append("UNKNOWN")
+        elif correct_species and (
+            predicted == correct_species
+            or _strip_penicillium(predicted) == _strip_penicillium(correct_species)
+        ):
+            y_pred.append(_strip_penicillium(predicted))
+        else:
+            y_pred.append(_strip_penicillium(predicted))
+
+    labels = sorted(set(y_true) | set(y_pred))
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+    correct = sum(1 for yt, yp in zip(y_true, y_pred) if yt == yp and yt != "UNKNOWN")
+
+    accuracy = correct / max(known_count, 1)
+    fig, ax = plt.subplots(figsize=(14, 12))
+    sns.heatmap(cm, annot=True, fmt="d", xticklabels=labels, yticklabels=labels, cmap="Blues", ax=ax)
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    ax.set_title(f"Threshold Retrieval Confusion Matrix\nAccuracy (known): {accuracy:.3f} | Known: {known_count}")
+    plt.xticks(rotation=90, fontsize=8)
+    plt.yticks(rotation=0, fontsize=8)
+    fig.tight_layout()
+    out = OUTPUT_DIR / "confusion_matrix_threshold.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=150)
+    plt.close()
+    print(f"Confusion matrix saved to: {out}")
+    print(f"  Known samples: {known_count}, Unknown samples: {len(df) - known_count}")
+    print(f"  Accuracy (known only): {accuracy:.4f}")
 
 
 # ---------------------------------------------------------------------------

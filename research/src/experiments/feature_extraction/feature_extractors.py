@@ -327,8 +327,8 @@ class ResNet50Extractor(BaseDeepLearningExtractor):
             model = resnet50(weights=None)
             try:
                 state_dict = torch.load(weights_path, map_location=self.device)
-                # Backbone weights saved without 'fc.' prefix
-                model.load_state_dict(state_dict, strict=False)
+                filtered = {k: v for k, v in state_dict.items() if not k.startswith("fc.")}
+                model.load_state_dict(filtered, strict=False)
                 print("✓ Fine-tuned ResNet50 weights loaded successfully")
             except Exception as e:
                 print(f"Warning: Failed to load fine-tuned weights: {e}")
@@ -362,7 +362,8 @@ class MobileNetV2Extractor(BaseDeepLearningExtractor):
             try:
                 checkpoint = torch.load(weights_path, map_location=self.device)
                 state_dict = checkpoint.get("state_dict", checkpoint)
-                model.load_state_dict(state_dict, strict=False)
+                filtered = {k: v for k, v in state_dict.items() if not k.startswith("classifier.")}
+                model.load_state_dict(filtered, strict=False)
                 print("✓ Fine-tuned weights loaded")
             except Exception as e:
                 print(f"Warning: Failed to load fine-tuned weights: {e}")
@@ -408,8 +409,8 @@ class EfficientNetB1Extractor(BaseDeepLearningExtractor):
             model = efficientnet_b1(weights=None)
             try:
                 state_dict = torch.load(weights_path, map_location=self.device)
-                # Backbone weights saved without 'classifier.' prefix
-                model.load_state_dict(state_dict, strict=False)
+                filtered = {k: v for k, v in state_dict.items() if not k.startswith("classifier.")}
+                model.load_state_dict(filtered, strict=False)
                 print("✓ Fine-tuned EfficientNetB1 weights loaded successfully")
             except Exception as e:
                 print(f"Warning: Failed to load weights: {e}")

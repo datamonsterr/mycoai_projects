@@ -1,3 +1,205 @@
-% Stub for appendix
-\section{Use Case Details}
-Details of UC-RETRIEVE-01 and UC-DATA-01 are provided here.
+% Appendix B: Detailed Use Case Specifications and Experiment Results
+
+\section{Use Case Specifications}
+
+\subsection{UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}
+
+\begin{table}[ht]
+\centering
+\caption{UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}
+\label{tab:uc_retrieve}
+\begin{tabularx}{\textwidth}{@{}p{3cm} X@{}}
+\toprule
+\textbf{Field} & \textbf{Description} \\
+\midrule
+Actor & Research mycologist or lab technician \\
+Description & User uploads a Petri dish image; system segments colonies, extracts features, queries Qdrant, and returns ranked species predictions \\
+Precondition & User is authenticated; at least one reference collection exists in Qdrant \\
+Postcondition & Top-K species predictions with confidence scores and nearest-neighbor evidence displayed \\
+Priority & High \\
+Frequency & Several times per lab session \\
+Normal Course &
+\begin{enumerate}[nosep]
+  \item User navigates to Retrieve Species page
+  \item User uploads a Petri dish image (PNG/JPEG, up to 20MB)
+  \item System segments the dish into individual colony crops using K-Means + HSV refinement
+  \item User reviews and optionally adjusts bounding boxes
+  \item System extracts feature embeddings from each crop using EfficientNetB1 (fine-tuned)
+  \item System queries Qdrant for K nearest neighbors per crop
+  \item System aggregates scores across crops using freq\_strength strategy
+  \item System applies threshold formula (gnorm\_0\_2) for known/unknown classification
+  \item System displays ranked species list with confidence scores
+\end{enumerate} \\
+Alternative Courses &
+\begin{enumerate}[nosep]
+  \item \textbf{YOLO segmentation}: If YOLO model is available, user can switch to learned segmentation
+  \item \textbf{Manual bounding box}: User can draw/correct colony bounding boxes before extraction
+  \item \textbf{Adjust K}: User can change K from default 11 to 3, 5, 7, or 9
+  \item \textbf{Upload batch}: User can upload a ZIP of multiple dish images for batch processing
+\end{enumerate} \\
+Exceptions &
+\begin{enumerate}[nosep]
+  \item \textbf{No colonies detected}: System reports ``No colonies found'' and suggests manual segmentation
+  \item \textbf{Qdrant unavailable}: System displays error ``Reference database temporarily unavailable''
+  \item \textbf{All colonies classified unknown}: System displays ``No confident match found'' with nearest neighbor gallery
+  \item \textbf{Image too large}: Automatic resize to 256$\times$256
+\end{enumerate} \\
+Special Requirements & Response time < 5 seconds for up to 10 colonies with K=11 \\
+Assumptions & Reference database is pre-populated with well-lit, in-focus colony images \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{UC-DATA-01: Dataset Management \& Reference Indexing}
+
+\begin{table}[ht]
+\centering
+\caption{UC-DATA-01: Dataset Management \& Reference Indexing}
+\label{tab:uc_data}
+\begin{tabularx}{\textwidth}{@{}p{3cm} X@{}}
+\toprule
+\textbf{Field} & \textbf{Description} \\
+\midrule
+Actor & Lab administrator or researcher \\
+Description & Administrator manages the reference dataset — uploads new reference images, triggers embedding extraction, and indexes into Qdrant \\
+Precondition & User has admin role; reference images are properly labeled with species name \\
+Postcondition & New reference data is available for retrieval queries \\
+Priority & Medium \\
+Frequency & Weekly to monthly (when new reference strains are added) \\
+Normal Course &
+\begin{enumerate}[nosep]
+  \item Admin uploads reference images with species label metadata
+  \item System segments images using current segmentation pipeline
+  \item System extracts feature embeddings from each segment
+  \item System indexes embeddings into Qdrant with metadata (strain ID, species, growth medium, angle)
+  \item Dashboard reflects updated dataset statistics
+\end{enumerate} \\
+Alternative Courses &
+\begin{enumerate}[nosep]
+  \item \textbf{Bulk import}: Admin uses script to batch-process a directory of labeled images
+  \item \textbf{Replace collection}: Admin replaces entire collection for a new experiment
+\end{enumerate} \\
+Exceptions &
+\begin{enumerate}[nosep]
+  \item \textbf{Duplicate strain}: System warns if a strain ID already exists
+  \item \textbf{Unlabeled image}: System rejects images without species metadata
+\end{enumerate} \\
+Special Requirements & Indexing of 1,000 images should complete within 30 minutes \\
+Assumptions & Reference images follow the same imaging protocol as query images \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Detailed Experiment Results}
+
+\subsection{Retrieval Pipeline Full Results (K=5, freq\_strength)}
+
+The complete retrieval accuracy sweep evaluated 670 configurations: 10 feature extractors $\times$ 10 environment strategies
+$\times$ 7 aggregation strategies, using $K=5$ nearest neighbors and 7 held-out test strains (42 predictions per configuration).
+
+\begin{table}[ht]
+\centering
+\caption{Top 15 retrieval configurations by accuracy (K=5, all strategies)}
+\label{tab:retrieval_top15}
+\small
+\begin{tabular}{@{}l l c c@{}}
+\toprule
+\textbf{Extractor} & \textbf{Strategy} & \textbf{Environment} & \textbf{Accuracy} \\
+\midrule
+ResNet50 finetuned & freq\_strength & E3\_YES & 0.810 \\
+MobileNetV2 finetuned & freq\_strength & E1 & 0.810 \\
+MobileNetV2 (pret.) & freq\_strength & E4\_DG18 & 0.810 \\
+ResNet50 finetuned & freq\_strength & E4\_DG18 & 0.786 \\
+EfficientNetB1 (pret.) & freq\_strength & E4\_DG18 & 0.786 \\
+MobileNetV2 finetuned & perquery\_norm\_avg & E1 & 0.857 \\
+MobileNetV2 finetuned & perquery\_norm\_avg & E4\_MEA & 0.857 \\
+MobileNetV2 finetuned & relative & E4\_MEA & 0.857 \\
+MobileNetV2 finetuned & weighted & E4\_MEA & 0.857 \\
+MobileNetV2 finetuned & uni & E4\_DG18 & 0.833 \\
+MobileNetV2 finetuned & uni & E4\_MEA & 0.833 \\
+ResNet50 finetuned & per\_species\_avg & E3\_YES & 0.810 \\
+EfficientNetB1 FT & perquery\_norm\_avg & E3\_YES & 0.786 \\
+EfficientNetB1 FT & relative & E3\_YES & 0.786 \\
+EfficientNetB1 FT & uni & E3\_YES & 0.786 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Cross-Validation Results (EfficientNetB1 Finetuned, 5-Fold)}
+
+200 cross-validation configurations were run: 2 environment strategies $\times$ 4 aggregation strategies
+$\times$ 5 $K$ values $\times$ 5 folds, with per-fold EfficientNetB1 fine-tuned models.
+
+\begin{table}[ht]
+\centering
+\caption{Top 10 cross-validation configurations by mean accuracy}
+\label{tab:cv_top10}
+\small
+\begin{tabular}{@{}l l c c c c@{}}
+\toprule
+\textbf{Environment} & \textbf{Aggregation} & \textbf{K} & \textbf{Mean Acc.} & \textbf{Std} & \textbf{Range} \\
+\midrule
+E2 (all media) & freq\_strength & 3 & 0.829 & 0.091 & 0.667--0.875 \\
+E2 (all media) & relative & 3 & 0.825 & 0.090 & 0.667--0.875 \\
+E2 (all media) & weighted & 3 & 0.825 & 0.090 & 0.667--0.875 \\
+E2 (all media) & uni & 3 & 0.825 & 0.090 & 0.667--0.875 \\
+E1 (same media) & freq\_strength & 7 & 0.821 & 0.090 & 0.667--0.875 \\
+E2 (all media) & uni & 11 & 0.821 & 0.099 & 0.646--0.875 \\
+E2 (all media) & uni & 9 & 0.821 & 0.099 & 0.646--0.875 \\
+E2 (all media) & relative & 11 & 0.821 & 0.099 & 0.646--0.875 \\
+E2 (all media) & uni & 5 & 0.821 & 0.099 & 0.646--0.875 \\
+E2 (all media) & weighted & 11 & 0.821 & 0.099 & 0.646--0.875 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Environment Strategy Definitions}
+
+\begin{table}[ht]
+\centering
+\caption{Environment (growth medium) strategy definitions used in all experiments}
+\label{tab:env_strategies}
+\small
+\begin{tabular}{@{}l p{10cm}@{}}
+\toprule
+\textbf{Strategy} & \textbf{Description} \\
+\midrule
+E1 (same\_media) & Query only neighbors grown on the same medium as the query image \\
+E2 (all\_media) & Query across all growth media -- no medium filter \\
+E3\_CREA & Query only neighbors grown on CREA medium \\
+E3\_CYA & Query only neighbors grown on CYA medium \\
+E3\_DG18 & Query only neighbors grown on DG18 medium \\
+E3\_MEA & Query only neighbors grown on MEA medium \\
+E3\_YES & Query only neighbors grown on YES medium \\
+E4\_CREA & Exclude CREA medium, query all others \\
+E4\_CYAS & Exclude CYAS medium, query all others \\
+E4\_DG18 & Exclude DG18 medium, query all others \\
+E4\_MEA & Exclude MEA medium, query all others \\
+E4\_YES & Exclude YES medium, query all others \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Species Labels in Test Set}
+
+The 7 held-out Penicillium species used for strain-level hold-out evaluation:
+
+\begin{table}[ht]
+\centering
+\caption{Test set species and representative strains}
+\label{tab:test_species}
+\small
+\begin{tabular}{@{}l l@{}}
+\toprule
+\textbf{Species} & \textbf{Test Strain (DTO)} \\
+\midrule
+Penicillium polonicum & DTO 148-D1 \\
+Penicillium melanoconidium & DTO 158-D1 \\
+Penicillium freii & DTO 469-I4 \\
+Penicillium viridicatum & DTO 163-I2 \\
+Penicillium tricolor & DTO 470-I9 \\
+Penicillium neoechinulatum & DTO 217-D9 \\
+Penicillium aurantiogriseum & DTO 469-I5 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,10 +1,10 @@
 # Chapter 4: Agentic Engineering
 
 ## 4.1 Motivation
-Modern software development is often bottlenecked by the manual cycle of "hypothesis $\rightarrow$ implementation $\rightarrow$ testing". Agentic Engineering seeks to automate this loop by using LLM-based agents that can write code, run tests, and analyze results autonomously.
+Modern software development is often bottlenecked by the manual cycle of "hypothesis $\rightarrow$ implementation $\rightarrow$ testing". Agentic Engineering seeks to automate this loop by using LLM-based agents that can write code, run tests, and analyze results autonomously. This approach draws from Karpathy's autoresearch concept~[Karpathy, 2026], which frames AI-driven code modification as an iterative keep/discard loop, and from Optuna's define-by-run hyperparameter optimisation paradigm~[Akiba et al., 2019].
 
 ## 4.2 Multi-Agent Architecture
-The project implemented the **Autolab** system, a five-agent orchestration layer:
+The project implemented the **Autolab** system (documented at `.opencode/agents/autolab.md` in the project monorepo), a five-agent orchestration layer inspired by Karpathy's autoresearch concept~[Karpathy, 2026]:
 1. **Autolab (Orchestrator)**: Delegates tasks to subagents.
 2. **Researcher**: Scouts literature and suggests new hypotheses.
 3. **Planner**: Manages the experiment queue and assigns IDs.
@@ -22,7 +22,7 @@ The project implemented the **Autolab** system, a five-agent orchestration layer
 
 ## 4.3 Reducing Hallucinations
 To ensure the AI agents produced reliable code, three guardrails were implemented:
-- **Spec-Driven Development (SDD)**: Using `speckit` to create a "Living Spec". Agents must follow the spec, and any drift is detected and resolved.
+- **Spec-Driven Development (SDD)**: Using `speckit`~[Speckit Contributors, 2025], an agent skills framework, combined with `openspec`~[OpenSpec Contributors, 2025], a CLI tool for Living Specification management. Agents must follow the spec, and any drift is detected and resolved through automated analysis.
 - **Test-Driven Development (TDD)**: Agents are required to write a failing test before implementing a fix, ensuring that every change is verified.
 - **Specialized Skills**: Instead of relying on general knowledge, agents are provided with "Skills" (e.g., `vercel-react-best-practices`) which act as bounded, high-quality instructions.
 

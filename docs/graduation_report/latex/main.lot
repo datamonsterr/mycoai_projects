@@ -1,20 +1,23 @@
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {1.1}{\ignorespaces Design Decisions at a Glance}}{13}{table.caption.15}%
+\contentsline {table}{\numberline {1.1}{\ignorespaces Design Decisions at a Glance}}{11}{table.caption.24}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {2.1}{\ignorespaces Summary of hand-crafted feature extractors}}{17}{table.caption.23}%
-\contentsline {table}{\numberline {2.2}{\ignorespaces Deep learning feature extractors: architecture and performance}}{18}{table.caption.24}%
-\contentsline {table}{\numberline {2.3}{\ignorespaces Fine-tuning hyperparameters}}{18}{table.caption.25}%
-\contentsline {table}{\numberline {2.4}{\ignorespaces Training convergence summary}}{18}{table.caption.27}%
-\contentsline {table}{\numberline {2.5}{\ignorespaces Environment evaluation strategies}}{21}{table.caption.31}%
-\contentsline {table}{\numberline {2.6}{\ignorespaces Dataset statistics}}{22}{table.caption.34}%
-\contentsline {table}{\numberline {2.7}{\ignorespaces Species and strain distribution}}{22}{table.caption.35}%
-\contentsline {table}{\numberline {2.8}{\ignorespaces Segmentation approach comparison}}{23}{table.caption.37}%
-\contentsline {table}{\numberline {2.9}{\ignorespaces Comprehensive accuracy comparison across all feature extractors}}{24}{table.caption.41}%
-\contentsline {table}{\numberline {2.10}{\ignorespaces Cross-validation top configurations}}{25}{table.caption.44}%
-\contentsline {table}{\numberline {2.11}{\ignorespaces Per-species accuracy --- EfficientNetB1 (Fine-tuned)}}{28}{table.caption.50}%
+\contentsline {table}{\numberline {2.1}{\ignorespaces Feature extractor families used in the study}}{15}{table.caption.31}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Segmentation method comparison used in the thesis narrative}}{17}{table.caption.35}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces Best retrieval configurations from 5-fold cross-validation}}{19}{table.caption.52}%
+\contentsline {table}{\numberline {2.4}{\ignorespaces Best threshold strategy discovered on diverse retrieval results}}{21}{table.caption.61}%
+\contentsline {table}{\numberline {2.5}{\ignorespaces Known-species threshold retrieval accuracy after label normalization}}{21}{table.caption.62}%
 \addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Technology stack summary}}{29}{table.caption.66}%
 \addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Summary of all experiment results}}{45}{table.caption.80}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Configuration alignment: research experiment vs. production webapp}}{48}{table.caption.86}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \contentsfinish 
 \contentsfinish 
+\contentsline {table}{\numberline {A.1}{\ignorespaces UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}}{56}{table.caption.89}%
+\contentsline {table}{\numberline {A.2}{\ignorespaces UC-DATA-01: Dataset Management \& Reference Indexing}}{57}{table.caption.90}%
+\contentsline {table}{\numberline {A.3}{\ignorespaces Top 15 retrieval configurations by accuracy (K=5, all strategies)}}{57}{table.caption.91}%
+\contentsline {table}{\numberline {A.4}{\ignorespaces Top 10 cross-validation configurations by mean accuracy}}{58}{table.caption.92}%
+\contentsline {table}{\numberline {A.5}{\ignorespaces Environment (growth medium) strategy definitions used in all experiments}}{58}{table.caption.93}%
+\contentsline {table}{\numberline {A.6}{\ignorespaces Test set species and representative strains}}{58}{table.caption.94}%

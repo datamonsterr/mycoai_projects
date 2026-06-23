@@ -1,6 +1,8 @@
 import os
-from math import ceil
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+from src.config import DATASET_ROOT, WORKSPACE_ROOT
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -170,9 +172,11 @@ def _draw_image_card(
             img = Image.open(image_path).convert("RGB")
             img = img.resize(thumbnail_size)
             canvas.paste(img, (x_pos, y_pos))
+            print(f"  [viz] OK {image_path}")
         except Exception as exc:
-            print(f"Error loading image {image_path}: {exc}")
+            print(f"  [viz] ERROR {image_path}: {exc}")
     else:
+        print(f"  [viz] MISSING {image_path}")
         draw.rectangle(
             [x_pos, y_pos, x_pos + img_width, y_pos + img_height],
             outline=(160, 160, 160),
@@ -199,10 +203,39 @@ def _resolve_image_path(
 ) -> str:
     explicit_path = item.get("image_path") or item.get("query_image_path")
     if explicit_path:
-        return explicit_path
+        path = Path(explicit_path)
+        if path.is_absolute():
+            return str(path)
+        return str(WORKSPACE_ROOT / path)
 
     image_id = item.get(id_key) or item.get("id") or ""
-    return os.path.join(default_dir, f"{image_id}.jpg")
+    candidates = [
+        Path(default_dir) / f"{image_id}.jpg",
+        DATASET_ROOT / "original_prepared" / f"{image_id}.jpg",
+        DATASET_ROOT / "segmented_image" / f"{image_id}.jpg",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    parts = image_id.split("__")
+    if len(parts) >= 5:
+        segment_name = parts[4].split("_seg", 1)[0]
+        prepared_candidates = [
+            DATASET_ROOT / "original_prepared" / parts[0] / parts[1] / parts[2] / parts[3] / "segments_yolo" / f"{segment_name}.jpg",
+            DATASET_ROOT / "prepared" / parts[0] / parts[1] / parts[2] / parts[3] / "segments_yolo" / f"{segment_name}.jpg",
+            DATASET_ROOT / "full_prepared" / parts[0] / parts[1] / parts[2] / parts[3] / "segments_kmeans" / f"{segment_name}.jpg",
+            DATASET_ROOT / "full_prepared" / parts[0] / parts[1] / parts[2] / parts[3] / "segments_yolo" / f"{segment_name}.jpg",
+        ]
+        for candidate in prepared_candidates:
+            if candidate.exists():
+                return str(candidate)
+    matches = list(DATASET_ROOT.glob(f"**/{image_id}.jpg"))
+    if matches:
+        return str(matches[0])
+    segment_matches = list(DATASET_ROOT.glob(f"**/{image_id.split('_seg', 1)[0]}.jpg"))
+    if segment_matches:
+        return str(segment_matches[0])
+    return str(candidates[0])
 
 
 def visualize_prediction_by_environment(
@@ -245,9 +278,8 @@ def visualize_prediction_by_environment(
     row_spacing = 24
     env_label_gap = 34
     text_height = 64
-    target_canvas_width = 1600
     card_width = img_width + padding
-    columns = max(2, min(k + 1, max(2, (target_canvas_width - padding) // card_width)))
+    columns = k + 1
     canvas_width = padding + columns * card_width
 
     # Load fonts (try to load a nice font, fallback to default)
@@ -307,11 +339,7 @@ def visualize_prediction_by_environment(
         padding,
     )
 
-    cards_per_environment = k + 1
-    env_rows = ceil(cards_per_environment / columns)
-    env_block_height = (
-        env_label_gap + env_rows * (img_height + text_height + card_gap) + row_spacing
-    )
+    env_block_height = env_label_gap + img_height + text_height + card_gap + row_spacing
     canvas_height = header_bottom + 16 + num_environments * env_block_height
 
     canvas = Image.new("RGB", (canvas_width, canvas_height), bg_color)

@@ -1,17 +1,15 @@
-\section{Agentic Engineering}\label{chapter-4-agentic-engineering}
+\section{Motivation}\label{motivation-agentic}
 
-\subsection{Motivation}\label{motivation-agentic}
+Modern software development is often bottlenecked by the manual cycle of ``hypothesis \(\rightarrow\) implementation \(\rightarrow\) testing''. Agentic Engineering seeks to automate this loop by using LLM-based agents that can write code, run tests, and analyze results autonomously. This approach draws from Karpathy's autoresearch concept~\cite{karpathy2026autoresearch}, which frames AI-driven code modification as an iterative keep/discard loop, and from Optuna's define-by-run hyperparameter optimisation paradigm~\cite{akiba2019optuna}.
 
-Modern software development is often bottlenecked by the manual cycle of ``hypothesis \(\rightarrow\) implementation \(\rightarrow\) testing''. Agentic Engineering seeks to automate this loop by using LLM-based agents that can write code, run tests, and analyze results autonomously.
+\section{Multi-Agent Architecture}\label{multi-agent-architecture}
 
-\subsection{Multi-Agent Architecture}\label{multi-agent-architecture}
+The project implemented the \textbf{Autolab} system (documented in the project monorepo under \texttt{.opencode/agents/}), a five-agent orchestration layer inspired by Karpathy's autoresearch concept~\cite{karpathy2026autoresearch}: 1. \textbf{Autolab (Orchestrator)}: Delegates tasks to subagents. 2. \textbf{Researcher}: Scouts literature and suggests new hypotheses. 3. \textbf{Planner}: Manages the experiment queue and assigns IDs. 4. \textbf{Worker}: Implements the hypothesis in an isolated git worktree and runs the experiment. 5. \textbf{Reporter}: Summarizes the results and identifies the new ``Best F1'' score.
 
-The project implemented the \textbf{Autolab} system, a five-agent orchestration layer: 1. \textbf{Autolab (Orchestrator)}: Delegates tasks to subagents. 2. \textbf{Researcher}: Scouts literature and suggests new hypotheses. 3. \textbf{Planner}: Manages the experiment queue and assigns IDs. 4. \textbf{Worker}: Implements the hypothesis in an isolated git worktree and runs the experiment. 5. \textbf{Reporter}: Summarizes the results and identifies the new ``Best F1'' score.
-
-\subsubsection{Delegation Map}\label{delegation-map}
+\subsection{Delegation Map}\label{delegation-map}
 
 \begin{center}
-\begin{tabular}{@{}p{4.5cm} p{9cm}@{}}
+\begin{tabular}{@{}p{4.5cm} p{8.5cm}@{}}
 \toprule
 \textbf{Role} & \textbf{Responsibility} \\
 \midrule
@@ -23,22 +21,139 @@ The project implemented the \textbf{Autolab} system, a five-agent orchestration 
 \end{tabular}
 \end{center}
 
-\subsection{Reducing Hallucinations}\label{reducing-hallucinations}
+\section{Reducing Hallucinations}\label{reducing-hallucinations}
 
-To ensure the AI agents produced reliable code, three guardrails were implemented: - \textbf{Spec-Driven Development (SDD)}: Using \texttt{speckit} to create a ``Living Spec''. Agents must follow the spec, and any drift is detected and resolved. - \textbf{Test-Driven Development (TDD)}: Agents are required to write a failing test before implementing a fix, ensuring that every change is verified. - \textbf{Specialized Skills}: Instead of relying on general knowledge, agents are provided with ``Skills'' (e.g., \texttt{vercel-react-best-practices}) which act as bounded, high-quality instructions.
+To ensure the AI agents produced reliable code, three guardrails were implemented: - \textbf{Spec-Driven Development (SDD)}: Using \texttt{Speckit}~\cite{speckit}, an agent skills framework for spec-driven workflows, combined with \texttt{OpenSpec}~\cite{openspec}, a CLI tool for Living Specification management. Agents must follow the spec, and any drift is detected and resolved through automated analysis. - \textbf{Test-Driven Development (TDD)}: Agents are required to write a failing test before implementing a fix, ensuring that every change is verified. - \textbf{Specialized Skills}: Instead of relying on general knowledge, agents are provided with ``Skills'' (e.g., \texttt{vercel-react-best-practices}) which act as bounded, high-quality instructions.
 
-\subsection{Overcoming Context Window Limits}\label{overcoming-context-window-limits}
+\section{Overcoming Context Window Limits}\label{overcoming-context-window-limits}
 
 As the codebase grew, managing the LLM's context window became critical:
 
-\subsubsection{Caveman Mode}\label{caveman-mode}
+\subsection{Caveman Mode}\label{caveman-mode}
 
 A token-compression communication style that removes fluff and articles, reducing input size by approximately 75\% without losing technical substance.
 
-\subsubsection{Subagents and Worktrees}\label{subagents-and-worktrees}
+\subsection{Subagents and Worktrees}\label{subagents-and-worktrees}
 
 Using isolated git worktrees and a routing layer to direct queries to the most appropriate subagent, ensuring each agent only receives context relevant to its specific task.
 
-\subsubsection{Reusable Skills}\label{reusable-skills}
+\subsection{Reusable Skills}\label{reusable-skills}
 
 Encoding complex workflows (e.g., \texttt{vercel-react-best-practices}, \texttt{fastapi}) into bounded, high-quality skill definitions that constrain agent behavior to validated patterns.
+
+\section{Experiment Results}\label{experiment-results}
+
+The agentic engineering workflow facilitated a comprehensive set of experiments
+documented in detail in Chapter~2 (Section~\ref{experiments-and-results}).
+A summary of key results is provided below.
+
+\subsection{Summary Table}
+
+\begin{table}[H]
+\centering
+\caption{Summary of all experiment results}
+\label{tab:exp_summary}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Experiment & Best Result & Configuration \\
+\midrule
+Retrieval sweep (K=5)     & Accuracy 0.833 & ResNet50 FT, E4\_DG18, freq\_strength \\
+5-fold cross-validation   & Mean 0.829     & E2 + freq\_strength + k=3 \\
+Feature extractor comp.   & FN dominates   & Fine-tuned: 71--83\%, Trad: 35--62\% \\
+YOLO vs K-means           & 0.833 (equal)  & Identical performance \\
+Unknown species threshold & F1 0.407       & exp\_decay\_15, f1\_grid \\
+E2E browser test          & Config match   & All 6 parameters aligned \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{End-to-End Agent-Browser Testing}\label{e2e-agent-browser}
+
+To validate the complete retrieval pipeline against research experiment
+configuration, an end-to-end test was conducted using \texttt{agent-browser},
+a headless browser automation CLI built in Rust with Chrome DevTools Protocol
+(CDP). The test simulates a regular user performing the full species retrieval
+workflow.
+
+\subsection{Test Configuration}
+
+The E2E test validates the same configuration used in research experiments:
+
+\begin{itemize}[nosep]
+  \item \textbf{Feature extractor}: EfficientNetB1\_finetuned (1,280-dim vectors)
+  \item \textbf{Collection}: myco\_fungi\_features\_full\_finetuned
+  \item \textbf{K}: 11 nearest neighbors
+  \item \textbf{Environment strategy}: same\_media (E1, query only same growth medium)
+  \item \textbf{Aggregation}: freq\_strength
+  \item \textbf{Threshold formula}: gnorm\_0\_2 (normalized gap between s0 and s2)
+\end{itemize}
+
+\subsection{Test Flow}
+
+\begin{enumerate}[nosep]
+  \item \textbf{Login}: Test user authenticates through the sign-in page.
+  \item \textbf{Dashboard}: Verify dataset overview with 727 images, 136 species.
+  \item \textbf{Upload}: Navigate to Retrieve Species page, showing batch upload UI.
+  \item \textbf{Segmentation}: Review K-means segmented colonies with editable bounding boxes.
+  \item \textbf{Results}: View ranked species predictions with threshold confidence badge.
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{e2e_login.png}
+\caption{Login page for test account registration and authentication}
+\label{fig:e2e_login}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{e2e_dashboard.png}
+\caption{Dashboard showing dataset overview (727 images, 136 species, 5 media types)}
+\label{fig:e2e_dashboard}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{e2e_retrieve_upload.png}
+\caption{Retrieve Species upload page with batch ZIP upload, KNN configuration controls}
+\label{fig:e2e_retrieve_upload}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{e2e_segmentation.png}
+\caption{Segmentation review page with editable bounding boxes and segment grid}
+\label{fig:e2e_segmentation}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{e2e_retrieval_results.png}
+\caption{Retrieval results: ranked species predictions with threshold confidence
+(green = known, gnorm\_0\_2 formula), KNN neighbor details per query image.}
+\label{fig:e2e_results}
+\end{figure}
+
+\subsection{Configurational Alignment Verification}
+
+All E2E screenshots were compared against the research experiment configuration
+to verify alignment:
+
+\begin{table}[H]
+\centering
+\caption{Configuration alignment: research experiment vs. production webapp}
+\label{tab:config_align}
+\small
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+\textbf{Component} & \textbf{Research} & \textbf{Webapp} \\
+\midrule
+Feature Extractor & EfficientNetB1\_finetuned & EfficientNetB1\_finetuned \\
+Qdrant Collection & myco\_fungi\_feat\-ures\_full\_ft & myco\_fungi\_feat\-ures\_full\_ft \\
+K (neighbors) & 11 & 11 \\
+Environment Strategy & same\_media (E1) & same\_media \\
+Aggregation & freq\_strength & freq\_strength \\
+Threshold Formula & gnorm\_0\_2 (F1 $\approx$ 0.72) & gnorm\_0\_2 \\
+\bottomrule
+\end{tabularx}
+\end{table}

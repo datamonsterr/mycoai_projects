@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import threading
 from collections import defaultdict
 from pathlib import Path
@@ -45,10 +46,14 @@ from qdrant_client import QdrantClient
 
 from src.config import (
     DATASET_ROOT,
+    ORIGINAL_PREPARED_DATASET_DIR,
     QDRANT_API_KEY,
     QDRANT_URL,
+    SEGMENTED_IMAGE_DIR,
     STRAIN_SPECIES_MAPPING_PATH,
 )
+
+FOLDS_CSV_PATH = ORIGINAL_PREPARED_DATASET_DIR / "folds.csv"
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -82,18 +87,65 @@ _csv_lock = threading.Lock()
 # ---------------------------------------------------------------------------
 
 
+def save_folds_csv(
+    output_path: Path = FOLDS_CSV_PATH,
+    strain_csv_path: Path = STRAIN_SPECIES_MAPPING_PATH,
+    n_folds: int = N_FOLDS,
+) -> Path:
+    """Generate 5-fold CV assignments and save as static CSV.
+
+    Columns: species, strain, fold (1-5).
+    """
+    folds = generate_cv_folds(csv_path=strain_csv_path, n_folds=n_folds)
+    rows: List[dict] = []
+    for fold_idx, fold in enumerate(folds, start=1):
+        for species, strain in fold.items():
+            rows.append({"species": species, "strain": strain, "fold": fold_idx})
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(output_path, index=False)
+    print(f"Saved {len(rows)} fold assignments to {output_path}")
+    return output_path
+
+
+def load_folds_csv(folds_path: Path = FOLDS_CSV_PATH) -> List[Dict[str, str]]:
+    """Load static folds CSV back into the List[Dict] format.
+
+    Returns list of n_folds dicts, each mapping {species: strain}.
+    """
+    if not folds_path.exists():
+        raise FileNotFoundError(
+            f"Folds CSV not found at {folds_path}. "
+            "Run 'uv run python -m src.lib.cross_validation --save-folds' first."
+        )
+    df = pd.read_csv(folds_path)
+    n_folds = int(df["fold"].max())
+    folds: List[Dict[str, str]] = []
+    for fold_idx in range(1, n_folds + 1):
+        fold_rows = df[df["fold"] == fold_idx]
+        folds.append(dict(zip(fold_rows["species"], fold_rows["strain"])))
+    return folds
+
+
 def generate_cv_folds(
     csv_path: Path = STRAIN_SPECIES_MAPPING_PATH,
     n_folds: int = N_FOLDS,
+    use_stored: bool = True,
 ) -> List[Dict[str, str]]:
     """
     Return a list of *n_folds* dicts, each mapping ``{species: strain}``.
+
+    If use_stored=True and FOLDS_CSV_PATH exists, loads from stored CSV.
+    Otherwise generates via round-robin from strain mapping CSV.
 
     The strains for each species are sorted alphabetically and assigned to
     folds via round-robin (``strain[fold_idx % len(strains)]``).
     Species that have fewer strains than *n_folds* will repeat earlier strains
     in later folds.
     """
+    if use_stored and FOLDS_CSV_PATH.exists():
+        return load_folds_csv(FOLDS_CSV_PATH)
+
     if not csv_path.exists():
         raise FileNotFoundError(
             f"Strain mapping CSV not found at {csv_path}. "
@@ -257,6 +309,20 @@ def _filter_siblings(
     return [n for n in neighbors if n.get("parent_id") != query_parent_id]
 
 
+def _resolve_image_path(image_id: str) -> Optional[Path]:
+    """Resolve a segment image_id to its filesystem path via prepared metadata."""
+    prepared_segments = _load_prepared_segments_metadata()
+    row = prepared_segments.get(image_id)
+    if row and isinstance(row.get("segment_path"), str):
+        resolved = DATASET_ROOT.parent / row["segment_path"]
+        if resolved.exists():
+            return resolved
+    segment_glob = list(SEGMENTED_IMAGE_DIR.rglob(f"{image_id}.*"))
+    if segment_glob:
+        return segment_glob[0]
+    return None
+
+
 def _aggregate_predictions(
     raw_results: List[Dict[str, Any]],
     strain_to_specy: Dict[str, str],
@@ -299,6 +365,10 @@ def _collect_testset(
     for img in strain_images:
         env = img.get("environment", "unknown")
         seg_idx = img.get("segment_index", 0)
+        image_id = img.get("image_id", "")
+        seg_match = re.search(r"segment_(\d+)", image_id)
+        if seg_match:
+            seg_idx = int(seg_match.group(1)) - 1
         angle = img.get("angle", "unknown")
         env_segment_angle_images[env][seg_idx][angle].append(img)
 
@@ -406,6 +476,11 @@ def _predict_segment_group(
         parent_id = query_img["parent_id"]
         img_env = query_img.get("environment", "unknown")
 
+        if not image_path:
+            resolved = _resolve_image_path(image_id)
+            if resolved:
+                image_path = str(resolved)
+
         search_env = (
             environment if environment and environment.lower() != "all" else None
         )
@@ -437,6 +512,7 @@ def _predict_segment_group(
         raw_results.append(
             {
                 "query_image_id": image_id,
+                "query_image_path": image_path,
                 "query_environment": img_env,
                 "neighbors": neighbors,
             }
@@ -642,3 +718,11 @@ def save_cv_results(
                     "collection": r.get("collection", ""),
                 }
             )
+
+
+if __name__ == "__main__":
+    import sys
+    if "--save-folds" in sys.argv:
+        save_folds_csv()
+    else:
+        print("Usage: python -m src.lib.cross_validation --save-folds")

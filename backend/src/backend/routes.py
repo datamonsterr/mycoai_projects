@@ -12,6 +12,7 @@ POST /api/v1/images/batch-zip    − upload ZIP batch (extract + segment + db)
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import zipfile
 from pathlib import Path
@@ -34,13 +35,20 @@ from .models import Image, Media, Segment, Species, Strain
 from .schemas import ImageListItem, ImageListResponse
 from .segmentation import ALLOWED_METHODS, SegmentationPipeline
 from .segmentation import ImageStore as FileStore
+from .services.feature_extraction import index_segment_to_qdrant
 
 if TYPE_CHECKING:
     from .services.storage import ObjectStorage
 
+logger = logging.getLogger(__name__)
+
 
 class BatchImportRequest(BaseModel):
     source_dir: str
+    method: str = "kmeans"
+
+
+class AutoSegmentRequest(BaseModel):
     method: str = "kmeans"
 
 
@@ -191,6 +199,21 @@ def create_image_router(
         media_obj = await _ensure_media(db, media)
         strain_obj = await _ensure_strain(db, strain, species_obj.id)
         image_obj = await _create_image(db, record, strain_obj, species_obj, media_obj)
+
+        # Index segments to Qdrant with feature vectors
+        for seg in image_obj.segments:
+            try:
+                await index_segment_to_qdrant(
+                    db,
+                    seg,
+                    image_obj,
+                    strain_name=strain_obj.name,
+                    species_name=species_obj.name,
+                    media_name=media_obj.name,
+                    storage=storage,
+                )
+            except Exception as exc:
+                logger.warning("Qdrant index failed for segment %s: %s", seg.id, exc)
 
         record.image_id = str(image_obj.id)
         record.source_url = f"/api/v1/images/{record.image_id}/source"
@@ -627,9 +650,6 @@ def create_image_router(
     # ------------------------------------------------------------------
     # POST auto-segment (kmeans / contour / yolo)
     # ------------------------------------------------------------------
-    class AutoSegmentRequest(BaseModel):
-        method: str = "kmeans"
-
     @router.post("/{image_id}/segment", response_model=ImageResponse)
     async def auto_segment(
         image_id: str,
@@ -695,9 +715,9 @@ def create_image_router(
             if storage and _cleanup_source:
                 source_path.unlink(missing_ok=True)
 
-        # Archive old segments
+        # Delete old segments (unique constraint on image_id+segment_index)
         for seg in img.segments:
-            seg.is_archived = True
+            await db.delete(seg)
         await db.flush()
 
         # Create new segments
@@ -721,6 +741,32 @@ def create_image_router(
         img.data_update_status = "updated_requires_reindex"
         await db.commit()
 
+        # Reload image with segments for indexing
+        await db.refresh(img)
+        result2 = await db.execute(
+            select(Image)
+            .options(selectinload(Image.segments), selectinload(Image.strain), selectinload(Image.species), selectinload(Image.media))
+            .where(Image.id == img.id)
+        )
+        img_reloaded = result2.scalar_one_or_none()
+        if img_reloaded:
+            strain_name = img_reloaded.strain.name if img_reloaded.strain else "unknown"
+            species_name = img_reloaded.species.name if img_reloaded.species else "unknown"
+            media_name = img_reloaded.media.name if img_reloaded.media else "unknown"
+            for seg in img_reloaded.segments:
+                if seg.qdrant_point_id is None:
+                    try:
+                        await index_segment_to_qdrant(
+                            db, seg, img_reloaded,
+                            strain_name=strain_name,
+                            species_name=species_name,
+                            media_name=media_name,
+                            storage=storage,
+                        )
+                    except Exception as exc:
+                        logger.warning("Qdrant index failed for segment %s: %s", seg.id, exc)
+            await db.commit()
+
         record.image_id = str(img.id)
         record.source_url = f"/api/v1/images/{record.image_id}/source"
         for seg in record.segments:
@@ -743,7 +789,6 @@ def create_image_router(
     async def get_source(
         image_id: str,
         db=Depends(get_db),
-        user=Depends(get_current_user),
     ):
         record = store.get(image_id)
         if record:
@@ -778,7 +823,6 @@ def create_image_router(
         image_id: str,
         segment_index: int,
         db=Depends(get_db),
-        user=Depends(get_current_user),
     ):
         record = store.get(image_id)
         if record:
@@ -811,7 +855,6 @@ def create_image_router(
         image_id: str,
         method: str = "kmeans",
         db=Depends(get_db),
-        user=Depends(get_current_user),
     ):
         record = store.get(image_id)
         if record:

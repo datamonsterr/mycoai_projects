@@ -137,8 +137,7 @@ function getNeighbors(currentImage: StrainImage, k = 5) {
     })),
   )
   const sameMedia = pool.filter((image) => image.media === currentImage.media)
-  const ordered = [...sameMedia, ...pool.filter((image) => image.media !== currentImage.media)]
-  return ordered.slice(0, k).map((image, index) => ({ ...image, similarity: Math.max(0.51, 0.94 - index * 0.07) }))
+  return sameMedia.slice(0, k).map((image, index) => ({ ...image, similarity: Math.max(0.51, 0.94 - index * 0.07) }))
 }
 
 function ImageMetaCard({
@@ -406,6 +405,7 @@ function ResultDetail({
   aggMethod,
   rankings: apiRankings,
   topNeighbors: apiNeighbors,
+  threshold,
 }: {
   strain: string
   images: StrainImage[]
@@ -413,11 +413,27 @@ function ResultDetail({
   aggMethod: 'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'
   rankings?: RetrievalRanking[]
   topNeighbors?: RetrievalNeighbor[]
+  threshold?: import('@/services/types').ThresholdConfidence | null
 }) {
   const displayRanks = apiRankings ?? ranks
   const displayNeighbors = apiNeighbors ? apiNeighborsToDisplay(apiNeighbors) : null
+  const showThreshold = threshold != null && threshold.confidence != null
   return (
     <div className="space-y-4">
+      {showThreshold && (
+        <div className={`flex items-center gap-3 rounded-lg border p-3 ${threshold.is_known ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'}`}>
+          <div>
+            <div className="text-xs text-muted-foreground">Threshold Confidence</div>
+            <div className="text-lg font-mono font-bold">{threshold.confidence.toFixed(3)}</div>
+          </div>
+          <div className="flex-1">
+            <div className="text-xs text-muted-foreground">Formula: {threshold.formula} · t={threshold.threshold}</div>
+          </div>
+          <Badge variant={threshold.is_known ? 'success' : 'warning'}>
+            {threshold.is_known ? 'Known' : 'Unknown'}
+          </Badge>
+        </div>
+      )}
       <Card>
         <CardHeader className="p-4">
           <CardTitle className="font-heading">Ranked Species Result</CardTitle>
@@ -489,7 +505,7 @@ export default function RetrievePage() {
   const [isBatch, setIsBatch] = useState(false)
   const [activeStrain, setActiveStrain] = useState(0)
   const [detailStrain, setDetailStrain] = useState(0)
-  const [knnK, setKnnK] = useState(5)
+  const [knnK, setKnnK] = useState(11)
   const [aggMethod, setAggMethod] = useState<'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'>('freq_strength')
   const [strains, setStrains] = useState<StrainDraft[]>([{ strain: '', images: [] }])
   const toast = useToast()
@@ -572,7 +588,7 @@ export default function RetrievePage() {
           media: mediaList[0].name,
           mediaIsNew: false,
           maxColonies: 'default',
-          original: URL.createObjectURL(file),
+          original: res.source_url,
         }
         setStrains((prev) => {
           const updated = [...prev]
@@ -611,7 +627,7 @@ export default function RetrievePage() {
           media: r.media || 'MEA',
           mediaIsNew: false,
           maxColonies: 'default',
-          original: undefined,
+          original: r.source_url || undefined,
         })
       }
       if (batchStrains.length === 0) {
@@ -1039,7 +1055,7 @@ export default function RetrievePage() {
               <input
                 type="range"
                 min={1}
-                max={15}
+                max={30}
                 step={1}
                 value={knnK}
                 onChange={(e) => setKnnK(Number(e.target.value))}
@@ -1085,10 +1101,10 @@ export default function RetrievePage() {
                   <Button variant="outline" size="sm" className="w-full"><Download className="h-4 w-4" /> Export Batch CSV</Button>
                 </CardContent>
               </Card>
-              <ResultDetail strain={activeResult?.strain || 'Strain'} images={activeResult?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} topNeighbors={jobResults.data?.rankings?.[0]?.neighbors} />
+              <ResultDetail strain={activeResult?.strain || 'Strain'} images={activeResult?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} topNeighbors={jobResults.data?.rankings?.[0]?.neighbors} threshold={jobResults.data?.threshold} />
             </div>
           ) : (
-            <ResultDetail strain={strains[0]?.strain || 'Single strain'} images={strains[0]?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} topNeighbors={jobResults.data?.rankings?.[0]?.neighbors} />
+            <ResultDetail strain={strains[0]?.strain || 'Single strain'} images={strains[0]?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} topNeighbors={jobResults.data?.rankings?.[0]?.neighbors} threshold={jobResults.data?.threshold} />
           )}
         </div>
       )}

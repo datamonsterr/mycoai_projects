@@ -39,7 +39,7 @@ To illustrate the dataset's structure, Figure~1.1 shows three strains grown on f
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,keepaspectratio]{figures/example_strain_grid.png}
-\caption{Three fungal strains across five growth media (oblique view). Green border = same species as reference strain; red border = different species. All images from \texttt{Dataset/original/}.}
+\caption{Three fungal strains across five growth media (oblique view). Green border = same species as reference strain; red border = different species.}
 \label{fig:strain-grid}
 \end{figure}
 
@@ -49,31 +49,61 @@ To understand the dataset's composition and identify challenges for machine lear
 
 \textbf{Dataset scale.} Figure 1.2 summarizes the overall scale: 435 original dish images are segmented into 1,305 individual colony images (3 colonies per dish). The dataset spans 31 strains across 8 species, with all 435 images successfully parsed and labeled.
 
-\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_dataset_overview.png} \emph{Figure 1.2: Dataset scale overview showing the relationship between original images, segmented colonies, strains, and species.}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_dataset_overview.png}
+\caption{Dataset scale overview showing the relationship between original images, segmented colonies, strains, and species.}
+\label{fig:eda-dataset-overview}
+\end{figure}
 
 \textbf{Species distribution.} Figure 1.3 shows the number of original dish images per species. The dataset is \textbf{class-imbalanced}: \emph{P. polonicum} contributes 99 images (22.8\% of the total), while \emph{P. cyclopium} contributes only 14 images (3.2\%). This imbalance reflects real-world collection constraints---some species are more frequently isolated than others---but it creates challenges for supervised learning, as minority classes have insufficient examples for training robust classifiers.
 
-\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_species_distribution.png} \emph{Figure 1.3: Number of original dish images per species in the curated dataset.}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_species_distribution.png}
+\caption{Number of original dish images per species in the curated dataset.}
+\label{fig:eda-species-distribution}
+\end{figure}
 
 \textbf{Strain-level distribution.} Figure 1.4 breaks down the data at the strain level, colored by species. Most strains have exactly 14 images (7 media $\times$ 2 angles), with minor variations due to contaminated samples or missing captures. The per-strain consistency is a deliberate experimental design choice, ensuring that each strain contributes comparable evidence for both reference indexing and evaluation.
 
-\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_strain_distribution.png} \emph{Figure 1.4: Images per strain, colored by species. Most strains contribute 14 images (7 media $\times$ 2 angles).}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_strain_distribution.png}
+\caption{Images per strain, colored by species. Most strains contribute 14 images (7 media $\times$ 2 angles).}
+\label{fig:eda-strain-distribution}
+\end{figure}
 
 \textbf{Growth media coverage.} Figure 1.5 shows that images are evenly distributed across the seven growth media, with each medium contributing between 60 and 64 images. This balanced coverage is important because colony appearance can vary dramatically across media---a species that looks distinctive on CYA may appear nearly identical to another species on DG18. The system must learn features that are robust to these media-induced variations.
 
-\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_media_distribution.png} \emph{Figure 1.5: Distribution of images across seven growth media.}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_media_distribution.png}
+\caption{Distribution of images across seven growth media.}
+\label{fig:eda-media-distribution}
+\end{figure}
 
 \textbf{Media $\times$ species interaction.} Figure 1.6 provides a heatmap of image counts per species per medium. The near-uniform cell values confirm that the dataset is well-balanced across media for most species. \emph{P. polonicum} has slightly more images per medium due to having more strains. This balanced design means that species-level evaluation is not confounded by unequal media representation.
 
-\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_media_species_heatmap.png} \emph{Figure 1.6: Heatmap showing the number of images per species per growth medium.}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_media_species_heatmap.png}
+\caption{Heatmap showing the number of images per species per growth medium.}
+\label{fig:eda-media-species-heatmap}
+\end{figure}
 
 \subsubsection{The Few-Shot Classification Challenge}\label{the-few-shot-classification-challenge}
 
 The dataset's most critical characteristic is the mismatch between the number of classes and the number of examples per class. Figure 1.7 visualizes this: 8 species distributed across only 31 strains, with a mean of 54 images per species and a median of 56.
 
-\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_fewshot_scatter.png} \emph{Figure 1.7: Few-shot classification challenge. Each point represents one species, positioned by its number of strains (x-axis) and number of images (y-axis).}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_fewshot_scatter.png}
+\caption{Few-shot classification challenge. Each point represents one species, positioned by its number of strains and number of images.}
+\label{fig:eda-fewshot-scatter}
+\end{figure}
 
-This places the problem squarely in the \textbf{few-shot classification} regime. Traditional deep learning classifiers---such as a standard CNN with a softmax output layer---typically require hundreds to thousands of examples per class to generalize reliably. With only 14--99 original images per species (and 42--297 segmented colonies), training a conventional classifier from scratch on this dataset would lead to severe overfitting. Transfer learning from models pre-trained on large natural-image datasets (e.g., ImageNet) partially mitigates this, but the domain gap between natural images and fungal colony microscopy remains substantial.
+This places the problem squarely in the \textbf{few-shot classification} regime~\cite{sung2018relationNet,snell2017prototypical}. Traditional deep learning classifiers---such as a standard CNN with a softmax output layer---typically require hundreds to thousands of examples per class to generalize reliably. With only 14--99 original images per species (and 42--297 segmented colonies), training a conventional classifier from scratch on this dataset would lead to severe overfitting. Transfer learning from models pre-trained on large natural-image datasets (e.g., ImageNet) partially mitigates this, but the domain gap between natural images and fungal colony microscopy remains substantial~\cite{zielinski2020deep}.
 
 The few-shot challenge is compounded by \textbf{strain-level evaluation}: the test set consists of entirely held-out strains (7 strains, one per species except \emph{P. cyclopium}, which lacks a test strain). This means the model must generalize not just to new images of seen strains, but to genetically distinct isolates that may exhibit different morphological characteristics even within the same species. A strain-level split is significantly more demanding than a random image-level split, and it reflects the true deployment scenario where a user submits a sample from a previously unseen strain.
 
@@ -114,13 +144,22 @@ To maintain focus, the following areas are explicitly excluded from this thesis:
   \textbf{Full laboratory information management system (LIMS)}: The web application provides species search and prediction. It is not a complete LIMS with sample tracking, workflow automation, or instrument integration.
 \item
   \textbf{Multi-tenant and organization-level workspaces}: The system is designed for a single laboratory, as described in the Preface---it addresses the specific requirements of the MycoAI lab and its mycologist collaborators. Multi-tenant architectures (supporting multiple independent labs with separate reference databases, user hierarchies, and access control policies) are explicitly out of scope. Extending the system to an organization-wide platform would require significant architectural changes to the data model, authentication system, and vector database partitioning.
+\item
+  \textbf{Security-focused authentication}: The web application is not evaluated as a security-focused system. Authentication and access control are treated as practical application boundaries for the lab workflow, not as a dedicated security contribution; hardened JWT lifecycle design, adversarial security testing, and production identity-provider integration are out of scope.
+\item
+  \textbf{General onboarding guidance}: The application is intended for a specific laboratory and known mycologist collaborators. Broad onboarding flows, public user education, and generic self-service guidance for unknown organizations are out of scope.
 \end{itemize}
 
 \subsection{Proposed Solution}\label{proposed-solution}
 
 The proposed solution is a \textbf{retrieval-based classification pipeline} that identifies fungal species by comparing visual features against a pre-indexed reference database. Figure 1.8 illustrates the high-level architecture.
 
-\includegraphics[width=\textwidth,keepaspectratio]{figures/query_flow.png} \emph{Figure 1.8: High-level architecture of the retrieval-based classification pipeline. A query image passes through segmentation, feature extraction, vector search, and aggregation stages to produce a species prediction.}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth,height=0.5\textheight,keepaspectratio]{figures/query_flow.png}
+\caption{High-level architecture of the retrieval-based classification pipeline. A query image passes through segmentation, feature extraction, vector search, and aggregation to produce a species prediction.}
+\label{fig:query-flow}
+\end{figure}
 
 The pipeline operates in two phases:
 

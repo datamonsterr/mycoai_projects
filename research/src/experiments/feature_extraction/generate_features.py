@@ -10,6 +10,7 @@ from tqdm import tqdm
 from src.config import (
     FEATURES_JSON_PATH,
     COLLECTION_METADATA_PATHS,
+    ORIGINAL_PREPARED_DATASET_DIR,
     WORKSPACE_ROOT,
 )
 from src.experiments.feature_extraction.feature_extractors import (
@@ -17,10 +18,13 @@ from src.experiments.feature_extraction.feature_extractors import (
     ColorHistogramHSconcatResnet50,
     ColorHistogramHSExtractor,
     EfficientNetB1Extractor,
+    EfficientNetB1FinetunedExtractor,
     GaborExtractor,
     HOGExtractor,
     MobileNetV2Extractor,
+    MobileNetV2FinetunedExtractor,
     ResNet50Extractor,
+    ResNet50FinetunedExtractor,
 )
 
 
@@ -37,6 +41,54 @@ def _load_all_items(metadata_paths: dict[str, Path]) -> list[dict[str, Any]]:
     return all_items
 
 
+def _item_from_prepared_segment(segment_path: Path, dataset_root: Path) -> dict[str, Any] | None:
+    try:
+        relative = segment_path.relative_to(WORKSPACE_ROOT)
+        parts = segment_path.relative_to(dataset_root).parts
+    except ValueError:
+        return None
+    if len(parts) < 6:
+        return None
+    species_slug, strain_slug, environment, angle, segment_dir, filename = parts[:6]
+    if segment_dir not in {"segments_yolo", "segments_kmeans"}:
+        return None
+    item_id = "__".join(parts[:4] + (filename.removesuffix(".jpg"),))
+    species = species_slug.replace("-", " ")
+    strain_parts = strain_slug.split("-")
+    strain = (
+        f"{strain_parts[0].upper()} {strain_parts[1]}-{strain_parts[2].upper()}"
+        if len(strain_parts) == 3
+        else strain_slug.replace("-", " ").upper()
+    )
+    return {
+        "item_id": item_id,
+        "paths": {"segments": [str(relative)]},
+        "instance_info": {
+            "species": species,
+            "strain": strain,
+            "environment": environment.upper(),
+            "angle": angle,
+        },
+        "segmentation": {"method": segment_dir.removeprefix("segments_")},
+        "_segment_filename": filename,
+    }
+
+
+def _load_prepared_segment_items(
+    dataset_root: Path = ORIGINAL_PREPARED_DATASET_DIR,
+    segment_method: str = "yolo",
+) -> list[dict[str, Any]]:
+    segment_dir = f"segments_{segment_method}"
+    items: list[dict[str, Any]] = []
+    if not dataset_root.exists():
+        return items
+    for segment_path in sorted(dataset_root.glob(f"*/*/*/*/{segment_dir}/segment_*.jpg")):
+        item = _item_from_prepared_segment(segment_path, dataset_root)
+        if item is not None:
+            items.append(item)
+    return items
+
+
 def generate_features(
     metadata_path: Path | None = None,
     output_path: Path = FEATURES_JSON_PATH,
@@ -50,16 +102,22 @@ def generate_features(
             items = json.load(f)
     else:
         items = _load_all_items(COLLECTION_METADATA_PATHS)
+        if not items:
+            prepared_root = image_dir or ORIGINAL_PREPARED_DATASET_DIR
+            items = _load_prepared_segment_items(prepared_root, segment_method="yolo")
 
     if not items:
-        print("No items found in metadata.")
+        print("No segment items found in metadata or original_prepared.")
         return
 
     extractors = [
         ColorHistogramHSconcatResnet50(),
         ResNet50Extractor(),
+        ResNet50FinetunedExtractor(),
         MobileNetV2Extractor(),
+        MobileNetV2FinetunedExtractor(),
         EfficientNetB1Extractor(),
+        EfficientNetB1FinetunedExtractor(),
         HOGExtractor(),
         GaborExtractor(),
         ColorHistogramExtractor(),
@@ -85,7 +143,16 @@ def generate_features(
                 continue
 
             segment_id = f"{item_id}_seg{idx}"
-            record: dict[str, Any] = {"id": segment_id, "features": {}}
+            record: dict[str, Any] = {
+                "id": segment_id,
+                "segment_path": seg_path,
+                "metadata": {
+                    "instance_info": item.get("instance_info", {}),
+                    "segmentation": item.get("segmentation", {}),
+                    "index": idx,
+                },
+                "features": {},
+            }
 
             for extractor in extractors:
                 try:

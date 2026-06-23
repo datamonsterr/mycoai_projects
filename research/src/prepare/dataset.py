@@ -17,8 +17,11 @@ from src.config import (
     CURATED_FILENAME_PATTERN,
     CURATED_SOURCE_DATASET_PATH,
     FILE_EXTENSION,
+    FULL_PREPARED_DATASET_DIR,
     INCOMING_SOURCE_DATASET_PATH,
     LETTER_RANGE_PATTERN,
+    NEW_DATA_PREPARED_DATASET_DIR,
+    ORIGINAL_PREPARED_DATASET_DIR,
     PREPARED_DATASET_DIR,
     PREPARED_ITEMS_METADATA_PATH,
     PREPARED_SEGMENTS_METADATA_PATH,
@@ -463,15 +466,6 @@ def build_leaf_dir(
     )
 
 
-def build_artifact_root(
-    prepared_root: Path,
-    metadata: ParsedMetadata,
-    image_stem: str,
-    item_id: str,
-) -> Path:
-    return build_leaf_dir(prepared_root, metadata) / f"{image_stem}-{item_id[:8]}"
-
-
 def _save_segment_crops(
     prepared_image: np.ndarray,
     bboxes: list[dict[str, int]],
@@ -540,13 +534,37 @@ def _bboxes_to_schema(bboxes: list[dict[str, int]]) -> list[dict[str, int]]:
 
 
 def _build_pipeline_visualization(
-    source_image: np.ndarray,
-    prepared_image: np.ndarray,
-    bbox_image: np.ndarray,
+    *,
+    source_image: np.ndarray | None = None,
+    prepared_image: np.ndarray | None = None,
+    bbox_image: np.ndarray | None = None,
+    debug_images: dict[str, np.ndarray] | None = None,
 ) -> np.ndarray:
-    h, w = prepared_image.shape[:2]
-    src = cv2.resize(source_image, (w, h), interpolation=cv2.INTER_AREA)
-    return np.hstack([src, prepared_image, bbox_image])
+    h, w = prepared_image.shape[:2] if prepared_image is not None else (256, 256)
+    panels: list[np.ndarray] = []
+
+    if source_image is not None:
+        panels.append(cv2.resize(source_image, (w, h), interpolation=cv2.INTER_AREA))
+    if prepared_image is not None:
+        panels.append(cv2.resize(prepared_image, (w, h), interpolation=cv2.INTER_AREA))
+
+    if debug_images:
+        for key in ("color_dimension", "foreground_mask", "location_clusters"):
+            if key in debug_images:
+                di = debug_images[key]
+                if di.shape[:2] != (h, w):
+                    di = cv2.resize(di, (w, h), interpolation=cv2.INTER_AREA)
+                panels.append(di)
+
+    if bbox_image is not None:
+        if bbox_image.shape[:2] != (h, w):
+            bbox_image = cv2.resize(bbox_image, (w, h), interpolation=cv2.INTER_AREA)
+        panels.append(bbox_image)
+
+    if not panels:
+        return np.zeros((h, w, 3), dtype=np.uint8)
+
+    return np.hstack(panels)
 
 
 def _write_prepared_metadata(item_records: list[DatasetItemRecord]) -> None:
@@ -627,11 +645,12 @@ def prepare_dataset(
             )
             image_stem = sanitize_stem(image_path.name)
             item_id = build_item_id(instance_info, image_path.name)
-            artifact_root = build_artifact_root(prepared_root, metadata, image_stem, item_id)
-            artifact_root.mkdir(parents=True, exist_ok=True)
+            leaf_dir = build_leaf_dir(prepared_root, metadata)
+            leaf_dir.mkdir(parents=True, exist_ok=True)
 
-            source_output_path = artifact_root / f"source{FILE_EXTENSION}"
-            prepared_output_path = artifact_root / f"prepared{FILE_EXTENSION}"
+            suffix = f"_{image_stem}" if image_stem else ""
+            source_output_path = leaf_dir / f"source_{item_id[:8]}{FILE_EXTENSION}"
+            prepared_output_path = leaf_dir / f"prepared_{item_id[:8]}{FILE_EXTENSION}"
             shutil.copyfile(image_path, source_output_path)
             prepared_image = process_image(image, output_size=TARGET_SIZE[0])
             cv2.imwrite(str(prepared_output_path), prepared_image)
@@ -650,6 +669,7 @@ def prepare_dataset(
                     "bbox_kmeans": None,
                     "bbox_yolo": None,
                     "pipeline_kmeans": None,
+                    "pipeline_yolo": None,
                 },
                 segmentation={},
             )
@@ -709,9 +729,14 @@ def segment_item(
     results: list[dict] = []
 
     for method in selected_methods:
+        debug_imgs: dict[str, np.ndarray] = {}
         try:
             if method == SEGMENT_METHOD_KMEANS:
-                bboxes, _ = segment_kmeans_image(prepared_image)
+                kmeans_result = segment_kmeans_image(prepared_image, return_debug=True)
+                if isinstance(kmeans_result, tuple) and len(kmeans_result) == 3:
+                    bboxes, score, debug_imgs = kmeans_result
+                else:
+                    bboxes, _ = kmeans_result  # type: ignore[misc]
             elif method == SEGMENT_METHOD_YOLO:
                 from ultralytics import YOLO
 
@@ -751,11 +776,22 @@ def segment_item(
         cv2.imwrite(str(bbox_path), bbox_image)
         item_record.paths[f"bbox_{method}"] = relative_to_workspace(bbox_path)
 
-        if method == SEGMENT_METHOD_KMEANS and source_image is not None:
-            pipeline_path = leaf_dir / f"pipeline_{method}{FILE_EXTENSION}"
-            pipeline_img = _build_pipeline_visualization(source_image, prepared_image, bbox_image)
-            cv2.imwrite(str(pipeline_path), pipeline_img)
-            item_record.paths[f"pipeline_{method}"] = relative_to_workspace(pipeline_path)
+        pipeline_path = leaf_dir / f"pipeline_{method}{FILE_EXTENSION}"
+        if method == SEGMENT_METHOD_KMEANS:
+            pipeline_img = _build_pipeline_visualization(
+                source_image=source_image,
+                prepared_image=prepared_image,
+                bbox_image=bbox_image,
+                debug_images=debug_imgs,
+            )
+        else:
+            pipeline_img = _build_pipeline_visualization(
+                source_image=source_image,
+                prepared_image=prepared_image,
+                bbox_image=bbox_image,
+            )
+        cv2.imwrite(str(pipeline_path), pipeline_img)
+        item_record.paths[f"pipeline_{method}"] = relative_to_workspace(pipeline_path)
 
         item_record.segmentation[method] = _bboxes_to_schema(bboxes)
         results.append({"method": method, "status": "success", "count": len(bboxes)})
@@ -805,3 +841,105 @@ def resolve_source_collection_names(selected: list[str] | None) -> list[str]:
 
 def required_source_roots() -> list[Path]:
     return [CURATED_SOURCE_DATASET_PATH, INCOMING_SOURCE_DATASET_PATH]
+
+
+def prepare_all(
+    *,
+    limit: int | None = None,
+    segment_methods: list[str] | None = None,
+) -> dict[str, list[DatasetItemRecord]]:
+    """Prepare all dataset splits: original, new_data, full (combined).
+
+    Returns dict mapping split_name → item_records.
+    """
+    results: dict[str, list[DatasetItemRecord]] = {}
+
+    curated_items = prepare_dataset(
+        source_collections=["curated"],
+        prepared_root=ORIGINAL_PREPARED_DATASET_DIR,
+        limit=limit,
+    )
+    results["original_prepared"] = curated_items
+
+    incoming_items = prepare_dataset(
+        source_collections=["incoming"],
+        prepared_root=NEW_DATA_PREPARED_DATASET_DIR,
+        limit=limit,
+    )
+    results["new_data_prepared"] = incoming_items
+
+    full_items = prepare_dataset(
+        source_collections=["curated", "incoming"],
+        prepared_root=FULL_PREPARED_DATASET_DIR,
+        limit=limit,
+    )
+    results["full_prepared"] = full_items
+
+    for split_name, items in results.items():
+        if items and segment_methods:
+            run_segmentation(items, methods=segment_methods)
+
+    _write_aggregated_metadata(results)
+    return results
+
+
+def aggregate_all_metadata() -> None:
+    """Aggregate metadata from all prepared roots into consolidated files."""
+    results: dict[str, list[DatasetItemRecord]] = {}
+    for split_name, root in [
+        ("original_prepared", ORIGINAL_PREPARED_DATASET_DIR),
+        ("new_data_prepared", NEW_DATA_PREPARED_DATASET_DIR),
+        ("full_prepared", FULL_PREPARED_DATASET_DIR),
+    ]:
+        items = prepare_dataset(
+            source_collections=["curated"] if split_name == "original_prepared"
+            else ["incoming"] if split_name == "new_data_prepared"
+            else ["curated", "incoming"],
+            prepared_root=root,
+            limit=None,
+        )
+        results[split_name] = items
+    _write_aggregated_metadata(results)
+
+
+def _write_aggregated_metadata(
+    results: dict[str, list[DatasetItemRecord]],
+) -> None:
+    all_items: dict[str, DatasetItemRecord] = {}
+    for items in results.values():
+        for item in items:
+            all_items[item.item_id] = item
+
+    merged = list(all_items.values())
+    with open(PREPARED_ITEMS_METADATA_PATH, "w") as handle:
+        json.dump([item.to_dict() for item in merged], handle, indent=2)
+
+    segment_rows: list[dict[str, object]] = []
+    for item in merged:
+        instance_info = asdict(item.instance_info)
+        for idx, seg_path in enumerate(item.paths.get("segments", [])):
+            seg_id = f"{item.item_id}_seg{idx}"
+            segment_rows.append(
+                {
+                    "id": seg_id,
+                    "item_id": item.item_id,
+                    "segment_id": seg_id,
+                    "segment_path": seg_path,
+                    "parent_id": item.item_id,
+                    "instance_info": instance_info,
+                    "data": {
+                        "species": item.instance_info.species,
+                        "specy": item.instance_info.species,
+                        "strain": item.instance_info.strain,
+                        "environment": item.instance_info.environment,
+                        "angle": item.instance_info.angle,
+                        "segment_path": seg_path,
+                        "parent_id": item.item_id,
+                    },
+                    "segmentation": item.segmentation,
+                    "index": idx,
+                }
+            )
+
+    with open(PREPARED_SEGMENTS_METADATA_PATH, "w") as handle:
+        json.dump(segment_rows, handle, indent=2)

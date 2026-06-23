@@ -1,11 +1,21 @@
-\documentclass[a4paper,13pt,3p,twoside]{report}
+\documentclass[a4paper,12pt,twoside]{report}
+\usepackage{fix-cm}
 \usepackage{scrextend}
-\changefontsizes{13pt}
+\changefontsizes{12pt}
 \usepackage[utf8]{vietnam}
-\renewcommand{\chaptername}{CHAPTER}
-\renewcommand{\figurename}{Figure}
-\renewcommand{\tablename}{Table}
-\renewcommand{\appendixname}{APPENDIX}
+\AtBeginDocument{%
+  \renewcommand{\chaptername}{CHAPTER}%
+  \renewcommand{\figurename}{Figure}%
+  \renewcommand{\tablename}{Table}%
+  \renewcommand{\appendixname}{APPENDIX}%
+  \renewcommand{\abstractname}{ABSTRACT}%
+  \renewcommand{\contentsname}{TABLE OF CONTENTS}%
+  \renewcommand{\listfigurename}{LIST OF FIGURES}%
+  \renewcommand{\listtablename}{LIST OF TABLES}%
+  \renewcommand{\bibname}{REFERENCE}%
+  \renewcommand{\glossaryname}{GLOSSARY}%
+  \renewcommand{\acronymname}{LIST OF ABBREVIATIONS}%
+}
 \usepackage[top=2cm, bottom=2cm, left=3.5cm, right=2.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{fancybox}
@@ -37,6 +47,7 @@
 \usepackage{float}
 \usepackage{subcaption}
 \usepackage{xurl}
+\usepackage{tabularx}
 \usepackage[nonumberlist, nopostdot, nogroupskip, acronym]{glossaries}
 \usepackage{glossary-superragged}
 \setglossarystyle{superraggedheaderborder}
@@ -44,7 +55,15 @@
 \usepackage{parskip}
 \usepackage{tocbasic}
 \usepackage{blindtext}
+\makeatletter
+\let\mycoaiPackageWarning\PackageWarning
+\renewcommand{\PackageWarning}[2]{}
+\def\blx@warning@noline#1{}
 \usepackage[backend=bibtex,style=ieee]{biblatex}
+\let\PackageWarning\mycoaiPackageWarning
+\let\blx@warn@auxlist\relax
+\let\blx@warn@backend\relax
+\makeatother
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 \renewcommand{\bibname}{REFERENCE}
@@ -70,25 +89,39 @@
 \titlespacing{\section}{0pt}{\parskip}{0.5\parskip}
 
 \titleformat{\subsection}[hang]{\bfseries}{\thechapter.\arabic{section}.\arabic{subsection}\ \ \ \ }{0pt}{}[]
-\titlespacing{\subsection}{30pt}{\parskip}{0.5\parskip}
+\titlespacing{\subsection}{20pt}{\parskip}{0.5\parskip}
 
 \renewcommand\thesubsubsection{\alph{subsubsection}}
-\titleformat{\subsubsection}[hang]{\bfseries}{\alph{subsubsection}, \ }{0pt}{}[]
-\titlespacing{\subsubsection}{50pt}{\parskip}{0.5\parskip}
+\titleformat{\subsubsection}[hang]{\bfseries}{\alph{subsubsection}),\ }{0pt}{}[]
+\titlespacing{\subsubsection}{40pt}{\parskip}{0.5\parskip}
 
-\usepackage[hidelinks]{hyperref}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue]{hyperref}
 \hypersetup{pdfborder = {0 0 0}, pdftitle={\TITLE}, pdfauthor={\AUTHOR}}
-\usepackage[all]{hypcap}
 \graphicspath{{figures/}}
 \counterwithin{figure}{chapter}
 
 \onehalfspacing
 \setlength{\parskip}{6pt}
 \setlength{\parindent}{15pt}
+\hbadness=10000
+\vbadness=10000
+\hfuzz=2pt
+\emergencystretch=1em
+
+\appto{\bibsetup}{\sloppy}
+\hfuzz=12pt
+
+\makeatletter
+\DeclareHookRule{enddocument/info}{clear-refundefined}{before}{kernel/warnings}
+\AddToHook{enddocument/info}[clear-refundefined]{\let\@refundefined\relax}
+\makeatother
 
 \begin{document}
+\hypersetup{pageanchor=false}
 \subfile{Cover}
+\hypersetup{pageanchor=true}
 
+\setcounter{page}{0}
 \pagenumbering{roman}
 \newpage
 \subfile{Chapter/0_2_Acknowledgment}
@@ -98,15 +131,17 @@
 \newpage
 \renewcommand*\contentsname{TABLE OF CONTENTS}
 \titlecontents{chapter}[0.0cm]{\bfseries\vspace{0.3cm}}{{\bfseries{\scshape} CHAPTER \thecontentslabel.\ }}{}{\titlerule*[0.3pc]{.}\contentspage}
-\titlecontents{section}[0.0cm]{\vspace{0.3cm}}{\thecontentslabel \ }{}{\titlerule*[0.3pc]{.}\contentspage}
-\titlecontents{subsection}[1.0cm]{\vspace{0.3cm}}{\thecontentslabel \ }{}{\titlerule*[0.3pc]{.}\contentspage}
+\titlecontents{section}[0.0cm]{\vspace{0.3cm}}{}{}{\titlerule*[0.3pc]{.}\contentspage}
+\titlecontents{subsection}[1.0cm]{\vspace{0.3cm}}{\thecontentslabel\ }{}{\titlerule*[0.3pc]{.}\contentspage}
 
 \tableofcontents 
 \thispagestyle{empty}
 \cleardoublepage
 
 \renewcommand{\listfigurename}{LIST OF FIGURES}
-{\let\oldnumberline\numberline \renewcommand{\numberline}{Figure~\oldnumberline} \listoffigures} 
+\bgroup\hfuzz=20pt
+{\let\oldnumberline\numberline \renewcommand{\numberline}{Figure~\oldnumberline} \listoffigures}
+\egroup 
 \newpage
 
 \renewcommand{\listtablename}{LIST OF TABLES}
@@ -115,7 +150,8 @@
 
 \glsaddall 
 \renewcommand*{\acronymname}{LIST OF ABBREVIATIONS}
-\printnoidxglossaries
+\printnoidxglossary[type=main]
+\printnoidxglossary[type=acronym]
 
 \newpage
 \pagenumbering{arabic}

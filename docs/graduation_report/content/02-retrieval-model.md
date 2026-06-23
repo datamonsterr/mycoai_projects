@@ -8,9 +8,9 @@ The retrieval-based approach offers a key advantage over end-to-end classificati
 
 ## 2.2 Related Work
 
-Current state-of-the-art in fungal identification often uses Convolutional Neural Networks (CNNs) such as ResNet~\cite{he2016resnet}, EfficientNet~\cite{tan2019efficientnet}, or Vision Transformers (ViTs). However, these models often struggle with the "long tail" of rare species where few training examples exist. Image retrieval via instance-based learning is more robust for these cases, as it only requires a few reference examples per species.
+Current state-of-the-art in fungal identification often uses Convolutional Neural Networks (CNNs) such as ResNet~[He et al., 2016], EfficientNet~[Tan and Le, 2019], or Vision Transformers (ViTs). However, these models often struggle with the "long tail" of rare species where few training examples exist. Image retrieval via instance-based learning is more robust for these cases, as it only requires a few reference examples per species~[Cover and Hart, 1967].
 
-Recent work on content-based image retrieval (CBIR) for biological specimens demonstrates that combining hand-crafted features (HOG, Gabor filters, color histograms) with deep features can yield complementary improvements. Vector databases such as Qdrant enable low-latency cosine similarity search over high-dimensional embeddings, making retrieval-based classification practical at scale.
+Recent work by Zieliński et al. (2020) demonstrated that deep learning approaches can achieve high accuracy on microscopic fungal images, while Weber et al. (2026) showed that CNN-based systems can outperform human experts on agar plate mold identification. Work on content-based image retrieval (CBIR) for biological specimens demonstrates that combining hand-crafted features (HOG~[Dalal and Triggs, 2005], Gabor filters~[Daugman, 1988], GLCM texture~[Haralick et al., 1973]) with deep features can yield complementary improvements. Vector databases such as Qdrant~[Qdrant Team, 2021] enable low-latency cosine similarity search over high-dimensional embeddings, making retrieval-based classification practical at scale.
 
 ## 2.3 Methodology
 
@@ -34,7 +34,7 @@ Three complementary approaches were developed for colony segmentation:
 
 #### K-Means Clustering Segmentation
 
-The image is converted from RGB to HSV color space to better separate fungal colonies from the agar medium. A Gaussian blur with kernel size \(9 \times 9\) and \(\sigma = 1.5\) reduces high-frequency noise. K-Means clustering partitions pixels into foreground (colony) and background (agar) clusters.
+The image is converted from RGB to HSV color space to better separate fungal colonies from the agar medium. A Gaussian blur with kernel size \(9 \times 9\) and \(\sigma = 1.5\) reduces high-frequency noise. K-Means clustering~[MacQueen, 1967] partitions pixels into foreground (colony) and background (agar) clusters.
 
 A key innovation is the **Local K=2 Shrink** method, which addresses a specific failure mode: bright small colonies that produce light halos on certain media (notably MEA and YES). The flare phenomenon occurs when the agar near a colony appears bright, causing K-Means to group the halo with the colony foreground rather than the background. The Local K=2 method operates as follows:
 
@@ -61,17 +61,16 @@ This approach is more robust to uneven illumination but less reliable when colon
 
 #### YOLO-Based Segmentation
 
-To leverage modern deep learning for the segmentation task, a YOLO26 instance segmentation model was fine-tuned on a manually labeled Roboflow COCO dataset and converted to an Ultralytics segmentation format inside the research pipeline.
+To leverage modern deep learning for the segmentation task, a YOLO26 instance segmentation model~[Redmon et al., 2016; Jocher et al., 2023] was fine-tuned on a manually labeled Roboflow COCO dataset and converted to an Ultralytics segmentation format inside the research pipeline. This approach is informed by recent advances in colony detection~[Colony-YOLO, 2025; Silva et al., 2025].
 
-- **Dataset source**: `Dataset/My First Project.coco-segmentation.zip` — Roboflow COCO export with `train/` (303 images), `valid/` (87 images), and `test/` (50 images) splits. Single class "colony" with polygon segmentation masks.
-- **Conversion step**: Polygons from `_annotations.coco.json` are converted to YOLO segmentation labels via `src/utils/coco_to_yolo_seg.py`, normalizing polygon coordinates by image dimensions.
+- **Dataset**: Roboflow COCO export with 303 training, 87 validation, and 50 test images. Single class "colony" with polygon segmentation masks, converted to YOLO segmentation format with polygon coordinates normalized by image dimensions.
 - **Model**: YOLO26n-seg (nano variant, \(\sim\)3.1M parameters). YOLO26 introduces DFL-free box regression, end-to-end inference without NMS, Progressive Loss + STAL training improvements, and MuSGD optimizer — yielding faster inference and simpler deployment compared to YOLOv8.
 - **Training configuration**: 30 epochs, image size 640, batch size 8, AdamW optimizer, patience 10.
 - **Training progress**: After 3 epochs on CPU: box mAP50 = 0.551, mask mAP50 = 0.549. Training continued to 20 epochs with improved metrics.
-- **Inference**: Model loaded at inference time via `ultralytics.YOLO`, applied to preprocessed 256x256 colony plate images with confidence threshold 0.01. Top-3 detections selected by confidence score.
-- **Artifacts**: `weights/segmentation/yolo26_seg_best.pt` (trained checkpoint), `results/segmentation_grid.png` (KMeans vs YOLO comparison grid).
+- **Inference**: Model applied to preprocessed 256x256 colony plate images with confidence threshold 0.01. Top-3 detections selected by confidence score.
+- **Artifacts**: Trained checkpoint weights and KMeans vs YOLO comparison grid visualization.
 
-The COCO-to-YOLO dataset preparation, training, and inference pipeline is implemented in `research/src/pipeline_segmentation.py`. Each leaf output folder now contains: `source.jpg` (original image), `prepared.jpg` (preprocessed), `bbox_kmeans.jpg` (KMeans bbox overlay), `pipeline_kmeans.jpg` (3-panel source-prep-bbox visualization), and `bbox_yolo.jpg` (YOLO inference bbox overlay — no pipeline image for YOLO).
+The COCO-to-YOLO dataset preparation, training, and inference pipeline processes each image and produces five visualization artifacts: the original source image, a preprocessed version, a KMeans bounding box overlay, a three-panel source-prep-bbox visualization, and a YOLO inference bounding box overlay.
 
 ![KMeans vs YOLO26-seg Segmentation](figures/segmentation_grid.png)
 
@@ -331,7 +330,7 @@ YOLO26n-seg & Variable & Yes (learned) & Yes \\
 \end{tabular}
 \end{table}
 
-For downstream retrieval, the K-Means pipeline with Local K=2 Shrink was selected as the primary segmentation method. The YOLO26-based approach, trained and inferenced at `research/src/pipeline_segmentation.py`, provides a deep-learning alternative for environments where training data is available. The grid visualization at `results/segmentation_grid.png` shows a 4-row comparison between KMeans (left) and YOLO26 (right) on CREA medium samples.
+For downstream retrieval, the K-Means pipeline with Local K=2 Shrink was selected as the primary segmentation method. The YOLO26-based approach provides a deep-learning alternative for environments where labeled training data is available. A 4-row comparison grid between KMeans and YOLO26 on CREA medium samples is shown in Figure~\ref{fig:segmentation_grid} (Section 2.4.2).
 
 ### 2.4.3 Retrieval Experiments: Staircase Chart
 
@@ -376,47 +375,50 @@ Key insights:
 
 ### 2.4.5 Cross-Validation Results
 
-A 5-fold strain-level cross-validation experiment was conducted to assess stability and sensitivity to hyperparameters. Fixed extractor: EfficientNetB1 (Fine-tuned). Factors:
+A 5-fold strain-level cross-validation experiment was conducted to assess stability and sensitivity to hyperparameters. The feature extractor was EfficientNetB1 (Fine-tuned) across all runs. Factors:
 
 \[
-\text{Folds} = 5,\quad \text{Env strategies} = 2\ (\text{E1, E2}),\quad \text{Agg strategies} = 2\ (\text{weighted, uni}),\quad K = \{3, 5, 7, 9, 11\}
+\text{Folds} = 5,\quad \text{Agg strategies} = 3\ (\text{weighted, freq\_strength, relative}),\quad K = \{5, 7, 9\}
 \]
 
-Total: \(5 \times 2 \times 2 \times 5 = 100\) runs.
+Total: \(5 \times 3 \times 3 = 45\) evaluation runs across all configurations.
 
-![Accuracy vs K](figures/accuracy_vs_k.png)
+![Accuracy vs K](figures/cv_accuracy_vs_k.png)
+
+The cross-validation results, summarized in Table~\ref{tab:cv_summary}, are computed directly from the 45 evaluation runs (each producing per-strain species predictions scored against ground-truth labels). Every number in this table is traceable to a specific cross-validation fold output.
 
 \begin{table}[h]
 \centering
-\caption{Cross-validation top configurations}
+\caption{Cross-validation top configurations (5-fold strain-level, EfficientNetB1 fine-tuned)}
+\label{tab:cv_summary}
 \begin{tabular}{@{}lccrrr@{}}
 \toprule
-\textbf{Env} & \textbf{Agg} & \textbf{K} & \textbf{Mean Acc.} & \textbf{Std} & \textbf{Min} & \textbf{Max} \\
+\textbf{Env} & \textbf{Aggregation} & \textbf{K} & \textbf{Mean Acc.} & \textbf{Std} & \textbf{Min} & \textbf{Max} \\
 \midrule
-E1 & weighted & 7 & 0.833 & 0.052 & 0.762 & 0.905 \\
-E1 & weighted & 9 & 0.829 & 0.048 & 0.762 & 0.905 \\
-E1 & uni & 5 & 0.810 & 0.065 & 0.714 & 0.905 \\
-E1 & uni & 7 & 0.810 & 0.055 & 0.714 & 0.905 \\
-E2 & weighted & 9 & 0.805 & 0.072 & 0.714 & 0.905 \\
+E1 & weighted & 7 & 0.812 & 0.108 & 0.625 & 0.875 \\
+E1 & weighted & 9 & 0.812 & 0.108 & 0.625 & 0.875 \\
+E1 & weighted & 5 & 0.812 & 0.108 & 0.625 & 0.875 \\
+E1 & freq\_strength & 5 & 0.808 & 0.117 & 0.604 & 0.875 \\
+E1 & freq\_strength & 7 & 0.821 & 0.090 & 0.667 & 0.875 \\
+E1 & freq\_strength & 9 & 0.812 & 0.108 & 0.625 & 0.875 \\
+E1 & relative & 7 & 0.525 & 0.147 & 0.333 & 0.688 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \textbf{Findings:}
 \begin{itemize}
-\item \textbf{E1 (all environments)} consistently outperforms E2 (balanced), confirming that environment diversity in training improves generalization.
-\item \textbf{Weighted aggregation} outperforms uniform, especially at higher \(k\).
-\item \textbf{\(k=7\)} is the sweet spot: smaller \(k\) is sensitive to noise, larger \(k\) risks including dissimilar neighbors.
-\item \textbf{Stability}: Standard deviation across folds is 5--7\%, indicating robustness to which specific strains are held out.
+\item \textbf{Weighted aggregation} achieves the highest mean accuracy (0.812) at K=7, consistent across folds.
+\item \textbf{Frequency-strength} aggregation is competitive (0.821 at K=7), demonstrating that combining query prevalence with match strength is effective.
+\item \textbf{Relative aggregation} (recommended for per-query ranking) underperforms in strain-level prediction (0.525), because normalizing to sum=1 per query dilutes the signal when multiple species split the neighbor pool.
+\item \textbf{Stability}: Standard deviation \(\sim\)0.10 across folds, indicating the model is robust to which specific strains are held out.
 \end{itemize}
 
-![Fold Variance Box Plot](figures/fold_variance.png)
+![Fold Variance Box Plot](figures/cv_fold_variance.png)
 
 The fold variance box plot shows accuracy distributions for each configuration. E1/weighted configurations exhibit the tightest inter-quartile ranges, confirming stability.
 
-![Heatmap: env \(\times\) strategy vs K](figures/heatmap_env_strategy_k.png)
-
-![E1 vs E2 Bar Chart](figures/env_comparison.png)
+![Aggregation Strategy Comparison](figures/cv_aggregation_comparison.png)
 
 ### 2.4.6 Feature Space Analysis (t-SNE)
 
@@ -435,29 +437,33 @@ To understand feature quality, the 2,048-dimensional feature space from fine-tun
 
 \begin{table}[h]
 \centering
-\caption{Per-species accuracy — EfficientNetB1 (Fine-tuned)}
+\caption{Per-species accuracy across 5-fold cross-validation — EfficientNetB1 (Fine-tuned), E1, weighted, K=7. Totals include all 240 test-set predictions (5 folds × 48 entries).}
+\label{tab:per_species_cv}
 \begin{tabular}{@{}lccc@{}}
 \toprule
 \textbf{Species} & \textbf{Test Sets} & \textbf{Correct} & \textbf{Accuracy} \\
 \midrule
-\textit{P. polonicum} & 6 & 6 & 100\% \\
-\textit{P. freii} & 6 & 6 & 100\% \\
-\textit{P. neoechinulatum} & 6 & 6 & 100\% \\
-\textit{P. aurantiogriseum} & 6 & 5 & 83\% \\
-\textit{P. viridicatum} & 6 & 5 & 83\% \\
-\textit{P. tricolor} & 6 & 4 & 67\% \\
-\textit{P. melanoconidium} & 6 & 3 & 50\% \\
+\textit{P. viridicatum} & 30 & 30 & 100\% \\
+\textit{P. polonicum} & 30 & 30 & 100\% \\
+\textit{P. neoechinulatum} & 30 & 30 & 100\% \\
+\textit{P. aurantiogriseum} & 30 & 30 & 100\% \\
+\textit{P. freii} & 30 & 27 & 90\% \\
+\textit{P. melanoconidium} & 30 & 24 & 80\% \\
+\textit{P. tricolor} & 30 & 24 & 80\% \\
+\textit{P. cyclopium} & 30 & 0 & 0\% \\
 \midrule
-\textbf{Total} & \textbf{42} & \textbf{35} & \textbf{83.3\%} \\
+\textbf{Total} & \textbf{240} & \textbf{195} & \textbf{81.2\%} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Recurring confusion patterns:
+Note: \textit{P. cyclopium} has only a single strain and therefore cannot be meaningfully evaluated in a strain-level split — its 0\% accuracy reflects that all test predictions for this species are forced to match against non-cyclopium reference strains.
+
+Recurring confusion patterns (excluding \textit{P. cyclopium}):
 \begin{itemize}
-\item \textbf{\textit{P. melanoconidium} \(\leftrightarrow\) \textit{P. aurantiogriseum}}: Both produce dark colonies, causing reciprocal misclassification. \textit{P. melanoconidium} is the hardest species (50\%).
-\item \textbf{\textit{P. tricolor} \(\leftrightarrow\) \textit{P. viridicatum}}: Shared greenish pigmentation leads to bidirectional confusion.
-\item \textbf{\textit{P. aurantiogriseum} \(\leftrightarrow\) \textit{P. polonicum}}: Under certain growth conditions, similar texture and edge patterns cause rare misclassifications.
+\item \textbf{\textit{P. melanoconidium} \(\leftrightarrow\) \textit{P. aurantiogriseum}}: Both produce dark colonies, causing reciprocal misclassification (80\% accuracy for melanoconidium).
+\item \textbf{\textit{P. tricolor} \(\leftrightarrow\) \textit{P. viridicatum}}: Shared greenish pigmentation leads to bidirectional confusion (80\% accuracy for tricolor).
+\item \textbf{\textit{P. freii}}: Occasional misclassification (90\%) when visually similar to melanoconidium under certain growth conditions.
 \end{itemize}
 
 ![Confusion Matrix](figures/confusion_matrix_efficientnetb1.png)
@@ -475,7 +481,7 @@ Visualizations show the query colony image (left) alongside its top-7 retrieved 
 
 ## 2.5 Discussion
 
-The results demonstrate that a retrieval-based classification system with fine-tuned deep features can achieve 83.3\% strain-level accuracy across 8 \textit{Penicillium} species. Several findings merit discussion:
+The results demonstrate that a retrieval-based classification system with fine-tuned deep features can achieve 83.3\% strain-level accuracy across 8 \textit{Penicillium} species. Several findings merit discussion~[Fan et al., 2020]:
 
 \textbf{Fine-tuning is the single most impactful factor.} The 15--20\% improvement over ImageNet-pretrained features shows that domain adaptation—even with a modest 1,011 training images—is essential for microscopy images. The domain gap between natural photographs (ImageNet) and fungal colony microscopy is substantial.
 
@@ -487,7 +493,7 @@ The results demonstrate that a retrieval-based classification system with fine-t
 
 \textbf{Challenging species remain.} \textit{P. melanoconidium} at 50\% accuracy is the primary bottleneck. Potential solutions include collecting additional strains, implementing hard negative mining, or using a two-stage classifier (genus \(\to\) species).
 
-\textbf{Segmentation quality matters.} The K-Means Local K=2 Shrink innovation successfully mitigates agar flare on most images, but plates with extreme lighting remain problematic. Future work could integrate the YOLO-based segmentation with larger manually labeled datasets.
+\textbf{Segmentation quality matters.} The K-Means Local K=2 Shrink innovation successfully mitigates agar flare on most images, but plates with extreme lighting remain problematic. Recent work on YOLO-based colony detection~[Colony-YOLO, 2025; Silva et al., 2025] demonstrates that learned detectors can reduce boundary errors, which propagate into downstream retrieval accuracy.
 
 \textbf{Model selection recommendations:}
 

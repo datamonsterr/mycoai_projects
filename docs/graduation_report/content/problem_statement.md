@@ -12,7 +12,7 @@ The system is evaluated on a dataset of *Penicillium* species—a genus of signi
 
 ### 1.2.1 Dataset Structure
 
-The primary dataset consists of 435 high-resolution photographs of fungal colonies cultured on Petri dishes. Each dish contains exactly three colonies of the same strain, grown on a single growth medium and photographed from two angles: **oblique** (top-down angled view, abbreviated `ob`) and **reverse** (view from the bottom of the dish, abbreviated `rev`). The oblique angle captures surface morphology—colony color, texture, and sporulation patterns—while the reverse angle reveals pigments diffused into the agar, which are often species-diagnostic.
+The primary dataset consists of 435 high-resolution photographs of fungal colonies cultured on Petri dishes. Each dish contains exactly three circular fungal colonies of the same strain, grown on a single growth medium. Images are captured under a microscope from two viewing angles: **oblique** (`ob`, top-down angled view) and **reverse** (`rev`, view from the bottom of the dish). The oblique angle captures surface morphology—colony color, texture, and sporulation patterns—while the reverse angle reveals pigments diffused into the agar, which are often species-diagnostic. Individual colonies vary in size and texture across species, media, and incubation conditions, which the retrieval system must learn to handle robustly.
 
 The data hierarchy follows the natural biological organization:
 
@@ -29,7 +29,7 @@ Species → Strain → Growth Medium → Image (oblique / reverse)
 Figure 1.1 illustrates the dataset's multi-dimensional nature: three strains grown on five representative media, all shown from the oblique angle. The first two rows are strains of the same species (*P. polonicum*), demonstrating within-species morphological variation across both strains and media. The third row is a different species (*P. aurantiogriseum*), showing the between-species differences that the retrieval system must learn to detect.
 
 ![Example of three fungal strains across five growth media](figures/example_strain_grid.png)
-*Figure 1.1: Three fungal strains across five growth media (oblique view). Rows 1–2: two strains of P. polonicum (same species). Row 3: P. aurantiogriseum (different species). Green border = same species as reference; red border = different species. All images from `Dataset/original/`.*
+*Figure 1.1: Three fungal strains across five growth media (oblique view). Rows 1–2: two strains of P. polonicum (same species). Row 3: P. aurantiogriseum (different species). Green border = same species as reference; red border = different species.*
 
 ### 1.2.2 Exploratory Data Analysis
 
@@ -67,7 +67,7 @@ The dataset's most critical characteristic is the mismatch between the number of
 ![Few-shot scatter](figures/eda_fewshot_scatter.png)
 *Figure 1.7: Few-shot classification challenge. Each point represents one species, positioned by its number of strains (x-axis) and number of images (y-axis).*
 
-This places the problem squarely in the **few-shot classification** regime. Traditional deep learning classifiers—such as a standard CNN with a softmax output layer—typically require hundreds to thousands of examples per class to generalize reliably. With only 14–99 original images per species (and 42–297 segmented colonies), training a conventional classifier from scratch on this dataset would lead to severe overfitting. Transfer learning from models pre-trained on large natural-image datasets (e.g., ImageNet) partially mitigates this, but the domain gap between natural images and fungal colony microscopy remains substantial.
+This places the problem squarely in the **few-shot classification** regime~[Sung et al., 2018; Snell et al., 2017]. Traditional deep learning classifiers—such as a standard CNN with a softmax output layer—typically require hundreds to thousands of examples per class to generalize reliably. With only 14–99 original images per species (and 42–297 segmented colonies), training a conventional classifier from scratch on this dataset would lead to severe overfitting. Transfer learning from models pre-trained on large natural-image datasets (e.g., ImageNet) partially mitigates this, but the domain gap between natural images and fungal colony microscopy remains substantial~[Zieliński et al., 2020].
 
 The few-shot challenge is compounded by **strain-level evaluation**: the test set consists of entirely held-out strains (7 strains, one per species except *P. cyclopium*, which lacks a test strain). This means the model must generalize not just to new images of seen strains, but to genetically distinct isolates that may exhibit different morphological characteristics even within the same species. A strain-level split is significantly more demanding than a random image-level split, and it reflects the true deployment scenario where a user submits a sample from a previously unseen strain.
 
@@ -96,6 +96,10 @@ To maintain focus, the following areas are explicitly excluded from this thesis:
 - **Full laboratory information management system (LIMS)**: The web application provides species search and prediction. It is not a complete LIMS with sample tracking, workflow automation, or instrument integration.
 
 - **Multi-tenant and organization-level workspaces**: The system is designed for a single laboratory, as described in the Preface—it addresses the specific requirements of the MycoAI lab and its mycologist collaborators. Multi-tenant architectures (supporting multiple independent labs with separate reference databases, user hierarchies, and access control policies) are explicitly out of scope. Extending the system to an organization-wide platform would require significant architectural changes to the data model, authentication system, and vector database partitioning.
+
+- **Security-focused authentication**: The web application is not evaluated as a security-focused system. Authentication and access control are treated as practical application boundaries for the lab workflow, not as a dedicated security contribution; hardened JWT lifecycle design, adversarial security testing, and production identity-provider integration are out of scope.
+
+- **General onboarding guidance**: The application is intended for a specific laboratory and known mycologist collaborators. Broad onboarding flows, public user education, and generic self-service guidance for unknown organizations are out of scope.
 
 ## 1.4 Proposed Solution
 

@@ -154,6 +154,7 @@ def find_nearest_neighbors_by_id(
             "parent_id": result.payload.get("parent_id") or result.payload.get("parent_item_id"),
             "segment_index": result.payload.get("segment_index"),
             "bbox": result.payload.get("bbox"),
+            "image_path": result.payload.get("segment_path"),
         }
         neighbors.append(neighbor_data)
 
@@ -174,6 +175,7 @@ def find_nearest_neighbors_by_image(
     angle: Optional[str] = None,
     strain: Optional[str] = None,
     specy: Optional[str] = None,
+    exclude_environment: Optional[str] = None,
     exclude_strain: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
@@ -186,6 +188,7 @@ def find_nearest_neighbors_by_image(
         angle=angle,
         strain=strain,
         specy=specy,
+        exclude_environment=exclude_environment,
         exclude_strain=exclude_strain,
     )
 
@@ -211,6 +214,7 @@ def find_nearest_neighbors_by_image(
             "parent_id": result.payload.get("parent_id") or result.payload.get("parent_item_id"),
             "segment_index": result.payload.get("segment_index"),
             "bbox": result.payload.get("bbox"),
+            "image_path": result.payload.get("segment_path"),
         }
         neighbors.append(neighbor_data)
 

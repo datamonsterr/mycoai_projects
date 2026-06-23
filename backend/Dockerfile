@@ -74,6 +74,9 @@ COPY --chown=appuser:appgroup . .
 USER 1001
 EXPOSE 8000
 
+ENV HOME=/app
+RUN mkdir -p /app/.cache && chown appuser:appgroup /app/.cache
+
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -sf http://localhost:8000/health || exit 1
 

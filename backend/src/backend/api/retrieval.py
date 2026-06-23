@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from ..config import get_qdrant_settings
 from ..core.dependencies import CurrentUser
 from ..core.exceptions import NotFoundError
 from ..database import get_db
@@ -23,6 +24,7 @@ from ..schemas import (
     RetrievalResultsResponse,
 )
 from ..services.stores import utcnow
+from ..services.threshold import compute_confidence, is_known_confidence
 
 router = APIRouter()
 
@@ -110,36 +112,52 @@ async def start_query(
         filter_spec = _get_filter_spec(image, data.environment_strategy)
 
         for seg in segments:
-            if seg.qdrant_point_id is None:
-                continue
-            point_id = seg.qdrant_point_id.int
-            try:
-                result: QueryResult = query_points_by_id(
-                    qdrant,
-                    point_id,
-                    k=data.k,
-                    filter_spec=filter_spec,
-                    exclude_self=True,
-                    exclude_siblings=True,
-                    collection_name=collection,
-                )
-            except (ValueError, RuntimeError):
-                continue
-
             seg_neighbors: list[dict[str, object]] = []
-            for neighbor in result.neighbors:
-                species = await _resolve_species_name(db, neighbor.strain or "unknown")
-                seg_neighbors.append(
-                    {
-                        "specy": species,
-                        "score": neighbor.score,
-                        "strain": neighbor.strain,
-                        "extractor": neighbor.extractor or "default",
-                        "environment": neighbor.environment,
-                        "image_id": neighbor.image_id,
-                    }
+
+            if seg.qdrant_point_id is not None:
+                point_id = seg.qdrant_point_id.int
+                try:
+                    result: QueryResult = query_points_by_id(
+                        qdrant,
+                        point_id,
+                        k=data.k,
+                        filter_spec=filter_spec,
+                        exclude_self=True,
+                        exclude_siblings=True,
+                        collection_name=collection,
+                    )
+                    for neighbor in result.neighbors:
+                        species = await _resolve_species_name(
+                            db, neighbor.strain or "unknown"
+                        )
+                        seg_neighbors.append({
+                            "specy": species,
+                            "score": neighbor.score,
+                            "strain": neighbor.strain,
+                            "extractor": neighbor.extractor or "default",
+                            "environment": neighbor.environment,
+                            "image_id": neighbor.image_id,
+                        })
+                        all_neighbors.append(neighbor)
+                except (ValueError, RuntimeError):
+                    pass
+
+            if not seg_neighbors:
+                seg_neighbors = await _query_by_crop_image(
+                    db, seg, qdrant, collection, filter_spec, data.k
                 )
-                all_neighbors.append(neighbor)
+                for n in seg_neighbors:
+                    all_neighbors.append(
+                        NeighborResult(
+                            image_id=n.get("image_id"),
+                            score=float(n.get("score", 0.0)),
+                            strain=str(n.get("strain", "")),
+                            environment=str(n.get("environment", "")),
+                            specy=str(n.get("specy", "")),
+                            extractor=str(n.get("extractor", "")),
+                        )
+                    )
+
             if seg_neighbors:
                 raw_results.append({"neighbors": seg_neighbors})
 
@@ -147,6 +165,7 @@ async def start_query(
             job.status = "completed"
             job.completed_at = utcnow()
             await db.flush()
+            await db.commit()
             return {
                 "job_id": str(job.id),
                 "status": "completed",
@@ -164,6 +183,21 @@ async def start_query(
             k=data.k,
             strategy=data.aggregation,
         )
+
+        # Compute threshold confidence from neighbor scores
+        threshold_result: dict[str, object] = {"formula": "gnorm_0_2", "confidence": 0.0, "threshold": 0.12, "is_known": True}
+        try:
+            all_neighbor_scores = sorted(
+                [n.score for n in all_neighbors], reverse=True
+            )
+            if all_neighbor_scores:
+                threshold_result = is_known_confidence(  # type: ignore[assignment]
+                    all_neighbor_scores[:11],
+                    formula="gnorm_0_2",
+                )
+        except Exception:
+            pass
+        job.config = {**job.config, "threshold": threshold_result}
 
         rankings: list[object] = []
         for rank_entry in aggregation_result.ranking:
@@ -214,6 +248,88 @@ async def start_query(
         "status": job.status,
         "estimated_seconds": 5,
     }
+
+
+async def _query_by_crop_image(
+    db: AsyncSession,
+    seg: Segment,
+    qdrant,
+    collection: str,
+    filter_spec: FilterSpec,
+    k: int,
+) -> list[dict[str, object]]:
+    from pathlib import Path
+
+    from ..qdrant.operations import query_points_by_image
+    from ..services.feature_extraction import extract_features, extract_features_from_bytes
+
+    crop_path = Path(seg.crop_path)
+
+    # Try to read crop bytes from MinIO storage first
+    from ..services.feature_extraction import extract_features_from_bytes
+
+    vectors: dict[str, list[float]] = {}
+    if not crop_path.exists():
+        # Try MinIO storage via the existing storage service
+        try:
+            from ..services.storage import create_storage, ObjectStorage
+            from ..config import get_storage_settings
+            stg = create_storage(get_storage_settings())
+            if hasattr(stg, 'get_bytes'):
+                # Build the MinIO key: {artifact_dir}/segments/segment_{index}.jpg
+                artifact_dir = crop_path.parent
+                key = f"{artifact_dir.parent.name}/{artifact_dir.name}/segments/{crop_path.name}"
+                img_bytes = stg.get_bytes(key)
+                if img_bytes is None:
+                    # Try alternate key format
+                    alt_key = f"{artifact_dir}/segments/{crop_path.name}"
+                    img_bytes = stg.get_bytes(alt_key)
+                if img_bytes:
+                    vectors = extract_features_from_bytes(img_bytes)
+        except Exception:
+            pass
+
+    if not vectors:
+        vectors = extract_features(crop_path)
+
+    config = get_qdrant_settings()
+    vector_name = config.default_vector_name
+
+    query_vector = vectors.get(vector_name)
+    if not query_vector or all(v == 0.0 for v in query_vector):
+        for alt in ["colorhistogram", "colorhistogramhs", "gabor"]:
+            v = vectors.get(alt)
+            if v and any(x != 0.0 for x in v):
+                query_vector = v
+                vector_name = alt
+                break
+        else:
+            return []
+
+    try:
+        result = query_points_by_image(
+            qdrant,
+            query_vector,
+            feature_type=vector_name,
+            k=k,
+            filter_spec=filter_spec,
+            collection_name=collection,
+        )
+    except (ValueError, RuntimeError):
+        return []
+
+    neighbors: list[dict[str, object]] = []
+    for neighbor in result.neighbors:
+        species = await _resolve_species_name(db, neighbor.strain or "unknown")
+        neighbors.append({
+            "specy": species,
+            "score": neighbor.score,
+            "strain": neighbor.strain,
+            "extractor": neighbor.extractor or "default",
+            "environment": neighbor.environment,
+            "image_id": neighbor.image_id,
+        })
+    return neighbors
 
 
 def _resolve_species_sync(neighbor: NeighborResult, strain_map: dict[str, str]) -> str:
@@ -291,11 +407,14 @@ async def get_job_results(
             ],
         })
 
+    threshold = job.config.get("threshold")
+
     return {
         "job_id": str(job.id),
         "status": job.status,
         "strain": results[0].strain_name if results else "unknown",
         "rankings": rankings,
+        "threshold": threshold,
     }
 
 

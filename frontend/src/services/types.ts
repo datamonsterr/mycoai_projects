@@ -121,11 +121,19 @@ export interface RetrievalRanking {
   neighbors: RetrievalNeighbor[]
 }
 
+export interface ThresholdConfidence {
+  formula: string
+  confidence: number
+  threshold: number
+  is_known: boolean
+}
+
 export interface RetrievalResultsResponse {
   job_id: string
   status: string
   strain: string
   rankings: RetrievalRanking[]
+  threshold?: ThresholdConfidence | null
 }
 
 export interface SpeciesItem {

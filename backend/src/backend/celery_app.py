@@ -12,3 +12,7 @@ def create_celery_app() -> Celery:
         broker=settings.celery_broker_url,
         backend=settings.celery_result_backend,
     )
+
+
+app: Celery = create_celery_app()
+"""Module-level Celery application instance for auto-discovery."""

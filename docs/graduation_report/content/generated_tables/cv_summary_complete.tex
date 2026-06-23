@@ -1,0 +1,18 @@
+\begin{table}[h]
+\centering
+\caption{Cross-validation summary --- 5-fold strain-level, EfficientNetB1 fine-tuned.}
+\label{tab:cv_summary}
+\begin{tabular}{@{}lccrrr@{}}
+\toprule
+\textbf{Env} & \textbf{Aggregation} & \textbf{K} & \textbf{Mean Acc.} & \textbf{Std} & \textbf{Min} & \textbf{Max} \\
+\midrule
+E1 & weighted & 7 & 0.812 & 0.108 & 0.625 & 0.875 \\
+E1 & weighted & 9 & 0.812 & 0.108 & 0.625 & 0.875 \\
+E1 & weighted & 5 & 0.812 & 0.108 & 0.625 & 0.875 \\
+E1 & freq\_strength & 5 & 0.808 & 0.117 & 0.604 & 0.875 \\
+E1 & freq\_strength & 7 & 0.821 & 0.090 & 0.667 & 0.875 \\
+E1 & freq\_strength & 9 & 0.812 & 0.108 & 0.625 & 0.875 \\
+E1 & relative & 7 & 0.525 & 0.147 & 0.333 & 0.688 \\
+\bottomrule
+\end{tabular}
+\end{table}

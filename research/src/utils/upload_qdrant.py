@@ -74,6 +74,18 @@ def _build_id_lookup(
     return lookup
 
 
+def _metadata_from_feature_record(record: dict[str, Any]) -> dict[str, Any] | None:
+    metadata = record.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    return {
+        "instance_info": metadata.get("instance_info", {}),
+        "segmentation": metadata.get("segmentation", {}),
+        "index": metadata.get("index", 0),
+        "segment_path": record.get("segment_path"),
+    }
+
+
 def create_collection(
     client: QdrantClient,
     collection_name: str,
@@ -134,7 +146,7 @@ def upload_features_to_qdrant(
 
     for idx, record in enumerate(features_data):
         segment_id = record["id"]
-        meta = id_lookup.get(segment_id)
+        meta = id_lookup.get(segment_id) or _metadata_from_feature_record(record)
 
         if meta is None:
             print(f"Warning: No metadata found for segment_id {segment_id}, skipping...")
@@ -170,6 +182,7 @@ def upload_features_to_qdrant(
             "strain": strain,
             "environment": inst.get("environment", "unknown"),
             "angle": inst.get("angle", "unknown"),
+            "segment_path": meta.get("segment_path"),
         }
 
         point = PointStruct(id=idx, vector=vectors, payload=payload)

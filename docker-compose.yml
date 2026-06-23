@@ -200,10 +200,13 @@ services:
       MYCOAI_QDRANT_HOST: qdrant-product
       MYCOAI_QDRANT_PORT: "6333"
       MYCOAI_QDRANT_GRPC_PORT: "6334"
+      MYCOAI_QDRANT_DEFAULT_VECTOR_NAME: "colorhistogram"
     ports:
       - "8000:8000"
     volumes:
       - uploads_data:/app/Dataset/uploads
+      - ./Dataset/original:/app/Dataset/original:ro
+      - ./research/weights:/app/weights:ro
     networks:
       - backend
     depends_on:
@@ -240,8 +243,9 @@ services:
     environment:
       MYCOAI_BACKEND_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mycoai}:${POSTGRES_PASSWORD:-mycoai}@postgres:5432/${POSTGRES_DB:-mycoai}
     volumes:
-      - ./backend/migrations:/app/migrations:ro
-      - ./backend/alembic.ini:/app/alembic.ini:ro
+      - uploads_data:/app/Dataset/uploads
+      - ./Dataset/original:/app/Dataset/original:ro
+      - ./research/weights:/app/weights:ro
     networks:
       - backend
     depends_on:
@@ -258,10 +262,11 @@ services:
     container_name: mycoai-celery-worker
     restart: always
     command: >
-      uv run celery -A backend.celery_app worker
+      python -m celery -A backend.celery_app worker
       --loglevel=info
       --concurrency=2
     environment:
+      PYTHONPATH: /app/src
       MYCOAI_BACKEND_ENVIRONMENT: production
       MYCOAI_BACKEND_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mycoai}:${POSTGRES_PASSWORD:-mycoai}@postgres:5432/${POSTGRES_DB:-mycoai}
       MYCOAI_BACKEND_CELERY_BROKER_URL: redis://redis:6379/0
@@ -271,6 +276,7 @@ services:
       MYCOAI_QDRANT_HOST: qdrant-product
       MYCOAI_QDRANT_PORT: "6333"
       MYCOAI_QDRANT_GRPC_PORT: "6334"
+      MYCOAI_QDRANT_DEFAULT_VECTOR_NAME: "colorhistogram"
       MYCOAI_BACKEND_STORAGE_BACKEND: s3
       MYCOAI_BACKEND_STORAGE_S3_ENDPOINT: minio:9000
       MYCOAI_BACKEND_STORAGE_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
@@ -280,6 +286,7 @@ services:
       MYCOAI_BACKEND_STORAGE_S3_PUBLIC_ENDPOINT: http://localhost:9000
     volumes:
       - uploads_data:/app/Dataset/uploads
+      - ./research/weights:/app/weights:ro
     networks:
       - backend
     depends_on:
