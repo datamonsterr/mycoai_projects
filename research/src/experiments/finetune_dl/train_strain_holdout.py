@@ -42,9 +42,10 @@ class SegmentClassificationDataset(Dataset):
         ops = [transforms.Resize((image_size, image_size))]
         if augment:
             ops.extend([
+                transforms.RandomResizedCrop((image_size, image_size), scale=(0.75, 1.0), ratio=(0.9, 1.1)),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(10),
-                transforms.ColorJitter(brightness=0.1, contrast=0.1),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2),
             ])
         ops.extend([transforms.ToTensor(), normalize])
         self.transform = transforms.Compose(ops)
@@ -211,7 +212,11 @@ def build_dataloaders(
         "train_count": len(train_paths),
         "val_count": len(val_paths),
         "class_count": len(encoder.classes_),
+        "resolved_test_strains": sorted(test_strains),
+        "missing_csv_strains": missing_in_dataset,
+        "missing_segment_strains": missing_in_segments,
     }
+
     return train_loader, val_loader, encoder, counts
 
 
@@ -334,12 +339,23 @@ def run_strain_holdout_finetuning(
         "epochs": epochs,
         "batch_size": batch_size,
         "learning_rate": learning_rate,
+        "patience": patience,
+        "image_size": image_size,
+        "augmentation": {
+            "random_resized_crop_scale": [0.75, 1.0],
+            "random_resized_crop_ratio": [0.9, 1.1],
+            "horizontal_flip": True,
+            "rotation_degrees": 10,
+            "brightness": 0.2,
+            "contrast": 0.2,
+        },
         "best_val_accuracy": train_result["best_val_accuracy"],
         "backbone_weights_path": str(backbone_path),
         "classifier_checkpoint_path": str(classifier_path),
         "classes_path": str(classes_path),
         "history": train_result["history"],
     }
+
     summary_path = weights_root / f"{model_name}_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2))
     summary["summary_path"] = str(summary_path)
