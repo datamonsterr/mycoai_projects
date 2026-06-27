@@ -62,17 +62,17 @@ def build_finetune_model(model_name: str, num_classes: int) -> nn.Module:
     if model_name == "ResNet50":
         model = resnet50(weights=ResNet50_Weights.DEFAULT)
         num_features = model.fc.in_features
-        model.fc = nn.Linear(num_features, num_classes)
+        model.fc = nn.Sequential(nn.Dropout(0.3), nn.Linear(num_features, num_classes))
         return model
     if model_name == "MobileNetV2":
         model = mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
         num_features = model.classifier[1].in_features
-        model.classifier[1] = nn.Linear(num_features, num_classes)
+        model.classifier[1] = nn.Sequential(nn.Dropout(0.3), nn.Linear(num_features, num_classes))
         return model
     if model_name == "EfficientNetB1":
         model = efficientnet_b1(weights=EfficientNet_B1_Weights.DEFAULT)
         num_features = model.classifier[1].in_features
-        model.classifier[1] = nn.Linear(num_features, num_classes)
+        model.classifier[1] = nn.Sequential(nn.Dropout(0.3), nn.Linear(num_features, num_classes))
         return model
     raise ValueError(f"Unsupported model: {model_name}")
 
@@ -230,7 +230,7 @@ def train_model(
     patience: int,
 ) -> dict[str, object]:
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam([param for param in model.parameters() if param.requires_grad], lr=learning_rate)
+    optimizer = optim.AdamW([param for param in model.parameters() if param.requires_grad], lr=learning_rate, weight_decay=1e-4)
     history: dict[str, list[float]] = {
         "train_loss": [],
         "train_accuracy": [],
