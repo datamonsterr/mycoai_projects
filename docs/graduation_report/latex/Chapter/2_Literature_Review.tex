@@ -106,9 +106,34 @@ All embeddings are normalized before indexing so cosine similarity can be used c
 
 \subsection{Fine-Tuning Methodology}\label{fine-tuning-methodology}
 
-Deep backbone fine-tuning, evaluated via architectures like ResNet~\cite{he2016resnet} and EfficientNet~\cite{tan2019efficientnet}, uses supervised classification as a proxy task. Two training paths are available: general backbone fine-tuning using cross-entropy classification, and YOLO-crop fine-tuning on colony crops derived from the YOLO segmentation dataset.
+Deep backbone fine-tuning, evaluated via architectures like ResNet~\cite{he2016resnet} and EfficientNet~\cite{tan2019efficientnet}, uses supervised species classification as a proxy task. The pre-trained backbone (ImageNet) is loaded with its original weights, then the classification head is replaced with a Dropout(0.3)-Linear sequence for our 8 fungal species classes. The model is trained end-to-end with \texttt{AdamW} (learning rate $10^{-4}$, weight decay $10^{-4}$) on the strain-holdout YOLO segment split defined in Section~\ref{cross-validation-methodology}.
 
-For the strongest fold-specific EfficientNetB1 setting documented in the notebook workflow, the training configuration is batch size 16, 50 epochs, patience 10, and cross-entropy loss. A triplet-loss variant is also present in the codebase, but it underperformed relative to supervised classification.
+\subsubsection{Backbone Export and Feature Extraction}
+
+After training, the classification head (\texttt{model.fc} for ResNet50, \texttt{model.classifier} for MobileNetV2 and EfficientNetB1) is discarded. Only backbone parameters (convolutional layers, batch normalization, residual blocks, and squeeze-excitation modules) are exported as a \texttt{.pth} weight file. The feature extractor then loads these exported backbone weights, replaces the final classification layer with an identity mapping, and passes each segmented colony image through the truncated network. The output is an L2-normalized embedding vector of dimension 2048 (ResNet50) or 1280 (MobileNetV2, EfficientNetB1).
+
+\subsubsection{Augmentation Policy}
+
+Training augmentations combine spatial and photometric transformations to improve generalisation: \texttt{RandomResizedCrop} (scale $[0.75,1.0]$, ratio $[0.9,1.1]$), \texttt{RandomHorizontalFlip}, \texttt{RandomRotation} ($\pm10^\circ$), and \texttt{ColorJitter} (brightness $\pm0.2$, contrast $\pm0.2$). All images are resized to $224\times224$ and normalised with ImageNet statistics before batching.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{finetune_augmentation_preview.png}
+\caption{Augmentation policy preview: random crops, brightness/contrast jitter, rotation, and the combined view applied to a sample colony segment.}
+\label{fig:augmentation-preview}
+\end{figure}
+
+\subsubsection{Training Configuration}
+
+All three architectures (ResNet50, MobileNetV2, EfficientNetB1) share the same training protocol: strain-level holdout split (7 test strains, one per species), batch size 16, up to 25 epochs with early-stopping patience of 15 on validation accuracy, and cross-entropy loss. The AdamW optimizer is used over standard Adam to provide decoupled weight decay regularisation, and a Dropout layer (rate 0.3) is inserted before the classification head to reduce overfitting on the modest dataset ($\sim$1000 training segments).
+
+\subsubsection{Why We Unfreeze All Layers}
+
+When fine-tuning on a small fungal dataset (996 training segments, 8 species), partial freezing (training only the last few convolutional blocks) produced weaker results than full fine-tuning. The domain gap between ImageNet scenes and close-up colony images is substantial enough that early-layer feature extractors benefit from adaptation. However, without regularisation, full fine-tuning on ResNet50 reached 96\% training accuracy while validation accuracy plateaued at 52\%, indicating severe overfitting. Adding Dropout and AdamW regularisation simultaneously improved validation accuracy to 55.8\% and yielded retrieval features that outperformed the pretrained baseline.
+
+\subsubsection{Contrast with YOLO-Crop Fine-Tuning}
+
+The older YOLO-crop fine-tuning path (\texttt{train\_yolo\_crops.py}) freezes most backbone layers and trains only the last block plus the classification head. This was effective when crops were larger and training data was partitioned differently, but under the current strain-holdout design with YOLO segment inputs, full fine-tuning with regularisation is the preferred configuration.
 
 \begin{figure}
 \centering
@@ -222,15 +247,35 @@ The latest retrieval sweep slightly revises the extractor ranking. EfficientNetB
 
 \subsubsection{a) Setup}
 
-Backbones were trained with supervised classification and then reused as embedding encoders. The strongest documented EfficientNetB1 fold workflow used 50 epochs, batch size 16, patience 10, and cross-entropy loss.
+Backbones were trained with supervised classification and then reused as embedding encoders. The current training protocol uses AdamW optimiser (learning rate $10^{-4}$, weight decay $10^{-4}$), Dropout(0.3) before the classification head, and the strain-holdout YOLO segment split (7 test strains, 996 training / 294 validation segments). Augmentation includes random resized crops, horizontal flip, rotation, and brightness/contrast jitter.
 
 \subsubsection{b) Results}
 
-The training curves in Figure~\ref{fig:training-curves} show stable convergence, and the best EfficientNetB1 fine-tuned model outperformed both pretrained baselines and the triplet-loss variant.
+\begin{table}[ht]
+\centering
+\caption{Fine-tuning validation accuracy and retrieval performance (weighted, E1, $K=7$)}
+\begin{tabularx}{\textwidth}{@{}lrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Best Val Acc.} & \textbf{PT Retrieval} & \textbf{FT Retrieval} & \textbf{$\Delta$} \\
+\midrule
+ResNet50       & 0.558 & 0.714 & \textbf{0.810} & +0.096 \\
+MobileNetV2    & 0.514 & 0.643 & \textbf{0.786} & +0.143 \\
+EfficientNetB1 & 0.527 & 0.548 & \textbf{0.762} & +0.214 \\
+\bottomrule
+\end{tabularx}
+\label{tab:finetune-results}
+\end{table}
+
+All three finetuned backbones surpassed their ImageNet-pretrained baselines in end-to-end retrieval evaluation. EfficientNetB1 showed the largest absolute gain (+0.214), though its pretrained baseline was weakest. MobileNetV2 and ResNet50, which overfit heavily in early runs (96\% training accuracy vs.\ 52\% validation without regularisation), closed the gap after introducing Dropout and AdamW, achieving retrieval performance well above their pretrained counterparts.
 
 \subsubsection{c) Findings}
 
-Cross-entropy fine-tuning is the right default for this dataset scale. The triplet-loss path remains useful as a negative result, showing that metric-learning objectives alone were not enough to overcome limited data volume.
+\textbf{Regularisation is critical for small-dataset fine-tuning.} Without Dropout and weight decay, ResNet50 reached 96\% training accuracy by epoch 12 while validation stayed near 52\% and retrieval performance dropped to 0.310---far below the pretrained baseline (0.714). Adding Dropout(0.3) $\to$ Linear head with AdamW(weight\_decay=$10^{-4}$) simultaneously raised validation accuracy to 0.558 and retrieval accuracy to 0.810, a 2.6$\times$ improvement in retrieval performance.
+
+\textbf{All-layer adaptation matters.} Freezing early layers and training only the last convolutional blocks (partial fine-tuning) produced lower validation accuracy than full fine-tuning for ResNet50 (0.493 vs.\ 0.558). The domain shift from ImageNet natural scenes to close-up fungal colony images is large enough that low-level features also benefit from task-specific learning.
+
+\textbf{Feature extraction by classifier removal.} For every backbone, the final classification head is discarded after training. Only the convolutional/attention block parameters are exported as the embedding encoder, producing L2-normalised feature vectors of dimension 2048 (ResNet50) or 1280 (MobileNetV2, EfficientNetB1) per colony segment.
+
 
 \subsection{Retrieval Experiments}\label{retrieval-experiments}
 
@@ -251,9 +296,9 @@ Retrieval experiments compared aggregation rules and extractor choices after all
 
 Three patterns emerge from the retrieval sweep.
 
-\textbf{Aggregation dominance.} \texttt{freq\_strength} consistently outperforms \texttt{weighted}, \texttt{uni}, and \texttt{relative} across all extractors and environment configurations. At $K=7$, \texttt{freq\_strength} achieves the top accuracy for both fine-tuned and pretrained backbones, confirming that multiplying frequency by average similarity is a stronger signal than any single evidence-pooling rule. \texttt{weighted} suffers from dilution (high-accuracy neighbors from similar species split the vote), while \texttt{max\_score} fails when a species appears infrequently but with a single strong match.
+\textbf{Aggregation dominance.} \texttt{freq\_strength} consistently outperforms \texttt{weighted}, \texttt{uni}, and \texttt{relative} across all extractors and environment configurations. At $K=7$, \texttt{freq\_strength} achieves the top accuracy for both fine-tuned and pretrained backbones. \texttt{weighted} suffers from dilution (high-accuracy neighbors from similar species split the vote), while \texttt{max\_score} fails when a species appears infrequently but with a single strong match.
 
-\textbf{Extractor family gap.} Deep encoders still dominate the retrieval ranking, but the latest rerun shows a more nuanced picture than the earlier draft. The strongest configuration is the pretrained EfficientNetB1 with \texttt{freq\_strength} on E1 at 0.7857 accuracy, followed by pretrained MobileNetV2 at 0.7381 and several fine-tuned variants in the 0.71 range. Traditional descriptors remain clearly weaker: color-histogram variants peak around the mid-0.50s, HOG around 0.43, and Gabor around 0.36 on the same benchmark family.
+\textbf{Extractor family gap.} Under canonical weighted/E1/K7 evaluation, all three fine-tuned deep backbones outperform their pretrained counterparts: ResNet50 (FT 0.810 vs.\ PT 0.714), MobileNetV2 (FT 0.786 vs.\ PT 0.643), and EfficientNetB1 (FT 0.762 vs.\ PT 0.548). Traditional descriptors trail behind: ColorHistogram at 0.571, ColorHistogramHS at 0.524, HOG at 0.429, and Gabor at 0.405---roughly half the accuracy of fine-tuned deep encoders.
 
 \textbf{K sensitivity.} Small $K$ values (3\textendash7) perform best with \texttt{freq\_strength} aggregation. Larger $K$ introduces noise from visually distant species and degrades the frequency signal. This is consistent across both E1 (same-medium) and E2 (cross-medium) environments.
 
