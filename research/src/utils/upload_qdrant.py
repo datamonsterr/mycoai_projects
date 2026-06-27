@@ -39,18 +39,18 @@ def _build_path_lookup(
     return lookup
 
 
+def _normalize_strain_name(value: str) -> str:
+    return " ".join(str(value).strip().replace("_", " ").split()).upper()
+
+
 def _load_strain_species_mapping() -> dict[str, str]:
     if not STRAIN_SPECIES_MAPPING_PATH.exists():
-        return {}
-    with open(STRAIN_SPECIES_MAPPING_PATH, 'r') as f:
-        reader = json.load(f) if STRAIN_SPECIES_MAPPING_PATH.suffix == '.json' else None
-    if reader is not None:
         return {}
     import csv
     mapping: dict[str, str] = {}
     with open(STRAIN_SPECIES_MAPPING_PATH, newline='') as f:
         for row in csv.DictReader(f):
-            strain = row.get('Strain', '').strip()
+            strain = _normalize_strain_name(row.get('Strain', ''))
             species = row.get('Species', '').strip()
             if strain and species:
                 mapping[strain] = species
@@ -170,7 +170,8 @@ def upload_features_to_qdrant(
         }
 
         strain = inst.get("strain", "unknown")
-        canonical_species = strain_species_mapping.get(strain, inst.get("species", "unknown"))
+        normalized_strain = _normalize_strain_name(strain)
+        canonical_species = strain_species_mapping.get(normalized_strain, inst.get("species", "unknown"))
         payload = {
             "image_id": segment_id,
             "feature_types": list(vectors.keys()),

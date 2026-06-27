@@ -45,6 +45,16 @@ def l2_normalize(features: np.ndarray) -> np.ndarray:
     return features / norm
 
 
+def _unwrap_state_dict(checkpoint: Any) -> dict[str, Any]:
+    state_dict = checkpoint.get("state_dict", checkpoint) if isinstance(checkpoint, dict) else checkpoint
+    if not isinstance(state_dict, dict):
+        raise TypeError(f"Unsupported checkpoint payload: {type(state_dict)!r}")
+    return {
+        key.removeprefix("module."): value
+        for key, value in state_dict.items()
+    }
+
+
 class FeatureExtractor(ABC):
     """Abstract base class for feature extractors."""
 
@@ -332,10 +342,12 @@ class ResNet50Extractor(BaseDeepLearningExtractor):
             print(f"Loading fine-tuned ResNet50 weights from: {weights_path}")
             model = resnet50(weights=None)
             try:
-                state_dict = torch.load(weights_path, map_location=self.device)
+                checkpoint = torch.load(weights_path, map_location=self.device)
+                state_dict = _unwrap_state_dict(checkpoint)
                 filtered = {k: v for k, v in state_dict.items() if not k.startswith("fc.")}
-                model.load_state_dict(filtered, strict=False)
-                print("✓ Fine-tuned ResNet50 weights loaded successfully")
+                missing, unexpected = model.load_state_dict(filtered, strict=False)
+                loaded_count = len(filtered) - len(unexpected)
+                print(f"✓ Fine-tuned ResNet50 weights loaded successfully ({loaded_count} backbone keys)")
             except Exception as e:
                 print(f"Warning: Failed to load fine-tuned weights: {e}")
                 print("Using ImageNet weights instead")
@@ -367,10 +379,11 @@ class MobileNetV2Extractor(BaseDeepLearningExtractor):
             model = mobilenet_v2(weights=None)
             try:
                 checkpoint = torch.load(weights_path, map_location=self.device)
-                state_dict = checkpoint.get("state_dict", checkpoint)
+                state_dict = _unwrap_state_dict(checkpoint)
                 filtered = {k: v for k, v in state_dict.items() if not k.startswith("classifier.")}
-                model.load_state_dict(filtered, strict=False)
-                print("✓ Fine-tuned weights loaded")
+                missing, unexpected = model.load_state_dict(filtered, strict=False)
+                loaded_count = len(filtered) - len(unexpected)
+                print(f"✓ Fine-tuned weights loaded ({loaded_count} backbone keys)")
             except Exception as e:
                 print(f"Warning: Failed to load fine-tuned weights: {e}")
                 model = mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
@@ -414,10 +427,12 @@ class EfficientNetB1Extractor(BaseDeepLearningExtractor):
             print(f"Loading fine-tuned EfficientNetB1 weights from: {weights_path}")
             model = efficientnet_b1(weights=None)
             try:
-                state_dict = torch.load(weights_path, map_location=self.device)
+                checkpoint = torch.load(weights_path, map_location=self.device)
+                state_dict = _unwrap_state_dict(checkpoint)
                 filtered = {k: v for k, v in state_dict.items() if not k.startswith("classifier.")}
-                model.load_state_dict(filtered, strict=False)
-                print("✓ Fine-tuned EfficientNetB1 weights loaded successfully")
+                missing, unexpected = model.load_state_dict(filtered, strict=False)
+                loaded_count = len(filtered) - len(unexpected)
+                print(f"✓ Fine-tuned EfficientNetB1 weights loaded successfully ({loaded_count} backbone keys)")
             except Exception as e:
                 print(f"Warning: Failed to load weights: {e}")
                 print("Using ImageNet pretrained weights instead")

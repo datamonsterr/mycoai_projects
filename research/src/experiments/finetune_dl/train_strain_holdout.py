@@ -76,15 +76,24 @@ def build_finetune_model(model_name: str, num_classes: int) -> nn.Module:
     raise ValueError(f"Unsupported model: {model_name}")
 
 
+def normalize_strain_name(value: str) -> str:
+    cleaned = " ".join(str(value).strip().replace("_", " ").split())
+    return cleaned.upper()
+
+
+def normalize_species_name(value: str) -> str:
+    return " ".join(str(value).strip().replace("_", " ").split()).lower()
+
+
 def _strain_from_slug(strain_slug: str) -> str:
     parts = strain_slug.split("-")
     if len(parts) == 3:
-        return f"{parts[0].upper()} {parts[1]}-{parts[2].upper()}"
-    return strain_slug.replace("-", " ").upper()
+        return normalize_strain_name(f"{parts[0]} {parts[1]}-{parts[2]}")
+    return normalize_strain_name(strain_slug.replace("-", " "))
 
 
 def _species_from_slug(species_slug: str) -> str:
-    return species_slug.replace("-", " ")
+    return normalize_species_name(species_slug.replace("-", " "))
 
 
 def collect_segment_paths(dataset_root: Path, segment_method: str) -> Dict[str, List[Path]]:
@@ -130,6 +139,9 @@ def load_split_mapping(mapping_path: Path) -> tuple[set[str], Dict[str, str]]:
     if not required.issubset(frame.columns):
         missing = sorted(required.difference(frame.columns))
         raise ValueError(f"Missing mapping columns: {missing}")
+    frame = frame.copy()
+    frame["Strain"] = frame["Strain"].map(normalize_strain_name)
+    frame["Species"] = frame["Species"].map(normalize_species_name)
     test_mask = _bool_series(frame)
     test_strains = set(frame.loc[test_mask, "Strain"].tolist())
     strain_to_species = dict(zip(frame["Strain"], frame["Species"]))
@@ -146,6 +158,18 @@ def build_dataloaders(
     test_strains, csv_mapping = load_split_mapping(mapping_path)
     path_map = collect_segment_paths(dataset_root, segment_method)
     dir_mapping = strain_to_species_from_original_prepared(dataset_root)
+    missing_in_dataset = sorted(strain for strain in csv_mapping if strain not in dir_mapping)
+    missing_in_segments = sorted(strain for strain in csv_mapping if strain not in path_map)
+    if missing_in_dataset:
+        raise ValueError(
+            "CSV strains missing from Dataset/original_prepared: "
+            f"{missing_in_dataset}"
+        )
+    if missing_in_segments:
+        raise ValueError(
+            "CSV strains missing from prepared segments: "
+            f"{missing_in_segments}"
+        )
     strain_to_species = {**dir_mapping, **csv_mapping}
 
     train_paths: List[Path] = []
