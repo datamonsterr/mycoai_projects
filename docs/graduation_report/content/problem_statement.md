@@ -71,6 +71,48 @@ This places the problem squarely in the **few-shot classification** regime~[Sung
 
 The few-shot challenge is compounded by **strain-level evaluation**: the test set consists of entirely held-out strains (7 strains, one per species except *P. cyclopium*, which lacks a test strain). This means the model must generalize not just to new images of seen strains, but to genetically distinct isolates that may exhibit different morphological characteristics even within the same species. A strain-level split is significantly more demanding than a random image-level split, and it reflects the true deployment scenario where a user submits a sample from a previously unseen strain.
 
+### 1.2.4 New-data EDA for Open-Set Thresholding
+
+The threshold experiment uses a second dataset source, referred to in the codebase as **new
+data** and in the canonical metadata as **incoming\_low\_quality**. This collection serves a different purpose from the curated retrieval benchmark. Instead of optimizing closed-set species classification, it provides a broader and more realistic pool of candidate **unknown species** for open-set threshold analysis.
+
+**Higher species diversity with fewer strains per species.** Figure 1.8 compares the curated dataset against the incoming dataset. The incoming collection contains **46 species** and **58 strains** across **450 images**, whereas the curated collection contains only **8 species** and **31 strains** across **432 images**. However, the average number of strains per species drops sharply from **3.9** in the curated set to only **1.3** in the incoming set. This means the incoming dataset is much more taxonomically diverse, but each species is represented by only a small number of strains.
+
+![Curated vs incoming overview](figures/eda_new_comparison_overview.png)
+*Figure 1.8: Comparison between the curated dataset used for retrieval evaluation and the incoming/new\_data dataset used for threshold analysis.*
+
+Figure 1.9 makes this imbalance explicit. In the incoming dataset, **38 out of 46 species** are represented by only a single strain. By contrast, the curated dataset was deliberately built with repeated strain coverage per species to support supervised feature learning and strain-level retrieval evaluation. This difference in structure is the main reason the incoming dataset is unsuitable as the sole training source for a standard classifier, but highly valuable for testing whether retrieval scores can reject species absent from the reference database.
+
+![Strains per species comparison](figures/eda_new_strains_per_species.png)
+*Figure 1.9: Distribution of strains per species. Most incoming/new\_data species have only one strain, while the curated/original dataset has deeper strain coverage per species.*
+
+**Why this dataset is used for thresholding.** The open-set threshold task is not to classify every incoming sample into one of 46 species. Instead, it asks whether a retrieval score profile can distinguish:
+
+1. **Known species**: held-out strains from the curated/original dataset that belong to species already indexed in Qdrant.
+2. **Unknown species**: samples from the incoming/new\_data dataset that should be rejected because they are outside the curated reference set.
+
+This design matches the intended deployment scenario: a laboratory may already have a curated reference library for a few well-studied species, while newly observed or rare isolates must either be matched confidently or rejected as unknown. To reduce extreme class imbalance, the threshold experiment also injects **one held-out strain per known species** from the original dataset into the evaluation pool, so the threshold is learned from both diverse unknowns and a balanced set of known positives.
+
+Figure 1.10 shows the top species in the incoming dataset by image count. Even the largest species contribute only a modest number of images, confirming that the collection emphasizes diversity over depth.
+
+![Top incoming species](figures/eda_new_incoming_species_top20.png)
+*Figure 1.10: Top 20 species by image count in the incoming/new\_data dataset. The long tail supports open-set evaluation rather than dense supervised training.*
+
+**Environment coverage and morphology examples.** Figure 1.11 shows that incoming images still span multiple culture environments, with CYA and MEA most common and DG18, YES, and CREA also well represented. This matters because thresholding must remain robust to media-induced appearance changes, not only species identity.
+
+![Incoming environment distribution](figures/eda_new_incoming_environments.png)
+*Figure 1.11: Environment distribution in the incoming/new\_data dataset used for threshold analysis.*
+
+Figure 1.12 presents example segmented colonies from the incoming dataset. The images illustrate substantial morphological variation across species and media, including differences in colony texture, color saturation, radial structure, and background agar appearance. This variability is useful for stress-testing retrieval confidence because many unknown samples can still look superficially similar to known *Penicillium* references.
+
+![Incoming sample images](figures/eda_new_sample_images.png)
+*Figure 1.12: Example segmented colony crops from incoming/new\_data across multiple growth environments.*
+
+**Segmentation visualization with fine-tuned YOLO26 bounding boxes.** Although the main thesis retrieval pipeline uses classical computer vision segmentation, Figure 1.13 now shows the **existing YOLO26 fine-tuned outputs** stored in `Dataset/new_data_prepared/`. These images are not fresh predictions from a generic detector; they are prepared artifacts from the segmentation pipeline, where the fine-tuned YOLO26 model has already localized colony regions and saved the bounding-box overlays as `bbox_yolo.jpg`. The figure is therefore a faithful qualitative snapshot of how the trained detector behaves on the incoming open-set data used in the threshold experiment.
+
+![YOLO bbox demo on incoming images](figures/eda_new_yolo_bbox_demo.png)
+*Figure 1.13: Bounding-box overlays produced by the fine-tuned YOLO26 segmentation pipeline on `Dataset/new_data_prepared/` images from the incoming/new\_data collection. Used as a qualitative segmentation illustration rather than as the primary retrieval preprocessing path.*
+
 These constraints motivate the choice of a **retrieval-based approach** over a fixed classifier, as elaborated in Section 1.5.
 
 ## 1.3 Scope of Work

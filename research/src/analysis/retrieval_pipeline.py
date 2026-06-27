@@ -119,12 +119,33 @@ def run_retrieval_sweep(
         )
         correct = sum(1 for row in results if row.get("correct"))
         total = len(results)
+
+        # Compute s0 and min-similarity statistics
+        s0_scores = []
+        min_sims = []
+        for row in results:
+            s0 = row.get("s0_score")
+            if s0 is not None:
+                s0_scores.append(float(s0))
+            raw = row.get("raw_results", [])
+            for qi in raw:
+                neighbors = qi.get("neighbors", [])
+                if neighbors:
+                    nb_scores = [n.get("score", 0.0) for n in neighbors]
+                    if nb_scores:
+                        min_sims.append(min(nb_scores))
+
+        mean_s0 = sum(s0_scores) / len(s0_scores) if s0_scores else 0.0
+        mean_min_sim = sum(min_sims) / len(min_sims) if min_sims else 0.0
+
         summary_rows.append(
             {
                 **asdict(config),
                 "accuracy": correct / total if total else 0.0,
                 "correct": correct,
                 "total": total,
+                "mean_s0": round(mean_s0, 6),
+                "mean_min_similarity": round(mean_min_sim, 6),
                 "collection": collection,
                 "result_dir": str(out_dir),
             }
@@ -175,6 +196,57 @@ def build_retrieval_charts(summary_csv: Path) -> list[Path]:
     fig.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(fig)
     outputs.append(path)
+
+    # Aggregation strategy score distribution chart (mean s0 vs mean min similarity)
+    if "mean_s0" in df.columns and "mean_min_similarity" in df.columns:
+        agg_col = next((c for c in df.columns if c in ('aggregation', 'agg')), None)
+        if agg_col:
+            agg_stats = df.groupby(agg_col).agg(
+                mean_s0=("mean_s0", "mean"),
+                mean_min_sim=("mean_min_similarity", "mean"),
+                mean_accuracy=("accuracy", "mean"),
+            ).reset_index()
+
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+            x = range(len(agg_stats))
+            w = 0.35
+            bars1 = ax1.bar([i - w/2 for i in x], agg_stats["mean_s0"], w, color="#2E8B57", label="Mean S0 (top-1 confidence)")
+            bars2 = ax1.bar([i + w/2 for i in x], agg_stats["mean_min_sim"], w, color="#FF6B6B", label="Mean Min Similarity")
+            ax1.set_xticks(x)
+            ax1.set_xticklabels(agg_stats[agg_col], rotation=20, ha="right", fontsize=9)
+            ax1.set_ylabel("Score (0–1 range)")
+            ax1.set_title("Aggregation Strategy: Mean S0 Score vs Mean Min Similarity")
+            ax1.legend(fontsize=8)
+            ax1.grid(axis="y", alpha=0.3)
+            ax1.set_ylim(0, 1.0)
+            for bar, val in zip(bars1, agg_stats["mean_s0"]):
+                ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
+                         f"{val:.3f}", ha="center", fontsize=7, fontweight="bold")
+            for bar, val in zip(bars2, agg_stats["mean_min_sim"]):
+                ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
+                         f"{val:.3f}", ha="center", fontsize=7, fontweight="bold")
+
+            bars3 = ax2.bar(x, agg_stats["mean_accuracy"], color="#4A90D9")
+            ax2.set_xticks(x)
+            ax2.set_xticklabels(agg_stats[agg_col], rotation=20, ha="right", fontsize=9)
+            ax2.set_ylabel("Mean Accuracy")
+            ax2.set_title("Aggregation Strategy: Mean Accuracy")
+            ax2.grid(axis="y", alpha=0.3)
+            for bar, val in zip(bars3, agg_stats["mean_accuracy"]):
+                ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
+                         f"{val:.3f}", ha="center", fontsize=8, fontweight="bold")
+
+            fig.tight_layout()
+            path = ANALYTICS_DIR / "aggregation_score_comparison.png"
+            fig.savefig(path, dpi=200, bbox_inches="tight")
+            plt.close(fig)
+            outputs.append(path)
+
+            # Save aggregation stats CSV for report
+            agg_csv = ANALYTICS_DIR / "aggregation_score_stats.csv"
+            agg_stats.to_csv(agg_csv, index=False)
+
     return outputs
 
 

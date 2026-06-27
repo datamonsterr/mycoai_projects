@@ -1074,7 +1074,7 @@ def draw_confusion_matrix(
         return
 
     # Get unique labels sorted alphabetically
-    labels = sorted(list(set(y_true + y_pred)))
+    labels = sorted(set(y_true))
 
     # Create confusion matrix
     cm = confusion_matrix(y_true, y_pred, labels=labels)

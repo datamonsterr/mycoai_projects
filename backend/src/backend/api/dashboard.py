@@ -115,9 +115,10 @@ async def environment_distribution(
     from ..models import Image as ImageModel
 
     result = await db.execute(
-        select(ImageModel.angle, func.count(ImageModel.id).label("image_count"))
-        .where(ImageModel.angle.isnot(None))
-        .group_by(ImageModel.angle)
+        select(Media.name, func.count(ImageModel.id).label("image_count"))
+        .outerjoin(ImageModel, ImageModel.media_id == Media.id)
+        .where(Media.is_archived.is_(False))
+        .group_by(Media.id, Media.name)
         .order_by(func.count(ImageModel.id).desc())
         .limit(15)
     )
@@ -127,11 +128,11 @@ async def environment_distribution(
             EnvironmentDistributionItem(
                 environment_name=name, image_count=0
             )
-            for name in ["top", "bottom", "side"]
+            for name in ["CYA", "MEA", "CREA", "DG18", "YES"]
         ]
     return [
         EnvironmentDistributionItem(
-            environment_name=row.angle or "unknown", image_count=row.image_count
+            environment_name=row.name or "unknown", image_count=row.image_count
         )
         for row in rows
     ]

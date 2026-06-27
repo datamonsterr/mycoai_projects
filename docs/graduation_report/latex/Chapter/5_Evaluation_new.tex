@@ -28,8 +28,7 @@ extractors $\times$ media selection strategies $\times$ aggregation methods.
 
 \textbf{Aggregation Strategies:} weighted, uni, freq\_strength, relative
 
-The best overall configuration achieved \textbf{83.3\% accuracy} (35/42
-predictions correct):
+The latest local rerun with updated finetuned weights and corrected feature-indexing pipeline achieved a best overall retrieval accuracy of \textbf{78.6\%} (33/42 predictions correct), with the top configuration coming from the pretrained EfficientNetB1 backbone under \texttt{freq\_strength}, E1, and $K=7$.
 
 \begin{table}[H]
 \centering
@@ -39,10 +38,10 @@ predictions correct):
 \toprule
 Extractor & Media & Aggregation & Accuracy & Correct/Total \\
 \midrule
-ResNet50 Finetuned & E4\_DG18 & freq\_strength & 0.833 & 35/42 \\
-ResNet50 Finetuned & E4\_DG18 & weighted & 0.810 & 34/42 \\
-MobileNetV2 Finetuned & E4\_DG18 & freq\_strength & 0.810 & 34/42 \\
-EfficientNetB1 Finetuned & E1 & freq\_strength & 0.786 & 33/42 \\
+EfficientNetB1 (pret.) & E1 & freq\_strength & 0.786 & 33/42 \\
+MobileNetV2 (pret.) & E1 & freq\_strength & 0.738 & 31/42 \\
+ResNet50 (pret.) & E1 & weighted & 0.714 & 30/42 \\
+MobileNetV2 Finetuned & E1 & weighted & 0.714 & 30/42 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -111,9 +110,8 @@ E1 & freq\_strength & 7  & 0.821 & 0.090 \\
 YOLO and K-means segmentation methods were compared head-to-head using the
 best retrieval configuration (ResNet50 Finetuned, freq\_strength).
 
-\textbf{Result: Both methods achieve identical accuracy of 83.3\%} (35/42).
-The segmentation choice does not significantly affect species-level retrieval
-accuracy on this dataset.
+\textbf{Result: Both methods achieve identical best accuracy of 78.6\%} (33/42) under the latest local rerun.
+The segmentation choice still does not materially change the best species-level retrieval score on this dataset, although the winning backbone is now the pretrained EfficientNetB1 rather than the earlier fine-tuned ResNet50 claim.
 
 \begin{figure}[H]
 \centering
@@ -130,24 +128,22 @@ accuracy on this dataset.
 \toprule
 Environment & YOLO & K-means & Difference \\
 \midrule
-E1 (same)        & 0.762 & 0.762 & 0.000 \\
-E4\_CREA (exclude CREA) & 0.738 & 0.738 & 0.000 \\
-E4\_CYA (exclude CYA)   & 0.714 & 0.714 & 0.000 \\
-E4\_DG18 (exclude DG18) & 0.833 & 0.833 & 0.000 \\
-E4\_MEA (exclude MEA)   & 0.714 & 0.714 & 0.000 \\
-E4\_YES (exclude YES)   & 0.667 & 0.667 & 0.000 \\
+E1 (same)        & 0.786 & 0.786 & 0.000 \\
+E2 (all media)   & 0.619 & 0.619 & 0.000 \\
+Weighted + E1 best & 0.714 & 0.714 & 0.000 \\
+Weighted + E2 best & 0.667 & 0.667 & 0.000 \\
+Best fine-tuned config & 0.714 & 0.595 & 0.119 \\
+Best pretrained config & 0.786 & 0.786 & 0.000 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Unknown Species Threshold Detection}
-Using the full\_prepared dataset (2,580 segments, 8 known + 46 unknown
-species), 573 threshold formula-algorithm combinations were evaluated
-to detect unknown species via top-5 neighbor score aggregation.
+Using the regenerated diverse retrieval results (342 grouped samples: 48 known + 294 unknown), 576 threshold formula-algorithm combinations were evaluated to detect unknown species via top-5 neighbor score aggregation.
 
-The best formula achieved \textbf{F1 = 0.407} (Precision = 0.286,
-Recall = 0.708) using exponential decay weight with F1-grid threshold
-optimization. The extreme class imbalance (48 known vs 300 unknown
+The best regenerated formula achieved \textbf{F1 = 0.341} (Precision = 0.234,
+Recall = 0.625) using the normalized gap between s0 and s2 with ROC-based
+threshold optimization. The extreme class imbalance (48 known vs 294 unknown
 samples) limits achievable F1.
 
 \begin{table}[H]
@@ -158,9 +154,9 @@ samples) limits achievable F1.
 \toprule
 Formula & Algorithm & F1 & Precision & Recall & Threshold \\
 \midrule
-exp\_decay\_15 & f1\_grid & 0.407 & 0.286 & 0.708 & 0.323 \\
-exp\_decay\_20 & f1\_grid & 0.404 & 0.274 & 0.771 & 0.257 \\
-w\_gm\_foc    & f1\_grid & 0.404 & 0.274 & 0.771 & 0.131 \\
+gap\_0\_2 & roc\_opt & 0.341 & 0.234 & 0.625 & 0.077 \\
+gap0\_r2 & f1\_grid & 0.339 & 0.233 & 0.625 & 0.076 \\
+exp\_decay\_20 & f1\_grid & 0.337 & 0.234 & 0.604 & 0.152 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -188,10 +184,10 @@ w\_gm\_foc    & f1\_grid & 0.404 & 0.274 & 0.771 & 0.131 \\
 \toprule
 Experiment & Best Result & Note \\
 \midrule
-Retrieval K=7 sweep  & 0.833 acc & ResNet50 Finetuned, E4\_DG18 \\
+Retrieval K=7 sweep  & 0.786 acc & EfficientNetB1 pretrained, E1, freq\_strength \\
 5-fold CV            & 0.829 mean & E2 freq\_strength k=3 \\
-YOLO vs K-means      & 0.833 both & Identical performance \\
-Unknown threshold    & 0.407 F1    & exp\_decay\_15, f1\_grid \\
+YOLO vs K-means      & 0.786 both & Identical best retrieval score \\
+Unknown threshold    & 0.341 F1    & gap\_0\_2, roc\_opt \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -107,6 +107,76 @@ This places the problem squarely in the \textbf{few-shot classification} regime~
 
 The few-shot challenge is compounded by \textbf{strain-level evaluation}: the test set consists of entirely held-out strains (7 strains, one per species except \emph{P. cyclopium}, which lacks a test strain). This means the model must generalize not just to new images of seen strains, but to genetically distinct isolates that may exhibit different morphological characteristics even within the same species. A strain-level split is significantly more demanding than a random image-level split, and it reflects the true deployment scenario where a user submits a sample from a previously unseen strain.
 
+\subsubsection{New-data EDA for Open-Set Thresholding}\label{new-data-eda-for-open-set-thresholding}
+
+The threshold experiment uses a second dataset source, referred to in the codebase as \textbf{new\_data} and in the canonical metadata as \textbf{incoming\_low\_quality}. This collection serves a different purpose from the curated retrieval benchmark. Instead of optimizing closed-set species classification, it provides a broader and more realistic pool of candidate \textbf{unknown species} for open-set threshold analysis.
+
+\textbf{Higher species diversity with fewer strains per species.} Figure 1.8 compares the curated dataset against the incoming dataset. The incoming collection contains \textbf{46 species} and \textbf{58 strains} across \textbf{450 images}, whereas the curated collection contains only \textbf{8 species} and \textbf{31 strains} across \textbf{432 images}. However, the average number of strains per species drops sharply from \textbf{3.9} in the curated set to only \textbf{1.3} in the incoming set. This means the incoming dataset is much more taxonomically diverse, but each species is represented by only a small number of strains.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth,height=0.35\textheight,keepaspectratio]{figures/eda_new_comparison_overview.png}
+\caption{Comparison between the curated dataset used for retrieval evaluation and the incoming/new\_data dataset used for threshold analysis.}
+\label{fig:eda-new-comparison-overview}
+\end{figure}
+
+Figure 1.9 makes this imbalance explicit. In the incoming dataset, \textbf{38 out of 46 species} are represented by only a single strain. By contrast, the curated dataset was deliberately built with repeated strain coverage per species to support supervised feature learning and strain-level retrieval evaluation. This difference in structure is the main reason the incoming dataset is unsuitable as the sole training source for a standard classifier, but highly valuable for testing whether retrieval scores can reject species absent from the reference database.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth,height=0.35\textheight,keepaspectratio]{figures/eda_new_strains_per_species.png}
+\caption{Distribution of strains per species. Most incoming/new\_data species have only one strain, while the curated/original dataset has deeper strain coverage per species.}
+\label{fig:eda-new-strains-per-species}
+\end{figure}
+
+\textbf{Why this dataset is used for thresholding.} The open-set threshold task is not to classify every incoming sample into one of 46 species. Instead, it asks whether a retrieval score profile can distinguish:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  \textbf{Known species}: held-out strains from the curated/original dataset that belong to species already indexed in Qdrant.
+\item
+  \textbf{Unknown species}: samples from the incoming/new\_data dataset that should be rejected because they are outside the curated reference set.
+\end{enumerate}
+
+This design matches the intended deployment scenario: a laboratory may already have a curated reference library for a few well-studied species, while newly observed or rare isolates must either be matched confidently or rejected as unknown. To reduce extreme class imbalance, the threshold experiment also injects \textbf{one held-out strain per known species} from the original dataset into the evaluation pool, so the threshold is learned from both diverse unknowns and a balanced set of known positives.
+
+Figure 1.10 shows the top species in the incoming dataset by image count. Even the largest species contribute only a modest number of images, confirming that the collection emphasizes diversity over depth.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth,height=0.5\textheight,keepaspectratio]{figures/eda_new_incoming_species_top20.png}
+\caption{Top 20 species by image count in the incoming/new\_data dataset. The long tail supports open-set evaluation rather than dense supervised training.}
+\label{fig:eda-new-incoming-species-top20}
+\end{figure}
+
+\textbf{Environment coverage and morphology examples.} Figure 1.11 shows that incoming images still span multiple culture environments, with CYA and MEA most common and DG18, YES, and CREA also well represented. This matters because thresholding must remain robust to media-induced appearance changes, not only species identity.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth,height=0.35\textheight,keepaspectratio]{figures/eda_new_incoming_environments.png}
+\caption{Environment distribution in the incoming/new\_data dataset used for threshold analysis.}
+\label{fig:eda-new-incoming-environments}
+\end{figure}
+
+Figure 1.12 presents example segmented colonies from the incoming dataset. The images illustrate substantial morphological variation across species and media, including differences in colony texture, color saturation, radial structure, and background agar appearance. This variability is useful for stress-testing retrieval confidence because many unknown samples can still look superficially similar to known \emph{Penicillium} references.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth,height=0.6\textheight,keepaspectratio]{figures/eda_new_sample_images.png}
+\caption{Example segmented colony crops from incoming/new\_data across multiple growth environments.}
+\label{fig:eda-new-sample-images}
+\end{figure}
+
+\textbf{Segmentation visualization with fine-tuned YOLO26 bounding boxes.} Although the main thesis retrieval pipeline uses classical computer vision segmentation, Figure 1.13 now shows the \textbf{existing YOLO26 fine-tuned outputs} stored in \texttt{Dataset/new\_data\_prepared/}. These images are not fresh predictions from a generic detector; they are prepared artifacts from the segmentation pipeline, where the fine-tuned YOLO26 model has already localized colony regions and saved the bounding-box overlays as \texttt{bbox\_yolo.jpg}. The figure is therefore a faithful qualitative snapshot of how the trained detector behaves on the incoming open-set data used in the threshold experiment.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth,height=0.6\textheight,keepaspectratio]{figures/eda_new_yolo_bbox_demo.png}
+\caption{Bounding-box overlays from the fine-tuned YOLO26 segmentation pipeline on \texttt{Dataset/new\_data\_prepared/} images from the incoming/new\_data collection. Used as a qualitative segmentation illustration rather than as the primary retrieval preprocessing path.}
+\label{fig:eda-new-yolo-bbox-demo}
+\end{figure}
+
 These constraints motivate the choice of a \textbf{retrieval-based approach} over a fixed classifier, as elaborated in Section 1.5.
 
 \subsection{Scope of Work}\label{scope-of-work}
@@ -152,7 +222,7 @@ To maintain focus, the following areas are explicitly excluded from this thesis:
 
 \subsection{Proposed Solution}\label{proposed-solution}
 
-The proposed solution is a \textbf{retrieval-based classification pipeline} that identifies fungal species by comparing visual features against a pre-indexed reference database. Figure 1.8 illustrates the high-level architecture.
+The proposed solution is a \textbf{retrieval-based classification pipeline} that identifies fungal species by comparing visual features against a pre-indexed reference database. Figure 1.14 illustrates the high-level architecture.
 
 \begin{figure}[H]
 \centering

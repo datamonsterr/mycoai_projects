@@ -21,7 +21,6 @@ from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.models import EfficientNet_B1_Weights, efficientnet_b1
-from tqdm import tqdm
 
 
 # ── Paths ──────────────────────────────────────────────────────────────────

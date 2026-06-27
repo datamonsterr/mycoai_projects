@@ -9,17 +9,25 @@ The project implemented the \textbf{Autolab} system (documented in the project m
 \subsection{Delegation Map}\label{delegation-map}
 
 \begin{center}
-\begin{tabular}{@{}p{4.5cm} p{8.5cm}@{}}
+\begin{tabular}{@{}p{3.5cm} p{2.5cm} p{7.5cm}@{}}
 \toprule
-\textbf{Role} & \textbf{Responsibility} \\
+\textbf{Agent} & \textbf{Model} & \textbf{Responsibility} \\
 \midrule
-\textbf{Researcher} & Performs literature research and paper synthesis to suggest hypotheses. \\
-\textbf{Planner} & Coordinates the experiment queue and assigns IDs to workers. \\
-\textbf{Worker} & Executes isolated experiments in git worktrees to prevent state corruption. \\
-\textbf{Reporter} & Summarizes results and updates the staircase accuracy charts. \\
+\textbf{Autolab} & BigBrain & Primary orchestrator --- delegates to all subagents; scientists interact only with this agent \\
+\textbf{Researcher} & BigBrain & Literature scout: searches web/PDFs, extracts methodology, writes hypotheses to paper-ideas.md \\
+\textbf{Planner} & MidBrain & Queue coordinator: reads paper-ideas.md, deduplicates hypotheses, assigns run\_ids and branches \\
+\textbf{Worker} & MiniBrain & Isolated experiment runner: creates git worktree, implements hypothesis, runs prepare.py, records CSV \\
+\textbf{Reporter} & MiniBrain & Status summarizer: reads CSV and results.tsv, emits F1 summary and staircase chart path \\
 \bottomrule
 \end{tabular}
 \end{center}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth,height=0.82\textheight,keepaspectratio]{figures/ch04_autolab_agents.png}
+\caption{Autolab five-agent interaction: scientist $\rightarrow$ Autolab orchestrator $\rightarrow$ Researcher (hypotheses), Planner (queue), Worker (parallel experiment execution in isolated git worktrees), Reporter (F1 summary). Workers use \texttt{fcntl.flock} for CSV-safe concurrent writes.}
+\label{fig:autolab-agents}
+\end{figure}
 
 \section{Reducing Hallucinations}\label{reducing-hallucinations}
 
@@ -57,12 +65,11 @@ A summary of key results is provided below.
 \toprule
 Experiment & Best Result & Configuration \\
 \midrule
-Retrieval sweep (K=5)     & Accuracy 0.833 & ResNet50 FT, E4\_DG18, freq\_strength \\
-5-fold cross-validation   & Mean 0.829     & E2 + freq\_strength + k=3 \\
-Feature extractor comp.   & FN dominates   & Fine-tuned: 71--83\%, Trad: 35--62\% \\
-YOLO vs K-means           & 0.833 (equal)  & Identical performance \\
-Unknown species threshold & F1 0.407       & exp\_decay\_15, f1\_grid \\
-E2E browser test          & Config match   & All 6 parameters aligned \\
+Retrieval sweep (pipeline) & Accuracy 0.786 & EfficientNetB1 pretrained, E1, freq\_strength, $K=7$ \\
+5-fold cross-validation    & Mean 0.829     & EfficientNetB1 FT + E2 + freq\_strength + k=3 \\
+Feature extractor comp.    & Pretrained EfficientNetB1 wins & Deep encoders still dominate traditional baselines \\
+YOLO vs K-means            & 0.786 (equal)  & Same best retrieval score under latest local rerun \\
+Unknown species threshold  & F1 0.341       & gap\_0\_2, roc\_opt \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -85,7 +92,7 @@ The E2E test validates the same configuration used in research experiments:
   \item \textbf{K}: 11 nearest neighbors
   \item \textbf{Environment strategy}: same\_media (E1, query only same growth medium)
   \item \textbf{Aggregation}: freq\_strength
-  \item \textbf{Threshold formula}: gnorm\_0\_2 (normalized gap between s0 and s2)
+  \item \textbf{Threshold formula in current webapp}: gnorm\_0\_2 (backend default at time of writing; research-best formula after regeneration is gap\_0\_2)
 \end{itemize}
 
 \subsection{Test Flow}
@@ -129,8 +136,7 @@ The E2E test validates the same configuration used in research experiments:
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.95\textwidth]{e2e_retrieval_results.png}
-\caption{Retrieval results: ranked species predictions with threshold confidence
-(green = known, gnorm\_0\_2 formula), KNN neighbor details per query image.}
+\caption{Retrieval results (light theme): ranked species predictions with threshold confidence (green = known, using backend default gnorm\_0\_2 formula), KNN neighbor details per query image, and species distribution chart.}
 \label{fig:e2e_results}
 \end{figure}
 
@@ -153,7 +159,7 @@ Qdrant Collection & myco\_fungi\_feat\-ures\_full\_ft & myco\_fungi\_feat\-ures\
 K (neighbors) & 11 & 11 \\
 Environment Strategy & same\_media (E1) & same\_media \\
 Aggregation & freq\_strength & freq\_strength \\
-Threshold Formula & gnorm\_0\_2 (F1 $\approx$ 0.72) & gnorm\_0\_2 \\
+Threshold Formula & gap\_0\_2 is research-best after regeneration (F1 $=$ 0.3409), while backend default remains gnorm\_0\_2 & gnorm\_0\_2 \\
 \bottomrule
 \end{tabularx}
 \end{table}

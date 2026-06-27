@@ -6,8 +6,11 @@ Given top-k neighbor scores (s0, s1, ..., s{k-1}), apply formula formulas
 to produce a single confidence score. The confidence score can be used with
 a pre-computed threshold to flag potential unknown species.
 
-Best research-verified formula: gnorm_0_2 with f1_grid threshold
-  F1 ≈ 0.72 on held-out known vs unknown test set.
+Latest regenerated threshold benchmark: gap_0_2 / gap02_sq family with roc_opt threshold
+  Best F1 = 0.3409 on 48 known vs 294 unknown grouped test sets.
+
+Backend currently keeps gnorm_0_2 as product default for UI stability until
+research-best formula is explicitly promoted into application behavior.
 """
 
 from __future__ import annotations
@@ -136,9 +139,11 @@ def compute_confidence(
         return 0.0
 
 
-# Research-verified optimal thresholds (from threshold analysis)
+# Threshold defaults pinned from latest regenerated threshold artifacts.
+# Note: research-best currently belongs to gap_0_2 / gap02_sq family with
+# roc_opt threshold ~= 0.005904, but backend still serves gnorm_0_2 by default.
 OPTIMAL_THRESHOLDS: dict[str, float] = {
-    "gnorm_0_2": 0.12,  # F1 ≈ 0.72
+    "gnorm_0_2": 0.12,
     "abs_gap": 0.09,
     "gap_norm": 0.40,
     "ratio_s0s1": 1.35,

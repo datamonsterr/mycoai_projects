@@ -1,6 +1,7 @@
 import json
 import os
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
 import cv2
@@ -21,6 +22,11 @@ from torchvision.models import (
 )
 
 from src.config import WEIGHTS_DIR
+
+
+def _finetuned_weights_root() -> Path:
+    segment_method = os.getenv("MYCOAI_FINETUNED_SEGMENT_METHOD", "yolo").strip().lower() or "yolo"
+    return WEIGHTS_DIR / f"{segment_method}_finetuned"
 
 
 def l2_normalize(features: np.ndarray) -> np.ndarray:
@@ -538,35 +544,42 @@ def extract_features_from_dataset(
 class ResNet50FinetunedExtractor(ResNet50Extractor):
     """ResNet50 extractor that uses fine-tuned weights and points to fine-tuned vectors in Qdrant."""
 
+    def _resolve_default_weights_path(self) -> Path:
+        return _finetuned_weights_root() / "ResNet50_finetuned.pth"
+
     def __init__(
         self,
-        weights_path: Optional[str] = str(WEIGHTS_DIR / "ResNet50_finetuned.pth"),
+        weights_path: Optional[str] = None,
     ):
-        super().__init__(weights_path=weights_path)
-        # Override name to match the vector name in Qdrant
+        super().__init__(weights_path=weights_path or str(self._resolve_default_weights_path()))
         self.name = "resnet50_finetuned"
 
 
 class MobileNetV2FinetunedExtractor(MobileNetV2Extractor):
     """MobileNetV2 extractor that uses fine-tuned weights and points to fine-tuned vectors in Qdrant."""
 
+    def _resolve_default_weights_path(self) -> Path:
+        return _finetuned_weights_root() / "MobileNetV2_finetuned.pth"
+
     def __init__(
         self,
-        weights_path: Optional[str] = str(WEIGHTS_DIR / "MobileNetV2_finetuned.pth"),
+        weights_path: Optional[str] = None,
     ):
-        super().__init__(weights_path=weights_path)
+        super().__init__(weights_path=weights_path or str(self._resolve_default_weights_path()))
         self.name = "mobilenetv2_finetuned"
 
 
 class EfficientNetB1FinetunedExtractor(EfficientNetB1Extractor):
     """EfficientNetB1 extractor that uses fine-tuned weights and points to fine-tuned vectors in Qdrant."""
 
+    def _resolve_default_weights_path(self) -> Path:
+        return _finetuned_weights_root() / "EfficientNetB1_finetuned.pth"
+
     def __init__(
         self,
-        weights_path: Optional[str] = str(WEIGHTS_DIR / "EfficientNetB1_finetuned.pth"),
+        weights_path: Optional[str] = None,
     ):
-        super().__init__(weights_path=weights_path)
-        # Override name to match the vector name in Qdrant
+        super().__init__(weights_path=weights_path or str(self._resolve_default_weights_path()))
         self.name = "efficientnetb1_finetuned"
 
 

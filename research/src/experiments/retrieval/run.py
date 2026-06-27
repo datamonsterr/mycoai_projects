@@ -592,7 +592,7 @@ def draw_confusion_matrix(
     correct_count = sum(1 for yt, yp in zip(y_true, y_pred) if yt == yp)
     accuracy = (correct_count / len(predictions) * 100.0) if predictions else 0.0
 
-    labels = sorted(list(set(y_true) | set(y_pred)))
+    labels = sorted(set(y_true))
     cm = confusion_matrix(y_true, y_pred, labels=labels)
 
     plt.figure(figsize=figsize)

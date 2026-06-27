@@ -609,49 +609,6 @@
     \field{year}{2025}
   \endentry
 
-  \entry{fan2020fungiAttention}{misc}{}{}
-    \name{author}{5}{}{%
-      {{hash=FM}{%
-         family={Fan},
-         familyi={F\bibinitperiod},
-         given={Mengran},
-         giveni={M\bibinitperiod},
-      }}%
-      {{hash=CT}{%
-         family={Chakrabort},
-         familyi={C\bibinitperiod},
-         given={Tapabrata},
-         giveni={T\bibinitperiod},
-      }}%
-      {{hash=CEIC}{%
-         family={Chang},
-         familyi={C\bibinitperiod},
-         given={Eric I-Chao},
-         giveni={E\bibinitperiod\bibinitdelim I\bibinithyphendelim C\bibinitperiod},
-      }}%
-      {{hash=XY}{%
-         family={Xu},
-         familyi={X\bibinitperiod},
-         given={Yan},
-         giveni={Y\bibinitperiod},
-      }}%
-      {{hash=RJ}{%
-         family={Rittscher},
-         familyi={R\bibinitperiod},
-         given={Jens},
-         giveni={J\bibinitperiod},
-      }}%
-    }
-    \strng{namehash}{FM+1}
-    \strng{fullhash}{FMCTCEICXYRJ1}
-    \field{labelnamesource}{author}
-    \field{labeltitlesource}{title}
-    \field{howpublished}{Proc. MICCAI}
-    \field{note}{arXiv:2010.02818}
-    \field{title}{Microscopic Fine-Grained Instance Classification through Deep Attention}
-    \field{year}{2020}
-  \endentry
-
   \entry{react}{software}{}{}
     \name{author}{1}{}{%
       {{hash=M}{%

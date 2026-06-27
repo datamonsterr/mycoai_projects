@@ -4,7 +4,7 @@
 
 This thesis presents \textbf{MycoAI Retrieval}, an image-based fungal species identification system that combines a retrieval-based classification pipeline with a production-ready web application and an Agentic Engineering development methodology.
 
-The retrieval pipeline operates on 435 Petri dish images across 8 \textit{Penicillium} species and 31 strains. Colony images are segmented using K-Means clustering with a novel Local K=2 Shrink method to handle agar flare, then embedded via fine-tuned EfficientNetB1 (83.3\% strain-level accuracy). Vector search over Qdrant with weighted aggregation converts segment-level similarity into species-level predictions, with no retraining required when new species are added.
+The retrieval pipeline operates on 435 Petri dish images across 8 \textit{Penicillium} species and 31 strains. Colony images are segmented using K-Means clustering with a novel Local K=2 Shrink method to handle agar flare, then embedded with interchangeable deep and hand-crafted feature extractors. Under the latest E1, $K=7$ rerun, the strongest retrieval configuration is pretrained EfficientNetB1 with \texttt{freq\_strength} aggregation, reaching 78.6\% accuracy. Vector search over Qdrant converts segment-level similarity into species-level predictions, with no retraining required when new species are added.
 
 The web application wraps this pipeline into a governed, multi-role product (User / Data Owner) with 47 REST API endpoints, 14 database tables, and a dual-database architecture (PostgreSQL for governance, Qdrant for search). The system supports the complete lifecycle: upload $\to$ segment $\to$ retrieve $\to$ provide feedback $\to$ review $\to$ index $\to$ maintain model.
 

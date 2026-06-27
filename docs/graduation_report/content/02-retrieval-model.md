@@ -93,10 +93,10 @@ Each segmented colony image is passed through a feature extractor \(f_\theta: \m
 \toprule
 \textbf{Extractor} & \textbf{Dimension} \(d\) & \textbf{Captures} & \textbf{Accuracy} \\
 \midrule
-HOG & 3,780 & Edge orientation, shape structure & 52\% \\
-Gabor & 40 & Texture at multiple frequencies/orientations & 55\% \\
-ColorHist (RGB) & 96 & RGB color distribution (32 bins/channel) & -- \\
-ColorHistHS & 64 & Hue/Saturation profile (32 bins each) & 65\% \\
+HOG & 3,780 & Edge orientation, shape structure & 50.0\% \\
+Gabor & 40 & Texture at multiple frequencies/orientations & 40.5\% \\
+ColorHist (RGB) & 96 & RGB color distribution (32 bins/channel) & 61.9\% \\
+ColorHistHS & 64 & Hue/Saturation profile (32 bins each) & 45.2\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -107,18 +107,17 @@ Three CNN architectures were evaluated, both pretrained on ImageNet-1K and fine-
 
 \begin{table}[h]
 \centering
-\caption{Deep learning feature extractors: architecture and performance}
+\caption{Deep learning feature extractors: architecture and performance (weighted, E1, K=7)}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
-\textbf{Model} & \textbf{Parameters} & \textbf{Dim} \(d\) & \textbf{Accuracy} & \textbf{vs. Pretrained} \\
+\textbf{Model} & \textbf{Parameters} & \textbf{Dim} \(d\) & \textbf{Accuracy} & \textbf{vs. PT} \\
 \midrule
-ResNet50 (Pretrained) & 25.6M & 2,048 & 63\% & baseline \\
-ResNet50 (Fine-tuned) & 25.6M & 2,048 & 78.6\% & +15.6\% \\
-MobileNetV2 (Pretrained) & 3.5M & 1,280 & 60\% & baseline \\
-MobileNetV2 (Fine-tuned) & 3.5M & 1,280 & 78.6\% & +18.6\% \\
-EfficientNetB1 (Pretrained) & 7.8M & 1,280 & 63\% & baseline \\
-\textbf{EfficientNetB1 (Fine-tuned)} & 7.8M & 1,280 & \textbf{83.3\%} & \textbf{+20.3\%} \\
-HS+ResNet50 (Hybrid) & -- & 2,112 & 72\% & -- \\
+ResNet50 (Pretrained) & 25.6M & 2,048 & 71.4\% & baseline \\
+ResNet50 (Fine-tuned) & 25.6M & 2,048 & 69.0\% & -2.4\% \\
+MobileNetV2 (Pretrained) & 3.5M & 1,280 & 64.3\% & baseline \\
+MobileNetV2 (Fine-tuned) & 3.5M & 1,280 & 78.6\% & +14.3\% \\
+EfficientNetB1 (Pretrained) & 7.8M & 1,280 & 54.8\% & baseline \\
+\textbf{EfficientNetB1 (Fine-tuned)} & 7.8M & 1,280 & \textbf{73.8\%} & \textbf{+19.0\%} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -344,33 +343,31 @@ The staircase chart (Figure~\ref{fig:staircase}) plots experiment index on the x
 
 \begin{table}[h]
 \centering
-\caption{Comprehensive accuracy comparison across all feature extractors}
+\caption{Comprehensive accuracy comparison across all feature extractors (weighted aggregation, E1, K=7)}
 \begin{tabular}{@{}lcrr@{}}
 \toprule
-\textbf{Feature Extractor} & \textbf{Type} & \textbf{Accuracy} & \textbf{Improvement} \\
+\textbf{Feature Extractor} & \textbf{Type} & \textbf{Accuracy} & \textbf{vs. PT} \\
 \midrule
-\textbf{EfficientNetB1 (Fine-tuned)} & Deep Learning & \textbf{83.3\%} & +20.3\% \\
-ResNet50 (Fine-tuned) & Deep Learning & 78.6\% & +15.6\% \\
-MobileNetV2 (Fine-tuned) & Deep Learning & 78.6\% & +18.6\% \\
-HS+ResNet50 & Hybrid & 72\% & -- \\
-ColorHistHS & Hand-crafted & 65\% & -- \\
-ResNet50 (Pretrained) & Deep Learning & 63\% & -- \\
-EfficientNetB1 (Pretrained) & Deep Learning & 63\% & -- \\
-MobileNetV2 (Pretrained) & Deep Learning & 60\% & -- \\
-Gabor & Hand-crafted & 55\% & -- \\
-HOG & Hand-crafted & 52\% & -- \\
-Triplet Loss (EfficientNetB1) & Deep Learning & 64.3\% & -- \\
+\textbf{MobileNetV2 (Fine-tuned)} & Deep Learning & \textbf{78.6\%} & +14.3\% \\
+EfficientNetB1 (Fine-tuned) & Deep Learning & 73.8\% & +19.0\% \\
+ResNet50 (Pretrained) & Deep Learning & 71.4\% & baseline \\
+ResNet50 (Fine-tuned) & Deep Learning & 69.0\% & -2.4\% \\
+MobilenetV2 (Pretrained) & Deep Learning & 64.3\% & baseline \\
+ColorHistogram & Hand-crafted & 61.9\% & -- \\
+EfficientNetB1 (Pretrained) & Deep Learning & 54.8\% & baseline \\
+HOG & Hand-crafted & 50.0\% & -- \\
+ColorHistogramHS & Hand-crafted & 45.2\% & -- \\
+Gabor & Hand-crafted & 40.5\% & -- \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 Key insights:
 \begin{enumerate}
-\item \textbf{Fine-tuning is critical}: +15--20\% improvement over pretrained ImageNet models.
-\item \textbf{EfficientNetB1 dominates}: 83.3\% accuracy with only 7.8M parameters.
-\item \textbf{MobileNetV2 is efficient}: Matches ResNet50 (78.6\%) with 7\(\times\) fewer parameters (3.5M vs. 25.6M).
-\item \textbf{Hand-crafted features plateau}: Maximum 65\% accuracy, insufficient alone.
-\item \textbf{Triplet loss underperforms}: 19\% worse than cross-entropy, confirming that supervised fine-tuning is superior for small datasets.
+\item \textbf{MobileNetV2 (FT) is best}: 78.6\% accuracy with only 3.5M parameters — ideal for edge deployment.
+\item \textbf{Fine-tuning is architecture-dependent}: +14.3\% for MobileNetV2, +19.0\% for EfficientNetB1, but ResNet50 FT (69.0\%) slightly underperforms its PT baseline (71.4\%).
+\item \textbf{Hand-crafted features plateau}: Maximum 61.9\% accuracy (ColorHistogram), insufficient alone.
+\item \textbf{Score calibration varies by aggregation}: Weighted strategy produces the most interpretable confidence scores (mean s0 = 0.45).
 \end{enumerate}
 
 ### 2.4.5 Cross-Validation Results
@@ -398,8 +395,8 @@ The cross-validation results, summarized in Table~\ref{tab:cv_summary}, are comp
 E1 & weighted & 7 & 0.812 & 0.108 & 0.625 & 0.875 \\
 E1 & weighted & 9 & 0.812 & 0.108 & 0.625 & 0.875 \\
 E1 & weighted & 5 & 0.812 & 0.108 & 0.625 & 0.875 \\
-E1 & freq\_strength & 5 & 0.808 & 0.117 & 0.604 & 0.875 \\
 E1 & freq\_strength & 7 & 0.821 & 0.090 & 0.667 & 0.875 \\
+E1 & freq\_strength & 5 & 0.808 & 0.117 & 0.604 & 0.875 \\
 E1 & freq\_strength & 9 & 0.812 & 0.108 & 0.625 & 0.875 \\
 E1 & relative & 7 & 0.525 & 0.147 & 0.333 & 0.688 \\
 \bottomrule
@@ -468,7 +465,30 @@ Recurring confusion patterns (excluding \textit{P. cyclopium}):
 
 ![Confusion Matrix](figures/confusion_matrix_efficientnetb1.png)
 
-### 2.4.8 Prediction Examples
+### 2.4.8 Aggregation Strategy Score Characteristics
+
+Beyond raw accuracy, the aggregation strategy also determines how human-interpretable the output scores are. The top-1 confidence (s0) and minimum neighbor similarity serve as usability proxies — ideally, near-identical specimens produce scores approaching 1.0 while clearly different species produce scores near 0.0.
+
+![Aggregation Score Comparison](figures/aggregation_score_comparison.png)
+
+\begin{table}[h]
+\centering
+\caption{Mean s0 score and minimum neighbor similarity per aggregation strategy (averaged across all extractors and media, K=7)}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Aggregation} & \textbf{Mean s0} & \textbf{Mean Min Sim} & \textbf{Mean Accuracy} \\
+\midrule
+weighted & 0.45 & 0.82 & 0.50 \\
+uni & 0.54 & 0.82 & 0.49 \\
+relative & 0.54 & 0.82 & 0.50 \\
+freq\_strength & 0.73 & 0.81 & 0.52 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key finding:} The `weighted` strategy produces the most calibrated scores for human readability — mean top-1 confidence of 0.45 sits near the middle of the 0–1 range, clearly separating prediction strength from raw similarity. In contrast, `freq_strength` inflates all scores to a mean of 0.73, making both correct and incorrect predictions appear similarly confident. The minimum neighbor similarity is consistently ~0.82 regardless of strategy, indicating that the K=7 neighbor pools are always dominated by highly similar images — a sign that the fungal colony feature space is compact.
+
+### 2.4.9 Prediction Examples
 
 Visualizations show the query colony image (left) alongside its top-7 retrieved neighbors with similarity scores. Successful predictions (\(\text{accuracy} \geq 83\%\)) show high confidence (\(\geq 0.30\)) and visually consistent neighbors. Failed predictions show lower confidence (0.15--0.25) and mixed species among retrieved neighbors.
 
@@ -479,21 +499,48 @@ Visualizations show the query colony image (left) alongside its top-7 retrieved 
 \caption{Left: Correct prediction (\textit{P. polonicum} DTO 148-D1). Right: Incorrect prediction (\textit{P. melanoconidium} DTO 158-D1 misclassified as \textit{P. aurantiogriseum}).}
 \end{figure}
 
+### 2.4.9 Aggregation Strategy Score Characteristics
+
+Beyond raw accuracy, the aggregation strategy also determines how human-interpretable the output scores are. The top-1 confidence (s0) and minimum neighbor similarity serve as usability proxies — ideally, near-identical specimens produce scores approaching 1.0 while clearly different species produce scores near 0.0.
+
+![Aggregation Score Comparison](figures/aggregation_score_comparison.png)
+
+\begin{table}[h]
+\centering
+\caption{Mean s0 score and minimum neighbor similarity per aggregation strategy (averaged across all extractors and media, K=7)}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Aggregation} & \textbf{Mean s0} & \textbf{Mean Min Sim} & \textbf{Mean Accuracy} \\
+\midrule
+weighted & 0.45 & 0.82 & 0.50 \\
+uni & 0.54 & 0.82 & 0.49 \\
+relative & 0.54 & 0.82 & 0.50 \\
+freq\_strength & 0.73 & 0.81 & 0.52 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key finding:} The `weighted` strategy produces the most calibrated scores for human readability — mean top-1 confidence of 0.45 sits near the middle of the 0–1 range, clearly separating prediction strength. In contrast, `freq_strength` inflates all scores to a mean of 0.73, making both correct and incorrect predictions appear similarly confident. The minimum neighbor similarity is consistently ~0.82 regardless of strategy, indicating that the K=7 neighbor pools are always dominated by highly similar images.
+
 ## 2.5 Discussion
 
-The results demonstrate that a retrieval-based classification system with fine-tuned deep features can achieve 83.3\% strain-level accuracy across 8 \textit{Penicillium} species. Several findings merit discussion~[Fan et al., 2020]:
+The results demonstrate that a retrieval-based classification system with fine-tuned deep features achieves 78.6\% strain-level accuracy for MobileNetV2 (best) and 73.8\% for EfficientNetB1 across 7 test \textit{Penicillium} species (K=7, weighted aggregation, E1). Several findings merit discussion~[Fan et al., 2020]:
 
-\textbf{Fine-tuning is the single most impactful factor.} The 15--20\% improvement over ImageNet-pretrained features shows that domain adaptation—even with a modest 1,011 training images—is essential for microscopy images. The domain gap between natural photographs (ImageNet) and fungal colony microscopy is substantial.
+\textbf{Fine-tuning impact varies by architecture.} MobileNetV2 benefits most (+14.3\% over PT), EfficientNetB1 improves substantially (+19.0\%), while ResNet50 PT (71.4\%) slightly outperforms its fine-tuned counterpart (69.0\%). This suggests ResNet50's ImageNet features may already be well-suited for fungal colony textures, or its fine-tuning on the available 1,011 training images was insufficient.
+
+\textbf{Score calibration matters for usability.} The weighted aggregation strategy offers the best score separation (mean s0 = 0.45), making retrieval confidence interpretable for end users. The `freq_strength` strategy, despite slightly higher accuracy, inflates all scores and should be used with caution in user-facing applications.
 
 \textbf{Environment-invariant learning emerges naturally.} The t-SNE analysis confirms that fine-tuned models ignore growth medium variations, a critical requirement for real-world deployment where a query strain may be cultivated on any medium. This justifies the E1 (all environments) training strategy.
 
-\textbf{Efficient architectures are competitive.} MobileNetV2 matches ResNet50 with 7\(\times\) fewer parameters, making it suitable for edge deployment. EfficientNetB1 provides the best accuracy at a reasonable computational cost.
+\textbf{Efficient architectures are competitive.} MobileNetV2 (3.5M params) surpasses ResNet50 (25.6M) in fine-tuned accuracy, making it suitable for edge deployment. EfficientNetB1 provides a balanced trade-off.
 
-\textbf{The triplet loss result is a valuable negative finding.} Despite theoretical alignment with retrieval tasks, triplet loss severely underperformed (64.3\% vs. 83.3\%). This aligns with literature: triplet loss requires very large datasets and hard negative mining, neither of which was feasible with 1,011 training samples.
+\textbf{Challenging species remain.} \textit{P. melanoconidium} and \textit{P. tricolor} at 80\% accuracy are the primary bottlenecks. Potential solutions include collecting additional strains, implementing hard negative mining, or using a two-stage classifier.
 
-\textbf{Challenging species remain.} \textit{P. melanoconidium} at 50\% accuracy is the primary bottleneck. Potential solutions include collecting additional strains, implementing hard negative mining, or using a two-stage classifier (genus \(\to\) species).
+\textbf{Unknown species detection requires more than s0 scores.} The threshold experiment (Section 2.4) reveals significant score overlap between known (mean s0 = 0.12) and unknown (mean s0 = 0.11) species — the raw top-1 similarity is insufficient for reliable known-vs-unknown discrimination. Gap-based formulas (e.g., gap02\_sq) improve F1 to 0.34 but remain limited by the 6:1 unknown-to-known class imbalance.
 
-\textbf{Segmentation quality matters.} The K-Means Local K=2 Shrink innovation successfully mitigates agar flare on most images, but plates with extreme lighting remain problematic. Recent work on YOLO-based colony detection~[Colony-YOLO, 2025; Silva et al., 2025] demonstrates that learned detectors can reduce boundary errors, which propagate into downstream retrieval accuracy.
+\textbf{Ablation: retraining on mixed K-Means + YOLO segments.} A follow-up GPU experiment retrained ResNet50, MobileNetV2, and EfficientNetB1 on a doubled segment pool that combined both `segments\_kmeans` and `segments\_yolo` crops while keeping the same held-out test strains for validation. The best validation classification accuracies were 60.9\% (ResNet50), 56.0\% (MobileNetV2), and 57.0\% (EfficientNetB1). After re-extracting all fine-tuned vectors and re-uploading them to Qdrant, the retrieval benchmark produced a negative result: the retrained fine-tuned models underperformed the pretrained baselines under `freq\_strength`, E1, K=7. Specifically, EfficientNetB1 (pretrained) achieved 78.6\%, MobileNetV2 (pretrained) 73.8\%, and ResNet50 (pretrained) 66.7\%, while the retrained fine-tuned variants achieved only 57.1\%, 52.4\%, and 33.3\%, respectively. This indicates that mixing the two segmentation sources introduced enough visual-domain noise to hurt representation quality rather than improve it.
+
+\textbf{Practical conclusion.} For the graduation-system retrieval pipeline, the pretrained extractors remain the safer choice unless fine-tuning is repeated on a cleaner, segmentation-consistent dataset. In particular, the mixed-segment retraining run should be treated as an exploratory negative ablation rather than a production improvement.
 
 \textbf{Model selection recommendations:}
 
@@ -503,9 +550,9 @@ The results demonstrate that a retrieval-based classification system with fine-t
 \toprule
 \textbf{Use Case} & \textbf{Recommended Model} & \textbf{Accuracy} \\
 \midrule
-Maximum accuracy & EfficientNetB1 (Fine-tuned) & 83.3\% \\
-Balanced performance & ResNet50 (Fine-tuned) & 78.6\% \\
-Edge/mobile deployment & MobileNetV2 (Fine-tuned) & 78.6\% \\
+Maximum accuracy (mixed-segment retrain ablation) & EfficientNetB1 (Pretrained) & 78.6\% \\
+Balanced performance & MobileNetV2 (Pretrained) & 73.8\% \\
+Edge/mobile deployment & MobileNetV2 (Pretrained) & 73.8\% \\
 \bottomrule
 \end{tabular}
 \end{table}

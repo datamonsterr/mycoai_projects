@@ -1,0 +1,78 @@
+{
+  "run_id": "retrain_kmeans_yolo_20260625_175913",
+  "collection": "qdrant-research",
+  "strategy": "freq_strength",
+  "k": 7,
+  "summary": [
+    {
+      "extractor": "efficientnetb1",
+      "accuracy": 0.7857142857142857,
+      "correct": 33,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/efficientnetb1_freq_strength_E1"
+    },
+    {
+      "extractor": "mobilenetv2",
+      "accuracy": 0.7380952380952381,
+      "correct": 31,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/mobilenetv2_freq_strength_E1"
+    },
+    {
+      "extractor": "resnet50",
+      "accuracy": 0.6666666666666666,
+      "correct": 28,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/resnet50_freq_strength_E1"
+    },
+    {
+      "extractor": "colorhistogramhs",
+      "accuracy": 0.5952380952380952,
+      "correct": 25,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/colorhistogramhs_freq_strength_E1"
+    },
+    {
+      "extractor": "efficientnetb1_finetuned",
+      "accuracy": 0.5714285714285714,
+      "correct": 24,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/efficientnetb1_finetuned_freq_strength_E1"
+    },
+    {
+      "extractor": "colorhistogram",
+      "accuracy": 0.5476190476190477,
+      "correct": 23,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/colorhistogram_freq_strength_E1"
+    },
+    {
+      "extractor": "mobilenetv2_finetuned",
+      "accuracy": 0.5238095238095238,
+      "correct": 22,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/mobilenetv2_finetuned_freq_strength_E1"
+    },
+    {
+      "extractor": "hog",
+      "accuracy": 0.42857142857142855,
+      "correct": 18,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/hog_freq_strength_E1"
+    },
+    {
+      "extractor": "gabor",
+      "accuracy": 0.35714285714285715,
+      "correct": 15,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/gabor_freq_strength_E1"
+    },
+    {
+      "extractor": "resnet50_finetuned",
+      "accuracy": 0.3333333333333333,
+      "correct": 14,
+      "total": 42,
+      "output_dir": "/home/dat/dev/mycoai_projects/results/retrain_kmeans_yolo_20260625_175913/retrieval/resnet50_finetuned_freq_strength_E1"
+    }
+  ]
+}

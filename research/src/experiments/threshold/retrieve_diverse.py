@@ -79,7 +79,7 @@ OUTPUT_CSV = OUTPUT_DIR / "diverse_retrieval_results.csv"
 VIS_OUTPUT_DIR = OUTPUT_DIR / "diverse_retrieval_visualizations"
 JSON_OUTPUT_DIR = OUTPUT_DIR / "diverse_retrieval_json"
 
-COLLECTION = "full_prepared_features"
+COLLECTION = "qdrant-research"
 EXTRACTOR_KEY = "efficientnetb1_finetuned"
 K = 11
 TOP_N_SCORES = 5
@@ -712,6 +712,16 @@ def _draw_confusion_matrix(csv_path: Path) -> None:
 
     labels = sorted(set(y_true) | set(y_pred))
     cm = confusion_matrix(y_true, y_pred, labels=labels)
+
+    # Remove all-zero rows and columns
+    row_sums = cm.sum(axis=1)
+    col_sums = cm.sum(axis=0)
+    import numpy as np
+    keep = np.logical_or(row_sums > 0, col_sums > 0)
+    keep_labels = [l for l, k in zip(labels, keep) if k]
+    cm = cm[keep][:, keep]
+    labels = keep_labels
+
     correct = sum(1 for yt, yp in zip(y_true, y_pred) if yt == yp and yt != "UNKNOWN")
 
     accuracy = correct / max(known_count, 1)

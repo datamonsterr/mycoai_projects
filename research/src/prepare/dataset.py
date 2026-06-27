@@ -52,8 +52,7 @@ def normalize_label(value: str) -> str:
 
 
 def sanitize_stem(filename: str) -> str:
-    stem = Path(filename).stem.removesuffix("_edited")
-    return slugify(stem)
+    return slugify(Path(filename).stem)
 
 
 @dataclass
@@ -105,8 +104,9 @@ class ParsedMetadata:
     parse_status: str
 
 
-SEGMENT_METHODS = ["kmeans", "yolo"]
+SEGMENT_METHODS = ["kmeans", "contour", "yolo"]
 SEGMENT_METHOD_KMEANS = "kmeans"
+SEGMENT_METHOD_CONTOUR = "contour"
 SEGMENT_METHOD_YOLO = "yolo"
 
 
@@ -456,14 +456,16 @@ def build_item_id(instance_info: InstanceInfo, source_filename: str) -> str:
 def build_leaf_dir(
     prepared_root: Path,
     metadata: ParsedMetadata,
+    image_stem: str | None = None,
 ) -> Path:
-    return (
+    base_dir = (
         prepared_root
         / slugify(metadata.species)
         / slugify(metadata.strain)
         / slugify(metadata.environment)
         / metadata.angle
     )
+    return base_dir / image_stem if image_stem else base_dir
 
 
 def _save_segment_crops(
@@ -645,12 +647,11 @@ def prepare_dataset(
             )
             image_stem = sanitize_stem(image_path.name)
             item_id = build_item_id(instance_info, image_path.name)
-            leaf_dir = build_leaf_dir(prepared_root, metadata)
+            leaf_dir = build_leaf_dir(prepared_root, metadata, image_stem)
             leaf_dir.mkdir(parents=True, exist_ok=True)
 
-            suffix = f"_{image_stem}" if image_stem else ""
-            source_output_path = leaf_dir / f"source_{item_id[:8]}{FILE_EXTENSION}"
-            prepared_output_path = leaf_dir / f"prepared_{item_id[:8]}{FILE_EXTENSION}"
+            source_output_path = leaf_dir / f"source{FILE_EXTENSION}"
+            prepared_output_path = leaf_dir / f"prepared{FILE_EXTENSION}"
             shutil.copyfile(image_path, source_output_path)
             prepared_image = process_image(image, output_size=TARGET_SIZE[0])
             cv2.imwrite(str(prepared_output_path), prepared_image)
@@ -737,6 +738,8 @@ def segment_item(
                     bboxes, score, debug_imgs = kmeans_result
                 else:
                     bboxes, _ = kmeans_result  # type: ignore[misc]
+            elif method == SEGMENT_METHOD_CONTOUR:
+                bboxes = _contour_bboxes(prepared_image)
             elif method == SEGMENT_METHOD_YOLO:
                 from ultralytics import YOLO
 

@@ -130,12 +130,27 @@ Root & application factory & app, main, database, config, routes \\
 
 The implemented frontend is a React 19 and Vite single-page application with role-aware routing. Public access is limited to authentication; authenticated Users are directed to retrieval and personal feedback workflows; Data Owners unlock governance pages for indexing, dataset browsing, metadata, feedback review, model/index maintenance, users, and audit history.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\textwidth,height=0.72\textheight,keepaspectratio]{figures/ch03_frontend_routes.png}
-\caption{Frontend route hierarchy from the implemented React application. Green routes are available to Users and Data Owners; red routes are Data Owner governance routes.}
-\label{fig:ch03-frontend-routes}
-\end{figure}
+\begin{center}
+\begin{tabular}{@{}p{3.5cm} p{3.5cm} p{3.5cm} p{4cm}@{}}
+\toprule
+\textbf{Page / Route} & \textbf{Component} & \textbf{Use Case} & \textbf{Actor} \\
+\midrule
+\href{/}{/} (root) & DashboardPage / RetrievePage & --- & User, Data Owner \\
+\href{/retrieve}{/retrieve} & RetrievePage & UC-RETRIEVE-01 Retrieve Species & User, Data Owner \\
+\href{/my-feedback}{/my-feedback} & MyFeedbackPage & UC-FEEDBACK-01 Submit Feedback & User, Data Owner \\
+\href{/index}{/index} (owner) & IndexNewDataPage & UC-DATA-01 Index New Data & Data Owner \\
+\href{/dataset}{/dataset} (owner) & DatasetPage & UC-DATA-02 Manage Dataset & Data Owner \\
+\href{/metadata}{/metadata} (owner) & MetadataPage & UC-META-01 Manage Metadata & Data Owner \\
+\href{/feedback-inbox}{/feedback-inbox} (owner) & FeedbackInboxPage & UC-FEEDBACK-01 Submit Feedback & Data Owner \\
+\href{/model}{/model} (owner) & ModelIndexPage & UC-MODEL-01 Maintain Model and Index & Data Owner \\
+\href{/dashboard}{/dashboard} (owner) & DashboardPage & --- & Data Owner \\
+\href{/users}{/users} (owner) & UserManagementPage & UC-AUTH-02 Manage Users & Data Owner \\
+\href{/audit}{/audit} (owner) & AuditLogPage & --- & Data Owner \\
+\bottomrule
+\end{tabular}
+\captionof{table}{Frontend route hierarchy from the implemented React 19 application. Routes available to both User and Data Owner are listed first; Data Owner governance routes are marked (owner). Non-owner requests to owner routes are redirected to /retrieve.}
+\label{tab:ch03-frontend-routes}
+\end{center}
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
@@ -193,12 +208,33 @@ Role & source of truth & search acceleration \\
 
 The FastAPI backend exposes domain routers under the versioned API prefix: authentication, images, retrieval, species, media, strains, feedback, training, dataset, dashboard, administration, indexing, and model management. This grouping matches the SRS while avoiding page-level implementation detail in the thesis narrative.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\textwidth,height=0.72\textheight,keepaspectratio]{figures/ch03_api_map.png}
-\caption{REST API endpoint groups and role-gated access boundaries.}
-\label{fig:ch03-api-map}
-\end{figure}
+\begin{center}
+\begin{tabular}{@{}p{3cm} p{4.5cm} p{3.5cm} p{4cm}@{}}
+\toprule
+\textbf{API Prefix} & \textbf{Tag / Domain} & \textbf{Use Case} & \textbf{Actor} \\
+\midrule
+/api/v1/auth & Auth & UC-AUTH-01 Authenticate User & User, Data Owner \\
+/api/v1/images & Images & UC-PREP-01 Prepare Segmented Images & User, Data Owner \\
+/api/v1/retrieval & Retrieval & UC-RETRIEVE-01 Retrieve Species & User, Data Owner \\
+/api/v1/species & Species (read) & UC-META-01 Manage Metadata & User, Data Owner \\
+/api/v1/media & Media (read) & UC-META-01 Manage Metadata & User, Data Owner \\
+/api/v1/strains & Strains & --- & User, Data Owner \\
+/api/v1/feedback & Feedback (submit + view own) & UC-FEEDBACK-01 Submit Feedback & User, Data Owner \\
+\midrule
+/api/v1/species (write) & Species CRUD & UC-META-01 Manage Metadata & Data Owner \\
+/api/v1/media (write) & Media CRUD & UC-META-01 Manage Metadata & Data Owner \\
+/api/v1/feedback/inbox & Feedback Inbox (review + batch) & UC-FEEDBACK-01 Submit Feedback & Data Owner \\
+/api/v1/dataset & Dataset Browser + Export & UC-DATA-02 Manage Dataset & Data Owner \\
+/api/v1/dashboard & Dashboard Statistics & --- & Data Owner \\
+/api/v1/training & Training Status + Jobs & UC-MODEL-01 Maintain Model and Index & Data Owner \\
+/api/v1/index & Qdrant Re-index & UC-MODEL-01 Maintain Model and Index & Data Owner \\
+/api/v1/models & Candidate Model Assessment & UC-MODEL-01 Maintain Model and Index & Data Owner \\
+/api/v1/admin & User Management + Audit Log & UC-AUTH-02 Manage Users & Data Owner \\
+\bottomrule
+\end{tabular}
+\captionof{table}{REST API endpoint groups and role-gated access boundaries. Endpoints above the rule are accessible to both User and Data Owner; endpoints below require Data Owner role (return 403 Forbidden for User).}
+\label{tab:ch03-api-map}
+\end{center}
 
 \subsection{Authentication Flow}\label{authentication-flow}
 
@@ -326,9 +362,16 @@ The Model Index page manages re-indexing and candidate-model assessment, while h
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.65\textheight,keepaspectratio]{figures/ch03_model_lifecycle.png}
-\caption{Model and index maintenance lifecycle: re-index trigger, external retraining guidance, and candidate model promotion path.}
-\label{fig:ch03-model-lifecycle}
+\includegraphics[width=0.95\textwidth,height=0.75\textheight,keepaspectratio]{figures/ch03_candidate_model.png}
+\caption{Candidate Model promotion flow (UC-MODEL-01 Maintain Model and Index): Data Owner uploads, evaluates side-by-side against the current active model on a fixed evaluation set, and manually promotes or rejects.}
+\label{fig:ch03-candidate-model}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth,height=0.75\textheight,keepaspectratio]{figures/ch03_reindex_warning.png}
+\caption{Re-index trigger and external retraining guidance for UC-MODEL-01: the Data Owner inspects index status including changed-data and accumulated-feedback counts, re-indexes Qdrant for stale items, and receives external retraining guidance when the change threshold is crossed.}
+\label{fig:ch03-reindex-warning}
 \end{figure}
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

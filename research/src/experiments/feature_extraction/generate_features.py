@@ -43,10 +43,14 @@ def _load_all_items(metadata_paths: dict[str, Path]) -> list[dict[str, Any]]:
 
 def _item_from_prepared_segment(segment_path: Path, dataset_root: Path) -> dict[str, Any] | None:
     try:
-        relative = segment_path.relative_to(WORKSPACE_ROOT)
         parts = segment_path.relative_to(dataset_root).parts
     except ValueError:
         return None
+
+    try:
+        relative = segment_path.relative_to(WORKSPACE_ROOT)
+    except ValueError:
+        relative = segment_path.relative_to(dataset_root)
     if len(parts) < 6:
         return None
     species_slug, strain_slug, environment, angle, segment_dir, filename = parts[:6]
@@ -93,6 +97,7 @@ def generate_features(
     metadata_path: Path | None = None,
     output_path: Path = FEATURES_JSON_PATH,
     image_dir: Path | None = None,
+    segment_method: str = "yolo",
 ) -> None:
     if metadata_path is not None:
         if not metadata_path.exists():
@@ -101,10 +106,12 @@ def generate_features(
         with open(metadata_path, "r") as f:
             items = json.load(f)
     else:
-        items = _load_all_items(COLLECTION_METADATA_PATHS)
-        if not items:
-            prepared_root = image_dir or ORIGINAL_PREPARED_DATASET_DIR
-            items = _load_prepared_segment_items(prepared_root, segment_method="yolo")
+        if image_dir is not None:
+            items = _load_prepared_segment_items(image_dir, segment_method=segment_method)
+        else:
+            items = _load_all_items(COLLECTION_METADATA_PATHS)
+            if not items:
+                items = _load_prepared_segment_items(ORIGINAL_PREPARED_DATASET_DIR, segment_method=segment_method)
 
     if not items:
         print("No segment items found in metadata or original_prepared.")
