@@ -48,6 +48,15 @@ def normalize_environment_label(environment: Optional[str]) -> str:
     return "E1"
 
 
+def normalize_segmentation_label(collection_name: str, identifier: str = "") -> str:
+    source = f"{collection_name} {identifier}".lower()
+    if "kmeans" in source:
+        return "kmeans"
+    if "yolo" in source:
+        return "yolo"
+    return "yolo"
+
+
 def summarize_rank_scores(aggregated_results: Sequence[Dict[str, Any]], top_n: int = 5) -> Dict[str, Any]:
     summary: Dict[str, Any] = {}
     for index in range(top_n):
@@ -667,6 +676,20 @@ def print_prediction_results(
     with open(json_path, "w") as f:
         json.dump(summary, f, indent=2)
 
+    analytics_path = os.path.join(output_dir, "analytics_summary.json")
+    per_species = Counter((r["ground_truth"], r["predicted_specy"]) for r in results)
+    analytics = {
+        "overall_accuracy": accuracy,
+        "correct_predictions": correct_count,
+        "total_predictions": len(results),
+        "per_pair_counts": [
+            {"ground_truth": gt, "predicted_species": pred, "count": count}
+            for (gt, pred), count in sorted(per_species.items())
+        ],
+    }
+    with open(analytics_path, "w") as f:
+        json.dump(analytics, f, indent=2)
+
     return report_path
 
 
@@ -1082,7 +1105,8 @@ def run_comprehensive_report(
     visualize_correct: bool = True,
     visualize_incorrect: bool = True,
     collection_name: str = 'qdrant-research',
-) -> None:
+    output_root: Path | None = None,
+) -> Path:
     """Run a multi-configuration retrieval benchmark and optional visualization."""
     from src.analysis.visualization.visualize_prediction import (
         batch_visualize_predictions,
@@ -1096,7 +1120,8 @@ def run_comprehensive_report(
     print(f"K: {k}")
 
     client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-    base_output_dir = RESULTS_DIR / identifier
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_output_dir = output_root or (RESULTS_DIR / f"retrieval_{timestamp}")
     base_output_dir.mkdir(parents=True, exist_ok=True)
 
     for ext_name in extractors:
@@ -1107,7 +1132,8 @@ def run_comprehensive_report(
 
         for env_strat in env_strategies:
             for agg_strat in agg_strategies:
-                subfolder_name = f"{ext_name}_{agg_strat}_{env_strat}"
+                segmentation_label = normalize_segmentation_label(collection_name, identifier)
+                subfolder_name = f"{ext_name}_{k}_{agg_strat}_{env_strat}_{segmentation_label}"
                 output_dir = base_output_dir / subfolder_name
                 output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1150,8 +1176,11 @@ def run_comprehensive_report(
                         max_visualizations=max_visualizations,
                     )
 
+    return base_output_dir
+
 
 def run_ensemble_analysis() -> None:
+
     """Execute ensemble analysis workflow from retrieval experiment."""
     from src.experiments.retrieval import ensemble_analysis
 
@@ -1223,6 +1252,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=["weighted", "uni", "relative", "per_species_avg", "max_score", "perquery_norm_avg"],
     )
     comprehensive.add_argument("--k", type=int, default=5)
+    comprehensive.add_argument("--output-root", type=Path, default=None)
     comprehensive.add_argument("--max_visualizations", type=int, default=20)
     comprehensive.add_argument(
         "--no-viz-correct",
@@ -1264,6 +1294,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             max_visualizations=args.max_visualizations,
             visualize_correct=args.visualize_correct,
             visualize_incorrect=args.visualize_incorrect,
+            output_root=args.output_root,
         )
         return
 

@@ -28,6 +28,32 @@ from src.experiments.feature_extraction.feature_extractors import (
 )
 
 
+EXTRACTOR_BUILDERS = {
+    "colorhistogramhsconcatresnet50": ColorHistogramHSconcatResnet50,
+    "resnet50": ResNet50Extractor,
+    "resnet50_finetuned": ResNet50FinetunedExtractor,
+    "mobilenetv2": MobileNetV2Extractor,
+    "mobilenetv2_finetuned": MobileNetV2FinetunedExtractor,
+    "efficientnetb1": EfficientNetB1Extractor,
+    "efficientnetb1_finetuned": EfficientNetB1FinetunedExtractor,
+    "hog": HOGExtractor,
+    "gabor": GaborExtractor,
+    "colorhistogram": ColorHistogramExtractor,
+    "colorhistogramhs": ColorHistogramHSExtractor,
+}
+
+
+def build_extractors(extractor_names: list[str] | None = None) -> list[Any]:
+    names = extractor_names or list(EXTRACTOR_BUILDERS.keys())
+    extractors = []
+    for name in names:
+        builder = EXTRACTOR_BUILDERS.get(name.lower())
+        if builder is None:
+            raise ValueError(f"Unknown extractor: {name}")
+        extractors.append(builder())
+    return extractors
+
+
 def _load_all_items(metadata_paths: dict[str, Path]) -> list[dict[str, Any]]:
     all_items: list[dict[str, Any]] = []
     for path in metadata_paths.values():
@@ -98,6 +124,7 @@ def generate_features(
     output_path: Path = FEATURES_JSON_PATH,
     image_dir: Path | None = None,
     segment_method: str = "yolo",
+    extractor_names: list[str] | None = None,
 ) -> None:
     if metadata_path is not None:
         if not metadata_path.exists():
@@ -117,19 +144,7 @@ def generate_features(
         print("No segment items found in metadata or original_prepared.")
         return
 
-    extractors = [
-        ColorHistogramHSconcatResnet50(),
-        ResNet50Extractor(),
-        ResNet50FinetunedExtractor(),
-        MobileNetV2Extractor(),
-        MobileNetV2FinetunedExtractor(),
-        EfficientNetB1Extractor(),
-        EfficientNetB1FinetunedExtractor(),
-        HOGExtractor(),
-        GaborExtractor(),
-        ColorHistogramExtractor(),
-        ColorHistogramHSExtractor(),
-    ]
+    extractors = build_extractors(extractor_names)
 
     features_data: list[dict[str, Any]] = []
     segment_count = 0
@@ -189,4 +204,20 @@ def generate_features(
 
 
 if __name__ == "__main__":
-    generate_features()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate feature JSON for configured extractors")
+    parser.add_argument("--metadata-path", type=Path, default=None)
+    parser.add_argument("--output-path", type=Path, default=FEATURES_JSON_PATH)
+    parser.add_argument("--image-dir", type=Path, default=None)
+    parser.add_argument("--segment-method", type=str, default="yolo", choices=["yolo", "kmeans"])
+    parser.add_argument("--extractors", nargs="+", default=None)
+    args = parser.parse_args()
+
+    generate_features(
+        metadata_path=args.metadata_path,
+        output_path=args.output_path,
+        image_dir=args.image_dir,
+        segment_method=args.segment_method,
+        extractor_names=args.extractors,
+    )
