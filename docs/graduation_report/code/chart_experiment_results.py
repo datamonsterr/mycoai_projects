@@ -5,7 +5,7 @@ outputs and regenerates every figure used in the thesis report.
 """
 from pathlib import Path
 import json, csv, shutil
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import matplotlib
 matplotlib.use("Agg")
@@ -22,9 +22,9 @@ REPORT_DIR = PROJECT / "graduation_report/report/figures"
 for d in (LATEX_DIR, REPORT_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
-RETRIEVAL_LATEST = PROJECT / "results/retrieval_20260628_030436"   # weighted/E1/K7 best
-RETRIEVAL_K3 = PROJECT / "results/retrieval_20260628_171728"       # K=3 sweep
-RETRIEVAL_KMEANS = PROJECT / "results/retrieval_20260628_134052"   # kmeans comparison
+RETRIEVAL_LATEST = PROJECT / "results/retrieval_pipeline_latest"   # latest retrieval benchmark
+RETRIEVAL_K3 = PROJECT / "results/retrieval_pipeline_latest"        # same for K=3
+RETRIEVAL_KMEANS = PROJECT / "results/retrieval_k7_kmeans_local"    # kmeans comparison
 THRESH_CSV = PROJECT / "results/threshold/log/all_experiments.csv"
 THRESH_SUMMARY = PROJECT / "results/threshold/metric_analysis.json"
 CV_SUMMARY = PROJECT / "results/cross_validation/cv_summary_table.csv"
@@ -374,6 +374,121 @@ def chart_threshold_staircase():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 9. EDA media distribution (with CYA normalization)
+# ═══════════════════════════════════════════════════════════════════════════
+def chart_eda_media_distribution():
+    """Regenerate media distribution charts using normalized environment labels."""
+    import sys
+    sys.path.insert(0, str(PROJECT / "research"))
+    from src.prepare.dataset import (
+        load_source_collections,
+        iter_source_images,
+        load_strain_species_mapping,
+        parse_curated_metadata,
+        parse_incoming_metadata,
+    )
+
+    collections = load_source_collections()
+    strain_species_mapping = load_strain_species_mapping()
+    env_counts: Counter = Counter()
+
+    for key in ["curated", "incoming"]:
+        for image_path in iter_source_images(collections[key]):
+            if key == "incoming":
+                metadata = parse_incoming_metadata(image_path, strain_species_mapping)
+            else:
+                metadata = parse_curated_metadata(image_path, strain_species_mapping)
+            env_counts[metadata.environment] += 1
+
+    filtered = {k: v for k, v in sorted(env_counts.items()) if k != "unknown"}
+    labels = list(filtered.keys())
+    values = list(filtered.values())
+    total = sum(values)
+
+    colors = ["#1f77b4" if l == "CYA" else "#ff7f0e" for l in labels]
+
+    for filename in ["eda_media_distribution.png", "ch03_media_distribution.png"]:
+        fig, ax = plt.subplots(figsize=(9, 4.5))
+        bars = ax.bar(labels, values, color=colors, edgecolor="white", linewidth=0.5)
+        ax.set_ylabel("Number of Images")
+        ax.set_title("Media Distribution Across Dataset (CYA/CYA30/CYAS normalized)")
+        ax.set_ylim(0, max(values) * 1.25)
+
+        for bar, val in zip(bars, values):
+            pct = val / total * 100
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 2,
+                f"{val}\n({pct:.1f}%)",
+                ha="center", va="bottom", fontsize=8,
+            )
+
+        note = "CYA includes CYA30 and CYAS variants"
+        ax.text(0.5, -0.12, note, transform=ax.transAxes, fontsize=7, ha="center",
+                va="top", style="italic", color="gray")
+        ax.grid(axis="y", alpha=0.3)
+        fig.tight_layout()
+        save(filename, fig)
+
+    # ── EDA media × species heatmap ──
+    species_env: Counter = Counter()
+    for key in ["curated", "incoming"]:
+        for image_path in iter_source_images(collections[key]):
+            if key == "incoming":
+                metadata = parse_incoming_metadata(image_path, strain_species_mapping)
+            else:
+                metadata = parse_curated_metadata(image_path, strain_species_mapping)
+            if metadata.species != "unknown" and metadata.environment != "unknown":
+                species_env[(metadata.species, metadata.environment)] += 1
+
+    environments = sorted({e for (_, e) in species_env})
+    species = sorted({s for (s, _) in species_env})
+    n_rows = min(len(species), 25)
+    top_names = sorted(species, key=lambda s: -sum(
+        species_env.get((s, e), 0) for e in environments
+    ))[:n_rows]
+
+    mat = np.zeros((len(top_names), len(environments)))
+    for i, sp in enumerate(top_names):
+        for j, env in enumerate(environments):
+            mat[i, j] = species_env.get((sp, env), 0)
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    im = ax.imshow(mat, cmap="YlOrRd", aspect="auto")
+    ax.set_xticks(range(len(environments)))
+    ax.set_xticklabels(environments, fontsize=7, rotation=45, ha="right")
+    ax.set_yticks(range(len(top_names)))
+    ax.set_yticklabels([n[:30] for n in top_names], fontsize=6)
+    ax.set_title("Species x Media Distribution (CYA variants normalized)")
+    plt.colorbar(im, ax=ax, label="Images")
+    fig.tight_layout()
+    save("eda_media_species_heatmap.png", fig)
+
+    # ── EDA media vs other bar ──
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    bars = ax.bar(labels, values, color=colors, edgecolor="white", linewidth=0.5)
+    ax.set_ylabel("Number of Images")
+    ax.set_title("Media Distribution — Full Dataset (curated + incoming)")
+    ax.set_ylim(0, max(values) * 1.25)
+    for bar, val in zip(bars, values):
+        pct = val / total * 100
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 2,
+            f"{val}\n({pct:.1f}%)",
+            ha="center", va="bottom", fontsize=8,
+        )
+    note = "CYA includes CYA30 and CYAS variants. CREA n=132, CYA n=294, DG18 n=146, MEA n=169, OA n=10, YES n=142"
+    ax.text(0.5, -0.12, note, transform=ax.transAxes, fontsize=6, ha="center",
+            va="top", style="italic", color="gray")
+    ax.grid(axis="y", alpha=0.3)
+    fig.tight_layout()
+    save("eda_media_vs_other.png", fig)
+
+    print(f"  eda media: {dict(sorted(env_counts.items()))}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
@@ -386,4 +501,5 @@ if __name__ == "__main__":
     copy_confusion_matrices()
     chart_fold_variance()
     chart_threshold_staircase()
+    chart_eda_media_distribution()
     print("Done.")

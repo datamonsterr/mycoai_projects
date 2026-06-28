@@ -41,7 +41,7 @@
 \contentsline {figure}{\numberline {3.11}{\ignorespaces Production Docker Compose topology: services, network boundaries, and persistent volumes.}}{50}{figure.3.11}%
 \contentsline {figure}{\numberline {3.12}{\ignorespaces Species distribution in the reference dataset.}}{51}{figure.3.12}%
 \contentsline {figure}{\numberline {3.13}{\ignorespaces Growth media distribution.}}{51}{figure.3.13}%
-\contentsline {figure}{\numberline {3.14}{\ignorespaces Retrieval response-time histogram.}}{52}{figure.3.14}%
+\contentsline {figure}{\numberline {3.14}{\ignorespaces Retrieval response-time histogram.}}{51}{figure.3.14}%
 \addvspace {10\p@ }
 \contentsline {figure}{\numberline {4.1}{\ignorespaces Autolab five-agent interaction: scientist $\rightarrow $ Autolab orchestrator $\rightarrow $ Researcher (hypotheses), Planner (queue), Worker (parallel experiment execution in isolated git worktrees), Reporter (F1 summary). Workers use \texttt {fcntl.flock} for CSV-safe concurrent writes.}}{54}{figure.4.1}%
 \contentsline {figure}{\numberline {4.2}{\ignorespaces Login page for test account registration and authentication}}{56}{figure.4.2}%

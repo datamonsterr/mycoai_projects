@@ -80,7 +80,7 @@ VIS_OUTPUT_DIR = OUTPUT_DIR / "diverse_retrieval_visualizations"
 JSON_OUTPUT_DIR = OUTPUT_DIR / "diverse_retrieval_json"
 
 COLLECTION = "qdrant-research"
-EXTRACTOR_KEY = "efficientnetb1_finetuned"
+EXTRACTOR_KEY = "resnet50_finetuned"
 K = 11
 TOP_N_SCORES = 5
 

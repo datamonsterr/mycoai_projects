@@ -1,0 +1,16 @@
+extractor,env,agg,k,accuracy_pct
+mobilenetv2,E4_DG18,freq_strength,5,81.0
+resnet50_finetuned,E3_YES,freq_strength,5,81.0
+resnet50_finetuned,E3_YES,per_species_avg,5,81.0
+efficientnetb1_finetuned,E3_YES,perquery_norm_avg,5,78.6
+efficientnetb1_finetuned,E3_YES,relative,5,78.6
+efficientnetb1_finetuned,E3_YES,uni,5,78.6
+efficientnetb1_finetuned,E3_YES,weighted,5,78.6
+efficientnetb1,E4_DG18,freq_strength,5,78.6
+mobilenetv2_finetuned,E1,perquery_norm_avg,5,78.6
+mobilenetv2_finetuned,E1,relative,5,78.6
+mobilenetv2_finetuned,E1,weighted,5,78.6
+resnet50_finetuned,E4_DG18,freq_strength,5,78.6
+resnet50_finetuned,E3_YES,max_score,5,78.6
+resnet50_finetuned,E3_YES,perquery_norm_avg,5,78.6
+resnet50_finetuned,E3_YES,relative,5,78.6

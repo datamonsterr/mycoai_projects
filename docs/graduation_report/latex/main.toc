@@ -12,7 +12,7 @@
 \contentsline {subsection}{\numberline {1.1.2}Dataset Description}{1}{subsection.1.1.2}%
 \contentsline {subsubsection}{Dataset Structure}{1}{subsubsection*.8}%
 \contentsline {subsubsection}{Exploratory Data Analysis}{2}{subsubsection*.9}%
-\contentsline {subsubsection}{The Few-Shot Classification Challenge}{5}{subsubsection*.10}%
+\contentsline {subsubsection}{The Few-Shot Classification Challenge}{6}{subsubsection*.10}%
 \contentsline {subsubsection}{New-data EDA for Open-Set Thresholding}{6}{subsubsection*.11}%
 \contentsline {subsection}{\numberline {1.1.3}Scope of Work}{11}{subsection.1.1.3}%
 \contentsline {subsubsection}{Out of Scope}{12}{subsubsection*.12}%
