@@ -1,27 +1,28 @@
 \addvspace {10\p@ }
 \contentsline {table}{\numberline {1.1}{\ignorespaces Design Decisions at a Glance}}{16}{table.1.1}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {2.1}{\ignorespaces Feature extractor families used in the study}}{20}{table.2.1}%
-\contentsline {table}{\numberline {2.2}{\ignorespaces Segmentation method comparison used in the thesis narrative}}{24}{table.2.2}%
-\contentsline {table}{\numberline {2.3}{\ignorespaces Fine-tuning validation accuracy and retrieval performance (weighted, E1, $K=7$)}}{26}{table.2.3}%
+\contentsline {table}{\numberline {2.1}{\ignorespaces Feature extractor families used in the study}}{21}{table.2.1}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Segmentation method comparison used in the thesis narrative}}{25}{table.2.2}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces Fine-tuning validation accuracy and retrieval performance (weighted, E1, $K=7$)}}{27}{table.2.3}%
 \contentsline {table}{\numberline {2.4}{\ignorespaces Best retrieval configurations from 5-fold cross-validation}}{29}{table.2.4}%
 \contentsline {table}{\numberline {2.5}{\ignorespaces Best threshold strategy discovered on diverse retrieval results}}{31}{table.2.5}%
-\contentsline {table}{\numberline {2.6}{\ignorespaces Known-species threshold retrieval accuracy after label normalization}}{31}{table.2.6}%
+\contentsline {table}{\numberline {2.6}{\ignorespaces Known-species threshold retrieval accuracy after label normalization}}{32}{table.2.6}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {3.1}{\ignorespaces Technology stack summary}}{39}{table.3.1}%
+\contentsline {table}{\numberline {3.1}{\ignorespaces Technology stack summary}}{40}{table.3.1}%
 \contentsline {table}{\numberline {3.2}{\ignorespaces Frontend route hierarchy from the implemented React 19 application. Routes available to both User and Data Owner are listed first; Data Owner governance routes are marked (owner). Non-owner requests to owner routes are redirected to /retrieve.}}{41}{table.3.2}%
 \contentsline {table}{\numberline {3.3}{\ignorespaces REST API endpoint groups and role-gated access boundaries. Endpoints above the rule are accessible to both User and Data Owner; endpoints below require Data Owner role (return 403 Forbidden for User).}}{44}{table.3.3}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {4.1}{\ignorespaces Summary of all experiment results}}{57}{table.4.1}%
-\contentsline {table}{\numberline {4.2}{\ignorespaces Configuration alignment: research experiment vs. production webapp}}{60}{table.4.2}%
+\contentsline {table}{\numberline {4.1}{\ignorespaces Summary of all experiment results}}{56}{table.4.1}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Configuration alignment: research experiment vs. production webapp}}{59}{table.4.2}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
+\contentsline {table}{\numberline {A.1}{\ignorespaces UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}}{67}{table.1.A.1}%
+\contentsline {table}{\numberline {A.2}{\ignorespaces UC-DATA-01: Index New Data}}{68}{table.1.A.2}%
+\contentsline {table}{\numberline {A.3}{\ignorespaces Finetuned vs.\ pretrained retrieval comparison (weighted, E1, $K=7$, YOLO segments)}}{69}{table.1.A.3}%
+\contentsline {table}{\numberline {A.4}{\ignorespaces YOLO vs.\ KMeans segmentation comparison (ResNet50, weighted, E1, $K=7$)}}{69}{table.1.A.4}%
+\contentsline {table}{\numberline {A.5}{\ignorespaces Top 10 cross-validation configurations by mean accuracy (ResNet50 finetuned)}}{69}{table.1.A.5}%
+\contentsline {table}{\numberline {A.6}{\ignorespaces Top 10 threshold strategies by F1 score}}{70}{table.1.A.6}%
+\contentsline {table}{\numberline {A.7}{\ignorespaces Environment (growth medium) strategy definitions used in all experiments}}{71}{table.1.A.7}%
+\contentsline {table}{\numberline {A.8}{\ignorespaces Test set species and representative strains}}{72}{table.1.A.8}%
 \contentsfinish 
 \contentsfinish 
-\contentsline {table}{\numberline {A.1}{\ignorespaces UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}}{70}{table.1.A.1}%
-\contentsline {table}{\numberline {A.2}{\ignorespaces UC-DATA-01: Index New Data}}{71}{table.1.A.2}%
-\contentsline {table}{\numberline {A.3}{\ignorespaces Top 15 retrieval configurations by accuracy from the latest local rerun (E1/E2 only, weighted and freq\_strength, $K=7$)}}{72}{table.1.A.3}%
-\contentsline {table}{\numberline {A.4}{\ignorespaces Top 10 cross-validation configurations by mean accuracy}}{72}{table.1.A.4}%
-\contentsline {table}{\numberline {A.5}{\ignorespaces Top 10 threshold strategies by F1 score}}{72}{table.1.A.5}%
-\contentsline {table}{\numberline {A.6}{\ignorespaces Environment (growth medium) strategy definitions used in all experiments}}{73}{table.1.A.6}%
-\contentsline {table}{\numberline {A.7}{\ignorespaces Test set species and representative strains}}{73}{table.1.A.7}%
