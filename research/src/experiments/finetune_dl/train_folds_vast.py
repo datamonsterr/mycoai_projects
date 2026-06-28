@@ -1,11 +1,13 @@
-"""Fold-specific EfficientNetB1 fine-tuning for Vast.ai.
+"""Fold-specific backbone fine-tuning for Vast.ai.
 
 Uses original_prepared YOLO segments + folds.csv for train/val splits.
-Trains 5 folds sequentially, saves backbone weights to weights/.
+Supports ResNet50 and EfficientNetB1, trains 5 folds sequentially,
+and saves backbone weights to weights/.
 """
 
 from __future__ import annotations
 
+import argparse
 import copy
 import json
 from pathlib import Path
@@ -20,7 +22,12 @@ from PIL import Image
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
-from torchvision.models import EfficientNet_B1_Weights, efficientnet_b1
+from torchvision.models import (
+    EfficientNet_B1_Weights,
+    ResNet50_Weights,
+    efficientnet_b1,
+    resnet50,
+)
 
 
 # ── Paths ──────────────────────────────────────────────────────────────────
@@ -32,11 +39,11 @@ WEIGHTS = WORKSPACE / "weights"
 WEIGHTS.mkdir(parents=True, exist_ok=True)
 
 BATCH_SIZE = 16
-NUM_EPOCHS = 60
+NUM_EPOCHS = 25
 LEARNING_RATE = 0.0001
-PATIENCE = 12
-HEIGHT = 256
-WIDTH = 256
+PATIENCE = 15
+HEIGHT = 224
+WIDTH = 224
 N_FOLDS = 5
 
 
@@ -122,9 +129,10 @@ def build_dataloaders(
     data_transforms = {
         "train": transforms.Compose([
             transforms.Resize((HEIGHT, WIDTH)),
+            transforms.RandomResizedCrop((HEIGHT, WIDTH), scale=(0.75, 1.0), ratio=(0.9, 1.1)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomRotation(10),
-            transforms.ColorJitter(brightness=0.1, contrast=0.1),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ]),
@@ -148,18 +156,26 @@ def build_dataloaders(
 # ── Model ──────────────────────────────────────────────────────────────────
 
 
-def build_model(num_classes: int, device: torch.device) -> nn.Module:
-    model = efficientnet_b1(weights=EfficientNet_B1_Weights.DEFAULT)
-    for param in model.parameters():
-        param.requires_grad = True
-    num_ftrs = model.classifier[1].in_features
-    model.classifier[1] = nn.Linear(num_ftrs, num_classes)
-    return model.to(device)
+def build_model(model_name: str, num_classes: int, device: torch.device) -> nn.Module:
+    if model_name == "EfficientNetB1":
+        model = efficientnet_b1(weights=EfficientNet_B1_Weights.DEFAULT)
+        num_ftrs = model.classifier[1].in_features
+        model.classifier[1] = nn.Sequential(nn.Dropout(0.3), nn.Linear(num_ftrs, num_classes))
+        return model.to(device)
+    if model_name == "ResNet50":
+        model = resnet50(weights=ResNet50_Weights.DEFAULT)
+        num_ftrs = model.fc.in_features
+        model.fc = nn.Sequential(nn.Dropout(0.3), nn.Linear(num_ftrs, num_classes))
+        return model.to(device)
+    raise ValueError(f"Unsupported model_name: {model_name}")
 
 
-def save_backbone_weights(model: nn.Module, save_path: Path):
+def save_backbone_weights(model: nn.Module, model_name: str, save_path: Path):
     state = model.state_dict()
-    backbone = {k: v for k, v in state.items() if not k.startswith("classifier.")}
+    if model_name == "ResNet50":
+        backbone = {k: v for k, v in state.items() if not k.startswith("fc.")}
+    else:
+        backbone = {k: v for k, v in state.items() if not k.startswith("classifier.")}
     torch.save(backbone, save_path)
 
 
@@ -168,7 +184,7 @@ def save_backbone_weights(model: nn.Module, save_path: Path):
 
 def train_one_fold(
     model, train_dl, val_dl, criterion, optimizer, device,
-    num_epochs: int, patience: int, save_path: Path,
+    num_epochs: int, patience: int, model_name: str, save_path: Path,
 ) -> Dict[str, List[float]]:
     history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
     best_acc = 0.0
@@ -206,7 +222,7 @@ def train_one_fold(
                     best_acc = epoch_acc
                     best_state = copy.deepcopy(model.state_dict())
                     no_improve = 0
-                    save_backbone_weights(model, save_path)
+                    save_backbone_weights(model, model_name, save_path)
                 else:
                     no_improve += 1
 
@@ -222,6 +238,10 @@ def train_one_fold(
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Train fold-specific YOLO-segment backbones on Vast.ai")
+    parser.add_argument("--model-name", choices=["ResNet50", "EfficientNetB1"], default="EfficientNetB1")
+    args = parser.parse_args()
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
 
@@ -243,17 +263,17 @@ def main():
             strain_segments, strain_to_species, test_strains, BATCH_SIZE
         )
 
-        model = build_model(len(le.classes_), device)
+        model = build_model(args.model_name, len(le.classes_), device)
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+        optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
 
-        save_path = WEIGHTS / f"fold{fold_idx - 1}_EfficientNetB1_finetuned.pth"
+        save_path = WEIGHTS / f"fold{fold_idx - 1}_{args.model_name}_finetuned.pth"
         history = train_one_fold(
             model, train_dl, val_dl, criterion, optimizer, device,
-            NUM_EPOCHS, PATIENCE, save_path,
+            NUM_EPOCHS, PATIENCE, args.model_name, save_path,
         )
 
-        history_path = WEIGHTS / f"fold{fold_idx - 1}_EfficientNetB1_history.json"
+        history_path = WEIGHTS / f"fold{fold_idx - 1}_{args.model_name}_history.json"
         history_path.write_text(json.dumps(history, indent=2))
 
         print(f"  Fold {fold_idx} best val acc: {max(history['val_acc']):.4f}")

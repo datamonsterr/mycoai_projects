@@ -68,9 +68,18 @@ CV_RESULTS_FIELDS = [
 ]
 
 N_FOLDS = 5
-K_VALUES = [3, 5, 7, 9, 11]
+K_VALUES = [3, 5, 7, 11, 13, 15]
 ENV_STRATEGIES: List[Optional[str]] = [None, "all"]  # E1, E2
-AGG_STRATEGIES = ["uni", "weighted", "freq_strength", "relative"]
+AGG_STRATEGIES = [
+    "weighted",
+    "uni",
+    "relative",
+    "per_species_avg",
+    "max_score",
+    "perquery_avg",
+    "perquery_norm_avg",
+    "freq_strength",
+]
 
 # Thread-safe CSV write lock
 _csv_lock = threading.Lock()
@@ -275,9 +284,9 @@ def run_cross_validation(
     with tqdm(total=total, desc="CV runs", unit="run", dynamic_ncols=True) as pbar:
         for fold_idx, fold_strains in enumerate(folds):
             # ---- build extractor for this fold ----
-            if use_fold_specific_assets and extractor_key == "efficientnetb1_finetuned":
+            if use_fold_specific_assets and extractor_key in {"efficientnetb1_finetuned", "resnet50_finetuned"}:
                 fold_weight_path = (
-                    Path(weights_dir) / f"fold{fold_idx}_EfficientNetB1_finetuned.pth"
+                    Path(weights_dir) / f"fold{fold_idx}_{'EfficientNetB1' if 'efficientnet' in extractor_key else 'ResNet50'}_finetuned.pth"
                 )
                 if not fold_weight_path.exists():
                     raise FileNotFoundError(

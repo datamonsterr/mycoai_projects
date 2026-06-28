@@ -4,7 +4,7 @@
 
 \subsection{UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \caption{UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}
 \label{tab:uc_retrieve}
@@ -56,7 +56,7 @@ Assumptions & Qdrant is pre-populated with at least one reference collection \\
 
 \subsection{UC-DATA-01: Index New Data}
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \caption{UC-DATA-01: Index New Data}
 \label{tab:uc_data}
@@ -105,66 +105,74 @@ Assumptions & Reference images follow the same imaging protocol as query images 
 
 \section{Detailed Experiment Results}
 
-\subsection{Retrieval Pipeline Full Results (\texorpdfstring{$K=5$}{K=5}, \texttt{freq\_strength})}
+\subsection{Retrieval Pipeline Full Results (\texorpdfstring{$K=7$}{K=7}, \texttt{weighted}, E1)}
 
-The complete retrieval accuracy sweep evaluated 670 configurations: 10 feature extractors
-$\times$ 10 environment strategies $\times$ 7 aggregation strategies, using $K = 5$ nearest
-neighbors and 7 held-out test strains (42 predictions per configuration).
+The latest retrieval comparison evaluated 10 feature extractors using the holdout
+strain-test protocol (7 held-out test strains, $K=7$, \texttt{weighted} aggregation,
+E1 same-media environment). All finetuned deep encoders outperform their
+ImageNet-pretrained baselines under this configuration.
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
-\caption{Top 15 retrieval configurations by accuracy from the latest local rerun (E1/E2 only, weighted and freq\_strength, $K=7$)}
-\label{tab:retrieval_top15}
+\caption{Finetuned vs.\ pretrained retrieval comparison (weighted, E1, $K=7$, YOLO segments)}
+\label{tab:retrieval_latest}
 \small
-\begin{tabular}{@{}l l l c c@{}}
+\begin{tabular}{@{}l c c c@{}}
 \toprule
-\textbf{Segment Source} & \textbf{Extractor} & \textbf{Strategy} & \textbf{Environment} & \textbf{Accuracy} \\
+\textbf{Extractor} & \textbf{Pretrained} & \textbf{Finetuned} & \textbf{$\Delta$} \\
 \midrule
-YOLO & EfficientNetB1 (pret.) & freq\_strength & E1 & 0.786 \\
-K-means & EfficientNetB1 (pret.) & freq\_strength & E1 & 0.786 \\
-YOLO & MobileNetV2 (pret.) & freq\_strength & E1 & 0.738 \\
-K-means & MobileNetV2 (pret.) & freq\_strength & E1 & 0.738 \\
-YOLO & ResNet50 (pret.) & weighted & E1 & 0.714 \\
-K-means & ResNet50 (pret.) & weighted & E1 & 0.714 \\
-YOLO & MobileNetV2 finetuned & weighted & E1 & 0.714 \\
-YOLO & ResNet50 (pret.) & freq\_strength & E2 & 0.667 \\
-K-means & ResNet50 (pret.) & freq\_strength & E2 & 0.667 \\
-YOLO & ResNet50 (pret.) & freq\_strength & E1 & 0.667 \\
-K-means & ResNet50 (pret.) & freq\_strength & E1 & 0.667 \\
-YOLO & MobileNetV2 finetuned & freq\_strength & E1 & 0.667 \\
-K-means & MobileNetV2 finetuned & freq\_strength & E1 & 0.667 \\
-YOLO & MobileNetV2 (pret.) & weighted & E2 & 0.667 \\
-K-means & MobileNetV2 (pret.) & weighted & E2 & 0.667 \\
+ResNet50 & 0.714 & \textbf{0.810} & +0.096 \\
+MobileNetV2 & 0.643 & \textbf{0.786} & +0.143 \\
+EfficientNetB1 & 0.548 & \textbf{0.762} & +0.214 \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+
+Traditional extractor baselines (weighted, E1, $K=7$, YOLO):
+ColorHistogram 0.571, ColorHistogramHS 0.524, HOG 0.429, Gabor 0.405.
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{YOLO vs.\ KMeans segmentation comparison (ResNet50, weighted, E1, $K=7$)}
+\label{tab:seg_comparison}
+\small
+\begin{tabular}{@{}l c c@{}}
+\toprule
+\textbf{Segmentation} & \textbf{Pretrained (ResNet50)} & \textbf{Finetuned (ResNet50)} \\
+\midrule
+YOLO & 0.714 & 0.810 \\
+KMeans & 0.738 & 0.810 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Cross-Validation Results (EfficientNetB1 Finetuned, 5-Fold)}
+\subsection{Cross-Validation Results (ResNet50 Finetuned, 5-Fold)}
 
-200 cross-validation configurations were run: 2 environment strategies $\times$ 4 aggregation
-strategies $\times$ 5 $K$ values $\times$ 5 folds, with per-fold EfficientNetB1 fine-tuned models.
+5-fold strain-level cross-validation run with fold-specific finetuned ResNet50 weights,
+using the stored \texttt{folds.csv} assignment and the \texttt{qdrant-research} collection.
+Evaluated across $K \in \{3,5,7,11,13,15\}$, 8 aggregation strategies, and
+2 environment strategies (E1, E2) --- 480 total configurations.
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
-\caption{Top 10 cross-validation configurations by mean accuracy}
+\caption{Top 10 cross-validation configurations by mean accuracy (ResNet50 finetuned)}
 \label{tab:cv_top10}
 \small
 \begin{tabular}{@{}l l c c c c@{}}
 \toprule
 \textbf{Environment} & \textbf{Aggregation} & \textbf{K} & \textbf{Mean Acc.} & \textbf{Std} & \textbf{Range} \\
 \midrule
-E2 (all media) & freq\_strength & 3 & 0.829 & 0.091 & 0.667--0.875 \\
-E2 (all media) & relative & 3 & 0.825 & 0.090 & 0.667--0.875 \\
-E2 (all media) & weighted & 3 & 0.825 & 0.090 & 0.667--0.875 \\
-E2 (all media) & uni & 3 & 0.825 & 0.090 & 0.667--0.875 \\
-E1 (same media) & freq\_strength & 7 & 0.821 & 0.090 & 0.667--0.875 \\
-E2 (all media) & uni & 11 & 0.821 & 0.099 & 0.646--0.875 \\
-E2 (all media) & uni & 9 & 0.821 & 0.099 & 0.646--0.875 \\
-E2 (all media) & relative & 11 & 0.821 & 0.099 & 0.646--0.875 \\
-E2 (all media) & uni & 5 & 0.821 & 0.099 & 0.646--0.875 \\
-E2 (all media) & weighted & 11 & 0.821 & 0.099 & 0.646--0.875 \\
+\multicolumn{6}{c}{\emph{Results from \texttt{results/cross\_validation/cv\_summary\_table.csv}}} \\
 \bottomrule
 \end{tabular}
+
+\vspace{0.5em}
+
+See the canonical summary table at \texttt{results/cross\_validation/cv\_summary\_table.csv}
+for the full ranked grid. Heatmap visualisations are generated in
+\texttt{docs/graduation\_report/code/} and included as figures in Chapter~2.
 \end{table}
 
 \subsection{Threshold Analysis Results}
@@ -175,7 +183,7 @@ top-5 neighbor scores $(s_0, s_1, s_2, s_3, s_4)$ to a scalar confidence value. 
 classifies confidence as known ($\geq t$) or unknown ($< t$). The test set comprises 210 known
 images (7 held-out \textit{Penicillium} species) and 651 unknown images (44 other species).
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \caption{Top 10 threshold strategies by F1 score}
 \label{tab:threshold_top10}
@@ -214,7 +222,7 @@ gap02\_sq\_f1\_grid & 0.337 & 0.231 & 0.625 & -- \\
 
 \section{Environment Strategy Definitions}
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \caption{Environment (growth medium) strategy definitions used in all experiments}
 \label{tab:env_strategies}
@@ -243,7 +251,7 @@ E4\_YES & Exclude YES medium, query all others \\
 
 The 7 held-out \textit{Penicillium} species used for strain-level hold-out evaluation:
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \caption{Test set species and representative strains}
 \label{tab:test_species}

@@ -125,7 +125,21 @@ Training augmentations combine spatial and photometric transformations to improv
 
 \subsubsection{Training Configuration}
 
-All three architectures (ResNet50, MobileNetV2, EfficientNetB1) share the same training protocol: strain-level holdout split (7 test strains, one per species), batch size 16, up to 25 epochs with early-stopping patience of 15 on validation accuracy, and cross-entropy loss. The AdamW optimizer is used over standard Adam to provide decoupled weight decay regularisation, and a Dropout layer (rate 0.3) is inserted before the classification head to reduce overfitting on the modest dataset ($\sim$1000 training segments).
+All three architectures share the same training protocol: strain-level holdout split, batch size 16, up to 25 epochs with early-stopping patience of 15, and cross-entropy loss. The AdamW optimizer provides decoupled weight decay ($10^{-4}$), and Dropout (0.3) precedes the classification head.
+
+\medskip
+\noindent\textbf{Finetuning setup summary --- per-model layer customisation:}
+\vspace{-0.3em}
+\begin{itemize}[nosep,leftmargin=*]
+\item \textbf{ResNet50}: Load \texttt{resnet50(weights=IMAGENET1K\_V1)} $\rightarrow$ replace \texttt{model.fc} with \texttt{Sequential(Dropout(0.3), Linear(2048, 8))}. All parameters unfrozen; classifier head discarded after training.
+\item \textbf{MobileNetV2}: \texttt{mobilenet\_v2(weights=IMAGENET1K\_V1)} $\rightarrow$ replace \texttt{classifier[1]} with \texttt{Sequential(Dropout(0.3), Linear(1280, 8))}. Full fine-tuning; \texttt{classifier} keys excluded at weight export.
+\item \textbf{EfficientNetB1}: \texttt{efficientnet\_b1(weights=IMAGENET1K\_V1)} $\rightarrow$ replace \texttt{classifier[1]} with \texttt{Sequential(Dropout(0.3), Linear(1280, 8))}. Full fine-tuning; \texttt{classifier} keys excluded at weight export.
+\item \textbf{Weight export}: For ResNet50, filter keys starting with \texttt{fc.}; for MobileNetV2/EfficientNetB1, filter keys starting with \texttt{classifier.}. Saved as \texttt{\{ModelName\}\_finetuned.pth}.
+\item \textbf{Feature extraction}: Load exported backbone weights $\rightarrow$ set classifier to \texttt{Identity()} $\rightarrow$ forward pass $\rightarrow$ L2-normalize output (dim 2048 or 1280).
+\item \textbf{Why unfreeze all}: Domain gap (ImageNet$\rightarrow$ fungus colonies) is large; early features benefit from adaptation. Without regularization, training accuracy reaches 96\% while validation plateaus at 52\% --- overfitting. Dropout + weight decay closes this gap.
+\item \textbf{Segment input size}: $224\times224$, normalised with ImageNet $\mu/\sigma$.
+\item \textbf{Data split}: 7 test strains (one per species $\times$ 7 media $\times$ 2 angles $\times$ 3 segments = 42 test predictions), 996 training / 294 validation colony segments from YOLO segmentation.
+\end{itemize}
 
 \subsubsection{Why We Unfreeze All Layers}
 

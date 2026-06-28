@@ -1252,6 +1252,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=["weighted", "uni", "relative", "per_species_avg", "max_score", "perquery_norm_avg"],
     )
     comprehensive.add_argument("--k", type=int, default=5)
+    comprehensive.add_argument("--collection-name", type=str, default="qdrant-research")
     comprehensive.add_argument("--output-root", type=Path, default=None)
     comprehensive.add_argument("--max_visualizations", type=int, default=20)
     comprehensive.add_argument(
@@ -1294,6 +1295,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             max_visualizations=args.max_visualizations,
             visualize_correct=args.visualize_correct,
             visualize_incorrect=args.visualize_incorrect,
+            collection_name=args.collection_name,
             output_root=args.output_root,
         )
         return
