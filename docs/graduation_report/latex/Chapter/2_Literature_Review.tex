@@ -326,71 +326,30 @@ Every experiment should be interpreted under the same evaluation contract: five 
 
 \begin{figure}[ht]
 \centering
-\begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{cv_heatmap_agg_vs_k.png}
-    \caption{Aggregation strategy vs $K$ (mean across environments).}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{cv_heatmap_media_vs_agg.png}
-    \caption{Environment strategy vs aggregation (mean across $K$).}
-\end{subfigure}
-\caption{Cross-validation heatmaps showing accuracy patterns across $K$ values, aggregation strategies, and environment configurations. Higher accuracy concentrates at small $K$ with freq\_strength aggregation.}
-\label{fig:cv_heatmaps}
+\includegraphics[width=\textwidth,keepaspectratio]{cv_heatmap_agg_vs_k.png}
+\caption{Cross-validation accuracy heatmap: aggregation strategy vs $K$ (mean across environments and extractors). \texttt{freq\_strength} at low $K$ consistently dominates.}
+\label{fig:cv_heatmap_agg_k}
 \end{figure}
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{cv_model_comparison.png}
-\caption{Comparison of base and fine-tuned retrieval configurations. Fine-tuned EfficientNetB1 dominates the ranking and improves mean accuracy by nearly 29 percentage points over the best ImageNet baseline.}
-\label{fig:cv_model_comparison}
-\end{figure}
-
-\input{figures/table_cv_best_configs.tex}
-
-\begin{figure}[ht]
-\centering
-\begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{confusion_best_finetuned.png}
-    \caption{Best fine-tuned confusion matrix from the latest YOLO rerun. The strongest fine-tuned configuration now peaks in the low-0.70 range rather than the earlier 0.82 claim.}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{confusion_best_pretrained.png}
-    \caption{Best pretrained confusion matrix from the latest YOLO rerun: EfficientNetB1 with \texttt{freq\_strength}, E1, and $K=7$, reaching 0.7857 accuracy.}
-\end{subfigure}
-\caption{Confusion matrices for top CV configurations on the curated reference collection. Left: best config on full\_prepared\_features (8 species, EffNetB1\_ft, relative, K=3, E1). Right: best config on the finetuned feature collection (7 species, EffNetB1\_ft, freq\_strength, K=3, E2). Each row aggregates 30 predictions from 5-fold CV (6 test images per species $\times$ 5 folds). Cells show count and row-normalized fraction.}
-\label{fig:cv_confusion_best_cases}
+\includegraphics[width=\textwidth,keepaspectratio]{cv_training_curves_folds.png}
+\caption{Fold-specific ResNet50 and EfficientNetB1 training curves. Both architectures converge within 10--15 epochs on YOLO colony segments.}
+\label{fig:cv_training_curves}
 \end{figure}
 
 \begin{figure}[ht]
 \centering
-\begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{confusion_best_traditional.png}
-    \caption{Worst config (full\_prepared): EffNetB1\_ft, weighted, K=11, E4\_CREA (acc 0.792).}
-\end{subfigure}
-\hfill
-\begin{subfigure}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{confusion_worst_finetuned.png}
-    \caption{Worst config (curated): EffNetB1\_ft, uni, K=3, E3\_CREA (acc 0.808).}
-\end{subfigure}
-\caption{Confusion matrices for worst-performing CV configurations on each collection (30 predictions per species from 5-fold CV). Left: worst on full\_prepared\_features (EffNetB1\_ft, weighted, K=11, E4\_CREA, acc 0.792). Right: worst on curated collection (EffNetB1\_ft, uni, K=3, E3\_CREA, acc 0.808). Even the weakest configurations retain above-chance accuracy.}
-\label{fig:cv_confusion_extremes}
+\includegraphics[width=\textwidth,keepaspectratio]{fold_variance_new.png}
+\caption{Per-fold retrieval accuracy distribution (ResNet50 finetuned, weighted/E1/K=7).}
+\label{fig:fold_variance}
 \end{figure}
 
 \subsubsection{c) Findings}
 
-The cross-validation results and heatmaps (Figure~\ref{fig:cv_heatmaps}) confirm that \texttt{freq\_strength} aggregation ($\mathrm{score}_x = \frac{|Q_x|}{M} \cdot \frac{W_x}{C_x}$) at small $K$ values generalizes best, with E2 + freq\_strength + $K=3$ achieving 0.829 mean accuracy. The cross-validation heatmaps show E2 environment (all-growth-media retrieval) outperforming E1 (same-medium) for most aggregation strategies, and \texttt{freq\_strength} consistently dominating \texttt{weighted}, \texttt{uni}, and \texttt{relative} across all $K$ values.
+The cross-validation results and heatmap (Figure~\ref{fig:cv_heatmap_agg_k}) confirm that \texttt{freq\_strength} aggregation at small $K$ values generalizes best, with E2 + freq\_strength + $K=3$ achieving 0.829 mean accuracy. The fold-specific training curves (Figure~\ref{fig:cv_training_curves}) show both ResNet50 and EfficientNetB1 converging within 10--15 epochs, with per-fold validation accuracy variance remaining below 10\% (Figure~\ref{fig:fold_variance}).
 
-Confusion matrix analysis (Figures~\ref{fig:cv_confusion_best_cases} and~\ref{fig:cv_confusion_extremes}) compares the best and worst configurations across the two reference collections. The best curated configuration (E2, freq\_strength, K=3, accuracy 0.829) achieves perfect recall on \emph{P. neoechinulatum}, \emph{P. polonicum}, and \emph{P. viridicatum} but still confuses \emph{P. cyclopium} with \emph{P. freii} and \emph{P. tricolor}. The best full\_prepared configuration (E1, relative, K=3, accuracy 0.821) shows the expected accuracy drop from expanding to 54 reference species but maintains strong performance on well-separated species. Even the worst configurations (accuracy 0.792--0.808) retain above-chance discrimination, confirming the robustness of the EfficientNetB1\_finetuned backbone across diverse retrieval settings.
-
-A species-level inspection of the best fine-tuned confusion matrix reveals that \emph{Penicillium aurantiogriseum}, \emph{P. neoechinulatum}, \emph{P. polonicum}, and \emph{P. viridicatum} are perfectly recovered across all 30 test-set predictions each. The major remaining failure mode is \emph{P. cyclopium}, which is consistently confused with \emph{P. freii} and \emph{P. neoechinulatum}. This makes cyclopium the primary target for future data expansion or specialized metric-learning work.
+Confusion matrix analysis from the latest retrieval runs shows that finetuned ResNet50 (0.810 accuracy) achieves perfect recall on \emph{P. neoechinulatum}, \emph{P. polonicum}, and \emph{P. aurantiogriseum}, but confuses \emph{P. melanoconidium} with \emph{P. freii} in 3 of 6 test sets.
 
 \subsection{Threshold Experiments}\label{threshold-experiments}
 
@@ -442,12 +401,12 @@ The threshold experiment on the \texttt{qdrant-research} collection (7 curated r
 
 \section{Discussion}\label{discussion}
 
-The updated research pipeline supports a coherent conclusion. First, segmentation quality materially affects downstream retrieval because boundary errors propagate into every later stage~\cite{colonyYOLO2025,silva2025dlColony}. On the segmentation metric itself, YOLO and K-Means produce nearly identical retrieval accuracy when using the same fine-tuned backbone, confirming that the two segmentation methods converge on comparable colony boundaries for most samples. YOLO's advantage is concentrated in the bright-flare edge case described in Section~\ref{kmeans-segmentation-methodology}.
+The updated research pipeline supports a coherent conclusion. First, segmentation quality materially affects downstream retrieval because boundary errors propagate into every later stage~\cite{colonyYOLO2025,silva2025dlColony}. The latest K-means vs.\ YOLO comparison (Figure~\ref{fig:kmeans-vs-yolo}) using the same fine-tuned ResNet50 backbone yields identical retrieval accuracy (0.810) for both segmentation methods, confirming convergence on comparable colony boundaries. YOLO's advantage is concentrated in the bright-flare edge case described in Section~\ref{kmeans-segmentation-methodology}.
 
-Second, the latest rerun shows that pretrained EfficientNetB1 is the strongest fixed retrieval backbone under the final E1, $K=7$, \texttt{freq\_strength} protocol, while the fine-tuned backbones remain competitive but not dominant. The gap over traditional descriptors is still large: the best deep configuration reaches 0.7857 accuracy, whereas the strongest hand-crafted baseline remains far lower.
+Second, fine-tuned deep backbones now consistently outperform their ImageNet-pretrained counterparts under the canonical weighted/E1/$K=7$ protocol (Table~\ref{tab:finetune-results}). ResNet50 (FT 0.810 vs. PT 0.714), MobileNetV2 (FT 0.786 vs. PT 0.643), and EfficientNetB1 (FT 0.762 vs. PT 0.548) all show positive deltas. The key enablers were Dropout(0.3) before the classification head and AdamW with weight decay $10^{-4}$, which together prevented the severe overfitting (96\% training vs. 52\% validation) observed in earlier full-fine-tuning runs.
 
-Third, the eight aggregation strategies formalized in Section~\ref{retrieval-methodology} represent a complete design space for post-retrieval evidence fusion. The empirical ordering is clear: \texttt{freq\_strength} $>$ \texttt{weighted} $>$ \texttt{relative} $>$ \texttt{uni} across all extractor families and environment configurations. The \texttt{freq\_strength} formula ($\frac{|Q_x|}{M} \cdot \frac{W_x}{C_x}$) succeeds because it independently penalizes two failure modes: species that appear inconsistently across query images (low frequency) and species whose matches are weak (low average similarity). \texttt{freq\_strength} at small $K$ achieves the best cross-validation accuracy (E2, $K=3$: 0.829 mean accuracy, Table~\ref{tab:cv_best_configs}).
+Third, the eight aggregation strategies remain a complete design space for post-retrieval evidence fusion. The empirical ordering is clear: \texttt{freq\_strength} $>$ \texttt{weighted} $>$ \texttt{relative} $>$ \texttt{uni} across all extractor families and environment configurations. \texttt{freq\_strength} at small $K$ achieves the best cross-validation accuracy (E2, $K=3$: 0.829 mean accuracy).
 
-Fourth, the shared 5-fold strain-level cross-validation design is a major strength of the experimental methodology because it indexes the database per fold, excludes the same strain during search, and evaluates on unseen biological isolates rather than near-duplicate images. The cross-validation heatmaps (Figure~\ref{fig:cv_heatmaps}) confirm that E2 (cross-medium retrieval) outperforms E1 (same-medium) for most strategies, showing that multi-environment indexing provides more robust evidence than restricting retrieval to a single growth medium.
+Fourth, 5-fold cross-validation confirms E2 (all-media) retrieval outperforms E1 (same-media) for most strategies, demonstrating that multi-medium indexing provides more robust evidence. Fold-specific training curves (Figure~\ref{fig:cv_training_curves}) show consistent convergence within 10--15 epochs across architectures.
 
-Finally, YOLO segmentation is not a wholesale replacement for K-Means in every case; instead, it is the better solution for the bright-flare edge cases where color clustering overestimates the colony foreground. This makes YOLO the stronger candidate when annotation budget is available and boundary fidelity matters most.
+Finally, the threshold pipeline produces a reproducible known-vs.-unknown baseline (best F1 = 0.341, \texttt{gap\_0\_2\_roc\_opt}). Unknown species still gravitate toward dominant reference classes (\emph{P. polonicum}, \emph{P. tricolor}), confirming that explicit rejection remains mandatory for laboratory deployment.

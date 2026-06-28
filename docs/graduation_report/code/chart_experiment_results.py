@@ -1,301 +1,389 @@
-"""Generate all experiment charts for graduation report.
-Usage: uv --directory research run python docs/graduation_report/code/chart_experiment_results.py
+"""Refresh all graduation report charts from latest experiment results.
+
+Collects data from the canonical retrieval, threshold, and cross-validation
+outputs and regenerates every figure used in the thesis report.
 """
-import csv
-import json
-import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 from pathlib import Path
+import json, csv, shutil
 from collections import defaultdict
 
-OUTPUT_DIR = Path("/home/dat/dev/mycoai_projects/docs/graduation_report/latex/figures")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
 STYLE = {"font.family": "serif", "font.size": 8, "axes.titlesize": 9, "axes.labelsize": 8}
 plt.rcParams.update(STYLE)
 
-RESULTS = Path("/home/dat/dev/mycoai_projects/results")
-YOLO_DIR = RESULTS / "retrieval_k7_yolo_local"
-KMEANS_DIR = RESULTS / "retrieval_k7_kmeans_local"
-PIPE_CSV = RESULTS / "retrieval_pipeline_comparison.csv"
-THRESH_CSV = Path("/home/dat/dev/mycoai_projects/results/threshold/log/all_experiments.csv")
-SEG_CSV = Path("/home/dat/dev/mycoai_projects/results/segmentation_comparison/comparison.csv")
+PROJECT = Path("/home/dat/dev/mycoai_projects")
+LATEX_DIR = PROJECT / "docs/graduation_report/latex/figures"
+REPORT_DIR = PROJECT / "graduation_report/report/figures"
+for d in (LATEX_DIR, REPORT_DIR):
+    d.mkdir(parents=True, exist_ok=True)
+
+RETRIEVAL_LATEST = PROJECT / "results/retrieval_20260628_030436"   # weighted/E1/K7 best
+RETRIEVAL_K3 = PROJECT / "results/retrieval_20260628_171728"       # K=3 sweep
+RETRIEVAL_KMEANS = PROJECT / "results/retrieval_20260628_134052"   # kmeans comparison
+THRESH_CSV = PROJECT / "results/threshold/log/all_experiments.csv"
+THRESH_SUMMARY = PROJECT / "results/threshold/metric_analysis.json"
+CV_SUMMARY = PROJECT / "results/cross_validation/cv_summary_table.csv"
+
+FT_BLUE = "#1f77b4"
+PT_ORANGE = "#ff7f0e"
+TRAD_GREEN = "#2ca02c"
+YOLO_GREEN = "#2ecc71"
+KMEANS_BLUE = "#3498db"
 
 
-def load_prediction_reports(root: Path):
+def save(name, fig=None):
+    if fig is None:
+        return
+    for out in (LATEX_DIR / name, REPORT_DIR / name):
+        fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  saved {name}")
+
+
+def copy_img(src, dst_name):
+    src = Path(src) if isinstance(src, str) else src
+    if src.exists():
+        for out in (LATEX_DIR / dst_name, REPORT_DIR / dst_name):
+            shutil.copy2(src, out)
+        print(f"  copied {dst_name}")
+
+
+def load_accuracies(base_dir):
     rows = []
-    for txt in root.glob('*/prediction_report_*.txt'):
-        content = txt.read_text(errors='ignore') if txt.exists() else ''
-        import re
-        match = re.search(r'Accuracy:\s*([0-9.]+)', content)
-        if not match:
+    for d in base_dir.iterdir():
+        if not d.is_dir():
             continue
-        acc = float(match.group(1))
-        name = txt.parent.name
+        jf = d / "evaluation_results.json"
+        if not jf.exists():
+            continue
+        data = json.loads(jf.read_text())
         rows.append({
-            'name': name,
-            'accuracy': acc,
-            'extractor': name.rsplit('_', 2)[0],
-            'strategy': 'freq_strength' if 'freq_strength' in name else 'weighted',
-            'environment': 'E1' if name.endswith('_E1') else 'E2',
+            "dir": d.name,
+            "accuracy": data["overall_accuracy"],
+            "correct": data["correct_predictions"],
+            "total": data["total_strains"],
         })
     return rows
 
 
-def save(fig, name):
-    out = OUTPUT_DIR / name
-    fig.savefig(out, dpi=200, bbox_inches='tight')
-    plt.close(fig)
-    print(f"  {name}")
-
-
 # ═══════════════════════════════════════════════════════════════════════════
-# 1. FEATURE EXTRACTOR COMPARISON (sorted, freq_strength + E1, K=7)
+# 1. Extractor comparison bar chart (weighted, E1, K=7, YOLO)
 # ═══════════════════════════════════════════════════════════════════════════
 def chart_extractor_comparison():
-    valid = load_prediction_reports(YOLO_DIR)
-    agg = 'freq_strength'
-    env = 'E1'
-    extractor_configs = [
-        ('resnet50_finetuned', 'ResNet50 (FT)', '#1f77b4'),
-        ('efficientnetb1_finetuned', 'EfficientNetB1 (FT)', '#1f77b4'),
-        ('mobilenetv2_finetuned', 'MobileNetV2 (FT)', '#1f77b4'),
-        ('resnet50', 'ResNet50 (PT)', '#ff7f0e'),
-        ('efficientnetb1', 'EfficientNetB1 (PT)', '#ff7f0e'),
-        ('mobilenetv2', 'MobileNetV2 (PT)', '#ff7f0e'),
-        ('colorhistogram', 'ColorHistogram (TR)', '#2ca02c'),
-        ('colorhistogramhs', 'ColorHistogramHS (TR)', '#2ca02c'),
-        ('hog', 'HOG (TR)', '#2ca02c'),
-        ('gabor', 'Gabor (TR)', '#2ca02c'),
+    rows = load_accuracies(RETRIEVAL_LATEST) if RETRIEVAL_LATEST.exists() else []
+    if not rows:
+        rows = load_accuracies(RETRIEVAL_K3)
+    if not rows:
+        return
+
+    order = [
+        ("resnet50_finetuned_", "ResNet50 (FT)", FT_BLUE),
+        ("efficientnetb1_finetuned_", "EfficientNetB1 (FT)", FT_BLUE),
+        ("mobilenetv2_finetuned_", "MobileNetV2 (FT)", FT_BLUE),
+        ("resnet50_", "ResNet50 (PT)", PT_ORANGE),
+        ("efficientnetb1_", "EfficientNetB1 (PT)", PT_ORANGE),
+        ("mobilenetv2_", "MobileNetV2 (PT)", PT_ORANGE),
+        ("colorhistogram_", "ColorHistogram (TR)", TRAD_GREEN),
+        ("colorhistogramhs_", "ColorHistogramHS (TR)", TRAD_GREEN),
+        ("hog_", "HOG (TR)", TRAD_GREEN),
+        ("gabor_", "Gabor (TR)", TRAD_GREEN),
     ]
     results = []
-    for ext_name, label, color in extractor_configs:
-        matched = [r for r in valid if r['name'] == f'{ext_name}_{agg}_{env}']
-        acc = matched[0]['accuracy'] * 100 if matched else 0.0
+    for prefix, label, color in order:
+        matched = [r for r in rows if r["dir"].startswith(prefix)]
+        acc = matched[0]["accuracy"] * 100 if matched else 0.0
         results.append((label, acc, color))
     results.sort(key=lambda x: x[1], reverse=True)
 
     labels, scores, colors = zip(*results)
     fig, ax = plt.subplots(figsize=(9, 5))
-    bars = ax.bar(range(len(labels)), scores, color=colors, edgecolor='white', linewidth=0.5)
+    bars = ax.bar(range(len(labels)), scores, color=colors, edgecolor="white", linewidth=0.5)
     ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(labels, fontsize=7, rotation=25, ha='right')
-    ax.set_ylabel('Accuracy (%)')
-    ax.set_title('Latest YOLO Retrieval: Feature Extractor Comparison (freq_strength, E1, K=7)')
+    ax.set_xticklabels(labels, fontsize=7, rotation=25, ha="right")
+    ax.set_ylabel("Accuracy (%)")
+    ax.set_title("Feature Extractor Comparison (weighted, E1, K=7, YOLO)")
     ax.set_ylim(0, max(scores) * 1.2 if max(scores) > 0 else 100)
     for bar, score in zip(bars, scores):
         if score > 0:
-            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5,
-                    f'{score:.1f}%', ha='center', va='bottom', fontsize=7, fontweight='bold')
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
+                    f"{score:.1f}%", ha="center", va="bottom", fontsize=7, fontweight="bold")
     ax.legend(handles=[
-        Patch(facecolor='#1f77b4', label='Fine-tuned DL'),
-        Patch(facecolor='#ff7f0e', label='Pretrained DL'),
-        Patch(facecolor='#2ca02c', label='Traditional'),
-    ], loc='upper right', fontsize=7)
-    ax.grid(axis='y', alpha=0.3)
+        plt.matplotlib.patches.Patch(facecolor=FT_BLUE, label="Fine-tuned DL"),
+        plt.matplotlib.patches.Patch(facecolor=PT_ORANGE, label="Pretrained DL"),
+        plt.matplotlib.patches.Patch(facecolor=TRAD_GREEN, label="Traditional"),
+    ], loc="upper right", fontsize=7)
+    ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
-    save(fig, 'extractor_comparison.png')
+    save("extractor_comparison.png", fig)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 2. RETRIEVAL FAMILY COMPARISON (top by extractor family)
+# 2. KMeans vs YOLO comparison
 # ═══════════════════════════════════════════════════════════════════════════
-def chart_retrieval_top():
-    valid = [r for r in load_prediction_reports(YOLO_DIR) if r['strategy'] == 'freq_strength']
-    finetuned = sorted([r for r in valid if 'finetuned' in r['extractor']], key=lambda r: -r['accuracy'])[:5]
-    pretrained = sorted([r for r in valid if 'finetuned' not in r['extractor']
-                          and any(x in r['extractor'] for x in ['resnet50', 'efficientnetb1', 'mobilenetv2'])], key=lambda r: -r['accuracy'])[:5]
-    traditional = sorted([r for r in valid if any(x in r['extractor'] for x in ['colorhistogram', 'hog', 'gabor'])], key=lambda r: -r['accuracy'])[:5]
-    all_top = finetuned + pretrained + traditional
-    if not all_top: return
-
-    names = [r['name'].replace('_freq_strength_', '\n') for r in all_top]
-    accs = [r['accuracy'] * 100 for r in all_top]
-    colors = ['#1f77b4'] * len(finetuned) + ['#ff7f0e'] * len(pretrained) + ['#2ca02c'] * len(traditional)
-
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    ax.barh(range(len(all_top)), accs, color=colors, edgecolor='white', linewidth=0.5)
-    ax.set_yticks(range(len(all_top)))
-    ax.set_yticklabels(names, fontsize=5.5)
-    ax.set_xlabel('Accuracy (%)')
-    ax.set_title('Latest YOLO Top Retrieval Configurations by Extractor Family (freq_strength, K=7)')
-    ax.invert_yaxis()
-    for i, acc in enumerate(accs):
-        ax.text(acc + 0.3, i, f'{acc:.1f}%', va='center', fontsize=5.5)
-    ax.legend(handles=[
-        Patch(facecolor='#1f77b4', label='Fine-tuned DL'),
-        Patch(facecolor='#ff7f0e', label='Pretrained DL'),
-        Patch(facecolor='#2ca02c', label='Traditional'),
-    ], loc='lower right', fontsize=7)
-    fig.tight_layout()
-    save(fig, 'retrieval_family_comparison.png')
-
-
-def chart_kmeans_vs_yolo_latest():
-    yolo_rows = load_prediction_reports(YOLO_DIR)
-    kmeans_rows = load_prediction_reports(KMEANS_DIR)
-    labels = [
-        ('efficientnetb1_finetuned_freq_strength_E1', 'EffB1 FT / FS / E1'),
-        ('mobilenetv2_finetuned_weighted_E1', 'MobV2 FT / W / E1'),
-        ('resnet50_finetuned_weighted_E1', 'ResNet50 FT / W / E1'),
-        ('efficientnetb1_freq_strength_E1', 'EffB1 PT / FS / E1'),
-        ('mobilenetv2_freq_strength_E1', 'MobV2 PT / FS / E1'),
-        ('resnet50_weighted_E1', 'ResNet50 PT / W / E1'),
+def chart_kmeans_vs_yolo():
+    yolo_rows = load_accuracies(RETRIEVAL_LATEST) if RETRIEVAL_LATEST.exists() else []
+    km_rows = load_accuracies(RETRIEVAL_KMEANS) if RETRIEVAL_KMEANS.exists() else []
+    pairs = [
+        ("resnet50_7_weighted_E1_yolo", "resnet50_7_weighted_E1_kmeans"),
+        ("resnet50_finetuned_7_weighted_E1_yolo", "resnet50_finetuned_7_weighted_E1_kmeans"),
     ]
-    paired = []
-    for key, label in labels:
-        y = next((r['accuracy'] * 100 for r in yolo_rows if r['name'] == key), 0.0)
-        k = next((r['accuracy'] * 100 for r in kmeans_rows if r['name'] == key), 0.0)
-        paired.append((label, y, k))
-    fig, ax = plt.subplots(figsize=(10, 4.8))
-    x = range(len(paired)); w = 0.36
-    yolo_bars = ax.bar([i - w/2 for i in x], [p[1] for p in paired], w, label='YOLO segments', color='#2ecc71')
-    kmeans_bars = ax.bar([i + w/2 for i in x], [p[2] for p in paired], w, label='K-means segments', color='#3498db')
-    ax.set_xticks(list(x)); ax.set_xticklabels([p[0] for p in paired], rotation=25, ha='right', fontsize=7)
-    ax.set_ylabel('Accuracy (%)')
-    ax.set_title('Latest Retrieval Accuracy: YOLO vs K-means Segment Sources')
-    for bars in [yolo_bars, kmeans_bars]:
-        for bar in bars:
-            h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2, h + 0.5, f'{h:.1f}', ha='center', va='bottom', fontsize=6.5)
-    ax.set_ylim(0, max(max(p[1], p[2]) for p in paired) * 1.25 if paired else 100)
-    ax.legend(fontsize=7)
-    ax.grid(axis='y', alpha=0.3)
+    labels = ["ResNet50 (PT)", "ResNet50 (FT)"]
+    yolo_vals = []
+    km_vals = []
+    for y_name, k_name in pairs:
+        y = next((r["accuracy"] * 100 for r in yolo_rows if r["dir"] == y_name), 0.0)
+        k = next((r["accuracy"] * 100 for r in km_rows if r["dir"] == k_name), 0.0)
+        yolo_vals.append(y)
+        km_vals.append(k)
+    if max(yolo_vals + km_vals) == 0:
+        return
+
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    x = range(len(labels))
+    w = 0.35
+    b1 = ax.bar([i - w / 2 for i in x], yolo_vals, w, label="YOLO segments", color=YOLO_GREEN)
+    b2 = ax.bar([i + w / 2 for i in x], km_vals, w, label="K-Means segments", color=KMEANS_BLUE)
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels, fontsize=9)
+    ax.set_ylabel("Accuracy (%)")
+    ax.set_title("YOLO vs K-Means: Retrieval Accuracy (ResNet50)")
+    for b, v in zip(b1, yolo_vals):
+        ax.text(b.get_x() + b.get_width() / 2, v + 0.5, f"{v:.1f}", ha="center", fontsize=8)
+    for b, v in zip(b2, km_vals):
+        ax.text(b.get_x() + b.get_width() / 2, v + 0.5, f"{v:.1f}", ha="center", fontsize=8)
+    ax.set_ylim(0, max(yolo_vals + km_vals) * 1.2)
+    ax.legend(fontsize=8)
+    ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
-    save(fig, 'kmeans_vs_yolo_latest.png')
+    save("kmeans_vs_yolo_latest.png", fig)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 3. CROSS-VALIDATION HEATMAPS
+# 3. CV heatmaps
 # ═══════════════════════════════════════════════════════════════════════════
 def chart_cv_heatmaps():
-    cv_csv = Path("/home/dat/dev/mycoai_projects/results/cross_validation/cv_summary_table.csv")
-    rows = list(csv.DictReader(open(cv_csv)))
-    data = defaultdict(list)
-    for r in rows:
-        key = (r['media_strategy'], r['agg_strategy'], int(r['k']))
-        data[key].append(float(r['mean_accuracy']))
-    agg_data = {}
-    for (media, agg, k), accs in data.items():
-        agg_data[(media, agg, k)] = np.mean(accs)
-    media_vals = sorted(set(m for m, _, _ in agg_data))
-    k_vals = sorted(set(k for _, _, k in agg_data))
-    agg_vals = sorted(set(a for _, a, _ in agg_data))
+    if not CV_SUMMARY.exists():
+        return
+    df = pd.read_csv(CV_SUMMARY)
+    if df.empty:
+        return
 
-    # Heatmap: K vs media_strategy (one per agg)
+    df["mean_accuracy"] = df["mean_accuracy"] * 100
+    media_col = "media_strategy" if "media_strategy" in df.columns else "env_strategy"
+    agg_vals = sorted(df["agg_strategy"].unique())
+    media_vals = sorted(df[media_col].unique())
+    k_vals = sorted(df["k"].unique())
+
     for agg in agg_vals:
+        subset = df[df["agg_strategy"] == agg]
         mat = np.zeros((len(media_vals), len(k_vals)))
         for i, m in enumerate(media_vals):
             for j, k in enumerate(k_vals):
-                mat[i, j] = agg_data.get((m, agg, k), 0) * 100
-        fig, ax = plt.subplots(figsize=(6, 2.2))
-        im = ax.imshow(mat, cmap='YlOrRd', aspect='auto', vmin=mat.min()*0.95, vmax=mat.max()*1.02)
-        ax.set_xticks(range(len(k_vals))); ax.set_xticklabels([f'k={k}' for k in k_vals])
-        ax.set_yticks(range(len(media_vals))); ax.set_yticklabels(media_vals, fontsize=7)
+                row = subset[(subset[media_col] == m) & (subset["k"] == k)]
+                mat[i, j] = row["mean_accuracy"].mean() if not row.empty else 0
+        if mat.max() == 0:
+            continue
+        fig, ax = plt.subplots(figsize=(6, 2.5))
+        im = ax.imshow(mat, cmap="YlOrRd", aspect="auto", vmin=mat[mat > 0].min() * 0.95, vmax=mat.max() * 1.02)
+        ax.set_xticks(range(len(k_vals)))
+        ax.set_xticklabels([f"K={k}" for k in k_vals])
+        ax.set_yticks(range(len(media_vals)))
+        ax.set_yticklabels(media_vals, fontsize=7)
         for i in range(len(media_vals)):
             for j in range(len(k_vals)):
-                ax.text(j, i, f'{mat[i,j]:.1f}', ha='center', va='center', fontsize=6,
-                        color='black' if mat[i,j] < 75 else 'white')
-        ax.set_title(f'CV Accuracy: {agg} Aggregation')
-        plt.colorbar(im, ax=ax, label='Accuracy %')
+                v = mat[i, j]
+                ax.text(j, i, f"{v:.1f}", ha="center", va="center", fontsize=6,
+                        color="black" if v < 75 else "white")
+        ax.set_title(f"CV Accuracy: {agg} (mean across extracts)")
+        plt.colorbar(im, ax=ax, label="Accuracy %")
         fig.tight_layout()
-        save(fig, f'cv_heatmap_{agg}_k_vs_media.png')
+        save(f"cv_heatmap_{agg}.png", fig)
 
-    # Heatmap: aggregation vs K (mean across media)
     mat2 = np.zeros((len(agg_vals), len(k_vals)))
     for i, a in enumerate(agg_vals):
         for j, k in enumerate(k_vals):
-            vs = [agg_data[(m, a, k)] for m in media_vals if (m, a, k) in agg_data]
-            mat2[i, j] = (np.mean(vs) * 100) if vs else 0
-    fig, ax = plt.subplots(figsize=(6, 3))
-    im = ax.imshow(mat2, cmap='YlOrRd', aspect='auto')
-    ax.set_xticks(range(len(k_vals))); ax.set_xticklabels([f'k={k}' for k in k_vals])
-    ax.set_yticks(range(len(agg_vals))); ax.set_yticklabels(agg_vals)
+            vs = df[(df["agg_strategy"] == a) & (df["k"] == k)]["mean_accuracy"]
+            mat2[i, j] = vs.mean() if len(vs) else 0
+    fig, ax = plt.subplots(figsize=(7, 4))
+    im = ax.imshow(mat2, cmap="YlOrRd", aspect="auto")
+    ax.set_xticks(range(len(k_vals)))
+    ax.set_xticklabels([f"K={k}" for k in k_vals])
+    ax.set_yticks(range(len(agg_vals)))
+    ax.set_yticklabels(agg_vals, fontsize=7)
     for i in range(len(agg_vals)):
         for j in range(len(k_vals)):
-            ax.text(j, i, f'{mat2[i,j]:.1f}%', ha='center', va='center', fontsize=7,
-                    color='black' if mat2[i,j] < 75 else 'white')
-    ax.set_title('CV Accuracy: Aggregation vs K (mean across environments)')
-    plt.colorbar(im, ax=ax, label='Accuracy %')
+            ax.text(j, i, f"{mat2[i, j]:.1f}", ha="center", va="center", fontsize=6,
+                    color="black" if mat2[i, j] < 75 else "white")
+    ax.set_title("CV: Aggregation vs K")
+    plt.colorbar(im, ax=ax, label="Accuracy %")
     fig.tight_layout()
-    save(fig, 'cv_heatmap_agg_vs_k.png')
-
-    # Heatmap: media vs aggregation (mean across K)
-    mat3 = np.zeros((len(media_vals), len(agg_vals)))
-    for i, m in enumerate(media_vals):
-        for j, a in enumerate(agg_vals):
-            vs = [agg_data[(m, a, k)] for k in k_vals if (m, a, k) in agg_data]
-            mat3[i, j] = (np.mean(vs) * 100) if vs else 0
-    fig, ax = plt.subplots(figsize=(7, 2.8))
-    im = ax.imshow(mat3, cmap='YlOrRd', aspect='auto')
-    ax.set_xticks(range(len(agg_vals))); ax.set_xticklabels(agg_vals, fontsize=7, rotation=30, ha='right')
-    ax.set_yticks(range(len(media_vals))); ax.set_yticklabels(media_vals, fontsize=7)
-    for i in range(len(media_vals)):
-        for j in range(len(agg_vals)):
-            ax.text(j, i, f'{mat3[i,j]:.1f}', ha='center', va='center', fontsize=6.5,
-                    color='black' if mat3[i,j] < 75 else 'white')
-    ax.set_title('CV Accuracy: Environment vs Aggregation (mean across K)')
-    plt.colorbar(im, ax=ax, label='Accuracy %')
-    fig.tight_layout()
-    save(fig, 'cv_heatmap_media_vs_agg.png')
+    save("cv_heatmap_agg_vs_k.png", fig)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 4. CONFUSION MATRICES
-# ═══════════════════════════════════════════════════════════════════════════
-def chart_confusion_matrices():
-    yolo_rows = load_prediction_reports(YOLO_DIR)
-
-    def copy_confusion(config_name, filename):
-        src = YOLO_DIR / config_name / 'confusion_matrix.png'
-        if src.exists():
-            import shutil
-            shutil.copy2(src, OUTPUT_DIR / filename)
-            print(f'  {filename}')
-
-    ft = [r for r in yolo_rows if 'finetuned' in r['name'] and r['strategy'] == 'freq_strength']
-    pt = [r for r in yolo_rows if 'finetuned' not in r['name'] and any(x in r['name'] for x in ['resnet50', 'efficientnetb1', 'mobilenetv2']) and r['strategy'] == 'freq_strength']
-    trad = [r for r in yolo_rows if any(x in r['name'] for x in ['hog', 'gabor', 'colorhistogram']) and r['strategy'] == 'freq_strength']
-    if ft:
-        copy_confusion(max(ft, key=lambda r: r['accuracy'])['name'], 'confusion_best_finetuned.png')
-        copy_confusion(min(ft, key=lambda r: r['accuracy'])['name'], 'confusion_worst_finetuned.png')
-    if pt:
-        copy_confusion(max(pt, key=lambda r: r['accuracy'])['name'], 'confusion_best_pretrained.png')
-    if trad:
-        copy_confusion(max(trad, key=lambda r: r['accuracy'])['name'], 'confusion_best_traditional.png')
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 5. THRESHOLD TOP BAR CHART
+# 4. Threshold top strategies
 # ═══════════════════════════════════════════════════════════════════════════
 def chart_threshold_top():
-    if not THRESH_CSV.exists(): return
-    rows = list(csv.DictReader(open(THRESH_CSV)))
-    top = sorted(rows, key=lambda r: -float(r.get('f1', 0)))[:12]
-    names = [f"{r['formula']}\n{r['algorithm']}" for r in top]
-    f1s = [float(r['f1']) * 100 for r in top]
-    precs = [float(r['precision']) * 100 for r in top]
-    recalls = [float(r['recall']) * 100 for r in top]
-    fig, ax = plt.subplots(figsize=(8, 4))
-    x = range(len(top)); w = 0.25
-    ax.bar([i - w for i in x], f1s, w, label='F1', color='#1f77b4', edgecolor='white', linewidth=0.3)
-    ax.bar(x, precs, w, label='Precision', color='#ff7f0e', edgecolor='white', linewidth=0.3)
-    ax.bar([i + w for i in x], recalls, w, label='Recall', color='#2ca02c', edgecolor='white', linewidth=0.3)
-    ax.set_xticks(x); ax.set_xticklabels(names, fontsize=5.5, rotation=30, ha='right')
-    ax.set_ylabel('%'); ax.set_title('Top Threshold Strategies (F1, Precision, Recall)')
-    ax.legend(fontsize=7)
+    if not THRESH_CSV.exists():
+        return
+    df = pd.read_csv(THRESH_CSV)
+    if df.empty or "f1" not in df.columns:
+        return
+    df = df[df["f1"] > 0]
+    df["name"] = df["formula"] + "_" + df["algorithm"]
+    top = df.nlargest(15, "f1")
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    colors_cmap = plt.cm.viridis(np.linspace(0, 1, len(top)))
+    bars = ax.barh(range(len(top)), top["f1"].values, color=colors_cmap, edgecolor="white", linewidth=0.5)
+    ax.set_yticks(range(len(top)))
+    ax.set_yticklabels(top["name"].values, fontsize=6)
+    ax.set_xlabel("F1 Score")
+    ax.set_title("Top 15 Threshold Strategies by F1 Score")
+    ax.invert_yaxis()
+    for i, (v, p) in enumerate(zip(top["f1"], top["precision"] if "precision" in top.columns else [0] * len(top))):
+        ax.text(v + 0.005, i, f"{v:.3f}", va="center", fontsize=6)
+    ax.set_xlim(0, max(top["f1"]) * 1.3)
+    ax.grid(axis="x", alpha=0.3)
     fig.tight_layout()
-    save(fig, 'threshold_top_bar.png')
+    save("threshold_top_bar.png", fig)
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 5. Copy confusion matrices
+# ═══════════════════════════════════════════════════════════════════════════
+def copy_confusion_matrices():
+    if RETRIEVAL_LATEST.exists():
+        for cfg in ["resnet50_finetuned_7_weighted_E1_yolo",
+                     "efficientnetb1_finetuned_7_weighted_E1_yolo",
+                     "mobilenetv2_finetuned_7_weighted_E1_yolo",
+                     "resnet50_7_weighted_E1_yolo"]:
+            src = RETRIEVAL_LATEST / cfg / "confusion_matrix.png"
+            if src.exists():
+                fn = f"confusion_matrix_{cfg.split('_')[0]}.png"
+                copy_img(src, fn)
+    thresh_cm = PROJECT / "results/threshold/confusion_matrix_threshold.png"
+    if thresh_cm.exists():
+        copy_img(thresh_cm, "confusion_matrix_threshold.png")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 6. CV training curves (fold0 ResNet50 + EffB1)
+# ═══════════════════════════════════════════════════════════════════════════
+def chart_cv_training_curves():
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    for ax_idx, model in enumerate(["ResNet50", "EfficientNetB1"]):
+        ax = axes[ax_idx]
+        for fold in range(5):
+            hp = PROJECT / "weights/folds" / f"fold{fold}_{model}_history.json"
+            if not hp.exists():
+                continue
+            h = json.loads(hp.read_text())
+            acc_key = "val_acc" if "val_acc" in h else "val_accuracy"
+            ax.plot(h.get(acc_key, []), label=f"Fold {fold + 1}", linewidth=2, alpha=0.8)
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel("Validation Accuracy")
+        ax.set_title(f"{model} Fold-Specific Training")
+        ax.legend(fontsize=7)
+        ax.grid(alpha=0.3)
+    fig.tight_layout()
+    save("cv_training_curves_folds.png", fig)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 7. Per-fold accuracy distribution
+# ═══════════════════════════════════════════════════════════════════════════
+def chart_fold_variance():
+    cv_csv = PROJECT / "results/cross_validation/cv_results.csv"
+    if not cv_csv.exists():
+        return
+    df = pd.read_csv(cv_csv)
+    if df.empty:
+        return
+    resnet = df[df["extractor"].str.contains("resnet", na=False)]
+    if resnet.empty:
+        resnet = df
+    fold_means = resnet.groupby("fold")["correct"].mean()
+    if len(fold_means) == 0:
+        return
+    fig, ax = plt.subplots(figsize=(8, 5))
+    colors = ["#3498db", "#2ecc71", "#f39c12", "#e74c3c", "#9b59b6"]
+    ax.bar(fold_means.index, fold_means.values * 100, color=colors[:len(fold_means)])
+    for f, acc in fold_means.items():
+        ax.text(f, acc * 100 + 0.5, f"{acc:.1%}", ha="center")
+    ax.set_xlabel("Fold")
+    ax.set_ylabel("Accuracy (%)")
+    ax.set_title("Per-Fold Retrieval Accuracy (ResNet50 Finetuned)")
+    ax.grid(axis="y", alpha=0.3)
+    fig.tight_layout()
+    save("fold_variance_new.png", fig)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 8. Staircase chart for threshold
+# ═══════════════════════════════════════════════════════════════════════════
+def chart_threshold_staircase():
+    if not THRESH_CSV.exists():
+        return
+    df = pd.read_csv(THRESH_CSV)
+    if df.empty or "f1" not in df.columns:
+        return
+    df = df.sort_values("f1", ascending=False).reset_index(drop=True)
+    if len(df) == 0:
+        return
+    f1_values = df["f1"].values
+    idx = np.arange(len(f1_values))
+    running_best = np.maximum.accumulate(f1_values)
+    is_best = np.diff(running_best, prepend=-1) > 0
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+    ax.scatter(idx[~is_best], f1_values[~is_best], s=15, c="gray", alpha=0.4, label="Discarded")
+    ax.scatter(idx[is_best], f1_values[is_best], s=60, c="green", edgecolor="white", linewidth=1, label="New Best")
+    best_idx = np.where(is_best)[0]
+    best_vals = running_best[best_idx]
+    for i in range(len(best_idx)):
+        if i == 0:
+            xs = [0, best_idx[i]]
+            ys = [best_vals[i], best_vals[i]]
+        else:
+            xs = [best_idx[i - 1], best_idx[i]]
+            ys = [best_vals[i - 1], best_vals[i]]
+        # Horizontal from prev to current
+        if i > 0:
+            ax.plot([best_idx[i - 1], best_idx[i]], [best_vals[i - 1], best_vals[i - 1]], "green", linewidth=1.5)
+        # Vertical step up
+        ax.plot([best_idx[i], best_idx[i]], [best_vals[i - 1] if i > 0 else 0, best_vals[i]], "green", linewidth=1.5)
+
+    for bi, bv in zip(best_idx[:10], best_vals[:10]):
+        name = df.iloc[bi]["formula"] + "_" + df.iloc[bi]["algorithm"] if "algorithm" in df.columns else str(bi)
+        ax.text(bi, bv + 0.01, name[:20], fontsize=5, rotation=45, ha="left", va="bottom")
+
+    ax.set_xlabel("Experiment Index")
+    ax.set_ylabel("F1 Score")
+    ax.set_title("Threshold Autoresearch Staircase (sorted by F1)")
+    ax.set_ylim(0, max(f1_values) * 1.15)
+    ax.legend(fontsize=7, loc="lower right")
+    ax.grid(axis="y", alpha=0.3)
+    fig.tight_layout()
+    save("staircase_threshold.png", fig)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Main
+# ═══════════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
-    print("Generating charts...")
+    print("Generating graduation report charts...")
     chart_extractor_comparison()
-    chart_retrieval_top()
-    chart_kmeans_vs_yolo_latest()
+    chart_kmeans_vs_yolo()
     chart_cv_heatmaps()
-    chart_confusion_matrices()
     chart_threshold_top()
+    chart_cv_training_curves()
+    copy_confusion_matrices()
+    chart_fold_variance()
+    chart_threshold_staircase()
     print("Done.")

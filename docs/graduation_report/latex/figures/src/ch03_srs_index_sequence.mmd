@@ -1,0 +1,31 @@
+%%{init: {'theme': 'neutral', 'themeVariables': { 'fontSize': '14px' }}}%%
+sequenceDiagram
+    actor Owner as Data Owner
+    participant Frontend as React SPA
+    participant Backend as FastAPI
+    participant Worker as Celery Worker
+    participant DB as PostgreSQL
+    participant Qdrant as Qdrant
+
+    Owner->>Frontend: Upload reference images
+    Frontend->>Backend: POST /api/v1/images (owner scope)
+    Backend->>DB: INSERT images, segments
+    DB-->>Backend: image_id, segment_ids
+    Backend->>Worker: enqueue segmentation + extraction
+
+    Worker->>Qdrant: upsert vectors + payload
+    Qdrant-->>Worker: indexed
+    Worker->>DB: UPDATE segments (qdrant_point_id)
+    Worker-->>Backend: indexing complete
+
+    Backend->>DB: UPDATE data_update_status
+    DB-->>Backend: updated
+    Backend-->>Frontend: index status response
+    Frontend-->>Owner: Reference data indexed
+
+    Owner->>Frontend: Trigger re-index
+    Frontend->>Backend: POST /api/v1/index
+    Backend->>Qdrant: rebuild collection
+    Qdrant-->>Backend: re-index complete
+    Backend-->>Frontend: re-index result
+    Frontend-->>Owner: Qdrant refreshed

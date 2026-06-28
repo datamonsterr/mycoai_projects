@@ -160,20 +160,20 @@
 \citation{sandler2018mobilenetv2}
 \abx@aux@cite{0}{sandler2018mobilenetv2}
 \abx@aux@segm{0}{0}{sandler2018mobilenetv2}
-\citation{he2016resnet}
-\abx@aux@cite{0}{he2016resnet}
-\abx@aux@segm{0}{0}{he2016resnet}
-\citation{tan2019efficientnet}
-\abx@aux@cite{0}{tan2019efficientnet}
-\abx@aux@segm{0}{0}{tan2019efficientnet}
 \@writefile{lof}{\contentsline {figure}{\numberline {2.3}{\ignorespaces KMeans (left) vs YOLO (right) bounding box comparison for strain DTO 148-D1 (obverse angle) across four growth media. KMeans boxes (blue) tend to be wider on bright colonies with agar flare, while YOLO boxes (red) track the true colony boundary more tightly.}}{20}{figure.2.3}\protected@file@percent }
 \newlabel{fig:kmeans-vs-yolo}{{2.3}{20}{KMeans (left) vs YOLO (right) bounding box comparison for strain DTO 148-D1 (obverse angle) across four growth media. KMeans boxes (blue) tend to be wider on bright colonies with agar flare, while YOLO boxes (red) track the true colony boundary more tightly}{figure.2.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2.3}YOLO Segmentation Methodology}{20}{subsection.2.2.3}\protected@file@percent }
 \newlabel{yolo-segmentation-methodology}{{2.2.3}{20}{YOLO Segmentation Methodology}{subsection.2.2.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2.4}Feature Extraction Methodology}{20}{subsection.2.2.4}\protected@file@percent }
 \newlabel{feature-extraction-methodology}{{2.2.4}{20}{Feature Extraction Methodology}{subsection.2.2.4}{}}
-\@gls@reference{acronym}{qdrant}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{20}}
+\citation{he2016resnet}
+\abx@aux@cite{0}{he2016resnet}
+\abx@aux@segm{0}{0}{he2016resnet}
+\citation{tan2019efficientnet}
+\abx@aux@cite{0}{tan2019efficientnet}
+\abx@aux@segm{0}{0}{tan2019efficientnet}
 \@writefile{lot}{\contentsline {table}{\numberline {2.1}{\ignorespaces Feature extractor families used in the study}}{21}{table.2.1}\protected@file@percent }
+\@gls@reference{acronym}{qdrant}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{21}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2.5}Fine-Tuning Methodology}{21}{subsection.2.2.5}\protected@file@percent }
 \newlabel{fine-tuning-methodology}{{2.2.5}{21}{Fine-Tuning Methodology}{subsection.2.2.5}{}}
 \@writefile{toc}{\contentsline {subsubsection}{Backbone Export and Feature Extraction}{21}{subsubsection*.20}\protected@file@percent }
@@ -240,64 +240,60 @@
 \newlabel{cross-validation-experiments}{{2.3.5}{28}{Cross-Validation Experiments}{subsection.2.3.5}{}}
 \@writefile{toc}{\contentsline {subsubsection}{a) Setup}{28}{subsubsection*.37}\protected@file@percent }
 \@gls@reference{acronym}{qdrant}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{28}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.8}{\ignorespaces Cross-validation heatmaps showing accuracy patterns across $K$ values, aggregation strategies, and environment configurations. Higher accuracy concentrates at small $K$ with freq\_strength aggregation.}}{29}{figure.2.8}\protected@file@percent }
-\newlabel{fig:cv_heatmaps}{{2.8}{29}{Cross-validation heatmaps showing accuracy patterns across $K$ values, aggregation strategies, and environment configurations. Higher accuracy concentrates at small $K$ with freq\_strength aggregation}{figure.2.8}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2.4}{\ignorespaces Best retrieval configurations from 5-fold cross-validation}}{29}{table.2.4}\protected@file@percent }
-\newlabel{tab:cv_best_configs}{{2.4}{29}{Best retrieval configurations from 5-fold cross-validation}{table.2.4}{}}
-\@writefile{toc}{\contentsline {subsubsection}{b) Results}{29}{subsubsection*.38}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{c) Findings}{29}{subsubsection*.39}\protected@file@percent }
 \citation{bendale2016openset}
 \abx@aux@cite{0}{bendale2016openset}
 \abx@aux@segm{0}{0}{bendale2016openset}
 \citation{kareinen2024opensetPlankton}
 \abx@aux@cite{0}{kareinen2024opensetPlankton}
 \abx@aux@segm{0}{0}{kareinen2024opensetPlankton}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.9}{\ignorespaces Comparison of base and fine-tuned retrieval configurations. Fine-tuned EfficientNetB1 dominates the ranking and improves mean accuracy by nearly 29 percentage points over the best ImageNet baseline.}}{30}{figure.2.9}\protected@file@percent }
-\newlabel{fig:cv_model_comparison}{{2.9}{30}{Comparison of base and fine-tuned retrieval configurations. Fine-tuned EfficientNetB1 dominates the ranking and improves mean accuracy by nearly 29 percentage points over the best ImageNet baseline}{figure.2.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.8}{\ignorespaces Cross-validation accuracy heatmap: aggregation strategy vs $K$ (mean across environments and extractors). \texttt  {freq\_strength} at low $K$ consistently dominates.}}{29}{figure.2.8}\protected@file@percent }
+\newlabel{fig:cv_heatmap_agg_k}{{2.8}{29}{Cross-validation accuracy heatmap: aggregation strategy vs $K$ (mean across environments and extractors). \texttt {freq\_strength} at low $K$ consistently dominates}{figure.2.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.9}{\ignorespaces Fold-specific ResNet50 and EfficientNetB1 training curves. Both architectures converge within 10--15 epochs on YOLO colony segments.}}{29}{figure.2.9}\protected@file@percent }
+\newlabel{fig:cv_training_curves}{{2.9}{29}{Fold-specific ResNet50 and EfficientNetB1 training curves. Both architectures converge within 10--15 epochs on YOLO colony segments}{figure.2.9}{}}
+\@writefile{toc}{\contentsline {subsubsection}{b) Results}{29}{subsubsection*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{c) Findings}{29}{subsubsection*.39}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2.10}{\ignorespaces Per-fold retrieval accuracy distribution (ResNet50 finetuned, weighted/E1/K=7).}}{30}{figure.2.10}\protected@file@percent }
+\newlabel{fig:fold_variance}{{2.10}{30}{Per-fold retrieval accuracy distribution (ResNet50 finetuned, weighted/E1/K=7)}{figure.2.10}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3.6}Threshold Experiments}{30}{subsection.2.3.6}\protected@file@percent }
 \newlabel{threshold-experiments}{{2.3.6}{30}{Threshold Experiments}{subsection.2.3.6}{}}
 \@writefile{toc}{\contentsline {subsubsection}{a) Setup}{30}{subsubsection*.40}\protected@file@percent }
 \@gls@reference{acronym}{qdrant}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{30}}
 \@gls@reference{acronym}{qdrant}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{30}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.10}{\ignorespaces Confusion matrices for top CV configurations on the curated reference collection. Left: best config on full\_prepared\_features (8 species, EffNetB1\_ft, relative, K=3, E1). Right: best config on the finetuned feature collection (7 species, EffNetB1\_ft, freq\_strength, K=3, E2). Each row aggregates 30 predictions from 5-fold CV (6 test images per species $\times $ 5 folds). Cells show count and row-normalized fraction.}}{31}{figure.2.10}\protected@file@percent }
-\newlabel{fig:cv_confusion_best_cases}{{2.10}{31}{Confusion matrices for top CV configurations on the curated reference collection. Left: best config on full\_prepared\_features (8 species, EffNetB1\_ft, relative, K=3, E1). Right: best config on the finetuned feature collection (7 species, EffNetB1\_ft, freq\_strength, K=3, E2). Each row aggregates 30 predictions from 5-fold CV (6 test images per species $\times $ 5 folds). Cells show count and row-normalized fraction}{figure.2.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.11}{\ignorespaces Threshold retrieval pipeline for open-set species detection. Diverse incoming dataset strains are segmented, embedded with EfficientNetB1, retrieved against the full reference collection, and scored with threshold formulas for known/unknown decision.}}{31}{figure.2.11}\protected@file@percent }
+\newlabel{fig:threshold_pipeline}{{2.11}{31}{Threshold retrieval pipeline for open-set species detection. Diverse incoming dataset strains are segmented, embedded with EfficientNetB1, retrieved against the full reference collection, and scored with threshold formulas for known/unknown decision}{figure.2.11}{}}
 \@writefile{toc}{\contentsline {subsubsection}{b) Results}{31}{subsubsection*.41}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2.5}{\ignorespaces Best threshold strategy discovered on diverse retrieval results}}{31}{table.2.5}\protected@file@percent }
-\newlabel{tab:threshold_best}{{2.5}{31}{Best threshold strategy discovered on diverse retrieval results}{table.2.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2.4}{\ignorespaces Best threshold strategy discovered on diverse retrieval results}}{31}{table.2.4}\protected@file@percent }
+\newlabel{tab:threshold_best}{{2.4}{31}{Best threshold strategy discovered on diverse retrieval results}{table.2.4}{}}
 \@writefile{toc}{\contentsline {subsubsection}{c) Findings}{31}{subsubsection*.42}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2.11}{\ignorespaces Confusion matrices for worst-performing CV configurations on each collection (30 predictions per species from 5-fold CV). Left: worst on full\_prepared\_features (EffNetB1\_ft, weighted, K=11, E4\_CREA, acc 0.792). Right: worst on curated collection (EffNetB1\_ft, uni, K=3, E3\_CREA, acc 0.808). Even the weakest configurations retain above-chance accuracy.}}{32}{figure.2.11}\protected@file@percent }
-\newlabel{fig:cv_confusion_extremes}{{2.11}{32}{Confusion matrices for worst-performing CV configurations on each collection (30 predictions per species from 5-fold CV). Left: worst on full\_prepared\_features (EffNetB1\_ft, weighted, K=11, E4\_CREA, acc 0.792). Right: worst on curated collection (EffNetB1\_ft, uni, K=3, E3\_CREA, acc 0.808). Even the weakest configurations retain above-chance accuracy}{figure.2.11}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2.6}{\ignorespaces Known-species threshold retrieval accuracy after label normalization}}{32}{table.2.6}\protected@file@percent }
-\newlabel{tab:threshold_known_species}{{2.6}{32}{Known-species threshold retrieval accuracy after label normalization}{table.2.6}{}}
 \citation{colonyYOLO2025}
 \abx@aux@cite{0}{colonyYOLO2025}
 \abx@aux@segm{0}{0}{colonyYOLO2025}
 \citation{silva2025dlColony}
 \abx@aux@cite{0}{silva2025dlColony}
 \abx@aux@segm{0}{0}{silva2025dlColony}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.12}{\ignorespaces Threshold retrieval pipeline for open-set species detection. Diverse incoming dataset strains are segmented, embedded with EfficientNetB1, retrieved against the full reference collection, and scored with threshold formulas for known/unknown decision.}}{33}{figure.2.12}\protected@file@percent }
-\newlabel{fig:threshold_pipeline}{{2.12}{33}{Threshold retrieval pipeline for open-set species detection. Diverse incoming dataset strains are segmented, embedded with EfficientNetB1, retrieved against the full reference collection, and scored with threshold formulas for known/unknown decision}{figure.2.12}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.12}{\ignorespaces (Left) Top-1 score distribution for known ($n=48$, $\mu =0.195$) versus unknown ($n=294$, $\mu =0.143$) test sets. Known samples are right-shifted, but the overlap is still substantial. (Right) Per-species known-class retrieval accuracy after label normalization across 5 species. \emph  {P. polonicum} is strongest (12/12), while \emph  {P. melanoconidium} remains the hardest case (0/6).}}{32}{figure.2.12}\protected@file@percent }
+\newlabel{fig:threshold_known_unknown}{{2.12}{32}{(Left) Top-1 score distribution for known ($n=48$, $\mu =0.195$) versus unknown ($n=294$, $\mu =0.143$) test sets. Known samples are right-shifted, but the overlap is still substantial. (Right) Per-species known-class retrieval accuracy after label normalization across 5 species. \emph {P. polonicum} is strongest (12/12), while \emph {P. melanoconidium} remains the hardest case (0/6)}{figure.2.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2.5}{\ignorespaces Known-species threshold retrieval accuracy after label normalization}}{32}{table.2.5}\protected@file@percent }
+\newlabel{tab:threshold_known_species}{{2.5}{32}{Known-species threshold retrieval accuracy after label normalization}{table.2.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2.13}{\ignorespaces Confusion matrix for retrieval predictions with an UNKNOWN class added for the incoming diverse set. The evaluation contains 48 known test sets and 294 unknown test sets. Known-species accuracy is 66.7\% (32/48) after label normalization. Major failure modes remain \emph  {P. melanoconidium} $\rightarrow $ \emph  {P. polonicum}/\emph  {P. viridicatum} and cross-confusion involving \emph  {P. neoechinulatum}. Unknown strains overwhelmingly collapse onto a few frequent reference species, especially \emph  {P. polonicum} and \emph  {P. tricolor}, confirming that threshold rejection is still required on top of nearest-neighbour retrieval.}}{33}{figure.2.13}\protected@file@percent }
+\newlabel{fig:threshold_confusion}{{2.13}{33}{Confusion matrix for retrieval predictions with an UNKNOWN class added for the incoming diverse set. The evaluation contains 48 known test sets and 294 unknown test sets. Known-species accuracy is 66.7\% (32/48) after label normalization. Major failure modes remain \emph {P. melanoconidium} $\rightarrow $ \emph {P. polonicum}/\emph {P. viridicatum} and cross-confusion involving \emph {P. neoechinulatum}. Unknown strains overwhelmingly collapse onto a few frequent reference species, especially \emph {P. polonicum} and \emph {P. tricolor}, confirming that threshold rejection is still required on top of nearest-neighbour retrieval}{figure.2.13}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {2.4}Discussion}{33}{section.2.4}\protected@file@percent }
 \newlabel{discussion}{{2.4}{33}{Discussion}{section.2.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.13}{\ignorespaces (Left) Top-1 score distribution for known ($n=48$, $\mu =0.195$) versus unknown ($n=294$, $\mu =0.143$) test sets. Known samples are right-shifted, but the overlap is still substantial. (Right) Per-species known-class retrieval accuracy after label normalization across 5 species. \emph  {P. polonicum} is strongest (12/12), while \emph  {P. melanoconidium} remains the hardest case (0/6).}}{34}{figure.2.13}\protected@file@percent }
-\newlabel{fig:threshold_known_unknown}{{2.13}{34}{(Left) Top-1 score distribution for known ($n=48$, $\mu =0.195$) versus unknown ($n=294$, $\mu =0.143$) test sets. Known samples are right-shifted, but the overlap is still substantial. (Right) Per-species known-class retrieval accuracy after label normalization across 5 species. \emph {P. polonicum} is strongest (12/12), while \emph {P. melanoconidium} remains the hardest case (0/6)}{figure.2.13}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2.14}{\ignorespaces Confusion matrix for retrieval predictions with an UNKNOWN class added for the incoming diverse set. The evaluation contains 48 known test sets and 294 unknown test sets. Known-species accuracy is 66.7\% (32/48) after label normalization. Major failure modes remain \emph  {P. melanoconidium} $\rightarrow $ \emph  {P. polonicum}/\emph  {P. viridicatum} and cross-confusion involving \emph  {P. neoechinulatum}. Unknown strains overwhelmingly collapse onto a few frequent reference species, especially \emph  {P. polonicum} and \emph  {P. tricolor}, confirming that threshold rejection is still required on top of nearest-neighbour retrieval.}}{35}{figure.2.14}\protected@file@percent }
-\newlabel{fig:threshold_confusion}{{2.14}{35}{Confusion matrix for retrieval predictions with an UNKNOWN class added for the incoming diverse set. The evaluation contains 48 known test sets and 294 unknown test sets. Known-species accuracy is 66.7\% (32/48) after label normalization. Major failure modes remain \emph {P. melanoconidium} $\rightarrow $ \emph {P. polonicum}/\emph {P. viridicatum} and cross-confusion involving \emph {P. neoechinulatum}. Unknown strains overwhelmingly collapse onto a few frequent reference species, especially \emph {P. polonicum} and \emph {P. tricolor}, confirming that threshold rejection is still required on top of nearest-neighbour retrieval}{figure.2.14}{}}
-\@writefile{toc}{\contentsline {chapter}{\numberline {3}WEB APPLICATION DESIGN \& IMPLEMENTATION}{36}{chapter.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {3}WEB APPLICATION DESIGN \& IMPLEMENTATION}{35}{chapter.3}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
 \@writefile{loa}{\addvspace {10\p@ }}
-\@writefile{toc}{\contentsline {section}{\numberline {3.1}Requirements Analysis}{36}{section.3.1}\protected@file@percent }
-\newlabel{requirements-analysis}{{3.1}{36}{Requirements Analysis}{section.3.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1.1}Actor Model and Permissions}{36}{subsection.3.1.1}\protected@file@percent }
-\newlabel{actor-model-and-permissions}{{3.1.1}{36}{Actor Model and Permissions}{subsection.3.1.1}{}}
-\@gls@reference{acronym}{qdrant}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{36}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1.2}Use Case Diagram}{36}{subsection.3.1.2}\protected@file@percent }
-\newlabel{use-case-diagram}{{3.1.2}{36}{Use Case Diagram}{subsection.3.1.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.1}{\ignorespaces Use case diagram for MycoAI Retrieval derived from the generated SRS.}}{37}{figure.3.1}\protected@file@percent }
-\newlabel{fig:ch03-usecase-diagram}{{3.1}{37}{Use case diagram for MycoAI Retrieval derived from the generated SRS}{figure.3.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1.3}Functional Requirements Summary}{38}{subsection.3.1.3}\protected@file@percent }
-\newlabel{functional-requirements-summary}{{3.1.3}{38}{Functional Requirements Summary}{subsection.3.1.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.1}Requirements Analysis}{35}{section.3.1}\protected@file@percent }
+\newlabel{requirements-analysis}{{3.1}{35}{Requirements Analysis}{section.3.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1.1}Actor Model and Permissions}{35}{subsection.3.1.1}\protected@file@percent }
+\newlabel{actor-model-and-permissions}{{3.1.1}{35}{Actor Model and Permissions}{subsection.3.1.1}{}}
+\@gls@reference{acronym}{qdrant}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{35}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1.2}Use Case Diagram}{35}{subsection.3.1.2}\protected@file@percent }
+\newlabel{use-case-diagram}{{3.1.2}{35}{Use Case Diagram}{subsection.3.1.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.1}{\ignorespaces Use case diagram for MycoAI Retrieval derived from the generated SRS.}}{36}{figure.3.1}\protected@file@percent }
+\newlabel{fig:ch03-usecase-diagram}{{3.1}{36}{Use case diagram for MycoAI Retrieval derived from the generated SRS}{figure.3.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1.3}Functional Requirements Summary}{37}{subsection.3.1.3}\protected@file@percent }
+\newlabel{functional-requirements-summary}{{3.1.3}{37}{Functional Requirements Summary}{subsection.3.1.3}{}}
 \citation{react}
 \abx@aux@cite{0}{react}
 \abx@aux@segm{0}{0}{react}
@@ -325,107 +321,107 @@
 \citation{merkel2014docker}
 \abx@aux@cite{0}{merkel2014docker}
 \abx@aux@segm{0}{0}{merkel2014docker}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1.4}Non-Functional Requirements}{39}{subsection.3.1.4}\protected@file@percent }
-\newlabel{non-functional-requirements}{{3.1.4}{39}{Non-Functional Requirements}{subsection.3.1.4}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.2}System Architecture}{39}{section.3.2}\protected@file@percent }
-\newlabel{system-architecture}{{3.2}{39}{System Architecture}{section.3.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.1}High-Level Architecture}{39}{subsection.3.2.1}\protected@file@percent }
-\newlabel{high-level-architecture}{{3.2.1}{39}{High-Level Architecture}{subsection.3.2.1}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.2}{\ignorespaces High-level system architecture: React SPA frontend, FastAPI backend, PostgreSQL, Qdrant, Redis, and Celery worker.}}{39}{figure.3.2}\protected@file@percent }
-\newlabel{fig:ch03-architecture}{{3.2}{39}{High-level system architecture: React SPA frontend, FastAPI backend, PostgreSQL, Qdrant, Redis, and Celery worker}{figure.3.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.2}Technology Stack}{40}{subsection.3.2.2}\protected@file@percent }
-\newlabel{technology-stack}{{3.2.2}{40}{Technology Stack}{subsection.3.2.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3.1}{\ignorespaces Technology stack summary}}{40}{table.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.3}Backend Package Structure}{40}{subsection.3.2.3}\protected@file@percent }
-\newlabel{backend-package-structure}{{3.2.3}{40}{Backend Package Structure}{subsection.3.2.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.4}Frontend Route Hierarchy}{40}{subsection.3.2.4}\protected@file@percent }
-\newlabel{frontend-route-hierarchy}{{3.2.4}{40}{Frontend Route Hierarchy}{subsection.3.2.4}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3.2}{\ignorespaces Frontend route hierarchy from the implemented React 19 application. Routes available to both User and Data Owner are listed first; Data Owner governance routes are marked (owner). Non-owner requests to owner routes are redirected to /retrieve.}}{41}{table.3.2}\protected@file@percent }
-\newlabel{tab:ch03-frontend-routes}{{3.2}{41}{Frontend route hierarchy from the implemented React 19 application. Routes available to both User and Data Owner are listed first; Data Owner governance routes are marked (owner). Non-owner requests to owner routes are redirected to /retrieve}{table.3.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.3}Database Design}{41}{section.3.3}\protected@file@percent }
-\newlabel{database-design}{{3.3}{41}{Database Design}{section.3.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.1}Entity-Relationship Diagram}{41}{subsection.3.3.1}\protected@file@percent }
-\newlabel{entity-relationship-diagram}{{3.3.1}{41}{Entity-Relationship Diagram}{subsection.3.3.1}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.3}{\ignorespaces Entity-Relationship Diagram for the MycoAI Retrieval PostgreSQL schema.}}{42}{figure.3.3}\protected@file@percent }
-\newlabel{fig:ch03-erd}{{3.3}{42}{Entity-Relationship Diagram for the MycoAI Retrieval PostgreSQL schema}{figure.3.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.2}Key Design Decisions}{42}{subsection.3.3.2}\protected@file@percent }
-\newlabel{key-design-decisions}{{3.3.2}{42}{Key Design Decisions}{subsection.3.3.2}{}}
-\@gls@reference{main}{media}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{42}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.3}Data Update Status Lifecycle}{43}{subsection.3.3.3}\protected@file@percent }
-\newlabel{data-update-status-lifecycle}{{3.3.3}{43}{Data Update Status Lifecycle}{subsection.3.3.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.4}{\ignorespaces State transition diagram for \texttt  {data\_update\_status}, which drives Qdrant re-indexing decisions.}}{43}{figure.3.4}\protected@file@percent }
-\newlabel{fig:ch03-data-state-machine}{{3.4}{43}{State transition diagram for \texttt {data\_update\_status}, which drives Qdrant re-indexing decisions}{figure.3.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.4}Dual-Database Strategy}{43}{subsection.3.3.4}\protected@file@percent }
-\newlabel{dual-database-strategy}{{3.3.4}{43}{Dual-Database Strategy}{subsection.3.3.4}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.4}API Design}{43}{section.3.4}\protected@file@percent }
-\newlabel{api-design}{{3.4}{43}{API Design}{section.3.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.1}Endpoint Catalog}{43}{subsection.3.4.1}\protected@file@percent }
-\newlabel{endpoint-catalog}{{3.4.1}{43}{Endpoint Catalog}{subsection.3.4.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3.3}{\ignorespaces REST API endpoint groups and role-gated access boundaries. Endpoints above the rule are accessible to both User and Data Owner; endpoints below require Data Owner role (return 403 Forbidden for User).}}{44}{table.3.3}\protected@file@percent }
-\newlabel{tab:ch03-api-map}{{3.3}{44}{REST API endpoint groups and role-gated access boundaries. Endpoints above the rule are accessible to both User and Data Owner; endpoints below require Data Owner role (return 403 Forbidden for User)}{table.3.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.2}Authentication Flow}{45}{subsection.3.4.2}\protected@file@percent }
-\newlabel{authentication-flow}{{3.4.2}{45}{Authentication Flow}{subsection.3.4.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.5}{\ignorespaces Authentication sequence for login, token refresh, logout, and Data Owner provisioning.}}{45}{figure.3.5}\protected@file@percent }
-\newlabel{fig:ch03-auth-sequence}{{3.5}{45}{Authentication sequence for login, token refresh, logout, and Data Owner provisioning}{figure.3.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.3}Retrieval Query Sequence}{45}{subsection.3.4.3}\protected@file@percent }
-\newlabel{retrieval-query-sequence}{{3.4.3}{45}{Retrieval Query Sequence}{subsection.3.4.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.6}{\ignorespaces High-level retrieval sequence diagram derived from the SRS and checked against the implemented frontend/backend boundary.}}{46}{figure.3.6}\protected@file@percent }
-\newlabel{fig:ch03-retrieve-sequence}{{3.6}{46}{High-level retrieval sequence diagram derived from the SRS and checked against the implemented frontend/backend boundary}{figure.3.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.4}Indexing and Feedback Sequences}{46}{subsection.3.4.4}\protected@file@percent }
-\newlabel{indexing-feedback-sequences}{{3.4.4}{46}{Indexing and Feedback Sequences}{subsection.3.4.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.7}{\ignorespaces Data Owner reference-data indexing sequence.}}{46}{figure.3.7}\protected@file@percent }
-\newlabel{fig:ch03-index-sequence}{{3.7}{46}{Data Owner reference-data indexing sequence}{figure.3.7}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.8}{\ignorespaces Feedback submission and Data Owner review sequence.}}{47}{figure.3.8}\protected@file@percent }
-\newlabel{fig:ch03-feedback-sequence}{{3.8}{47}{Feedback submission and Data Owner review sequence}{figure.3.8}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.5}Error Response Format}{47}{subsection.3.4.5}\protected@file@percent }
-\newlabel{error-response-format}{{3.4.5}{47}{Error Response Format}{subsection.3.4.5}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.5}Frontend Architecture}{47}{section.3.5}\protected@file@percent }
-\newlabel{frontend-architecture}{{3.5}{47}{Frontend Architecture}{section.3.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.1}User Interface Scope}{47}{subsection.3.5.1}\protected@file@percent }
-\newlabel{component-architecture}{{3.5.1}{47}{User Interface Scope}{subsection.3.5.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.2}Key Page: Retrieve}{47}{subsection.3.5.2}\protected@file@percent }
-\newlabel{key-page-retrieve-species-retrieval}{{3.5.2}{47}{Key Page: Retrieve}{subsection.3.5.2}{}}
-\@gls@reference{main}{strain}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{47}}
-\@gls@reference{main}{media}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{47}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.3}Key Page: Dataset Browser}{48}{subsection.3.5.3}\protected@file@percent }
-\newlabel{key-page-dataset-browser-data-owner}{{3.5.3}{48}{Key Page: Dataset Browser}{subsection.3.5.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.4}Key Page: Dashboard}{48}{subsection.3.5.4}\protected@file@percent }
-\newlabel{key-page-dashboard-data-owner}{{3.5.4}{48}{Key Page: Dashboard}{subsection.3.5.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.5}Key Page: User Management and Audit Log}{48}{subsection.3.5.5}\protected@file@percent }
-\newlabel{key-page-user-management-audit-log-data-owner}{{3.5.5}{48}{Key Page: User Management and Audit Log}{subsection.3.5.5}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.6}Core Backend Pipelines}{48}{section.3.6}\protected@file@percent }
-\newlabel{core-backend-pipelines}{{3.6}{48}{Core Backend Pipelines}{section.3.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.6.1}Segmentation Pipeline}{48}{subsection.3.6.1}\protected@file@percent }
-\newlabel{segmentation-pipeline}{{3.6.1}{48}{Segmentation Pipeline}{subsection.3.6.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.6.2}Retrieval Pipeline}{49}{subsection.3.6.2}\protected@file@percent }
-\newlabel{retrieval-pipeline}{{3.6.2}{49}{Retrieval Pipeline}{subsection.3.6.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.6.3}Qdrant Vector Database Design}{49}{subsection.3.6.3}\protected@file@percent }
-\newlabel{qdrant-vector-database-design}{{3.6.3}{49}{Qdrant Vector Database Design}{subsection.3.6.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.6.4}Model and Index Maintenance}{49}{subsection.3.6.4}\protected@file@percent }
-\newlabel{model-and-index-maintenance}{{3.6.4}{49}{Model and Index Maintenance}{subsection.3.6.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.9}{\ignorespaces Candidate Model promotion flow (UC-MODEL-01 Maintain Model and Index): Data Owner uploads, evaluates side-by-side against the current active model on a fixed evaluation set, and manually promotes or rejects.}}{49}{figure.3.9}\protected@file@percent }
-\newlabel{fig:ch03-candidate-model}{{3.9}{49}{Candidate Model promotion flow (UC-MODEL-01 Maintain Model and Index): Data Owner uploads, evaluates side-by-side against the current active model on a fixed evaluation set, and manually promotes or rejects}{figure.3.9}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.10}{\ignorespaces Re-index trigger and external retraining guidance for UC-MODEL-01: the Data Owner inspects index status including changed-data and accumulated-feedback counts, re-indexes Qdrant for stale items, and receives external retraining guidance when the change threshold is crossed.}}{50}{figure.3.10}\protected@file@percent }
-\newlabel{fig:ch03-reindex-warning}{{3.10}{50}{Re-index trigger and external retraining guidance for UC-MODEL-01: the Data Owner inspects index status including changed-data and accumulated-feedback counts, re-indexes Qdrant for stale items, and receives external retraining guidance when the change threshold is crossed}{figure.3.10}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.7}Deployment Architecture}{51}{section.3.7}\protected@file@percent }
-\newlabel{deployment-architecture}{{3.7}{51}{Deployment Architecture}{section.3.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.7.1}Docker Compose Topology}{51}{subsection.3.7.1}\protected@file@percent }
-\newlabel{docker-compose-topology}{{3.7.1}{51}{Docker Compose Topology}{subsection.3.7.1}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.11}{\ignorespaces Production Docker Compose topology: services, network boundaries, and persistent volumes.}}{51}{figure.3.11}\protected@file@percent }
-\newlabel{fig:ch03-deployment}{{3.11}{51}{Production Docker Compose topology: services, network boundaries, and persistent volumes}{figure.3.11}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.7.2}CI/CD Pipeline}{51}{subsection.3.7.2}\protected@file@percent }
-\newlabel{cicd-pipeline}{{3.7.2}{51}{CI/CD Pipeline}{subsection.3.7.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.8}Data Visualization Charts}{51}{section.3.8}\protected@file@percent }
-\newlabel{data-visualization-charts}{{3.8}{51}{Data Visualization Charts}{section.3.8}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.12}{\ignorespaces Species distribution in the reference dataset.}}{52}{figure.3.12}\protected@file@percent }
-\newlabel{fig:ch03-species-distribution}{{3.12}{52}{Species distribution in the reference dataset}{figure.3.12}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.13}{\ignorespaces Growth media distribution.}}{52}{figure.3.13}\protected@file@percent }
-\newlabel{fig:ch03-media-distribution}{{3.13}{52}{Growth media distribution}{figure.3.13}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3.14}{\ignorespaces Retrieval response-time histogram.}}{53}{figure.3.14}\protected@file@percent }
-\newlabel{fig:ch03-response-time}{{3.14}{53}{Retrieval response-time histogram}{figure.3.14}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {3.9}Summary}{53}{section.3.9}\protected@file@percent }
-\newlabel{summary}{{3.9}{53}{Summary}{section.3.9}{}}
-\@gls@reference{acronym}{qdrant}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{53}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1.4}Non-Functional Requirements}{38}{subsection.3.1.4}\protected@file@percent }
+\newlabel{non-functional-requirements}{{3.1.4}{38}{Non-Functional Requirements}{subsection.3.1.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.2}System Architecture}{38}{section.3.2}\protected@file@percent }
+\newlabel{system-architecture}{{3.2}{38}{System Architecture}{section.3.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.1}High-Level Architecture}{38}{subsection.3.2.1}\protected@file@percent }
+\newlabel{high-level-architecture}{{3.2.1}{38}{High-Level Architecture}{subsection.3.2.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.2}{\ignorespaces High-level system architecture: React SPA frontend, FastAPI backend, PostgreSQL, Qdrant, Redis, and Celery worker.}}{38}{figure.3.2}\protected@file@percent }
+\newlabel{fig:ch03-architecture}{{3.2}{38}{High-level system architecture: React SPA frontend, FastAPI backend, PostgreSQL, Qdrant, Redis, and Celery worker}{figure.3.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.2}Technology Stack}{39}{subsection.3.2.2}\protected@file@percent }
+\newlabel{technology-stack}{{3.2.2}{39}{Technology Stack}{subsection.3.2.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3.1}{\ignorespaces Technology stack summary}}{39}{table.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.3}Backend Package Structure}{39}{subsection.3.2.3}\protected@file@percent }
+\newlabel{backend-package-structure}{{3.2.3}{39}{Backend Package Structure}{subsection.3.2.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2.4}Frontend Route Hierarchy}{39}{subsection.3.2.4}\protected@file@percent }
+\newlabel{frontend-route-hierarchy}{{3.2.4}{39}{Frontend Route Hierarchy}{subsection.3.2.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3.2}{\ignorespaces Frontend route hierarchy from the implemented React 19 application. Routes available to both User and Data Owner are listed first; Data Owner governance routes are marked (owner). Non-owner requests to owner routes are redirected to /retrieve.}}{40}{table.3.2}\protected@file@percent }
+\newlabel{tab:ch03-frontend-routes}{{3.2}{40}{Frontend route hierarchy from the implemented React 19 application. Routes available to both User and Data Owner are listed first; Data Owner governance routes are marked (owner). Non-owner requests to owner routes are redirected to /retrieve}{table.3.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.3}Database Design}{40}{section.3.3}\protected@file@percent }
+\newlabel{database-design}{{3.3}{40}{Database Design}{section.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.1}Entity-Relationship Diagram}{40}{subsection.3.3.1}\protected@file@percent }
+\newlabel{entity-relationship-diagram}{{3.3.1}{40}{Entity-Relationship Diagram}{subsection.3.3.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.3}{\ignorespaces Entity-Relationship Diagram for the MycoAI Retrieval PostgreSQL schema.}}{41}{figure.3.3}\protected@file@percent }
+\newlabel{fig:ch03-erd}{{3.3}{41}{Entity-Relationship Diagram for the MycoAI Retrieval PostgreSQL schema}{figure.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.2}Key Design Decisions}{41}{subsection.3.3.2}\protected@file@percent }
+\newlabel{key-design-decisions}{{3.3.2}{41}{Key Design Decisions}{subsection.3.3.2}{}}
+\@gls@reference{main}{media}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{41}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.3}Data Update Status Lifecycle}{42}{subsection.3.3.3}\protected@file@percent }
+\newlabel{data-update-status-lifecycle}{{3.3.3}{42}{Data Update Status Lifecycle}{subsection.3.3.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.4}{\ignorespaces State transition diagram for \texttt  {data\_update\_status}, which drives Qdrant re-indexing decisions.}}{42}{figure.3.4}\protected@file@percent }
+\newlabel{fig:ch03-data-state-machine}{{3.4}{42}{State transition diagram for \texttt {data\_update\_status}, which drives Qdrant re-indexing decisions}{figure.3.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.4}Dual-Database Strategy}{42}{subsection.3.3.4}\protected@file@percent }
+\newlabel{dual-database-strategy}{{3.3.4}{42}{Dual-Database Strategy}{subsection.3.3.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.4}API Design}{42}{section.3.4}\protected@file@percent }
+\newlabel{api-design}{{3.4}{42}{API Design}{section.3.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.1}Endpoint Catalog}{42}{subsection.3.4.1}\protected@file@percent }
+\newlabel{endpoint-catalog}{{3.4.1}{42}{Endpoint Catalog}{subsection.3.4.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3.3}{\ignorespaces REST API endpoint groups and role-gated access boundaries. Endpoints above the rule are accessible to both User and Data Owner; endpoints below require Data Owner role (return 403 Forbidden for User).}}{43}{table.3.3}\protected@file@percent }
+\newlabel{tab:ch03-api-map}{{3.3}{43}{REST API endpoint groups and role-gated access boundaries. Endpoints above the rule are accessible to both User and Data Owner; endpoints below require Data Owner role (return 403 Forbidden for User)}{table.3.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.2}Authentication Flow}{44}{subsection.3.4.2}\protected@file@percent }
+\newlabel{authentication-flow}{{3.4.2}{44}{Authentication Flow}{subsection.3.4.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.5}{\ignorespaces Authentication sequence for login, token refresh, logout, and Data Owner provisioning.}}{44}{figure.3.5}\protected@file@percent }
+\newlabel{fig:ch03-auth-sequence}{{3.5}{44}{Authentication sequence for login, token refresh, logout, and Data Owner provisioning}{figure.3.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.3}Retrieval Query Sequence}{44}{subsection.3.4.3}\protected@file@percent }
+\newlabel{retrieval-query-sequence}{{3.4.3}{44}{Retrieval Query Sequence}{subsection.3.4.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.6}{\ignorespaces High-level retrieval sequence diagram derived from the SRS and checked against the implemented frontend/backend boundary.}}{45}{figure.3.6}\protected@file@percent }
+\newlabel{fig:ch03-retrieve-sequence}{{3.6}{45}{High-level retrieval sequence diagram derived from the SRS and checked against the implemented frontend/backend boundary}{figure.3.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.4}Indexing and Feedback Sequences}{45}{subsection.3.4.4}\protected@file@percent }
+\newlabel{indexing-feedback-sequences}{{3.4.4}{45}{Indexing and Feedback Sequences}{subsection.3.4.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.7}{\ignorespaces Data Owner reference-data indexing sequence.}}{45}{figure.3.7}\protected@file@percent }
+\newlabel{fig:ch03-index-sequence}{{3.7}{45}{Data Owner reference-data indexing sequence}{figure.3.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.8}{\ignorespaces Feedback submission and Data Owner review sequence.}}{46}{figure.3.8}\protected@file@percent }
+\newlabel{fig:ch03-feedback-sequence}{{3.8}{46}{Feedback submission and Data Owner review sequence}{figure.3.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.5}Error Response Format}{46}{subsection.3.4.5}\protected@file@percent }
+\newlabel{error-response-format}{{3.4.5}{46}{Error Response Format}{subsection.3.4.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.5}Frontend Architecture}{46}{section.3.5}\protected@file@percent }
+\newlabel{frontend-architecture}{{3.5}{46}{Frontend Architecture}{section.3.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.1}User Interface Scope}{46}{subsection.3.5.1}\protected@file@percent }
+\newlabel{component-architecture}{{3.5.1}{46}{User Interface Scope}{subsection.3.5.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.2}Key Page: Retrieve}{46}{subsection.3.5.2}\protected@file@percent }
+\newlabel{key-page-retrieve-species-retrieval}{{3.5.2}{46}{Key Page: Retrieve}{subsection.3.5.2}{}}
+\@gls@reference{main}{strain}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{46}}
+\@gls@reference{main}{media}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{46}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.3}Key Page: Dataset Browser}{47}{subsection.3.5.3}\protected@file@percent }
+\newlabel{key-page-dataset-browser-data-owner}{{3.5.3}{47}{Key Page: Dataset Browser}{subsection.3.5.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.4}Key Page: Dashboard}{47}{subsection.3.5.4}\protected@file@percent }
+\newlabel{key-page-dashboard-data-owner}{{3.5.4}{47}{Key Page: Dashboard}{subsection.3.5.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.5}Key Page: User Management and Audit Log}{47}{subsection.3.5.5}\protected@file@percent }
+\newlabel{key-page-user-management-audit-log-data-owner}{{3.5.5}{47}{Key Page: User Management and Audit Log}{subsection.3.5.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.6}Core Backend Pipelines}{47}{section.3.6}\protected@file@percent }
+\newlabel{core-backend-pipelines}{{3.6}{47}{Core Backend Pipelines}{section.3.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6.1}Segmentation Pipeline}{47}{subsection.3.6.1}\protected@file@percent }
+\newlabel{segmentation-pipeline}{{3.6.1}{47}{Segmentation Pipeline}{subsection.3.6.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6.2}Retrieval Pipeline}{48}{subsection.3.6.2}\protected@file@percent }
+\newlabel{retrieval-pipeline}{{3.6.2}{48}{Retrieval Pipeline}{subsection.3.6.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6.3}Qdrant Vector Database Design}{48}{subsection.3.6.3}\protected@file@percent }
+\newlabel{qdrant-vector-database-design}{{3.6.3}{48}{Qdrant Vector Database Design}{subsection.3.6.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6.4}Model and Index Maintenance}{48}{subsection.3.6.4}\protected@file@percent }
+\newlabel{model-and-index-maintenance}{{3.6.4}{48}{Model and Index Maintenance}{subsection.3.6.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.9}{\ignorespaces Candidate Model promotion flow (UC-MODEL-01 Maintain Model and Index): Data Owner uploads, evaluates side-by-side against the current active model on a fixed evaluation set, and manually promotes or rejects.}}{48}{figure.3.9}\protected@file@percent }
+\newlabel{fig:ch03-candidate-model}{{3.9}{48}{Candidate Model promotion flow (UC-MODEL-01 Maintain Model and Index): Data Owner uploads, evaluates side-by-side against the current active model on a fixed evaluation set, and manually promotes or rejects}{figure.3.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.10}{\ignorespaces Re-index trigger and external retraining guidance for UC-MODEL-01: the Data Owner inspects index status including changed-data and accumulated-feedback counts, re-indexes Qdrant for stale items, and receives external retraining guidance when the change threshold is crossed.}}{49}{figure.3.10}\protected@file@percent }
+\newlabel{fig:ch03-reindex-warning}{{3.10}{49}{Re-index trigger and external retraining guidance for UC-MODEL-01: the Data Owner inspects index status including changed-data and accumulated-feedback counts, re-indexes Qdrant for stale items, and receives external retraining guidance when the change threshold is crossed}{figure.3.10}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.7}Deployment Architecture}{50}{section.3.7}\protected@file@percent }
+\newlabel{deployment-architecture}{{3.7}{50}{Deployment Architecture}{section.3.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.7.1}Docker Compose Topology}{50}{subsection.3.7.1}\protected@file@percent }
+\newlabel{docker-compose-topology}{{3.7.1}{50}{Docker Compose Topology}{subsection.3.7.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.11}{\ignorespaces Production Docker Compose topology: services, network boundaries, and persistent volumes.}}{50}{figure.3.11}\protected@file@percent }
+\newlabel{fig:ch03-deployment}{{3.11}{50}{Production Docker Compose topology: services, network boundaries, and persistent volumes}{figure.3.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.7.2}CI/CD Pipeline}{50}{subsection.3.7.2}\protected@file@percent }
+\newlabel{cicd-pipeline}{{3.7.2}{50}{CI/CD Pipeline}{subsection.3.7.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.8}Data Visualization Charts}{50}{section.3.8}\protected@file@percent }
+\newlabel{data-visualization-charts}{{3.8}{50}{Data Visualization Charts}{section.3.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.12}{\ignorespaces Species distribution in the reference dataset.}}{51}{figure.3.12}\protected@file@percent }
+\newlabel{fig:ch03-species-distribution}{{3.12}{51}{Species distribution in the reference dataset}{figure.3.12}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.13}{\ignorespaces Growth media distribution.}}{51}{figure.3.13}\protected@file@percent }
+\newlabel{fig:ch03-media-distribution}{{3.13}{51}{Growth media distribution}{figure.3.13}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3.14}{\ignorespaces Retrieval response-time histogram.}}{52}{figure.3.14}\protected@file@percent }
+\newlabel{fig:ch03-response-time}{{3.14}{52}{Retrieval response-time histogram}{figure.3.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.9}Summary}{52}{section.3.9}\protected@file@percent }
+\newlabel{summary}{{3.9}{52}{Summary}{section.3.9}{}}
+\@gls@reference{acronym}{qdrant}{\glsnoidxdisplayloc{}{page}{glsnumberformat}{52}}
 \citation{karpathy2026autoresearch}
 \abx@aux@cite{0}{karpathy2026autoresearch}
 \abx@aux@segm{0}{0}{karpathy2026autoresearch}
@@ -435,110 +431,110 @@
 \citation{karpathy2026autoresearch}
 \abx@aux@cite{0}{karpathy2026autoresearch}
 \abx@aux@segm{0}{0}{karpathy2026autoresearch}
-\@writefile{toc}{\contentsline {chapter}{\numberline {4}AGENTIC ENGINEERING \& EVALUATION}{54}{chapter.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {4}AGENTIC ENGINEERING \& EVALUATION}{53}{chapter.4}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
 \@writefile{loa}{\addvspace {10\p@ }}
-\@writefile{toc}{\contentsline {section}{\numberline {4.1}Motivation}{54}{section.4.1}\protected@file@percent }
-\newlabel{motivation-agentic}{{4.1}{54}{Motivation}{section.4.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.2}Multi-Agent Architecture}{54}{section.4.2}\protected@file@percent }
-\newlabel{multi-agent-architecture}{{4.2}{54}{Multi-Agent Architecture}{section.4.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.1}Delegation Map}{54}{subsection.4.2.1}\protected@file@percent }
-\newlabel{delegation-map}{{4.2.1}{54}{Delegation Map}{subsection.4.2.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.1}Motivation}{53}{section.4.1}\protected@file@percent }
+\newlabel{motivation-agentic}{{4.1}{53}{Motivation}{section.4.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.2}Multi-Agent Architecture}{53}{section.4.2}\protected@file@percent }
+\newlabel{multi-agent-architecture}{{4.2}{53}{Multi-Agent Architecture}{section.4.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.1}Delegation Map}{53}{subsection.4.2.1}\protected@file@percent }
+\newlabel{delegation-map}{{4.2.1}{53}{Delegation Map}{subsection.4.2.1}{}}
 \citation{speckit}
 \abx@aux@cite{0}{speckit}
 \abx@aux@segm{0}{0}{speckit}
 \citation{openspec}
 \abx@aux@cite{0}{openspec}
 \abx@aux@segm{0}{0}{openspec}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.1}{\ignorespaces Autolab five-agent interaction: scientist $\rightarrow $ Autolab orchestrator $\rightarrow $ Researcher (hypotheses), Planner (queue), Worker (parallel experiment execution in isolated git worktrees), Reporter (F1 summary). Workers use \texttt  {fcntl.flock} for CSV-safe concurrent writes.}}{55}{figure.4.1}\protected@file@percent }
-\newlabel{fig:autolab-agents}{{4.1}{55}{Autolab five-agent interaction: scientist $\rightarrow $ Autolab orchestrator $\rightarrow $ Researcher (hypotheses), Planner (queue), Worker (parallel experiment execution in isolated git worktrees), Reporter (F1 summary). Workers use \texttt {fcntl.flock} for CSV-safe concurrent writes}{figure.4.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.3}Reducing Hallucinations}{55}{section.4.3}\protected@file@percent }
-\newlabel{reducing-hallucinations}{{4.3}{55}{Reducing Hallucinations}{section.4.3}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.4}Overcoming Context Window Limits}{56}{section.4.4}\protected@file@percent }
-\newlabel{overcoming-context-window-limits}{{4.4}{56}{Overcoming Context Window Limits}{section.4.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.1}Caveman Mode}{56}{subsection.4.4.1}\protected@file@percent }
-\newlabel{caveman-mode}{{4.4.1}{56}{Caveman Mode}{subsection.4.4.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.2}Subagents and Worktrees}{56}{subsection.4.4.2}\protected@file@percent }
-\newlabel{subagents-and-worktrees}{{4.4.2}{56}{Subagents and Worktrees}{subsection.4.4.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.3}Reusable Skills}{56}{subsection.4.4.3}\protected@file@percent }
-\newlabel{reusable-skills}{{4.4.3}{56}{Reusable Skills}{subsection.4.4.3}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.5}Experiment Results}{56}{section.4.5}\protected@file@percent }
-\newlabel{experiment-results}{{4.5}{56}{Experiment Results}{section.4.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.1}Summary Table}{56}{subsection.4.5.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4.1}{\ignorespaces Summary of all experiment results}}{56}{table.4.1}\protected@file@percent }
-\newlabel{tab:exp_summary}{{4.1}{56}{Summary of all experiment results}{table.4.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.6}End-to-End Agent-Browser Testing}{56}{section.4.6}\protected@file@percent }
-\newlabel{e2e-agent-browser}{{4.6}{56}{End-to-End Agent-Browser Testing}{section.4.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.6.1}Test Configuration}{56}{subsection.4.6.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.6.2}Test Flow}{57}{subsection.4.6.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4.2}{\ignorespaces Login page for test account registration and authentication}}{57}{figure.4.2}\protected@file@percent }
-\newlabel{fig:e2e_login}{{4.2}{57}{Login page for test account registration and authentication}{figure.4.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.3}{\ignorespaces Dashboard showing dataset overview (727 images, 136 species, 5 media types)}}{57}{figure.4.3}\protected@file@percent }
-\newlabel{fig:e2e_dashboard}{{4.3}{57}{Dashboard showing dataset overview (727 images, 136 species, 5 media types)}{figure.4.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.4}{\ignorespaces Retrieve Species upload page with batch ZIP upload, KNN configuration controls}}{58}{figure.4.4}\protected@file@percent }
-\newlabel{fig:e2e_retrieve_upload}{{4.4}{58}{Retrieve Species upload page with batch ZIP upload, KNN configuration controls}{figure.4.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.5}{\ignorespaces Segmentation review page with editable bounding boxes and segment grid}}{58}{figure.4.5}\protected@file@percent }
-\newlabel{fig:e2e_segmentation}{{4.5}{58}{Segmentation review page with editable bounding boxes and segment grid}{figure.4.5}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.6}{\ignorespaces Retrieval results (light theme): ranked species predictions with threshold confidence (green = known, using backend default gnorm\_0\_2 formula), KNN neighbor details per query image, and species distribution chart. Captured via headless browser automation with forced light theme.}}{58}{figure.4.6}\protected@file@percent }
-\newlabel{fig:e2e_results}{{4.6}{58}{Retrieval results (light theme): ranked species predictions with threshold confidence (green = known, using backend default gnorm\_0\_2 formula), KNN neighbor details per query image, and species distribution chart. Captured via headless browser automation with forced light theme}{figure.4.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.6.3}Configurational Alignment Verification}{59}{subsection.4.6.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4.2}{\ignorespaces Configuration alignment: research experiment vs. production webapp}}{59}{table.4.2}\protected@file@percent }
-\newlabel{tab:config_align}{{4.2}{59}{Configuration alignment: research experiment vs. production webapp}{table.4.2}{}}
-\@writefile{toc}{\contentsline {chapter}{\numberline {5}CONCLUSION}{60}{chapter.5}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4.1}{\ignorespaces Autolab five-agent interaction: scientist $\rightarrow $ Autolab orchestrator $\rightarrow $ Researcher (hypotheses), Planner (queue), Worker (parallel experiment execution in isolated git worktrees), Reporter (F1 summary). Workers use \texttt  {fcntl.flock} for CSV-safe concurrent writes.}}{54}{figure.4.1}\protected@file@percent }
+\newlabel{fig:autolab-agents}{{4.1}{54}{Autolab five-agent interaction: scientist $\rightarrow $ Autolab orchestrator $\rightarrow $ Researcher (hypotheses), Planner (queue), Worker (parallel experiment execution in isolated git worktrees), Reporter (F1 summary). Workers use \texttt {fcntl.flock} for CSV-safe concurrent writes}{figure.4.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.3}Reducing Hallucinations}{54}{section.4.3}\protected@file@percent }
+\newlabel{reducing-hallucinations}{{4.3}{54}{Reducing Hallucinations}{section.4.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.4}Overcoming Context Window Limits}{55}{section.4.4}\protected@file@percent }
+\newlabel{overcoming-context-window-limits}{{4.4}{55}{Overcoming Context Window Limits}{section.4.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.1}Caveman Mode}{55}{subsection.4.4.1}\protected@file@percent }
+\newlabel{caveman-mode}{{4.4.1}{55}{Caveman Mode}{subsection.4.4.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.2}Subagents and Worktrees}{55}{subsection.4.4.2}\protected@file@percent }
+\newlabel{subagents-and-worktrees}{{4.4.2}{55}{Subagents and Worktrees}{subsection.4.4.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.3}Reusable Skills}{55}{subsection.4.4.3}\protected@file@percent }
+\newlabel{reusable-skills}{{4.4.3}{55}{Reusable Skills}{subsection.4.4.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.5}Experiment Results}{55}{section.4.5}\protected@file@percent }
+\newlabel{experiment-results}{{4.5}{55}{Experiment Results}{section.4.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.1}Summary Table}{55}{subsection.4.5.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4.1}{\ignorespaces Summary of all experiment results}}{55}{table.4.1}\protected@file@percent }
+\newlabel{tab:exp_summary}{{4.1}{55}{Summary of all experiment results}{table.4.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.6}End-to-End Agent-Browser Testing}{55}{section.4.6}\protected@file@percent }
+\newlabel{e2e-agent-browser}{{4.6}{55}{End-to-End Agent-Browser Testing}{section.4.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6.1}Test Configuration}{55}{subsection.4.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6.2}Test Flow}{56}{subsection.4.6.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4.2}{\ignorespaces Login page for test account registration and authentication}}{56}{figure.4.2}\protected@file@percent }
+\newlabel{fig:e2e_login}{{4.2}{56}{Login page for test account registration and authentication}{figure.4.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.3}{\ignorespaces Dashboard showing dataset overview (727 images, 136 species, 5 media types)}}{56}{figure.4.3}\protected@file@percent }
+\newlabel{fig:e2e_dashboard}{{4.3}{56}{Dashboard showing dataset overview (727 images, 136 species, 5 media types)}{figure.4.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.4}{\ignorespaces Retrieve Species upload page with batch ZIP upload, KNN configuration controls}}{57}{figure.4.4}\protected@file@percent }
+\newlabel{fig:e2e_retrieve_upload}{{4.4}{57}{Retrieve Species upload page with batch ZIP upload, KNN configuration controls}{figure.4.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.5}{\ignorespaces Segmentation review page with editable bounding boxes and segment grid}}{57}{figure.4.5}\protected@file@percent }
+\newlabel{fig:e2e_segmentation}{{4.5}{57}{Segmentation review page with editable bounding boxes and segment grid}{figure.4.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.6}{\ignorespaces Retrieval results (light theme): ranked species predictions with threshold confidence (green = known, using backend default gnorm\_0\_2 formula), KNN neighbor details per query image, and species distribution chart. Captured via headless browser automation with forced light theme.}}{57}{figure.4.6}\protected@file@percent }
+\newlabel{fig:e2e_results}{{4.6}{57}{Retrieval results (light theme): ranked species predictions with threshold confidence (green = known, using backend default gnorm\_0\_2 formula), KNN neighbor details per query image, and species distribution chart. Captured via headless browser automation with forced light theme}{figure.4.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6.3}Configurational Alignment Verification}{58}{subsection.4.6.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4.2}{\ignorespaces Configuration alignment: research experiment vs. production webapp}}{58}{table.4.2}\protected@file@percent }
+\newlabel{tab:config_align}{{4.2}{58}{Configuration alignment: research experiment vs. production webapp}{table.4.2}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {5}CONCLUSION}{59}{chapter.5}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
 \@writefile{loa}{\addvspace {10\p@ }}
-\@writefile{toc}{\contentsline {section}{\numberline {5.1}Summary}{60}{section.5.1}\protected@file@percent }
-\newlabel{summary-evaluation}{{5.1}{60}{Summary}{section.5.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {5.2}Future Work}{60}{section.5.2}\protected@file@percent }
-\newlabel{future-work}{{5.2}{60}{Future Work}{section.5.2}{}}
-\@writefile{toc}{\contentsline {chapter}{REFERENCE}{64}{section*.44}\protected@file@percent }
-\@writefile{toc}{\contentsline {chapter}{\numberline {A}USE CASE DESCRIPTIONS}{66}{chapter.1.A}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5.1}Summary}{59}{section.5.1}\protected@file@percent }
+\newlabel{summary-evaluation}{{5.1}{59}{Summary}{section.5.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5.2}Future Work}{59}{section.5.2}\protected@file@percent }
+\newlabel{future-work}{{5.2}{59}{Future Work}{section.5.2}{}}
+\@writefile{toc}{\contentsline {chapter}{REFERENCE}{63}{section*.44}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {A}USE CASE DESCRIPTIONS}{65}{chapter.1.A}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
 \@writefile{loa}{\addvspace {10\p@ }}
-\@writefile{toc}{\contentsline {section}{\numberline {A.1}Use Case Specifications}{67}{section.1.A.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.1.1}UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}{67}{subsection.1.A.1.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {A.1}{\ignorespaces UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}}{67}{table.1.A.1}\protected@file@percent }
-\newlabel{tab:uc_retrieve}{{A.1}{67}{UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}{table.1.A.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.1.2}UC-DATA-01: Index New Data}{68}{subsection.1.A.1.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {A.2}{\ignorespaces UC-DATA-01: Index New Data}}{68}{table.1.A.2}\protected@file@percent }
-\newlabel{tab:uc_data}{{A.2}{68}{UC-DATA-01: Index New Data}{table.1.A.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {A.2}Detailed Experiment Results}{68}{section.1.A.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.2.1}Retrieval Pipeline Full Results ($K=7$, \texttt  {weighted}, E1)}{68}{subsection.1.A.2.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {A.3}{\ignorespaces Finetuned vs.\ pretrained retrieval comparison (weighted, E1, $K=7$, YOLO segments)}}{69}{table.1.A.3}\protected@file@percent }
-\newlabel{tab:retrieval_latest}{{A.3}{69}{Finetuned vs.\ pretrained retrieval comparison (weighted, E1, $K=7$, YOLO segments)}{table.1.A.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {A.4}{\ignorespaces YOLO vs.\ KMeans segmentation comparison (ResNet50, weighted, E1, $K=7$)}}{69}{table.1.A.4}\protected@file@percent }
-\newlabel{tab:seg_comparison}{{A.4}{69}{YOLO vs.\ KMeans segmentation comparison (ResNet50, weighted, E1, $K=7$)}{table.1.A.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.2.2}Cross-Validation Results (ResNet50 Finetuned, 5-Fold)}{69}{subsection.1.A.2.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {A.5}{\ignorespaces Top 10 cross-validation configurations by mean accuracy (ResNet50 finetuned)}}{69}{table.1.A.5}\protected@file@percent }
-\newlabel{tab:cv_top10}{{A.5}{69}{Top 10 cross-validation configurations by mean accuracy (ResNet50 finetuned)}{table.1.A.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.2.3}Threshold Analysis Results}{69}{subsection.1.A.2.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {A.6}{\ignorespaces Top 10 threshold strategies by F1 score}}{70}{table.1.A.6}\protected@file@percent }
-\newlabel{tab:threshold_top10}{{A.6}{70}{Top 10 threshold strategies by F1 score}{table.1.A.6}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {A.1}{\ignorespaces Per-species accuracy for the 5 known test species from regenerated threshold retrieval. \emph  {P. polonicum} achieves perfect accuracy; \emph  {P. melanoconidium} remains the hardest case (0/6).}}{70}{figure.1.A.1}\protected@file@percent }
-\newlabel{fig:threshold_known_species}{{A.1}{70}{Per-species accuracy for the 5 known test species from regenerated threshold retrieval. \emph {P. polonicum} achieves perfect accuracy; \emph {P. melanoconidium} remains the hardest case (0/6)}{figure.1.A.1}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {A.2}{\ignorespaces Formula score distribution across all species (known + unknown), showing separation boundary for the best threshold formula gap\_0\_2.}}{71}{figure.1.A.2}\protected@file@percent }
-\newlabel{fig:threshold_distribution}{{A.2}{71}{Formula score distribution across all species (known + unknown), showing separation boundary for the best threshold formula gap\_0\_2}{figure.1.A.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {A.3}Environment Strategy Definitions}{71}{section.1.A.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {A.7}{\ignorespaces Environment (growth medium) strategy definitions used in all experiments}}{71}{table.1.A.7}\protected@file@percent }
-\newlabel{tab:env_strategies}{{A.7}{71}{Environment (growth medium) strategy definitions used in all experiments}{table.1.A.7}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {A.4}Species Labels in Test Set}{71}{section.1.A.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {A.8}{\ignorespaces Test set species and representative strains}}{72}{table.1.A.8}\protected@file@percent }
-\newlabel{tab:test_species}{{A.8}{72}{Test set species and representative strains}{table.1.A.8}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {A.5}Prediction Visualizations}{72}{section.1.A.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.5.1}Confusion Matrices}{72}{subsection.1.A.5.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {A.3}{\ignorespaces Confusion matrix for the best fine-tuned configuration from the latest YOLO rerun. Diagonal cells show correct predictions; off-diagonal cells show the remaining species confusions under the updated E1/E2, $K=7$ protocol.}}{72}{figure.1.A.3}\protected@file@percent }
-\newlabel{fig:confusion_finetuned_best}{{A.3}{72}{Confusion matrix for the best fine-tuned configuration from the latest YOLO rerun. Diagonal cells show correct predictions; off-diagonal cells show the remaining species confusions under the updated E1/E2, $K=7$ protocol}{figure.1.A.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.5.2}Correct and Incorrect Prediction Examples}{72}{subsection.1.A.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {A.1}Use Case Specifications}{66}{section.1.A.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1.1}UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}{66}{subsection.1.A.1.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {A.1}{\ignorespaces UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}}{66}{table.1.A.1}\protected@file@percent }
+\newlabel{tab:uc_retrieve}{{A.1}{66}{UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}{table.1.A.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1.2}UC-DATA-01: Index New Data}{67}{subsection.1.A.1.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {A.2}{\ignorespaces UC-DATA-01: Index New Data}}{67}{table.1.A.2}\protected@file@percent }
+\newlabel{tab:uc_data}{{A.2}{67}{UC-DATA-01: Index New Data}{table.1.A.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A.2}Detailed Experiment Results}{67}{section.1.A.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2.1}Retrieval Pipeline Full Results ($K=7$, \texttt  {weighted}, E1)}{67}{subsection.1.A.2.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {A.3}{\ignorespaces Finetuned vs.\ pretrained retrieval comparison (weighted, E1, $K=7$, YOLO segments)}}{68}{table.1.A.3}\protected@file@percent }
+\newlabel{tab:retrieval_latest}{{A.3}{68}{Finetuned vs.\ pretrained retrieval comparison (weighted, E1, $K=7$, YOLO segments)}{table.1.A.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {A.4}{\ignorespaces YOLO vs.\ KMeans segmentation comparison (ResNet50, weighted, E1, $K=7$)}}{68}{table.1.A.4}\protected@file@percent }
+\newlabel{tab:seg_comparison}{{A.4}{68}{YOLO vs.\ KMeans segmentation comparison (ResNet50, weighted, E1, $K=7$)}{table.1.A.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2.2}Cross-Validation Results (ResNet50 Finetuned, 5-Fold)}{68}{subsection.1.A.2.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {A.5}{\ignorespaces Top 10 cross-validation configurations by mean accuracy (ResNet50 finetuned)}}{68}{table.1.A.5}\protected@file@percent }
+\newlabel{tab:cv_top10}{{A.5}{68}{Top 10 cross-validation configurations by mean accuracy (ResNet50 finetuned)}{table.1.A.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2.3}Threshold Analysis Results}{68}{subsection.1.A.2.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {A.6}{\ignorespaces Top 10 threshold strategies by F1 score}}{69}{table.1.A.6}\protected@file@percent }
+\newlabel{tab:threshold_top10}{{A.6}{69}{Top 10 threshold strategies by F1 score}{table.1.A.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {A.1}{\ignorespaces Per-species accuracy for the 5 known test species from regenerated threshold retrieval. \emph  {P. polonicum} achieves perfect accuracy; \emph  {P. melanoconidium} remains the hardest case (0/6).}}{69}{figure.1.A.1}\protected@file@percent }
+\newlabel{fig:threshold_known_species}{{A.1}{69}{Per-species accuracy for the 5 known test species from regenerated threshold retrieval. \emph {P. polonicum} achieves perfect accuracy; \emph {P. melanoconidium} remains the hardest case (0/6)}{figure.1.A.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {A.2}{\ignorespaces Formula score distribution across all species (known + unknown), showing separation boundary for the best threshold formula gap\_0\_2.}}{70}{figure.1.A.2}\protected@file@percent }
+\newlabel{fig:threshold_distribution}{{A.2}{70}{Formula score distribution across all species (known + unknown), showing separation boundary for the best threshold formula gap\_0\_2}{figure.1.A.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A.3}Environment Strategy Definitions}{70}{section.1.A.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {A.7}{\ignorespaces Environment (growth medium) strategy definitions used in all experiments}}{70}{table.1.A.7}\protected@file@percent }
+\newlabel{tab:env_strategies}{{A.7}{70}{Environment (growth medium) strategy definitions used in all experiments}{table.1.A.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A.4}Species Labels in Test Set}{70}{section.1.A.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {A.8}{\ignorespaces Test set species and representative strains}}{71}{table.1.A.8}\protected@file@percent }
+\newlabel{tab:test_species}{{A.8}{71}{Test set species and representative strains}{table.1.A.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A.5}Prediction Visualizations}{71}{section.1.A.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.5.1}Confusion Matrices}{71}{subsection.1.A.5.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {A.3}{\ignorespaces Confusion matrix for the best fine-tuned configuration from the latest YOLO rerun. Diagonal cells show correct predictions; off-diagonal cells show the remaining species confusions under the updated E1/E2, $K=7$ protocol.}}{71}{figure.1.A.3}\protected@file@percent }
+\newlabel{fig:confusion_finetuned_best}{{A.3}{71}{Confusion matrix for the best fine-tuned configuration from the latest YOLO rerun. Diagonal cells show correct predictions; off-diagonal cells show the remaining species confusions under the updated E1/E2, $K=7$ protocol}{figure.1.A.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.5.2}Correct and Incorrect Prediction Examples}{71}{subsection.1.A.5.2}\protected@file@percent }
 \ttl@finishall
-\@writefile{lof}{\contentsline {figure}{\numberline {A.4}{\ignorespaces Confusion matrix for the best pretrained configuration from the latest YOLO rerun: EfficientNetB1 with \texttt  {freq\_strength}, E1, and $K=7$.}}{73}{figure.1.A.4}\protected@file@percent }
-\newlabel{fig:confusion_efficientnetb1}{{A.4}{73}{Confusion matrix for the best pretrained configuration from the latest YOLO rerun: EfficientNetB1 with \texttt {freq\_strength}, E1, and $K=7$}{figure.1.A.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {A.5}{\ignorespaces Example of a \textbf  {correct} prediction: the query colony on the left is matched to the correct species, with top-K nearest neighbor reference images shown on the right.}}{74}{figure.1.A.5}\protected@file@percent }
-\newlabel{fig:pred_correct}{{A.5}{74}{Example of a \textbf {correct} prediction: the query colony on the left is matched to the correct species, with top-K nearest neighbor reference images shown on the right}{figure.1.A.5}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {A.6}{\ignorespaces Example of an \textbf  {incorrect} prediction: the query colony is matched to a visually similar but wrong species. Nearest neighbors show why the misclassification occurred.}}{74}{figure.1.A.6}\protected@file@percent }
-\newlabel{fig:pred_incorrect}{{A.6}{74}{Example of an \textbf {incorrect} prediction: the query colony is matched to a visually similar but wrong species. Nearest neighbors show why the misclassification occurred}{figure.1.A.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {A.4}{\ignorespaces Confusion matrix for the best pretrained configuration from the latest YOLO rerun: EfficientNetB1 with \texttt  {freq\_strength}, E1, and $K=7$.}}{72}{figure.1.A.4}\protected@file@percent }
+\newlabel{fig:confusion_efficientnetb1}{{A.4}{72}{Confusion matrix for the best pretrained configuration from the latest YOLO rerun: EfficientNetB1 with \texttt {freq\_strength}, E1, and $K=7$}{figure.1.A.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {A.5}{\ignorespaces Example of a \textbf  {correct} prediction: the query colony on the left is matched to the correct species, with top-K nearest neighbor reference images shown on the right.}}{73}{figure.1.A.5}\protected@file@percent }
+\newlabel{fig:pred_correct}{{A.5}{73}{Example of a \textbf {correct} prediction: the query colony on the left is matched to the correct species, with top-K nearest neighbor reference images shown on the right}{figure.1.A.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {A.6}{\ignorespaces Example of an \textbf  {incorrect} prediction: the query colony is matched to a visually similar but wrong species. Nearest neighbors show why the misclassification occurred.}}{73}{figure.1.A.6}\protected@file@percent }
+\newlabel{fig:pred_incorrect}{{A.6}{73}{Example of an \textbf {incorrect} prediction: the query colony is matched to a visually similar but wrong species. Nearest neighbors show why the misclassification occurred}{figure.1.A.6}{}}
 \abx@aux@read@bbl@mdfivesum{57B71E91ADD9AB0A19E329F025ABFEF3}
 \abx@aux@defaultrefcontext{0}{sung2018relationNet}{none/global//global/global/global}
 \abx@aux@defaultrefcontext{0}{snell2017prototypical}{none/global//global/global/global}
@@ -600,4 +596,4 @@
 \abx@aux@defaultlabelprefix{0}{akiba2019optuna}{}
 \abx@aux@defaultlabelprefix{0}{speckit}{}
 \abx@aux@defaultlabelprefix{0}{openspec}{}
-\gdef \@abspage@last{89}
+\gdef \@abspage@last{88}

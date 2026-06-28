@@ -66,74 +66,74 @@
 \contentsline {subsubsection}{b) Results}{31}{subsubsection*.41}%
 \contentsline {subsubsection}{c) Findings}{31}{subsubsection*.42}%
 \contentsline {section}{\numberline {2.4}Discussion}{33}{section.2.4}%
-\contentsline {chapter}{\numberline {3}WEB APPLICATION DESIGN \& IMPLEMENTATION}{36}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Requirements Analysis}{36}{section.3.1}%
-\contentsline {subsection}{\numberline {3.1.1}Actor Model and Permissions}{36}{subsection.3.1.1}%
-\contentsline {subsection}{\numberline {3.1.2}Use Case Diagram}{36}{subsection.3.1.2}%
-\contentsline {subsection}{\numberline {3.1.3}Functional Requirements Summary}{38}{subsection.3.1.3}%
-\contentsline {subsection}{\numberline {3.1.4}Non-Functional Requirements}{39}{subsection.3.1.4}%
-\contentsline {section}{\numberline {3.2}System Architecture}{39}{section.3.2}%
-\contentsline {subsection}{\numberline {3.2.1}High-Level Architecture}{39}{subsection.3.2.1}%
-\contentsline {subsection}{\numberline {3.2.2}Technology Stack}{40}{subsection.3.2.2}%
-\contentsline {subsection}{\numberline {3.2.3}Backend Package Structure}{40}{subsection.3.2.3}%
-\contentsline {subsection}{\numberline {3.2.4}Frontend Route Hierarchy}{40}{subsection.3.2.4}%
-\contentsline {section}{\numberline {3.3}Database Design}{41}{section.3.3}%
-\contentsline {subsection}{\numberline {3.3.1}Entity-Relationship Diagram}{41}{subsection.3.3.1}%
-\contentsline {subsection}{\numberline {3.3.2}Key Design Decisions}{42}{subsection.3.3.2}%
-\contentsline {subsection}{\numberline {3.3.3}Data Update Status Lifecycle}{43}{subsection.3.3.3}%
-\contentsline {subsection}{\numberline {3.3.4}Dual-Database Strategy}{43}{subsection.3.3.4}%
-\contentsline {section}{\numberline {3.4}API Design}{43}{section.3.4}%
-\contentsline {subsection}{\numberline {3.4.1}Endpoint Catalog}{43}{subsection.3.4.1}%
-\contentsline {subsection}{\numberline {3.4.2}Authentication Flow}{45}{subsection.3.4.2}%
-\contentsline {subsection}{\numberline {3.4.3}Retrieval Query Sequence}{45}{subsection.3.4.3}%
-\contentsline {subsection}{\numberline {3.4.4}Indexing and Feedback Sequences}{46}{subsection.3.4.4}%
-\contentsline {subsection}{\numberline {3.4.5}Error Response Format}{47}{subsection.3.4.5}%
-\contentsline {section}{\numberline {3.5}Frontend Architecture}{47}{section.3.5}%
-\contentsline {subsection}{\numberline {3.5.1}User Interface Scope}{47}{subsection.3.5.1}%
-\contentsline {subsection}{\numberline {3.5.2}Key Page: Retrieve}{47}{subsection.3.5.2}%
-\contentsline {subsection}{\numberline {3.5.3}Key Page: Dataset Browser}{48}{subsection.3.5.3}%
-\contentsline {subsection}{\numberline {3.5.4}Key Page: Dashboard}{48}{subsection.3.5.4}%
-\contentsline {subsection}{\numberline {3.5.5}Key Page: User Management and Audit Log}{48}{subsection.3.5.5}%
-\contentsline {section}{\numberline {3.6}Core Backend Pipelines}{48}{section.3.6}%
-\contentsline {subsection}{\numberline {3.6.1}Segmentation Pipeline}{48}{subsection.3.6.1}%
-\contentsline {subsection}{\numberline {3.6.2}Retrieval Pipeline}{49}{subsection.3.6.2}%
-\contentsline {subsection}{\numberline {3.6.3}Qdrant Vector Database Design}{49}{subsection.3.6.3}%
-\contentsline {subsection}{\numberline {3.6.4}Model and Index Maintenance}{49}{subsection.3.6.4}%
-\contentsline {section}{\numberline {3.7}Deployment Architecture}{51}{section.3.7}%
-\contentsline {subsection}{\numberline {3.7.1}Docker Compose Topology}{51}{subsection.3.7.1}%
-\contentsline {subsection}{\numberline {3.7.2}CI/CD Pipeline}{51}{subsection.3.7.2}%
-\contentsline {section}{\numberline {3.8}Data Visualization Charts}{51}{section.3.8}%
-\contentsline {section}{\numberline {3.9}Summary}{53}{section.3.9}%
-\contentsline {chapter}{\numberline {4}AGENTIC ENGINEERING \& EVALUATION}{54}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Motivation}{54}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Multi-Agent Architecture}{54}{section.4.2}%
-\contentsline {subsection}{\numberline {4.2.1}Delegation Map}{54}{subsection.4.2.1}%
-\contentsline {section}{\numberline {4.3}Reducing Hallucinations}{55}{section.4.3}%
-\contentsline {section}{\numberline {4.4}Overcoming Context Window Limits}{56}{section.4.4}%
-\contentsline {subsection}{\numberline {4.4.1}Caveman Mode}{56}{subsection.4.4.1}%
-\contentsline {subsection}{\numberline {4.4.2}Subagents and Worktrees}{56}{subsection.4.4.2}%
-\contentsline {subsection}{\numberline {4.4.3}Reusable Skills}{56}{subsection.4.4.3}%
-\contentsline {section}{\numberline {4.5}Experiment Results}{56}{section.4.5}%
-\contentsline {subsection}{\numberline {4.5.1}Summary Table}{56}{subsection.4.5.1}%
-\contentsline {section}{\numberline {4.6}End-to-End Agent-Browser Testing}{56}{section.4.6}%
-\contentsline {subsection}{\numberline {4.6.1}Test Configuration}{56}{subsection.4.6.1}%
-\contentsline {subsection}{\numberline {4.6.2}Test Flow}{57}{subsection.4.6.2}%
-\contentsline {subsection}{\numberline {4.6.3}Configurational Alignment Verification}{59}{subsection.4.6.3}%
-\contentsline {chapter}{\numberline {5}CONCLUSION}{60}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Summary}{60}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Future Work}{60}{section.5.2}%
-\contentsline {chapter}{REFERENCE}{64}{section*.44}%
-\contentsline {chapter}{\numberline {A}USE CASE DESCRIPTIONS}{66}{chapter.1.A}%
-\contentsline {section}{\numberline {A.1}Use Case Specifications}{67}{section.1.A.1}%
-\contentsline {subsection}{\numberline {A.1.1}UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}{67}{subsection.1.A.1.1}%
-\contentsline {subsection}{\numberline {A.1.2}UC-DATA-01: Index New Data}{68}{subsection.1.A.1.2}%
-\contentsline {section}{\numberline {A.2}Detailed Experiment Results}{68}{section.1.A.2}%
-\contentsline {subsection}{\numberline {A.2.1}Retrieval Pipeline Full Results ($K=7$, \texttt {weighted}, E1)}{68}{subsection.1.A.2.1}%
-\contentsline {subsection}{\numberline {A.2.2}Cross-Validation Results (ResNet50 Finetuned, 5-Fold)}{69}{subsection.1.A.2.2}%
-\contentsline {subsection}{\numberline {A.2.3}Threshold Analysis Results}{69}{subsection.1.A.2.3}%
-\contentsline {section}{\numberline {A.3}Environment Strategy Definitions}{71}{section.1.A.3}%
-\contentsline {section}{\numberline {A.4}Species Labels in Test Set}{71}{section.1.A.4}%
-\contentsline {section}{\numberline {A.5}Prediction Visualizations}{72}{section.1.A.5}%
-\contentsline {subsection}{\numberline {A.5.1}Confusion Matrices}{72}{subsection.1.A.5.1}%
-\contentsline {subsection}{\numberline {A.5.2}Correct and Incorrect Prediction Examples}{72}{subsection.1.A.5.2}%
+\contentsline {chapter}{\numberline {3}WEB APPLICATION DESIGN \& IMPLEMENTATION}{35}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Requirements Analysis}{35}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Actor Model and Permissions}{35}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Use Case Diagram}{35}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}Functional Requirements Summary}{37}{subsection.3.1.3}%
+\contentsline {subsection}{\numberline {3.1.4}Non-Functional Requirements}{38}{subsection.3.1.4}%
+\contentsline {section}{\numberline {3.2}System Architecture}{38}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}High-Level Architecture}{38}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Technology Stack}{39}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Backend Package Structure}{39}{subsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.2.4}Frontend Route Hierarchy}{39}{subsection.3.2.4}%
+\contentsline {section}{\numberline {3.3}Database Design}{40}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Entity-Relationship Diagram}{40}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Key Design Decisions}{41}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Data Update Status Lifecycle}{42}{subsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.3.4}Dual-Database Strategy}{42}{subsection.3.3.4}%
+\contentsline {section}{\numberline {3.4}API Design}{42}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Endpoint Catalog}{42}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Authentication Flow}{44}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Retrieval Query Sequence}{44}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Indexing and Feedback Sequences}{45}{subsection.3.4.4}%
+\contentsline {subsection}{\numberline {3.4.5}Error Response Format}{46}{subsection.3.4.5}%
+\contentsline {section}{\numberline {3.5}Frontend Architecture}{46}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}User Interface Scope}{46}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Key Page: Retrieve}{46}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Key Page: Dataset Browser}{47}{subsection.3.5.3}%
+\contentsline {subsection}{\numberline {3.5.4}Key Page: Dashboard}{47}{subsection.3.5.4}%
+\contentsline {subsection}{\numberline {3.5.5}Key Page: User Management and Audit Log}{47}{subsection.3.5.5}%
+\contentsline {section}{\numberline {3.6}Core Backend Pipelines}{47}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Segmentation Pipeline}{47}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Retrieval Pipeline}{48}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Qdrant Vector Database Design}{48}{subsection.3.6.3}%
+\contentsline {subsection}{\numberline {3.6.4}Model and Index Maintenance}{48}{subsection.3.6.4}%
+\contentsline {section}{\numberline {3.7}Deployment Architecture}{50}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}Docker Compose Topology}{50}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}CI/CD Pipeline}{50}{subsection.3.7.2}%
+\contentsline {section}{\numberline {3.8}Data Visualization Charts}{50}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Summary}{52}{section.3.9}%
+\contentsline {chapter}{\numberline {4}AGENTIC ENGINEERING \& EVALUATION}{53}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Motivation}{53}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Multi-Agent Architecture}{53}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Delegation Map}{53}{subsection.4.2.1}%
+\contentsline {section}{\numberline {4.3}Reducing Hallucinations}{54}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Overcoming Context Window Limits}{55}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Caveman Mode}{55}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Subagents and Worktrees}{55}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}Reusable Skills}{55}{subsection.4.4.3}%
+\contentsline {section}{\numberline {4.5}Experiment Results}{55}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Summary Table}{55}{subsection.4.5.1}%
+\contentsline {section}{\numberline {4.6}End-to-End Agent-Browser Testing}{55}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}Test Configuration}{55}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}Test Flow}{56}{subsection.4.6.2}%
+\contentsline {subsection}{\numberline {4.6.3}Configurational Alignment Verification}{58}{subsection.4.6.3}%
+\contentsline {chapter}{\numberline {5}CONCLUSION}{59}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Summary}{59}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Future Work}{59}{section.5.2}%
+\contentsline {chapter}{REFERENCE}{63}{section*.44}%
+\contentsline {chapter}{\numberline {A}USE CASE DESCRIPTIONS}{65}{chapter.1.A}%
+\contentsline {section}{\numberline {A.1}Use Case Specifications}{66}{section.1.A.1}%
+\contentsline {subsection}{\numberline {A.1.1}UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}{66}{subsection.1.A.1.1}%
+\contentsline {subsection}{\numberline {A.1.2}UC-DATA-01: Index New Data}{67}{subsection.1.A.1.2}%
+\contentsline {section}{\numberline {A.2}Detailed Experiment Results}{67}{section.1.A.2}%
+\contentsline {subsection}{\numberline {A.2.1}Retrieval Pipeline Full Results ($K=7$, \texttt {weighted}, E1)}{67}{subsection.1.A.2.1}%
+\contentsline {subsection}{\numberline {A.2.2}Cross-Validation Results (ResNet50 Finetuned, 5-Fold)}{68}{subsection.1.A.2.2}%
+\contentsline {subsection}{\numberline {A.2.3}Threshold Analysis Results}{68}{subsection.1.A.2.3}%
+\contentsline {section}{\numberline {A.3}Environment Strategy Definitions}{70}{section.1.A.3}%
+\contentsline {section}{\numberline {A.4}Species Labels in Test Set}{70}{section.1.A.4}%
+\contentsline {section}{\numberline {A.5}Prediction Visualizations}{71}{section.1.A.5}%
+\contentsline {subsection}{\numberline {A.5.1}Confusion Matrices}{71}{subsection.1.A.5.1}%
+\contentsline {subsection}{\numberline {A.5.2}Correct and Incorrect Prediction Examples}{71}{subsection.1.A.5.2}%
 \contentsfinish 
