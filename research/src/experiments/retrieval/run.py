@@ -1212,6 +1212,63 @@ def run_compare_ensemble_strategies() -> None:
     compare_strategies()
 
 
+ALL_EXTRACTORS = [
+    "efficientnetb1_finetuned",
+    "resnet50_finetuned",
+    "mobilenetv2_finetuned",
+    "efficientnetb1",
+    "resnet50",
+    "mobilenetv2",
+    "hog",
+    "gabor",
+    "colorhistogram",
+    "colorhistogramhs",
+]
+
+ALL_ENVS = [
+    "E1", "E2",
+    "E3_CREA", "E3_DG18", "E3_MEA", "E3_YES",
+    "E4_CREA", "E4_DG18", "E4_MEA", "E4_YES",
+]
+
+ALL_AGGS = [
+    "weighted", "uni", "relative", "per_species_avg",
+    "max_score", "perquery_avg", "perquery_norm_avg", "freq_strength",
+]
+
+ALL_K = [3, 5, 7, 11, 13, 15]
+
+
+def _resolve_list(values: list[str], catalog: list[str]) -> list[str]:
+    if values == ["all"]:
+        return catalog
+    seen = set()
+    resolved = []
+    for v in values:
+        if v not in seen:
+            seen.add(v)
+            resolved.append(v)
+    return resolved
+
+
+def _parse_k_minimal(raw: str) -> list[int]:
+    result = []
+    for chunk in raw.replace(",", " ").split():
+        chunk = chunk.strip()
+        if "-" in chunk:
+            lo_s, hi_s = chunk.split("-", 1)
+            result.extend(range(int(lo_s), int(hi_s) + 1))
+        else:
+            result.append(int(chunk))
+    return result
+
+
+def _resolve_k(values: list[str]) -> list[int]:
+    if values == ["all"]:
+        return ALL_K
+    return sorted(set(_parse_k_minimal(" ".join(values))))
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Retrieval experiment runner")
     subparsers = parser.add_subparsers(dest="command")
@@ -1228,30 +1285,24 @@ def _build_parser() -> argparse.ArgumentParser:
     comprehensive.add_argument(
         "--extractors",
         nargs="+",
-        default=[
-            "efficientnetb1_finetuned",
-            "resnet50_finetuned",
-            "mobilenetv2_finetuned",
-            "efficientnetb1",
-            "resnet50",
-            "mobilenetv2",
-            "hog",
-            "gabor",
-            "colorhistogram",
-            "colorhistogramhs",
-        ],
+        default=ALL_EXTRACTORS,
     )
     comprehensive.add_argument(
         "--env_strategies",
         nargs="+",
-        default=["E1", "E2", "E3_CREA", "E3_DG18", "E3_MEA", "E3_YES", "E4_CREA", "E4_DG18", "E4_MEA", "E4_YES"],
+        default=ALL_ENVS,
     )
     comprehensive.add_argument(
         "--agg_strategies",
         nargs="+",
-        default=["weighted", "uni", "relative", "per_species_avg", "max_score", "perquery_norm_avg"],
+        default=ALL_AGGS,
     )
-    comprehensive.add_argument("--k", type=int, default=5)
+    comprehensive.add_argument(
+        "--k",
+        nargs="+",
+        default=ALL_K,
+        help="K values (space-separated integers or ranges like 3-7). Use 'all' for [3,5,7,11,13,15]",
+    )
     comprehensive.add_argument("--collection-name", type=str, default="qdrant-research")
     comprehensive.add_argument("--output-root", type=Path, default=None)
     comprehensive.add_argument("--max_visualizations", type=int, default=20)
@@ -1286,18 +1337,32 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     args = parser.parse_args(argv)
 
     if args.command == "comprehensive":
-        run_comprehensive_report(
-            identifier=args.identifier,
-            extractors=args.extractors,
-            env_strategies=args.env_strategies,
-            agg_strategies=args.agg_strategies,
-            k=args.k,
-            max_visualizations=args.max_visualizations,
-            visualize_correct=args.visualize_correct,
-            visualize_incorrect=args.visualize_incorrect,
-            collection_name=args.collection_name,
-            output_root=args.output_root,
-        )
+        extractors = _resolve_list(args.extractors, ALL_EXTRACTORS)
+        envs = _resolve_list(args.env_strategies, ALL_ENVS)
+        aggs = _resolve_list(args.agg_strategies, ALL_AGGS)
+        k_values = _resolve_k(args.k)
+
+        print(f"Extractors: {extractors}")
+        print(f"Envs     : {envs}")
+        print(f"Aggs     : {aggs}")
+        print(f"K values : {k_values}")
+        print(f"Total configs: {len(extractors) * len(envs) * len(aggs) * len(k_values)}")
+
+        base_root = args.output_root
+        for k_val in k_values:
+            print(f"\n=== K = {k_val} ===")
+            run_comprehensive_report(
+                identifier=args.identifier,
+                extractors=extractors,
+                env_strategies=envs,
+                agg_strategies=aggs,
+                k=k_val,
+                max_visualizations=args.max_visualizations,
+                visualize_correct=args.visualize_correct,
+                visualize_incorrect=args.visualize_incorrect,
+                collection_name=args.collection_name,
+                output_root=base_root,
+            )
         return
 
     if args.command == "ensemble-analysis":
