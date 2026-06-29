@@ -30,7 +30,7 @@ The practical motivation is threefold:
 
 \noindent\textbf{Stage 4 --- Vector Indexing.} Feature vectors are upserted into a \gls{qdrant} collection with named vectors per extractor type. Payload metadata per point includes species, strain, growth medium, camera angle, and segment index. The collection supports independent queries across different feature extractors without duplicating payload data.
 
-\noindent\textbf{Stage 5 --- KNN Retrieval and Aggregation.} A query image passes through the same preprocess $\rightarrow$ segment $\rightarrow$ extract pipeline. Qdrant returns $K$ nearest neighbors by cosine similarity. The environment strategy (same-media E1 or all-media E2) filters the search space. Query-strain siblings are excluded to simulate unseen-isolate evaluation. Votes from $N$ colony segments are aggregated using one of eight strategies: \texttt{freq\_strength}, \texttt{weighted}, \texttt{uni} (unweighted), \texttt{relative}, \texttt{perquery\_norm\_avg}, \texttt{per\_species\_avg}, \texttt{max\_score}, or \texttt{rank\_product}. Output: ranked species list with confidence scores.
+\noindent\textbf{Stage 5 --- KNN Retrieval and Aggregation.} A query image passes through the same preprocess $\rightarrow$ segment $\rightarrow$ extract pipeline. Qdrant returns $K$ nearest neighbors by cosine similarity. The media strategy (same-media E1 or all-media E2) filters the search space. Query-strain siblings are excluded to simulate unseen-isolate evaluation. Votes from $N$ colony segments are aggregated using one of eight strategies: \texttt{freq\_strength}, \texttt{weighted}, \texttt{uni} (unweighted), \texttt{relative}, \texttt{perquery\_norm\_avg}, \texttt{per\_species\_avg}, \texttt{max\_score}, or \texttt{rank\_product}. Output: ranked species list with confidence scores.
 
 \noindent\textbf{Stage 6 --- Threshold Analysis.} The top-$K$ neighbor scores are passed to a threshold formula that maps them to a scalar confidence value. Three threshold-selection algorithms (F1-grid, ROC optimization, Otsu's method) determine the optimal cut-point. Confidence $\geq$ threshold labels the prediction as a known species; confidence $<$ threshold rejects it as unknown or foreign. The pipeline is evaluated by accuracy, F1, precision, and recall.
 
@@ -246,16 +246,16 @@ Multiple extractors were benchmarked after segmentation and before indexing in \
 
 \subsubsection{b) Results}
 
-\begin{figure}[ht]
+\begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{extractor_comparison.png}
-\caption{Latest YOLO-segment retrieval comparison across three extractor families: fine-tuned deep learning (blue), pretrained deep learning (orange), and traditional hand-crafted (green). All configurations use freq\_strength aggregation, E1 environment strategy, and $K=7$, ordered by accuracy descending.}
+\includegraphics[width=\textwidth,keepaspectratio]{extractor_comparison.png}
+\caption{Latest YOLO-segment retrieval comparison across three extractor families: fine-tuned deep learning (blue), pretrained deep learning (orange), and traditional hand-crafted (green). All configurations use freq\_strength aggregation, E1 media strategy, and $K=7$, ordered by accuracy descending. This isolates the effect of feature extraction method under identical retrieval conditions.}
 \label{fig:extractor_comparison}
 \end{figure}
 
 \subsubsection{c) Findings}
 
-The latest retrieval sweep slightly revises the extractor ranking. EfficientNetB1 with ImageNet-pretrained weights remains the strongest top-1 retrieval backbone under \texttt{freq\_strength}, reaching 0.7857 accuracy on E1 with $K=7$. Fine-tuned MobileNetV2 and fine-tuned ResNet50 still improve substantially over their earlier unstable runs, but they do not surpass the best pretrained EfficientNetB1 in the final retrieval ranking.
+The latest retrieval sweep under E1 + freq\_strength + $K=7$ shows EfficientNetB1 FT leading at 80.9\%, followed closely by EfficientNetB1 PT and ResNet50 FT both at 78.6\%. MobileNetV2 FT reaches 76.2\%, and MobileNetV2 PT achieves 73.8\%. Traditional descriptors trail behind: ColorHist HSV at 54.8\%, ColorHist HS at 59.5\%, HOG at 42.9\%, and Gabor at 38.1\%.
 
 \subsection{Fine-Tuning Experiments}\label{fine-tuning-experiments}
 
@@ -295,39 +295,90 @@ All three finetuned backbones surpassed their ImageNet-pretrained baselines in e
 
 \subsubsection{a) Setup}
 
-Retrieval experiments compared aggregation rules and extractor choices after all database segments were embedded and indexed in \gls{qdrant}.
+Retrieval experiments compared aggregation rules and extractor choices after all database segments were embedded and indexed in \gls{qdrant}. The evaluation sweep covered 10 feature extractors $\times$ 18 media strategies $\times$ 8 aggregation strategies $\times$ 6 K values ($K \in \{3,5,7,11,13,15\}$), producing 2,961 YOLO-segment configurations against the \texttt{qdrant-research} collection. An additional 4 configurations were evaluated on the \texttt{kmeans\_features} collection for segmentation comparison.
 
-\subsubsection{b) Results}
+\subsubsection{b) Results --- Top Configurations}
 
-\begin{figure}[ht]
+Figure~\ref{fig:retrieval_top15} shows the top 15 retrieval configurations at E1 (Same Medium) with freq\_strength aggregation, isolating feature extractor performance.
+
+\begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{retrieval_family_comparison.png}
-\caption{Top retrieval configurations grouped by extractor family (freq\_strength aggregation). Fine-tuned CNNs dominate the top ranks, followed by pretrained CNNs and traditional descriptors.}
-\label{fig:retrieval_family}
+\includegraphics[width=\textwidth,keepaspectratio]{retrieval_top15_accuracy.png}
+\caption{Top 15 retrieval configurations ranked by accuracy at E1 (Same Medium) with freq\_strength aggregation. Fine-tuned deep learning (blue) dominates with ResNet50 FT at K=5 (81.0\%) and EfficientNetB1 FT at K=7 (81.0\%) leading. Pretrained CNNs (orange) occupy mid-ranks; traditional descriptors (green) trail.}
+\label{fig:retrieval_top15}
 \end{figure}
 
-\subsubsection{c) Findings}
+Figure~\ref{fig:retrieval_extractor_ranked} ranks extractors by mean accuracy under the same E1 + freq\_strength condition.
 
-Three patterns emerge from the retrieval sweep.
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{retrieval_extractor_family.png}
+\caption{Feature extractors ranked by mean retrieval accuracy (YOLO, E1 same-medium, freq\_strength aggregation, all K). Fine-tuned EfficientNetB1 achieves highest mean (78.0\%), followed by MobileNetV2 FT (76.8\%) and EfficientNetB1 PT (74.4\%). Traditional descriptors (Gabor at 40.5\%, HOG at 46.4\%) occupy the bottom ranks. Max accuracy shown in parentheses.}
+\label{fig:retrieval_extractor_ranked}
+\end{figure}
 
-\textbf{Aggregation dominance.} \texttt{freq\_strength} consistently outperforms \texttt{weighted}, \texttt{uni}, and \texttt{relative} across all extractors and environment configurations. At $K=7$, \texttt{freq\_strength} achieves the top accuracy for both fine-tuned and pretrained backbones. \texttt{weighted} suffers from dilution (high-accuracy neighbors from similar species split the vote), while \texttt{max\_score} fails when a species appears infrequently but with a single strong match.
+\subsubsection{c) Results --- YOLO vs K-Means Segmentation}
 
-\textbf{Extractor family gap.} Under canonical weighted/E1/K7 evaluation, all three fine-tuned deep backbones outperform their pretrained counterparts: ResNet50 (FT 0.810 vs.\ PT 0.714), MobileNetV2 (FT 0.786 vs.\ PT 0.643), and EfficientNetB1 (FT 0.762 vs.\ PT 0.548). Traditional descriptors trail behind: ColorHistogram at 0.571, ColorHistogramHS at 0.524, HOG at 0.429, and Gabor at 0.405---roughly half the accuracy of fine-tuned deep encoders.
+Figure~\ref{fig:retrieval_yolo_vs_kmeans} compares retrieval accuracy between YOLO and K-Means segmented colonies at $K=5$ with freq\_strength aggregation.
 
-\textbf{K sensitivity.} Small $K$ values (3\textendash7) perform best with \texttt{freq\_strength} aggregation. Larger $K$ introduces noise from visually distant species and degrades the frequency signal. This is consistent across both E1 (same-medium) and E2 (cross-medium) environments.
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{retrieval_yolo_vs_kmeans.png}
+\caption{YOLO vs K-Means segmentation retrieval accuracy at $K=5$ with freq\_strength aggregation. YOLO segments (green) and K-Means segments (blue) compared across three configurations. The gap is most pronounced for deep learning extractors (EfficientNetB1 FT) on E1, where YOLO dominates. ColorHist HSV performs comparably across both segmentations.}
+\label{fig:retrieval_yolo_vs_kmeans}
+\end{figure}
+
+\subsubsection{d) Results --- Hyperparameter Analysis}
+
+The following heatmaps examine hyperparameter interactions for the top three fine-tuned extractors (EfficientNetB1 FT, ResNet50 FT, MobileNetV2 FT). Figure~\ref{fig:retrieval_heatmap_k_media} shows K vs Media strategy, Figure~\ref{fig:retrieval_heatmap_k_agg} shows K vs Aggregation, and Figure~\ref{fig:retrieval_heatmap_agg_media} shows Aggregation vs Media.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{retrieval_heatmap_k_vs_media.png}
+\caption{Heatmap: K $\times$ Media Strategy (mean accuracy across best fine-tuned extractors). Small K (3--5) on E1 (Same Medium) produces strongest results. Larger K degrades accuracy as noisy neighbors dilute the retrieval signal.}
+\label{fig:retrieval_heatmap_k_media}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{retrieval_heatmap_k_vs_agg.png}
+\caption{Heatmap: K $\times$ Aggregation Strategy (mean across best FT extractors, all media). Freq$\times$Strength at low K (3--5) consistently dominates.}
+\label{fig:retrieval_heatmap_k_agg}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{retrieval_heatmap_agg_vs_media.png}
+\caption{Heatmap: Aggregation $\times$ Media (mean across best FT extractors, all K). Freq$\times$Strength on E1 achieves highest accuracy.}
+\label{fig:retrieval_heatmap_agg_media}
+\end{figure}
+
+\subsubsection{e) Findings}
+
+Five clear patterns emerge from the comprehensive retrieval sweep.
+
+\textbf{1. Fine-tuned deep learning backbones dominate.} Under E1 + freq\_strength, fine-tuned EfficientNetB1 achieves the highest mean accuracy (78.0\%) across all K values, followed by MobileNetV2 FT (76.8\%) and EfficientNetB1 PT (74.4\%). The feature extractor family chart (Figure~\ref{fig:retrieval_extractor_ranked}) shows deep learning backbones outperform traditional descriptors by a wide margin: Gabor (40.5\%), HOG (46.4\%), ColorHist HS (53.2\%), and ColorHist HSV (60.3\%).
+
+\textbf{2. YOLO segmentation outperforms K-Means for deep features.} The YOLO vs K-Means comparison (Figure~\ref{fig:retrieval_yolo_vs_kmeans}) shows YOLO segments yield higher retrieval accuracy for deep learning extractors. For traditional ColorHist HSV descriptors, K-Means (61.9\%) achieves comparable accuracy to YOLO on E1, suggesting color-based features are less sensitive to segmentation quality.
+
+\textbf{3. Freq$\times$Strength aggregation at low K is optimal.} The hyperparameter heatmaps (Figures~\ref{fig:retrieval_heatmap_k_media}, \ref{fig:retrieval_heatmap_k_agg}, \ref{fig:retrieval_heatmap_agg_media}) consistently show Freq$\times$Strength (frequency $\times$ average similarity) as the best aggregation strategy, especially at small $K$ values (K=3--5). This strategy rewards species that appear consistently across query images AND match with high similarity, making it robust to outlier neighbors.
+
+\textbf{4. E1 (Same Medium) is best for known-medium retrieval.} Same-medium retrieval (E1) achieves the highest per-cell accuracy (0.673 with Freq$\times$Strength), but E2 (All Media) provides more stable cross-medium generalization. E3 strategies (single-medium restrict) show high variance depending on the specific medium, with YES and MEA performing best among the E3 variants.
+
+\textbf{5. K sensitivity is extractor-dependent.} Small K values (3--5) perform best for fine-tuned extractors with Freq$\times$Strength. Larger K (11+) introduces noise from visually distant species and degrades the frequency signal: mean accuracy drops from 0.67 (K=3) to 0.60 (K=15) for best extractors.
 
 \subsection{Cross-Validation Experiments}\label{cross-validation-experiments}
 
 \subsubsection{a) Setup}
 
-Every experiment should be interpreted under the same evaluation contract: five folds, CSV-configured fold assignments, database indexing into \gls{qdrant}, and exclusion of the same query strain during search. 200 configurations were evaluated (2 environment strategies $\times$ 4 aggregations $\times$ 5 K values $\times$ 5 folds).
+Every experiment should be interpreted under the same evaluation contract: five folds, CSV-configured fold assignments, database indexing into \gls{qdrant}, and exclusion of the same query strain during search. 200 configurations were evaluated (2 media strategies $\times$ 4 aggregations $\times$ 5 K values $\times$ 5 folds).
 
 \subsubsection{b) Results}
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=\textwidth,keepaspectratio]{cv_heatmap_agg_vs_k.png}
-\caption{Cross-validation accuracy heatmap: aggregation strategy vs $K$ (mean across environments and extractors). \texttt{freq\_strength} at low $K$ consistently dominates.}
+\caption{Cross-validation accuracy heatmap: aggregation strategy vs $K$ (mean across media and extractors). \texttt{freq\_strength} at low $K$ consistently dominates.}
 \label{fig:cv_heatmap_agg_k}
 \end{figure}
 
@@ -347,9 +398,7 @@ Every experiment should be interpreted under the same evaluation contract: five 
 
 \subsubsection{c) Findings}
 
-The cross-validation results and heatmap (Figure~\ref{fig:cv_heatmap_agg_k}) confirm that \texttt{freq\_strength} aggregation at small $K$ values generalizes best, with E2 + freq\_strength + $K=3$ achieving 0.829 mean accuracy. The fold-specific training curves (Figure~\ref{fig:cv_training_curves}) show both ResNet50 and EfficientNetB1 converging within 10--15 epochs, with per-fold validation accuracy variance remaining below 10\% (Figure~\ref{fig:fold_variance}).
-
-Confusion matrix analysis from the latest retrieval runs shows that finetuned ResNet50 (0.810 accuracy) achieves perfect recall on \emph{P. neoechinulatum}, \emph{P. polonicum}, and \emph{P. aurantiogriseum}, but confuses \emph{P. melanoconidium} with \emph{P. freii} in 3 of 6 test sets.
+The cross-validation results confirm that \texttt{freq\_strength} aggregation at small $K$ values generalizes best. Per-fold ResNet50 finetuned (trained and evaluated with independent fold weights and per-fold Qdrant collections) achieves mean accuracy 0.40 at K=3 (uni, E1) with high fold variance ($\sigma \approx 0.27$). EfficientNetB1 fold-specific CV reaches 0.75 (freq\_strength, E1, K=3). The fold-specific accuracy is lower than the shared-model evaluation (0.810) because each fold uses independently trained features, providing a more honest measure of generalisation to unseen strains. Fold training curves (Figure~\ref{fig:cv_training_curves}) show consistent convergence within 10--15 epochs across architectures, and per-fold accuracy variance (Figure~\ref{fig:fold_variance}) remains below 10\% for the best configurations.
 
 \subsection{Threshold Experiments}\label{threshold-experiments}
 
@@ -357,7 +406,7 @@ Confusion matrix analysis from the latest retrieval runs shows that finetuned Re
 
 Threshold analysis evaluates known-vs-unknown species discrimination by querying held-out incoming strains against a full reference database and applying a threshold formula to the top-k retrieval scores. The experiment tests whether a retrieval system deployed in the laboratory can flag a novel strain that has no match in the reference collection~\cite{bendale2016openset,kareinen2024opensetPlankton}.
 
-The retrieval engine uses the \texttt{qdrant-research} \gls{qdrant} collection containing segment embeddings from 8 curated species and 31 strains (the \texttt{original\_prepared} dataset). Only species present in the curated reference collection are indexed in the database; incoming diverse strains are never added to the index. This ensures that an unknown strain cannot match itself in the database. Each incoming test strain is divided into 6 test sets (3 K-means colony segments $\times$ 2 camera angles, from \texttt{full\_prepared} dataset), producing $58 \times 6 = 348$ grouped retrieval samples. For each test set, EfficientNetB1\_finetuned extracts features from every colony crop and queries \gls{qdrant} with $K=11$ same-environment neighbors. The top-1 species from weighted aggregation is used as the prediction, and the top-5 score vector is passed to the threshold stage.
+The retrieval engine uses the \texttt{qdrant-research} \gls{qdrant} collection containing segment embeddings from 8 curated species and 31 strains (the \texttt{original\_prepared} dataset). Only species present in the curated reference collection are indexed in the database; incoming diverse strains are never added to the index. This ensures that an unknown strain cannot match itself in the database. Each incoming test strain is divided into 6 test sets (3 K-means colony segments $\times$ 2 camera angles, from \texttt{full\_prepared} dataset), producing $58 \times 6 = 348$ grouped retrieval samples. For each test set, EfficientNetB1\_finetuned extracts features from every colony crop and queries \gls{qdrant} with $K=11$ same-medium neighbors. The top-1 species from weighted aggregation is used as the prediction, and the top-5 score vector is passed to the threshold stage.
 
 Known/unknown ground truth is determined by matching the incoming species name against the curated database after stripping the ``\emph{Penicillium}'' prefix. Of the 58 diverse strains, 5 have known species matches with available query segments (48 test sets covering \emph{P. freii}, \emph{P. melanoconidium}, \emph{P. neoechinulatum}, \emph{P. polonicum}, and \emph{P. tricolor}); the remaining 51 strains (300 test sets) include 3 additional Penicillium species without segment data plus 48 non-Penicillium species — all treated as unknowns requiring threshold rejection.
 
@@ -389,6 +438,13 @@ Three threshold-selection algorithms are evaluated: F1-grid optimization, ROC op
 \input{figures/table_threshold_best.tex}
 \input{figures/table_threshold_known_species.tex}
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{figures/staircase_threshold.png}
+\caption{Staircase chart for threshold experiment: 576 formula-algorithm combinations evaluated against F1. Green dots indicate new best configurations; gray dots fall below the running best.}
+\label{fig:threshold_staircase}
+\end{figure}
+
 \subsubsection{c) Findings}
 
 The threshold experiment on the \texttt{qdrant-research} collection (7 curated reference species, 31 strains, 1,290 indexed segments) demonstrates three key findings:
@@ -401,12 +457,12 @@ The threshold experiment on the \texttt{qdrant-research} collection (7 curated r
 
 \section{Discussion}\label{discussion}
 
-The updated research pipeline supports a coherent conclusion. First, segmentation quality materially affects downstream retrieval because boundary errors propagate into every later stage~\cite{colonyYOLO2025,silva2025dlColony}. The latest K-means vs.\ YOLO comparison (Figure~\ref{fig:kmeans-vs-yolo}) using the same fine-tuned ResNet50 backbone yields identical retrieval accuracy (0.810) for both segmentation methods, confirming convergence on comparable colony boundaries. YOLO's advantage is concentrated in the bright-flare edge case described in Section~\ref{kmeans-segmentation-methodology}.
+The updated research pipeline supports a coherent conclusion. First, segmentation quality materially affects downstream retrieval because boundary errors propagate into every later stage~\cite{colonyYOLO2025,silva2025dlColony}. The YOLO vs.\ K-Means retrieval comparison (Figure~\ref{fig:retrieval_yolo_vs_kmeans}) confirms that YOLO-segmented colonies yield higher retrieval accuracy for deep learning extractors, while traditional color-based features are less sensitive to segmentation quality. YOLO's advantage is concentrated in the bright-flare edge case described in Section~\ref{kmeans-segmentation-methodology}; the visual comparison in Figure~\ref{fig:kmeans-vs-yolo} illustrates this boundary-level difference.
 
-Second, fine-tuned deep backbones now consistently outperform their ImageNet-pretrained counterparts under the canonical weighted/E1/$K=7$ protocol (Table~\ref{tab:finetune-results}). ResNet50 (FT 0.810 vs. PT 0.714), MobileNetV2 (FT 0.786 vs. PT 0.643), and EfficientNetB1 (FT 0.762 vs. PT 0.548) all show positive deltas. The key enablers were Dropout(0.3) before the classification head and AdamW with weight decay $10^{-4}$, which together prevented the severe overfitting (96\% training vs. 52\% validation) observed in earlier full-fine-tuning runs.
+Second, fine-tuned deep backbones now consistently outperform their ImageNet-pretrained counterparts under the canonical freq\_strength/E1 protocol (Figure~\ref{fig:extractor_comparison}). At $K=7$: EfficientNetB1 FT (80.9\%) vs.\ EfficientNetB1 PT (78.6\%), MobileNetV2 FT (76.2\%) vs.\ MobileNetV2 PT (73.8\%), and ResNet50 FT (78.6\%) vs.\ ResNet50 PT (66.7\%). The small delta for EfficientNetB1 suggests its pretrained weights already capture useful colony textures, while ResNet50 benefits most from fine-tuning (+11.9 pp). The key enablers were Dropout(0.3) before the classification head and AdamW with weight decay $10^{-4}$, which together prevented the severe overfitting (96\% training vs. 52\% validation) observed in earlier full-fine-tuning runs.
 
-Third, the eight aggregation strategies remain a complete design space for post-retrieval evidence fusion. The empirical ordering is clear: \texttt{freq\_strength} $>$ \texttt{weighted} $>$ \texttt{relative} $>$ \texttt{uni} across all extractor families and environment configurations. \texttt{freq\_strength} at small $K$ achieves the best cross-validation accuracy (E2, $K=3$: 0.829 mean accuracy).
+Third, the eight aggregation strategies remain a complete design space for post-retrieval evidence fusion. The empirical ordering confirmed by the comprehensive sweep (Figures~\ref{fig:retrieval_heatmap_k_agg}, \ref{fig:retrieval_heatmap_agg_media}) is: \texttt{Freq$\times$Strength} $>$ \texttt{Weighted} $>$ \texttt{Relative} $>$ \texttt{Uniform} across all extractor families and media configurations. Freq$\times$Strength at small $K$ achieves the best accuracy (E1, $K=3$: 0.880 at EfficientNetB1 FT). The full min/mean/max statistics for all hyperparameters are reported in the hyperparameter statistics table.
 
 Fourth, 5-fold cross-validation confirms E2 (all-media) retrieval outperforms E1 (same-media) for most strategies, demonstrating that multi-medium indexing provides more robust evidence. Fold-specific training curves (Figure~\ref{fig:cv_training_curves}) show consistent convergence within 10--15 epochs across architectures.
 
-Finally, the threshold pipeline (ResNet50 finetuned, same as the top retrieval backbone) produces a reproducible known-vs.-unknown baseline: best F1 = 0.364 (\texttt{avg\_top5}, \texttt{w\_equal}), known-class accuracy = 0.583, precision = 0.229, recall = 0.896. Unknown species still gravitate toward dominant reference classes (\emph{P. polonicum}, \emph{P. tricolor}), confirming that explicit threshold rejection remains mandatory for laboratory deployment. The staircase chart (Figure~\ref{fig:threshold_staircase}) tracks 576 formula-algorithm combinations, converging at F1 $\approx$ 0.36.
+Finally, the threshold pipeline produces a reproducible known-vs.-unknown baseline: best F1~=~0.341 (\texttt{gap\_0\_2}, \texttt{roc\_opt}), known-class accuracy~=~0.667, precision~=~0.234, recall~=~0.625. Unknown species still gravitate toward dominant reference classes (\emph{P. polonicum}, \emph{P. tricolor}), confirming that explicit threshold rejection remains mandatory for laboratory deployment. The staircase chart (Figure~\ref{fig:threshold_staircase}) tracks 576 formula-algorithm combinations, converging at F1~$\approx$~0.34.

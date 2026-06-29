@@ -399,6 +399,9 @@ def _generate_summary(results_csv: Path, summary_csv: Path) -> None:
 
     media_col = "media_strategy" if "media_strategy" in df.columns else "env_strategy"
 
+    # Normalize fold-specific extractor names to base name
+    df["extractor_base"] = df["extractor"].str.replace(r"_fold\d+$", "", regex=True)
+
     # Compute per-fold accuracy first, then aggregate across folds
     fold_acc = (
         df.groupby(
@@ -407,7 +410,7 @@ def _generate_summary(results_csv: Path, summary_csv: Path) -> None:
                 media_col,
                 "agg_strategy",
                 "k",
-                "extractor",
+                "extractor_base",
                 "collection",
             ]
         )["correct"]
@@ -418,7 +421,7 @@ def _generate_summary(results_csv: Path, summary_csv: Path) -> None:
 
     summary = (
         fold_acc.groupby(
-            [media_col, "agg_strategy", "k", "extractor", "collection"]
+            [media_col, "agg_strategy", "k", "extractor_base", "collection"]
         )["fold_accuracy"]
         .agg(
             mean_accuracy="mean",
@@ -428,6 +431,7 @@ def _generate_summary(results_csv: Path, summary_csv: Path) -> None:
         )
         .reset_index()
     )
+    summary = summary.rename(columns={"extractor_base": "extractor"})
     summary = summary.sort_values("mean_accuracy", ascending=False)
     summary.to_csv(summary_csv, index=False)
     print("\nTop 10 configurations:")
