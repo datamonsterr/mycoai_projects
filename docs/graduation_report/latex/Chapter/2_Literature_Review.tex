@@ -147,7 +147,7 @@ When fine-tuning on a small fungal dataset (996 training segments, 8 species), p
 
 \subsubsection{Contrast with YOLO-Crop Fine-Tuning}
 
-The older YOLO-crop fine-tuning path (\texttt{train\_yolo\_crops.py}) freezes most backbone layers and trains only the last block plus the classification head. This was effective when crops were larger and training data was partitioned differently, but under the current strain-holdout design with YOLO segment inputs, full fine-tuning with regularisation is the preferred configuration.
+An earlier fine-tuning path that froze most backbone layers and trained only the last block plus the classification head was effective when crops were larger and training data was partitioned differently. Under the current strain-holdout design with YOLO segment inputs, full fine-tuning with regularisation is the preferred configuration.
 
 \begin{figure}
 \centering
@@ -199,14 +199,14 @@ Appearance frequency $\times$ average match strength. Favours species that appea
 
 \subsection{Cross-Validation Methodology}\label{cross-validation-methodology}
 
-Shared strain-level cross-validation uses 5-fold round-robin assignment. This is the evaluation pattern applied consistently across experiments.
+Shared strain-level cross-validation uses 5-fold round-robin assignment:
 
 \begin{itemize}
-\item Five folds are loaded from fold manifest files generated from the prepared segments metadata.
-\item Each fold holds out one \gls{strain} per \gls{species}.
-\item For every fold, the pipeline trains or selects the model configuration, indexes the database into \gls{qdrant}, and queries held-out test groups.
-\item During retrieval, the query \gls{strain} is explicitly excluded using the \texttt{exclude\_strain} filter.
-\item Sibling filtering also removes neighbors from the same parent image.
+  \item Five folds are constructed from prepared segment metadata.
+  \item Each fold holds out one strain per species.
+  \item For every fold, the pipeline trains or selects the model configuration, indexes the database, and queries held-out test groups.
+  \item During retrieval, the query strain is explicitly excluded from results.
+  \item Sibling filtering also removes neighbours from the same parent image.
 \end{itemize}
 
 This design ensures evaluation reflects true generalization to unseen strains rather than memorization of near-duplicate segments.
@@ -295,7 +295,7 @@ The weighted/E1/$K=7$ comparison shows mixed retrieval transfer from the supervi
 
 \subsubsection{a) Setup}
 
-Retrieval experiments compared aggregation rules and extractor choices after all database segments were embedded and indexed in \gls{qdrant}. The evaluation sweep covered 10 feature extractors $\times$ 18 media strategies $\times$ 8 aggregation strategies $\times$ 6 K values ($K \in \{3,5,7,11,13,15\}$), producing 2,961 YOLO-segment configurations against the \texttt{qdrant-research} collection. An additional 4 configurations were evaluated on the \texttt{kmeans\_features} collection for segmentation comparison.
+Retrieval experiments compared aggregation rules and extractor choices after all database segments were embedded and indexed in a vector database. The evaluation sweep covered 10 feature extractors $\times$ 18 media strategies $\times$ 8 aggregation strategies $\times$ 6 K values ($K \in \{3,5,7,11,13,15\}$), producing 2,961 YOLO-segment configurations. An additional 4 configurations were evaluated with K-Means segments for segmentation comparison.
 
 \subsubsection{b) Results --- Top Configurations}
 
@@ -371,7 +371,7 @@ Five clear patterns emerge from the comprehensive retrieval sweep.
 
 \subsubsection{a) Setup}
 
-Every experiment should be interpreted under the same evaluation contract: five folds, CSV-configured fold assignments, database indexing into \gls{qdrant}, and exclusion of the same query strain during search. 200 configurations were evaluated (2 media strategies $\times$ 4 aggregations $\times$ 5 K values $\times$ 5 folds).
+Every experiment should be interpreted under the same evaluation contract: five folds, deterministic fold assignments, database indexing, and exclusion of the same query strain during search. 200 configurations were evaluated (2 media strategies $\times$ 4 aggregations $\times$ 5 K values $\times$ 5 folds).
 
 \subsubsection{b) Results}
 
@@ -406,7 +406,7 @@ The cross-validation results confirm that \texttt{freq\_strength} aggregation at
 
 Threshold analysis evaluates known-vs-unknown species discrimination by querying held-out incoming strains against a full reference database and applying a threshold formula to the top-k retrieval scores. The experiment tests whether a retrieval system deployed in the laboratory can flag a novel strain that has no match in the reference collection~\cite{bendale2016openset,kareinen2024opensetPlankton}.
 
-The retrieval engine uses the \texttt{qdrant-research} \gls{qdrant} collection containing segment embeddings from 8 curated species and 31 strains (the \texttt{original\_prepared} dataset). Only species present in the curated reference collection are indexed in the database; incoming diverse strains are never added to the index. This ensures that an unknown strain cannot match itself in the database. Each incoming test strain is divided into 6 test sets (3 K-means colony segments $\times$ 2 camera angles, from \texttt{full\_prepared} dataset), producing $58 \times 6 = 348$ grouped retrieval samples. For each test set, EfficientNetB1\_finetuned extracts features from every colony crop and queries \gls{qdrant} with $K=11$ same-medium neighbors. The top-1 species from weighted aggregation is used as the prediction, and the top-5 score vector is passed to the threshold stage.
+The retrieval engine uses a vector collection containing segment embeddings from 8 curated species and 31 strains. Only species present in the curated reference collection are indexed; incoming diverse strains are never added. This ensures that an unknown strain cannot match itself. Each incoming test strain is divided into 6 test sets (3 colony segments $\times$ 2 camera angles), producing $58 \times 6 = 348$ grouped retrieval samples. For each test set, a fine-tuned feature extractor processes every colony crop and queries the index with $K=11$ same-medium neighbors. The top-1 species from weighted aggregation is used as the prediction, and the top-5 score vector is passed to the threshold stage.
 
 Known/unknown ground truth is determined by matching the incoming species name against the curated database after stripping the ``\emph{Penicillium}'' prefix. Of the 58 diverse strains, 5 have known species matches with available query segments (48 test sets covering \emph{P. freii}, \emph{P. melanoconidium}, \emph{P. neoechinulatum}, \emph{P. polonicum}, and \emph{P. tricolor}); the remaining 51 strains (300 test sets) include 3 additional Penicillium species without segment data plus 48 non-Penicillium species — all treated as unknowns requiring threshold rejection.
 
@@ -440,7 +440,7 @@ Three threshold-selection algorithms are evaluated: F1-grid optimization, ROC op
 
 \subsubsection{c) Findings}
 
-The threshold experiment on the \texttt{qdrant-research} collection (7 curated reference species, 31 strains, 1,290 indexed segments) demonstrates three key findings:
+The threshold experiment (7 curated reference species, 31 strains, 1,290 indexed segments) demonstrates three key findings:
 
 \textbf{Known-species retrieval accuracy.} After normalizing species labels by stripping the ``\emph{Penicillium}'' prefix, the known-class accuracy reaches 66.7\% (32/48 test sets correctly classified). Species-level results are uneven: \emph{P. polonicum} is strongest at 12/12 (100\%), \emph{P. freii} reaches 10/12 (83.3\%), \emph{P. tricolor} reaches 9/12 (75.0\%), \emph{P. neoechinulatum} reaches 1/6 (16.7\%), and \emph{P. melanoconidium} remains the hardest case at 0/6. This pattern suggests that the current embedding space separates some colony morphologies well, but still collapses several related taxa.
 
