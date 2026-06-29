@@ -6,7 +6,6 @@ class DashboardStats(BaseModel):
     total_strains: int
     total_species: int
     total_media: int
-    total_environments: int = 0
 
 
 class SpeciesDistributionItem(BaseModel):
@@ -21,9 +20,4 @@ class MediaDistributionItem(BaseModel):
 
 class StrainDistributionItem(BaseModel):
     strain_name: str
-    image_count: int
-
-
-class EnvironmentDistributionItem(BaseModel):
-    environment_name: str
     image_count: int

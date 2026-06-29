@@ -55,10 +55,14 @@ async def _resolve_species_name(db: AsyncSession, strain_name: str) -> str:
     return row if row else strain_name
 
 
-def _get_filter_spec(image: Image, environment_strategy: str) -> FilterSpec:
-    if environment_strategy == "same_media" and image.media is not None:
-        return FilterSpec(environment=image.media.name, environment_strategy=environment_strategy)
-    return FilterSpec(environment_strategy=environment_strategy)
+def _get_filter_spec(image: Image, media_strategy: str) -> FilterSpec:
+    if media_strategy == "same_media" and image.media is not None:
+        return FilterSpec(media=image.media.name, media_strategy=media_strategy)
+    return FilterSpec(media_strategy=media_strategy)
+
+
+def _segment_crop_url(image_id: uuid.UUID, segment_index: int) -> str:
+    return f"/api/v1/images/{image_id}/segments/{segment_index}/crop"
 
 
 @router.post("/query", response_model=RetrievalJobResponse, status_code=202)
@@ -67,38 +71,51 @@ async def start_query(
     user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
-    image_uuid = _parse_uuid(data.image_id, "Image")
-    image = await db.scalar(
-        select(Image)
-        .options(selectinload(Image.media))
-        .where(Image.id == image_uuid)
-    )
-    if image is None:
-        raise NotFoundError(f"Image {data.image_id} not found")
-
-    segments = (
-        await db.execute(
-            select(Segment).where(
-                Segment.image_id == image_uuid,
-                Segment.is_archived.is_(False),
+    image_ids = getattr(data, "image_ids", None) or [data.image_id]
+    image_uuids = [_parse_uuid(image_id, "Image") for image_id in image_ids]
+    image_rows = (
+        (
+            await db.execute(
+                select(Image)
+                .options(selectinload(Image.media), selectinload(Image.segments), selectinload(Image.strain))
+                .where(Image.id.in_(image_uuids))
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
+    images_by_id = {image.id: image for image in image_rows}
+    missing_ids = [image_id for image_id, image_uuid in zip(image_ids, image_uuids, strict=False) if image_uuid not in images_by_id]
+    if missing_ids:
+        raise NotFoundError(f"Image {missing_ids[0]} not found")
 
-    if not segments:
-        raise NotFoundError(f"No active segments found for image {data.image_id}")
+    query_images: list[tuple[Image, list[Segment]]] = []
+    total_segments = 0
+    for image_uuid in image_uuids:
+        image = images_by_id[image_uuid]
+        segments = [seg for seg in image.segments if not seg.is_archived]
+        if not segments:
+            raise NotFoundError(f"No active segments found for image {image.id}")
+        query_images.append((image, segments))
+        total_segments += len(segments)
+
+    primary_image = query_images[0][0]
+    primary_image_id = str(primary_image.id)
+    primary_strain_name = primary_image.strain.name if primary_image.strain else "unknown"
 
     job = RetrievalJob(
         user_id=user.id,
-        job_type="single",
+        job_type="batch" if len(query_images) > 1 else "single",
         status="processing",
         config={
-            "image_id": data.image_id,
+            "image_id": primary_image_id,
+            "image_ids": [str(image.id) for image, _ in query_images],
             "k": data.k,
             "aggregation": data.aggregation,
-            "environment_strategy": data.environment_strategy,
+            "media_strategy": data.media_strategy,
             "research_verified_default": "freq_strength+same_media+EfficientNetB1_finetuned",
-            "segment_count": len(segments),
+            "segment_count": total_segments,
+            "query_image_count": len(query_images),
         },
     )
     db.add(job)
@@ -109,57 +126,78 @@ async def start_query(
         collection = get_collection_name()
         all_neighbors: list[NeighborResult] = []
         raw_results: list[dict[str, object]] = []
-        filter_spec = _get_filter_spec(image, data.environment_strategy)
+        queried_images: list[dict[str, object]] = []
 
-        for seg in segments:
-            seg_neighbors: list[dict[str, object]] = []
+        for image, segments in query_images:
+            filter_spec = _get_filter_spec(image, data.media_strategy)
+            image_neighbors: list[NeighborResult] = []
+            image_segment_urls = [
+                _segment_crop_url(image.id, seg.segment_index)
+                for seg in segments[:3]
+            ]
 
-            if seg.qdrant_point_id is not None:
-                point_id = seg.qdrant_point_id.int
-                try:
-                    result: QueryResult = query_points_by_id(
-                        qdrant,
-                        point_id,
-                        k=data.k,
-                        filter_spec=filter_spec,
-                        exclude_self=True,
-                        exclude_siblings=True,
-                        collection_name=collection,
-                    )
-                    for neighbor in result.neighbors:
-                        species = await _resolve_species_name(
-                            db, neighbor.strain or "unknown"
+            for seg in segments:
+                seg_neighbors: list[dict[str, object]] = []
+
+                if seg.qdrant_point_id is not None:
+                    point_id = seg.qdrant_point_id.int
+                    try:
+                        result: QueryResult = query_points_by_id(
+                            qdrant,
+                            point_id,
+                            k=data.k,
+                            filter_spec=filter_spec,
+                            exclude_self=True,
+                            exclude_siblings=True,
+                            collection_name=collection,
                         )
-                        seg_neighbors.append({
-                            "specy": species,
-                            "score": neighbor.score,
-                            "strain": neighbor.strain,
-                            "extractor": neighbor.extractor or "default",
-                            "environment": neighbor.environment,
-                            "image_id": neighbor.image_id,
-                        })
-                        all_neighbors.append(neighbor)
-                except (ValueError, RuntimeError):
-                    pass
+                        for neighbor in result.neighbors:
+                            species = await _resolve_species_name(
+                                db, neighbor.strain or "unknown"
+                            )
+                            seg_neighbors.append(
+                                {
+                                    "specy": species,
+                                    "score": neighbor.score,
+                                    "strain": neighbor.strain,
+                                    "extractor": neighbor.extractor or "default",
+                                    "media": neighbor.media,
+                                    "image_id": neighbor.image_id,
+                                }
+                            )
+                            all_neighbors.append(neighbor)
+                            image_neighbors.append(neighbor)
+                    except (ValueError, RuntimeError):
+                        pass
 
-            if not seg_neighbors:
-                seg_neighbors = await _query_by_crop_image(
-                    db, seg, qdrant, collection, filter_spec, data.k
-                )
-                for n in seg_neighbors:
-                    all_neighbors.append(
-                        NeighborResult(
+                if not seg_neighbors:
+                    seg_neighbors = await _query_by_crop_image(
+                        db, seg, qdrant, collection, filter_spec, data.k
+                    )
+                    for n in seg_neighbors:
+                        neighbor = NeighborResult(
                             image_id=n.get("image_id"),
                             score=float(n.get("score", 0.0)),
                             strain=str(n.get("strain", "")),
-                            environment=str(n.get("environment", "")),
+                            media=str(n.get("media", "")),
                             specy=str(n.get("specy", "")),
                             extractor=str(n.get("extractor", "")),
                         )
-                    )
+                        all_neighbors.append(neighbor)
+                        image_neighbors.append(neighbor)
 
-            if seg_neighbors:
-                raw_results.append({"neighbors": seg_neighbors})
+                if seg_neighbors:
+                    raw_results.append({"neighbors": seg_neighbors, "query_image_id": str(image.id)})
+
+            queried_images.append(
+                {
+                    "image_id": str(image.id),
+                    "image_url": f"/api/v1/images/{image.id}/source",
+                    "media": image.media.name if image.media else "unknown",
+                    "segment_image_urls": image_segment_urls,
+                    "neighbors": image_neighbors[: data.k],
+                }
+            )
 
         if not raw_results:
             job.status = "completed"
@@ -185,11 +223,14 @@ async def start_query(
         )
 
         # Compute threshold confidence from neighbor scores
-        threshold_result: dict[str, object] = {"formula": "gnorm_0_2", "confidence": 0.0, "threshold": 0.12, "is_known": True}
+        threshold_result: dict[str, object] = {
+            "formula": "gnorm_0_2",
+            "confidence": 0.0,
+            "threshold": 0.12,
+            "is_known": True,
+        }
         try:
-            all_neighbor_scores = sorted(
-                [n.score for n in all_neighbors], reverse=True
-            )
+            all_neighbor_scores = sorted([n.score for n in all_neighbors], reverse=True)
             if all_neighbor_scores:
                 threshold_result = is_known_confidence(  # type: ignore[assignment]
                     all_neighbor_scores[:11],
@@ -197,7 +238,30 @@ async def start_query(
                 )
         except Exception:
             pass
-        job.config = {**job.config, "threshold": threshold_result}
+        job.config = {
+            **job.config,
+            "threshold": threshold_result,
+            "queried_images": [
+                {
+                    **query_image,
+                    "neighbors": [
+                        {
+                            "strain": neighbor.strain or "unknown",
+                            "species": _resolve_species_sync(neighbor, strain_map),
+                            "similarity": round(neighbor.score, 4),
+                            "media": neighbor.media or "unknown",
+                            "image_thumbnail_url": (
+                                f"/api/v1/images/{neighbor.image_id}/source"
+                                if neighbor.image_id
+                                else ""
+                            ),
+                        }
+                        for neighbor in query_image["neighbors"]
+                    ],
+                }
+                for query_image in queried_images
+            ],
+        }
 
         rankings: list[object] = []
         for rank_entry in aggregation_result.ranking:
@@ -216,14 +280,14 @@ async def start_query(
                         neighbor_strain=n.strain or "unknown",
                         neighbor_species=species,
                         similarity=round(n.score, 4),
-                        media=n.environment or "unknown",
+                        media=n.media or "unknown",
                         segment_index=n.segment_index or 0,
                     )
                 )
 
             retrieval_result = RetrievalResult(
                 job_id=job.id,
-                strain_name=image.strain.name if image.strain else "unknown",
+                strain_name=primary_strain_name,
                 rank=len(rankings) + 1,
                 species_name=rank_entry.species,
                 score=rank_entry.score,
@@ -261,7 +325,10 @@ async def _query_by_crop_image(
     from pathlib import Path
 
     from ..qdrant.operations import query_points_by_image
-    from ..services.feature_extraction import extract_features, extract_features_from_bytes
+    from ..services.feature_extraction import (
+        extract_features,
+        extract_features_from_bytes,
+    )
 
     crop_path = Path(seg.crop_path)
 
@@ -274,8 +341,9 @@ async def _query_by_crop_image(
         try:
             from ..services.storage import create_storage, ObjectStorage
             from ..config import get_storage_settings
+
             stg = create_storage(get_storage_settings())
-            if hasattr(stg, 'get_bytes'):
+            if hasattr(stg, "get_bytes"):
                 # Build the MinIO key: {artifact_dir}/segments/segment_{index}.jpg
                 artifact_dir = crop_path.parent
                 key = f"{artifact_dir.parent.name}/{artifact_dir.name}/segments/{crop_path.name}"
@@ -321,14 +389,16 @@ async def _query_by_crop_image(
     neighbors: list[dict[str, object]] = []
     for neighbor in result.neighbors:
         species = await _resolve_species_name(db, neighbor.strain or "unknown")
-        neighbors.append({
-            "specy": species,
-            "score": neighbor.score,
-            "strain": neighbor.strain,
-            "extractor": neighbor.extractor or "default",
-            "environment": neighbor.environment,
-            "image_id": neighbor.image_id,
-        })
+        neighbors.append(
+            {
+                "specy": species,
+                "score": neighbor.score,
+                "strain": neighbor.strain,
+                "extractor": neighbor.extractor or "default",
+                "media": neighbor.media,
+                "image_id": neighbor.image_id,
+            }
+        )
     return neighbors
 
 
@@ -346,9 +416,7 @@ async def get_job_status(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     job_uuid = _parse_uuid(job_id, "Job")
-    job = await db.scalar(
-        select(RetrievalJob).where(RetrievalJob.id == job_uuid)
-    )
+    job = await db.scalar(select(RetrievalJob).where(RetrievalJob.id == job_uuid))
     if not job:
         raise NotFoundError(f"Job {job_id} not found")
     return {
@@ -365,55 +433,61 @@ async def get_job_results(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     job_uuid = _parse_uuid(job_id, "Job")
-    job = await db.scalar(
-        select(RetrievalJob).where(RetrievalJob.id == job_uuid)
-    )
+    job = await db.scalar(select(RetrievalJob).where(RetrievalJob.id == job_uuid))
     if not job:
         raise NotFoundError(f"Job {job_id} not found")
 
     results = (
-        await db.execute(
-            select(RetrievalResult)
-            .where(RetrievalResult.job_id == job_uuid)
-            .order_by(RetrievalResult.rank)
+        (
+            await db.execute(
+                select(RetrievalResult)
+                .where(RetrievalResult.job_id == job_uuid)
+                .order_by(RetrievalResult.rank)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     rankings = []
     for r in results:
         neighbors_data = await db.execute(
-            select(RetrievalNeighbor).where(
-                RetrievalNeighbor.result_id == r.id
-            ).limit(5)
+            select(RetrievalNeighbor)
+            .where(RetrievalNeighbor.result_id == r.id)
+            .limit(5)
         )
         neighbors = neighbors_data.scalars().all()
-        rankings.append({
-            "rank": r.rank,
-            "species": r.species_name,
-            "score": round(r.score, 4),
-            "neighbors": [
-                {
-                    "strain": n.neighbor_strain,
-                    "species": n.neighbor_species,
-                    "similarity": round(n.similarity, 4),
-                    "media": n.media,
-                    "image_thumbnail_url": (
-                        f"/api/v1/images/{n.neighbor_image_id}/source"
-                        if n.neighbor_image_id
-                        else ""
-                    ),
-                }
-                for n in neighbors
-            ],
-        })
+        rankings.append(
+            {
+                "rank": r.rank,
+                "species": r.species_name,
+                "score": round(r.score, 4),
+                "neighbors": [
+                    {
+                        "strain": n.neighbor_strain,
+                        "species": n.neighbor_species,
+                        "similarity": round(n.similarity, 4),
+                        "media": n.media,
+                        "image_thumbnail_url": (
+                            f"/api/v1/images/{n.neighbor_image_id}/source"
+                            if n.neighbor_image_id
+                            else ""
+                        ),
+                    }
+                    for n in neighbors
+                ],
+            }
+        )
 
     threshold = job.config.get("threshold")
+    queried_images = job.config.get("queried_images", [])
 
     return {
         "job_id": str(job.id),
         "status": job.status,
         "strain": results[0].strain_name if results else "unknown",
         "rankings": rankings,
+        "queried_images": queried_images,
         "threshold": threshold,
     }
 

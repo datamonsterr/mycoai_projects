@@ -95,9 +95,10 @@ export interface ImageListResponse {
 
 export interface RetrievalQueryRequest {
   image_id: string
+  image_ids?: string[]
   k: number
   aggregation: string
-  environment_strategy: string
+  media_strategy: string
 }
 
 export interface RetrievalJobResponse {
@@ -121,6 +122,14 @@ export interface RetrievalRanking {
   neighbors: RetrievalNeighbor[]
 }
 
+export interface RetrievalQueryImageResult {
+  image_id: string
+  image_url: string
+  media: string
+  segment_image_urls: string[]
+  neighbors: RetrievalNeighbor[]
+}
+
 export interface ThresholdConfidence {
   formula: string
   confidence: number
@@ -133,6 +142,7 @@ export interface RetrievalResultsResponse {
   status: string
   strain: string
   rankings: RetrievalRanking[]
+  queried_images: RetrievalQueryImageResult[]
   threshold?: ThresholdConfidence | null
 }
 
@@ -236,14 +246,12 @@ export interface DashboardStats {
   total_strains: number
   total_species: number
   total_media: number
-  total_environments?: number
 }
 
 export interface DistributionItem {
   species_name?: string
   media_name?: string
   strain_name?: string
-  environment_name?: string
   image_count: number
 }
 

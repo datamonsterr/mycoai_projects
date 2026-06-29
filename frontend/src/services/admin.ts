@@ -23,10 +23,19 @@ interface AuditLogParams {
   limit?: number
 }
 
-export function listUsers(
+export async function listUsers(
   params?: ListUsersParams,
 ): Promise<PaginatedResponse<AdminUserResponse>> {
-  return api.get<PaginatedResponse<AdminUserResponse>>('/admin/users', { params: params as Record<string, string | number | boolean | undefined> })
+  const result = await api.get<PaginatedResponse<AdminUserResponse> | AdminUserResponse[]>('/admin/users', { params: params as Record<string, string | number | boolean | undefined> })
+  if (Array.isArray(result)) {
+    return {
+      items: result,
+      total: result.length,
+      offset: params?.offset ?? 0,
+      limit: params?.limit ?? 50,
+    }
+  }
+  return result
 }
 
 export function updateUserRole(

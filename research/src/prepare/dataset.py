@@ -38,6 +38,15 @@ from src.preprocessing.preprocess import process_image
 
 FALLBACK_VALUE = "unknown"
 
+ENVIRONMENT_NORMALIZATION = {
+    "CYA30": "CYA",
+    "CYAS": "CYA",
+}
+
+
+def normalize_environment(raw: str) -> str:
+    return ENVIRONMENT_NORMALIZATION.get(raw, raw)
+
 
 def slugify(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "-", value.strip().lower())
@@ -184,6 +193,8 @@ def parse_curated_metadata(
         environment = normalize_label(match.group("environment").upper())
         angle = normalize_label(match.group("angle").lower())
         parse_status = "parsed"
+
+    environment = normalize_environment(environment)
 
     species = normalize_label(strain_species_mapping.get(strain, FALLBACK_VALUE))
 
@@ -346,6 +357,8 @@ def parse_incoming_metadata(
     if parsed:
         strain, environment, angle = parsed
         parse_status = "parsed"
+
+    environment = normalize_environment(environment)
 
     # Strain fallback from directory
     if strain == FALLBACK_VALUE:

@@ -21,6 +21,13 @@ export const authService = {
     return res
   },
 
+  async registerWithToken(data: RegisterData & { token: string }): Promise<TokenResponse> {
+    const res = await api.post<TokenResponse>('/auth/register-with-token', data)
+    setToken(res.access_token)
+    localStorage.setItem('refresh_token', res.refresh_token)
+    return res
+  },
+
   async refresh(refreshToken: string): Promise<TokenResponse> {
     const res = await api.post<TokenResponse>('/auth/refresh', { refresh_token: refreshToken })
     setToken(res.access_token)

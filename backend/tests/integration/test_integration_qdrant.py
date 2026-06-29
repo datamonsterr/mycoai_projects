@@ -69,7 +69,7 @@ async def test_qdrant_upsert_and_search(qdrant_client) -> None:
     point = PointStruct(
         id=point_id,
         vector=[0.1, 0.2, 0.3, 0.4],
-        payload={"species": "Test Species", "strain": "TS-001", "environment": "MEA"},
+        payload={"species": "Test Species", "strain": "TS-001", "media": "MEA"},
     )
     qdrant_client.upsert(collection_name=TEST_COLLECTION, points=[point])
 
@@ -112,12 +112,12 @@ async def test_qdrant_filtered_search(qdrant_client) -> None:
             PointStruct(
                 id=id_a,
                 vector=[1.0, 0.0, 0.0, 0.0],
-                payload={"environment": "MEA", "strain": "A"},
+                payload={"media": "MEA", "strain": "A"},
             ),
             PointStruct(
                 id=id_b,
                 vector=[0.0, 1.0, 0.0, 0.0],
-                payload={"environment": "PDA", "strain": "B"},
+                payload={"media": "PDA", "strain": "B"},
             ),
         ],
     )
@@ -126,7 +126,7 @@ async def test_qdrant_filtered_search(qdrant_client) -> None:
         collection_name=TEST_COLLECTION,
         query=[1.0, 0.0, 0.0, 0.0],
         query_filter=Filter(
-            must=[FieldCondition(key="environment", match=MatchValue(value="MEA"))]
+            must=[FieldCondition(key="media", match=MatchValue(value="MEA"))]
         ),
         limit=3,
         with_payload=True,
@@ -134,7 +134,7 @@ async def test_qdrant_filtered_search(qdrant_client) -> None:
     points = result.points
     assert len(points) >= 1
     for p in points:
-        assert p.payload.get("environment") == "MEA"
+        assert p.payload.get("media") == "MEA"
 
     qdrant_client.delete(collection_name=TEST_COLLECTION, points_selector=[id_a, id_b])
     qdrant_client.delete_collection(collection_name=TEST_COLLECTION)

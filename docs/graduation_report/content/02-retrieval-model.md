@@ -335,7 +335,7 @@ For downstream retrieval, the K-Means pipeline with Local K=2 Shrink was selecte
 
 The primary metric for retrieval experiments is the F1 score, balancing precision and recall across species. An iterative autoresearch loop tested hundreds of combinations of distance metrics, aggregation strategies, and neighbor counts (\(k\)). Each combination is a single dot on the staircase chart.
 
-The staircase chart (Figure~\ref{fig:staircase}) plots experiment index on the x-axis and F1 score on the y-axis. Gray dots represent experiments below the running best; green dots set a new best and step the staircase upward. Each green dot is labeled with the formula-algorithm pair that achieved the improvement.
+The experiment chart (Figure~\ref{fig:staircase}) plots experiment index on the x-axis and F1 score on the y-axis. Each dot is one evaluated configuration, and labeled points identify the highest-performing formula-algorithm pairs.
 
 ![Staircase Chart](figures/staircase_retrieval.png)
 

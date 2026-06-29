@@ -4,162 +4,65 @@ Modern software development is often bottlenecked by the manual cycle of ``hypot
 
 \section{Multi-Agent Architecture}\label{multi-agent-architecture}
 
-The project implemented the \textbf{Autolab} system (documented in the project monorepo under \texttt{.opencode/agents/}), a five-agent orchestration layer inspired by Karpathy's autoresearch concept~\cite{karpathy2026autoresearch}: 1. \textbf{Autolab (Orchestrator)}: Delegates tasks to subagents. 2. \textbf{Researcher}: Scouts literature and suggests new hypotheses. 3. \textbf{Planner}: Manages the experiment queue and assigns IDs. 4. \textbf{Worker}: Implements the hypothesis in an isolated git worktree and runs the experiment. 5. \textbf{Reporter}: Summarizes the results and identifies the new ``Best F1'' score.
+The project implemented the \textbf{Autolab} system (documented in the project monorepo under \texttt{.opencode/agents/}), a five-agent orchestration layer inspired by Karpathy's autoresearch concept~\cite{karpathy2026autoresearch}. Scientists interact with one primary agent, while specialized subagents handle literature review, queue planning, experiment execution, and reporting.
 
 \subsection{Delegation Map}\label{delegation-map}
 
 \begin{center}
-\begin{tabular}{@{}p{3.5cm} p{2.5cm} p{7.5cm}@{}}
+\small
+\begin{tabular}{@{}p{2.7cm} p{9.8cm}@{}}
 \toprule
-\textbf{Agent} & \textbf{Model} & \textbf{Responsibility} \\
+\textbf{Agent} & \textbf{Responsibility} \\
 \midrule
-\textbf{Autolab} & BigBrain & Primary orchestrator --- delegates to all subagents; scientists interact only with this agent \\
-\textbf{Researcher} & BigBrain & Literature scout: searches web/PDFs, extracts methodology, writes hypotheses to paper-ideas.md \\
-\textbf{Planner} & MidBrain & Queue coordinator: reads paper-ideas.md, deduplicates hypotheses, assigns run\_ids and branches \\
-\textbf{Worker} & MiniBrain & Isolated experiment runner: creates git worktree, implements hypothesis, runs prepare.py, records CSV \\
-\textbf{Reporter} & MiniBrain & Status summarizer: reads CSV and results.tsv, emits F1 summary and staircase chart path \\
+\textbf{Autolab} & Primary orchestrator --- scientists interact only with this agent, which delegates work to specialized subagents \\
+\textbf{Researcher} & Literature scout: searches web/PDFs, extracts methodology, writes hypotheses to \texttt{paper-ideas.md} \\
+\textbf{Planner} & Queue coordinator: reads \texttt{paper-ideas.md}, deduplicates hypotheses, assigns run\_ids and branches \\
+\textbf{Worker} & Isolated experiment runner: creates git worktree, implements hypothesis, runs \texttt{prepare.py}, records CSV \\
+\textbf{Reporter} & Status summarizer: reads CSV and \texttt{results.tsv}, emits F1 summary and staircase report \\
 \bottomrule
 \end{tabular}
+\normalsize
 \end{center}
+
+\paragraph{Cost-aware model routing.}
+Rather than binding each role to one fixed model vendor, the system routes tasks through \texttt{9router} so each agent can use a model tier that matches the required reasoning strength and cost. In practice, this allows mixing providers such as OpenAI, DeepSeek, OpenCode, MiniMax, NVIDIA, and OpenRouter behind one workflow boundary. ``BigBrain'', ``MidBrain'', and ``MiniBrain'' therefore denote capability tiers rather than one specific model. Example BigBrain choices include GPT-5.4, DeepSeek V4 Pro, and Claude Sonnet 4.8; MidBrain can use models such as DeepSeek V4 Flash, MiniMax M3, or GPT-5.3 Low; MiniBrain can use free or near-free models with weaker reasoning when tasks are repetitive and tightly bounded.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.82\textheight,keepaspectratio]{figures/ch04_autolab_agents.png}
-\caption{Autolab five-agent interaction: scientist $\rightarrow$ Autolab orchestrator $\rightarrow$ Researcher (hypotheses), Planner (queue), Worker (parallel experiment execution in isolated git worktrees), Reporter (F1 summary). Workers use \texttt{fcntl.flock} for CSV-safe concurrent writes.}
+\includegraphics[width=0.92\textwidth,keepaspectratio]{figures/ch04_autolab_agents.png}
+\caption{Autolab five-agent interaction: scientist $\rightarrow$ Autolab orchestrator $\rightarrow$ Researcher, Planner, Worker, and Reporter. Worker execution forms a repeatable spawn loop so the planner can launch as many isolated worktree runs as needed. Workers use \texttt{fcntl.flock} for CSV-safe concurrent writes.}
 \label{fig:autolab-agents}
 \end{figure}
 
+\paragraph{Why experiment-first iteration was preferred.}
+A notable shift from earlier research style is that less time was spent manually inspecting special visual traits of the dataset before building methods. Detailed dataset interpretation often depends on slow human feedback, while AI agents can run and compare many experiments quickly at low cost. As a result, the workflow emphasizes early empirical exploration: try more candidate methods sooner, observe which configurations produce strong results, then investigate or operationalize the most effective methods directly. This changes the research loop from ``study first, implement later'' toward ``test early, then deepen where evidence is strongest.''
+
+\paragraph{Why isolated subagents matter.}
+Subagents operate in separate git worktrees so parallel tasks do not overwrite the same files. This isolation also supports human-in-the-loop review: after a task completes, its branch can be reviewed or promoted independently, and pull requests can be created without blocking other experiment branches.
 \section{Reducing Hallucinations}\label{reducing-hallucinations}
 
-To ensure the AI agents produced reliable code, three guardrails were implemented: - \textbf{Spec-Driven Development (SDD)}: Using \texttt{Speckit}~\cite{speckit}, an agent skills framework for spec-driven workflows, combined with \texttt{OpenSpec}~\cite{openspec}, a CLI tool for Living Specification management. Agents must follow the spec, and any drift is detected and resolved through automated analysis. - \textbf{Test-Driven Development (TDD)}: Agents are required to write a failing test before implementing a fix, ensuring that every change is verified. - \textbf{Specialized Skills}: Instead of relying on general knowledge, agents are provided with ``Skills'' (e.g., \texttt{vercel-react-best-practices}) which act as bounded, high-quality instructions.
+To improve reliability, the workflow uses three guardrails. First, \textbf{Spec-Driven Development (SDD)} uses \texttt{Speckit}~\cite{speckit} together with \texttt{OpenSpec}~\cite{openspec} so agents work against explicit specifications and drift can be detected systematically. Second, \textbf{Test-Driven Development (TDD)} requires an executable check around the change, reducing silent regressions. Third, \textbf{specialized skills} provide bounded instructions for recurring tasks, so the agent follows validated local procedures instead of relying only on broad model memory.
 
+Reusable skills become especially valuable when a workflow repeats and the model otherwise wastes tokens by rediscovering it through trial and error. For example, obtaining a paper PDF may involve searching the web, attempting direct download links, failing on redirects, locating the actual download button, then extracting and reading the final document. Once this pattern was observed repeatedly, encoding it as a reusable skill reduced wasted attempts, token cost, and variance in execution quality.
 \section{Overcoming Context Window Limits}\label{overcoming-context-window-limits}
 
-As the codebase grew, managing the LLM's context window became critical:
+As codebase size and task count increased, controlling token usage and context scope became critical.
 
-\subsection{Caveman Mode}\label{caveman-mode}
+\subsection{Reduce-Token-Usage Tools}\label{reduce-token-usage-tools}
 
-A token-compression communication style that removes fluff and articles, reducing input size by approximately 75\% without losing technical substance.
+The workflow uses explicit token-reduction tools rather than relying only on shorter prompts. One example is Caveman mode, a compressed communication style that removes linguistic overhead while preserving technical content. Another is RTK, used at the proxy layer through \texttt{9router} to reduce prompt and context cost further. These tools are practical engineering responses to long-running multi-agent sessions where unnecessary tokens directly increase latency and monetary cost.
 
 \subsection{Subagents and Worktrees}\label{subagents-and-worktrees}
 
-Using isolated git worktrees and a routing layer to direct queries to the most appropriate subagent, ensuring each agent only receives context relevant to its specific task.
+Isolated git worktrees and a routing layer ensure each subagent receives only task-relevant context. This reduces prompt size, avoids concurrent file-edit conflicts, and lets multiple tasks proceed in parallel without one agent overwriting another's work.
 
 \subsection{Reusable Skills}\label{reusable-skills}
 
-Encoding complex workflows (e.g., \texttt{vercel-react-best-practices}, \texttt{fastapi}) into bounded, high-quality skill definitions that constrain agent behavior to validated patterns.
+Encoding complex workflows (for example, frontend best practices or FastAPI-specific conventions) into bounded skill definitions constrains behavior to validated patterns and shortens future prompts.
 
-\section{Experiment Results}\label{experiment-results}
+\paragraph{Reference implementations.}
+Representative public references for token-reduction and routing ideas include Caveman~\cite{caveman}, 9router~\cite{router9}, and RTK~\cite{rtk}.
 
-The agentic engineering workflow facilitated a comprehensive set of experiments
-documented in detail in Chapter~2 (Section~\ref{experiments-and-results}).
-A summary of key results is provided below.
+\section{Summary}\label{agentic-summary}
 
-\subsection{Summary Table}
-
-\begin{table}[H]
-\centering
-\caption{Summary of all experiment results}
-\label{tab:exp_summary}
-\begin{tabular}{@{}lcc@{}}
-\toprule
-Experiment & Best Result & Configuration \\
-\midrule
-Retrieval sweep (pipeline) & Accuracy 0.786 & EfficientNetB1 pretrained, E1, freq\_strength, $K=7$ \\
-5-fold cross-validation    & Mean 0.829     & EfficientNetB1 FT + E2 + freq\_strength + k=3 \\
-Feature extractor comp.    & Pretrained EfficientNetB1 wins & Deep encoders still dominate traditional baselines \\
-YOLO vs K-means            & 0.786 (equal)  & Same best retrieval score under latest local rerun \\
-Unknown species threshold  & F1 0.341       & gap\_0\_2, roc\_opt \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{End-to-End Agent-Browser Testing}\label{e2e-agent-browser}
-
-To validate the complete retrieval pipeline against research experiment
-configuration, an end-to-end test was conducted using \texttt{agent-browser},
-a headless browser automation CLI built in Rust with Chrome DevTools Protocol
-(CDP). The test simulates a regular user performing the full species retrieval
-workflow.
-
-\subsection{Test Configuration}
-
-The E2E test validates the same configuration used in research experiments:
-
-\begin{itemize}[nosep]
-  \item \textbf{Feature extractor}: EfficientNetB1\_finetuned (1,280-dim vectors)
-  \item \textbf{Collection}: myco\_fungi\_features\_full\_finetuned
-  \item \textbf{K}: 11 nearest neighbors
-  \item \textbf{Environment strategy}: same\_media (E1, query only same growth medium)
-  \item \textbf{Aggregation}: freq\_strength
-  \item \textbf{Threshold formula in current webapp}: gnorm\_0\_2 (backend default at time of writing; research-best formula after regeneration is gap\_0\_2)
-\end{itemize}
-
-\subsection{Test Flow}
-
-\begin{enumerate}[nosep]
-  \item \textbf{Login}: Test user authenticates through the sign-in page.
-  \item \textbf{Dashboard}: Verify dataset overview with 727 images, 136 species.
-  \item \textbf{Upload}: Navigate to Retrieve Species page, showing batch upload UI.
-  \item \textbf{Segmentation}: Review K-means segmented colonies with editable bounding boxes.
-  \item \textbf{Results}: View ranked species predictions with threshold confidence badge.
-\end{enumerate}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.85\textwidth]{e2e_login.png}
-\caption{Login page for test account registration and authentication}
-\label{fig:e2e_login}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\textwidth]{e2e_dashboard.png}
-\caption{Dashboard showing dataset overview (727 images, 136 species, 5 media types)}
-\label{fig:e2e_dashboard}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\textwidth]{e2e_retrieve_upload.png}
-\caption{Retrieve Species upload page with batch ZIP upload, KNN configuration controls}
-\label{fig:e2e_retrieve_upload}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\textwidth]{e2e_segmentation.png}
-\caption{Segmentation review page with editable bounding boxes and segment grid}
-\label{fig:e2e_segmentation}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\textwidth]{e2e_retrieval_results.png}
-\caption{Retrieval results (light theme): ranked species predictions with threshold confidence (green = known, using backend default gnorm\_0\_2 formula), KNN neighbor details per query image, and species distribution chart.}
-\label{fig:e2e_results}
-\end{figure}
-
-\subsection{Configurational Alignment Verification}
-
-All E2E screenshots were compared against the research experiment configuration
-to verify alignment:
-
-\begin{table}[H]
-\centering
-\caption{Configuration alignment: research experiment vs. production webapp}
-\label{tab:config_align}
-\small
-\begin{tabularx}{\textwidth}{@{}l X X@{}}
-\toprule
-\textbf{Component} & \textbf{Research} & \textbf{Webapp} \\
-\midrule
-Feature Extractor & EfficientNetB1\_finetuned & EfficientNetB1\_finetuned \\
-Qdrant Collection & myco\_fungi\_feat\-ures\_full\_ft & myco\_fungi\_feat\-ures\_full\_ft \\
-K (neighbors) & 11 & 11 \\
-Environment Strategy & same\_media (E1) & same\_media \\
-Aggregation & freq\_strength & freq\_strength \\
-Threshold Formula & gap\_0\_2 is research-best after regeneration (F1 $=$ 0.3409), while backend default remains gnorm\_0\_2 & gnorm\_0\_2 \\
-\bottomrule
-\end{tabularx}
-\end{table}
+Agentic engineering in this project was not treated as a general chatbot wrapper. It was organized as a cost-aware, multi-agent software workflow with explicit routing, isolated execution, reusable skills, and verification guardrails. The result is a research process that can explore more configurations earlier, while still preserving human oversight at branch, review, and promotion boundaries.

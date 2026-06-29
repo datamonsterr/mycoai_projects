@@ -65,9 +65,10 @@ class SegmentDetail(BaseModel):
 
 class RetrievalQueryRequest(BaseModel):
     image_id: str
+    image_ids: list[str] | None = None
     k: int = Field(default=5, ge=1)
     aggregation: str
-    environment_strategy: str
+    media_strategy: str
 
 
 class RetrievalJobResponse(BaseModel):
@@ -82,6 +83,14 @@ class RetrievalNeighbor(BaseModel):
     similarity: float
     media: str
     image_thumbnail_url: str
+
+
+class RetrievalQueryImageResult(BaseModel):
+    image_id: str
+    image_url: str
+    media: str
+    segment_image_urls: list[str]
+    neighbors: list[RetrievalNeighbor]
 
 
 class RetrievalRanking(BaseModel):
@@ -103,6 +112,7 @@ class RetrievalResultsResponse(BaseModel):
     status: str
     strain: str
     rankings: list[RetrievalRanking]
+    queried_images: list[RetrievalQueryImageResult] = []
     threshold: ThresholdConfidence | None = None
 
 

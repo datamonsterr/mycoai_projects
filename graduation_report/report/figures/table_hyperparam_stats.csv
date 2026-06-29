@@ -1,16 +1,18 @@
 Parameter,Value,Min (%),Mean (%),Max (%),Samples
-Extractor,EfficientNetB1 FT,28.6,65.7,88.1,320
-Extractor,MobileNetV2 FT,31.0,62.4,83.3,320
-Extractor,ResNet50 FT,7.1,58.1,85.7,320
-Media,Same Medium (E1),4.8,56.8,83.3,297
+K,K=13,66.7,74.0,81.0,12
+K,K=15,64.3,72.4,81.0,12
+Extractor,EfficientNetB1 FT,28.6,65.9,88.1,328
+Extractor,MobileNetV2 FT,31.0,62.6,83.3,328
+Extractor,ResNet50 FT,7.1,58.6,85.7,328
+Media,Same Medium (E1),4.8,57.5,83.3,309
 Media,YES (E3),21.4,55.6,88.1,296
 Extractor,ResNet50 PT,7.1,53.3,78.6,320
-Media,All Media (E2),7.1,52.2,85.7,296
+Media,All Media (E2),7.1,52.9,85.7,308
+Aggregation,Weighted,14.3,52.6,85.7,383
+Aggregation,Freq×Strength,7.1,52.6,88.1,382
 Media,All-Except CREA (E4),7.1,52.1,85.7,296
-Aggregation,Freq×Strength,7.1,52.0,88.1,370
 Aggregation,Per-Query Avg,14.3,51.9,85.7,370
 Aggregation,Relative,14.3,51.9,85.7,370
-Aggregation,Weighted,14.3,51.9,85.7,371
 K,K=11,7.1,51.9,85.7,561
 Aggregation,Per-Query Norm Avg,14.3,51.8,85.7,370
 Aggregation,Uniform,14.3,51.8,85.7,370

@@ -19,7 +19,9 @@ def fixture_headers(client: TestClient) -> dict[str, str]:
 _VALID_UUID = str(uuid.uuid4())
 
 
-def test_start_query_image_not_found(client: TestClient, headers: dict[str, str]) -> None:
+def test_start_query_image_not_found(
+    client: TestClient, headers: dict[str, str]
+) -> None:
     """New DB-based retrieval returns 404 when image not found."""
     resp = client.post(
         "/api/v1/retrieval/query",
@@ -27,7 +29,7 @@ def test_start_query_image_not_found(client: TestClient, headers: dict[str, str]
             "image_id": _VALID_UUID,
             "k": 5,
             "aggregation": "freq_strength",
-            "environment_strategy": "same_media",
+            "media_strategy": "same_media",
         },
         headers=headers,
     )
@@ -44,14 +46,16 @@ def test_get_job_results_not_found(client: TestClient, headers: dict[str, str]) 
     assert resp.status_code == 404
 
 
-def test_query_sync_image_not_found(client: TestClient, headers: dict[str, str]) -> None:
+def test_query_sync_image_not_found(
+    client: TestClient, headers: dict[str, str]
+) -> None:
     resp = client.post(
         "/api/v1/retrieval/query-sync",
         json={
             "image_id": _VALID_UUID,
             "k": 3,
             "aggregation": "freq_strength",
-            "environment_strategy": "same_media",
+            "media_strategy": "same_media",
         },
         headers=headers,
     )
@@ -67,7 +71,7 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
         image_id=_VALID_UUID,
         k=3,
         aggregation="freq_strength",
-        environment_strategy="same_media",
+        media_strategy="same_media",
     )
     from backend.qdrant.models import NeighborResult, QueryResult
 
@@ -77,7 +81,7 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
                 image_id="neighbor-image-1",
                 score=0.91,
                 strain="DTO 148-F1",
-                environment="CYA",
+                media="CYA",
                 specy="Penicillium chrysogenum",
                 segment_index=2,
                 extractor="EfficientNetB1_finetuned",
@@ -87,14 +91,13 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
     )
 
     image = SimpleNamespace(
-        id=_VALID_UUID,
+        id=uuid.UUID(_VALID_UUID),
         media=SimpleNamespace(name="CYA"),
         strain=SimpleNamespace(name="DTO 148-F1"),
+        segments=[],
     )
-    segment = SimpleNamespace(qdrant_point_id=uuid.uuid4())
-
-    async def fake_scalar(*_args, **_kwargs):
-        return image
+    segment = SimpleNamespace(qdrant_point_id=uuid.uuid4(), is_archived=False, segment_index=0)
+    image.segments = [segment]
 
     class FakeExecuteResult:
         def __init__(self, rows=None, scalar_value=None):
@@ -119,10 +122,9 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
             created_results.append(obj)
 
     db = SimpleNamespace(
-        scalar=AsyncMock(side_effect=fake_scalar),
         execute=AsyncMock(
             side_effect=[
-                FakeExecuteResult([segment]),
+                FakeExecuteResult([image]),
                 FakeExecuteResult(scalar_value="Penicillium chrysogenum"),
             ]
         ),
@@ -147,4 +149,4 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
     saved_neighbor = created_results[0].neighbors[0]
     assert saved_neighbor.neighbor_image_id == "neighbor-image-1"
     _, kwargs = patched_query.call_args
-    assert kwargs["filter_spec"].environment == "CYA"
+    assert kwargs["filter_spec"].media == "CYA"

@@ -44,25 +44,25 @@ def test_build_filter_empty_spec() -> None:
     assert build_filter(FilterSpec()) is None
 
 
-def test_build_filter_environment() -> None:
-    result = build_filter(FilterSpec(environment="MEA"))
+def test_build_filter_media() -> None:
+    result = build_filter(FilterSpec(media="MEA"))
     assert result is not None
     must = _must(result)
     assert len(must) == 1
     cond = must[0]
     assert isinstance(cond, FieldCondition)
-    assert cond.key == "environment"
+    assert cond.key == "media"
     assert cond.match == MatchValue(value="MEA")
 
 
-def test_build_filter_exclude_environment() -> None:
-    result = build_filter(FilterSpec(exclude_environment="PDA"))
+def test_build_filter_exclude_media() -> None:
+    result = build_filter(FilterSpec(exclude_media="PDA"))
     assert result is not None
     must_not = _must_not(result)
     assert len(must_not) == 1
     cond = must_not[0]
     assert isinstance(cond, FieldCondition)
-    assert cond.key == "environment"
+    assert cond.key == "media"
     assert cond.match == MatchValue(value="PDA")
 
 
@@ -100,7 +100,7 @@ def test_build_filter_exclude_ids() -> None:
 
 
 def test_build_filter_combined() -> None:
-    result = build_filter(FilterSpec(environment="MEA", exclude_strain="DTO 148-D1"))
+    result = build_filter(FilterSpec(media="MEA", exclude_strain="DTO 148-D1"))
     assert result is not None
     must = _must(result)
     must_not = _must_not(result)
@@ -205,11 +205,11 @@ def test_aggregate_empty() -> None:
 
 
 def test_filter_spec_roundtrip() -> None:
-    spec = FilterSpec(environment="MEA", exclude_strain="DTO 148-D1")
+    spec = FilterSpec(media="MEA", exclude_strain="DTO 148-D1")
     qdrant_filter = build_filter(spec)
     assert qdrant_filter is not None
     must = _must(qdrant_filter)
-    env_cond = [c for c in must if c.key == "environment"][0]
+    env_cond = [c for c in must if c.key == "media"][0]
     assert env_cond.match is not None
     assert env_cond.match.value == "MEA"
 
@@ -226,7 +226,7 @@ def make_mock_client() -> MagicMock:
         payload={
             "image_id": "img_42",
             "strain": "DTO 123-A1",
-            "environment": "MEA",
+            "media": "MEA",
             "angle": "ob",
             "specy": "Penicillium commune",
             "parent_item_id": "parent_1",
@@ -403,7 +403,7 @@ def test_aggregate_router(client: TestClient) -> None:
 
 
 @patch("backend.routers.search.get_qdrant_client")
-def test_environments_endpoint(mock_get_client: MagicMock, client: TestClient) -> None:
+def test_media_endpoint(mock_get_client: MagicMock, client: TestClient) -> None:
     mock_client = MagicMock()
     mock_get_client.return_value = mock_client
 
@@ -412,11 +412,11 @@ def test_environments_endpoint(mock_get_client: MagicMock, client: TestClient) -
             self.payload = payload
 
     mock_client.scroll.return_value = (
-        [FakePoint({"environment": "MEA"}), FakePoint({"environment": "PDA"})],
+        [FakePoint({"media": "MEA"}), FakePoint({"media": "PDA"})],
         None,
     )
 
-    response = client.get("/api/collections/environments")
+    response = client.get("/api/collections/media")
     assert response.status_code == 200
     data = response.json()
     assert "MEA" in data

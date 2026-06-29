@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuth } from '@/lib/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,12 +8,16 @@ import { FlaskConical } from 'lucide-react'
 
 export default function LoginPage() {
   const { login } = useAuth()
-  const [email, setEmail] = useState('')
+  const params = useMemo(() => new URLSearchParams(window.location.search), [])
+  const inviteToken = params.get('token')?.trim() ?? ''
+  const inviteEmail = params.get('email')?.trim() ?? ''
+  const isInviteFlow = inviteToken.length > 0 && inviteEmail.length > 0
+  const [email, setEmail] = useState(inviteEmail)
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register'>(isInviteFlow ? 'register' : 'login')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,7 +30,11 @@ export default function LoginPage() {
     } else {
       try {
         const { authService } = await import('@/services/auth')
-        await authService.register({ email, password, name })
+        if (isInviteFlow) {
+          await authService.registerWithToken({ email, password, name, token: inviteToken })
+        } else {
+          await authService.register({ email, password, name })
+        }
         const ok = await login(email, password)
         if (!ok) setError('Registration succeeded but login failed. Please try signing in.')
         else setMode('login')
@@ -44,7 +52,7 @@ export default function LoginPage() {
           <FlaskConical className="h-10 w-10 text-primary mx-auto mb-2" />
           <CardTitle className="font-heading text-2xl">MycoAI Retrieval</CardTitle>
           <p className="text-sm text-muted-foreground">
-            {mode === 'login' ? 'Sign in to your account' : 'Create a new account'}
+            {mode === 'login' ? 'Sign in to your account' : isInviteFlow ? 'Complete your invited account setup' : 'Create a new account'}
           </p>
         </CardHeader>
         <CardContent>
@@ -64,6 +72,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                readOnly={isInviteFlow}
               />
             </div>
             <div className="space-y-2">
@@ -83,15 +92,17 @@ export default function LoginPage() {
               {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Register'}
             </Button>
           </form>
-          <div className="mt-4">
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer w-full text-center"
-              onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}
-            >
-              {mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign In'}
-            </button>
-          </div>
+          {!isInviteFlow && (
+            <div className="mt-4">
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer w-full text-center"
+                onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}
+              >
+                {mode === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign In'}
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

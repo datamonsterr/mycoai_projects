@@ -78,7 +78,7 @@ async def scan_qdrant(collection: str) -> dict[str, Any]:
             payload = point.payload or {}
             strain = payload.get("strain", "")
             specy = payload.get("specy") or payload.get("species", "")
-            env = payload.get("environment", "")
+            env = payload.get("media", "")
 
             if specy and specy.lower() != "unknown":
                 species_set.add(specy)
@@ -115,7 +115,11 @@ async def sync_to_sql(manifest: dict[str, Any]) -> dict[str, int]:
     from backend.database import async_session as session_factory
     from backend.models import Media, Species, Strain
 
-    stats: dict[str, int] = {"species_created": 0, "media_created": 0, "strains_created": 0}
+    stats: dict[str, int] = {
+        "species_created": 0,
+        "media_created": 0,
+        "strains_created": 0,
+    }
 
     async with session_factory() as db:
         from sqlalchemy import select
@@ -129,7 +133,11 @@ async def sync_to_sql(manifest: dict[str, Any]) -> dict[str, int]:
                 db.add(Species(id=uuid4(), name=name, description=None))
                 stats["species_created"] += 1
         await db.flush()
-        logger.info("  Species: %d new of %d", stats["species_created"], len(manifest["species"]))
+        logger.info(
+            "  Species: %d new of %d",
+            stats["species_created"],
+            len(manifest["species"]),
+        )
 
         # Seed media
         for name in manifest["media"]:
@@ -140,7 +148,9 @@ async def sync_to_sql(manifest: dict[str, Any]) -> dict[str, int]:
                 db.add(Media(id=uuid4(), name=name, description=None))
                 stats["media_created"] += 1
         await db.flush()
-        logger.info("  Media: %d new of %d", stats["media_created"], len(manifest["media"]))
+        logger.info(
+            "  Media: %d new of %d", stats["media_created"], len(manifest["media"])
+        )
 
         # Seed strains
         species_cache: dict[str, str] = {}
@@ -174,7 +184,11 @@ async def sync_to_sql(manifest: dict[str, Any]) -> dict[str, int]:
                 stats["strains_created"] += 1
 
         await db.commit()
-        logger.info("  Strains: %d new of %d", stats["strains_created"], len(manifest["strains"]))
+        logger.info(
+            "  Strains: %d new of %d",
+            stats["strains_created"],
+            len(manifest["strains"]),
+        )
 
     return stats
 
@@ -192,7 +206,8 @@ def main() -> None:
         help="Only scan and report, do not sync to SQL",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable debug logging",
     )

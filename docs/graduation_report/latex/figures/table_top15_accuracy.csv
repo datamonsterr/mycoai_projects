@@ -1,6 +1,7 @@
 Extractor,Media Strategy,Aggregation,K,accuracy_pct
 ResNet50 FT,E1,Freq×Strength,5,81.0
 EfficientNetB1 FT,E1,Freq×Strength,7,81.0
+EfficientNetB1 FT,E1,Freq×Strength,13,81.0
 EfficientNetB1 FT,E1,Freq×Strength,3,78.6
 ResNet50 PT,E1,Freq×Strength,3,78.6
 EfficientNetB1 FT,E1,Freq×Strength,5,78.6
@@ -13,4 +14,3 @@ MobileNetV2 FT,E1,Freq×Strength,7,76.2
 MobileNetV2 FT,E1,Freq×Strength,11,76.2
 MobileNetV2 PT,E1,Freq×Strength,5,73.8
 EfficientNetB1 PT,E1,Freq×Strength,5,73.8
-MobileNetV2 PT,E1,Freq×Strength,7,73.8

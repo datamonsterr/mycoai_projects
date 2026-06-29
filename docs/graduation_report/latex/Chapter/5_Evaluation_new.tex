@@ -20,15 +20,15 @@ extractors $\times$ media selection strategies $\times$ aggregation methods.
 
 \textbf{Media Selection Strategies:}
 \begin{itemize}[nosep]
-  \item \textbf{E1 (Same):} Query and search within same environment
-  \item \textbf{E2 (All):} Search across all available environments
+  \item \textbf{E1 (Same):} Query and search within same medium
+  \item \textbf{E2 (All):} Search across all available media
   \item \textbf{E3-xxx:} Use only the specified medium
   \item \textbf{E4-xxx:} Exclude the specified medium
 \end{itemize}
 
 \textbf{Aggregation Strategies:} weighted, uni, freq\_strength, relative
 
-The latest local rerun with updated finetuned weights and corrected feature-indexing pipeline achieved a best overall retrieval accuracy of \textbf{78.6\%} (33/42 predictions correct), with the top configuration coming from the pretrained EfficientNetB1 backbone under \texttt{freq\_strength}, E1, and $K=7$.
+The local rerun with corrected feature-indexing and refreshed retrieval evaluation achieved a best overall retrieval accuracy of \textbf{78.6\%} (33/42 predictions correct), with the top configuration coming from the pretrained EfficientNetB1 backbone under \texttt{freq\_strength}, E1, and $K=7$.
 
 \begin{table}[H]
 \centering
@@ -48,14 +48,14 @@ MobileNetV2 Finetuned & E1 & weighted & 0.714 & 30/42 \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{retrieval_top_configs.png}
+\includegraphics[width=\textwidth,keepaspectratio]{retrieval_top_configs.png}
 \caption{Top 20 retrieval sweep configurations (K=7)}
 \label{fig:retrieval_top}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{retrieval_media_heatmap.png}
+\includegraphics[width=\textwidth,keepaspectratio]{retrieval_media_heatmap.png}
 \caption{Best accuracy by extractor and media selection strategy}
 \label{fig:retrieval_heatmap}
 \end{figure}
@@ -87,21 +87,21 @@ E1 & freq\_strength & 7  & 0.821 & 0.090 \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{cv_fold_configs.png}
+\includegraphics[width=\textwidth,keepaspectratio]{cv_fold_configs.png}
 \caption{Best CV configurations bar chart}
 \label{fig:cv_configs}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.7\textwidth]{fold_variance_new.png}
+\includegraphics[width=\textwidth,keepaspectratio]{fold_variance_new.png}
 \caption{Per-fold accuracy across all configurations}
 \label{fig:fold_variance}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{training_curves_folds.png}
+\includegraphics[width=\textwidth,keepaspectratio]{training_curves_folds.png}
 \caption{Fold-specific EfficientNetB1 training curves}
 \label{fig:training_folds}
 \end{figure}
@@ -110,23 +110,23 @@ E1 & freq\_strength & 7  & 0.821 & 0.090 \\
 YOLO and K-means segmentation methods were compared head-to-head using the
 best retrieval configuration (ResNet50 Finetuned, freq\_strength).
 
-\textbf{Result: Both methods achieve identical best accuracy of 78.6\%} (33/42) under the latest local rerun.
+\textbf{Result: Both methods achieve identical best accuracy of 78.6\%} (33/42) under the local rerun.
 The segmentation choice still does not materially change the best species-level retrieval score on this dataset, although the winning backbone is now the pretrained EfficientNetB1 rather than the earlier fine-tuned ResNet50 claim.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{segmentation_comparison.png}
+\includegraphics[width=\textwidth,keepaspectratio]{segmentation_comparison.png}
 \caption{YOLO vs K-means segmentation: retrieval accuracy comparison}
 \label{fig:seg_comp}
 \end{figure}
 
 \begin{table}[H]
 \centering
-\caption{Segmentation comparison by environment strategy}
+\caption{Segmentation comparison by media strategy}
 \label{tab:seg_comp}
 \begin{tabular}{@{}lccc@{}}
 \toprule
-Environment & YOLO & K-means & Difference \\
+Media & YOLO & K-means & Difference \\
 \midrule
 E1 (same)        & 0.786 & 0.786 & 0.000 \\
 E2 (all media)   & 0.619 & 0.619 & 0.000 \\
@@ -163,14 +163,14 @@ exp\_decay\_20 & f1\_grid & 0.337 & 0.234 & 0.604 & 0.152 \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{threshold_top_strategies_new.png}
+\includegraphics[width=\textwidth,keepaspectratio]{threshold_top_strategies_new.png}
 \caption{Top 10 threshold strategies for unknown species detection}
 \label{fig:threshold_top}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{threshold_known_unknown_distribution.png}
+\includegraphics[width=\textwidth,keepaspectratio]{threshold_known_unknown_distribution.png}
 \caption{Known vs unknown species distribution in full\_prepared dataset}
 \label{fig:threshold_dist}
 \end{figure}

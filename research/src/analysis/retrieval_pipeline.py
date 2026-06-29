@@ -69,6 +69,7 @@ def default_media() -> list[str]:
         "E3_CYAS",
         "E3_DG18",
         "E3_MEA",
+        "E3_OA",
         "E3_YES",
         "E4_CREA",
         "E4_CYA",
@@ -76,6 +77,7 @@ def default_media() -> list[str]:
         "E4_CYAS",
         "E4_DG18",
         "E4_MEA",
+        "E4_OA",
         "E4_YES",
     ]
 

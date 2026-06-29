@@ -4,7 +4,6 @@ import {
   getSpeciesDistribution,
   getMediaDistribution,
   getStrainDistribution,
-  getEnvironmentDistribution,
   getQdrantStatus,
 } from '@/services/dashboard'
 import type { DashboardStats, DistributionItem, IndexStatus } from '@/services/types'
@@ -34,13 +33,6 @@ export function useStrainDistribution() {
   return useQuery<DistributionItem[]>({
     queryKey: ['dashboard', 'charts', 'strain-distribution'],
     queryFn: getStrainDistribution,
-  })
-}
-
-export function useEnvironmentDistribution() {
-  return useQuery<DistributionItem[]>({
-    queryKey: ['dashboard', 'charts', 'environment-distribution'],
-    queryFn: getEnvironmentDistribution,
   })
 }
 

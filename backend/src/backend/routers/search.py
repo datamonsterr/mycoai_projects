@@ -32,13 +32,13 @@ def stats_endpoint() -> CollectionStats:
         ) from exc
 
 
-@router.get("/collections/environments", response_model=list[str])
-def environments_endpoint() -> list[str]:
-    from ..qdrant.collections import list_environments
+@router.get("/collections/media", response_model=list[str])
+def media_endpoint() -> list[str]:
+    from ..qdrant.collections import list_media
 
     client = get_qdrant_client()
     try:
-        return list_environments(client)
+        return list_media(client)
     except Exception as exc:
         raise HTTPException(
             status_code=503, detail=f"Qdrant unavailable: {exc}"

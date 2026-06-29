@@ -41,11 +41,9 @@ def get_collection_stats(
     )
 
 
-def list_environments(
-    client: QdrantClient, collection_name: str | None = None
-) -> list[str]:
+def list_media(client: QdrantClient, collection_name: str | None = None) -> list[str]:
     collection = collection_name or get_qdrant_settings().collection_name
-    environments: set[str] = set()
+    media: set[str] = set()
     offset = None
     while True:
         points, offset = client.scroll(
@@ -56,9 +54,9 @@ def list_environments(
         )
         for point in points:
             payload = dict(point.payload or {})
-            environment = payload.get("environment", "unknown")
-            if environment and environment != "unknown":
-                environments.add(str(environment))
+            env = payload.get("media", "unknown")
+            if env and env != "unknown":
+                media.add(str(env))
         if offset is None:
             break
-    return sorted(environments)
+    return sorted(media)

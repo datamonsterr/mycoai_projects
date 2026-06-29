@@ -70,9 +70,7 @@ async def api_client(pg_session: AsyncSession):
 
     app.dependency_overrides[get_db] = _override_get_db
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()
 
@@ -155,7 +153,7 @@ async def test_api_full_retrieval_flow_mocked(
             "image_id": "fake-image-id",
             "k": 5,
             "aggregation": "weighted",
-            "environment_strategy": "E1",
+            "media_strategy": "E1",
         },
         headers=headers,
     )

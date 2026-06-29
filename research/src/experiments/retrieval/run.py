@@ -1043,7 +1043,8 @@ def run_species_evaluation(
         media=environment,
         strategy=strategy,
     )
-    draw_confusion_matrix(results, os.path.join(output_dir, "confusion_matrix.png"))
+    if results:
+        draw_confusion_matrix(results, os.path.join(output_dir, "confusion_matrix.png"))
 
     csv_path = write_evaluation_csv(
         results=results,
@@ -1227,8 +1228,8 @@ ALL_EXTRACTORS = [
 
 ALL_ENVS = [
     "E1", "E2",
-    "E3_CREA", "E3_DG18", "E3_MEA", "E3_YES",
-    "E4_CREA", "E4_DG18", "E4_MEA", "E4_YES",
+    "E3_CREA", "E3_CYA", "E3_CYA30", "E3_CYAS", "E3_DG18", "E3_MEA", "E3_OA", "E3_YES",
+    "E4_CREA", "E4_CYA", "E4_CYA30", "E4_CYAS", "E4_DG18", "E4_MEA", "E4_OA", "E4_YES",
 ]
 
 ALL_AGGS = [
@@ -1266,7 +1267,7 @@ def _parse_k_minimal(raw: str) -> list[int]:
 def _resolve_k(values: list[str]) -> list[int]:
     if values == ["all"]:
         return ALL_K
-    return sorted(set(_parse_k_minimal(" ".join(values))))
+    return sorted(set(_parse_k_minimal(" ".join(str(v) for v in values))))
 
 
 def _build_parser() -> argparse.ArgumentParser:

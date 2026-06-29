@@ -66,7 +66,7 @@
 \contentsline {subsection}{\numberline {2.3.6}Threshold Experiments}{34}{subsection.2.3.6}%
 \contentsline {subsubsection}{a) Setup}{34}{subsubsection*.42}%
 \contentsline {subsubsection}{b) Results}{35}{subsubsection*.43}%
-\contentsline {subsubsection}{c) Findings}{35}{subsubsection*.44}%
+\contentsline {subsubsection}{c) Findings}{36}{subsubsection*.44}%
 \contentsline {section}{\numberline {2.4}Discussion}{37}{section.2.4}%
 \contentsline {chapter}{\numberline {3}WEB APPLICATION DESIGN \& IMPLEMENTATION}{40}{chapter.3}%
 \contentsline {section}{\numberline {3.1}Requirements Analysis}{40}{section.3.1}%
@@ -93,49 +93,47 @@
 \contentsline {section}{\numberline {3.5}Frontend Architecture}{52}{section.3.5}%
 \contentsline {subsection}{\numberline {3.5.1}User Interface Scope}{52}{subsection.3.5.1}%
 \contentsline {subsection}{\numberline {3.5.2}Key Page: Retrieve}{52}{subsection.3.5.2}%
-\contentsline {subsection}{\numberline {3.5.3}Key Page: Dataset Browser}{53}{subsection.3.5.3}%
-\contentsline {subsection}{\numberline {3.5.4}Key Page: Dashboard}{53}{subsection.3.5.4}%
-\contentsline {subsection}{\numberline {3.5.5}Key Page: User Management and Audit Log}{53}{subsection.3.5.5}%
-\contentsline {section}{\numberline {3.6}Core Backend Pipelines}{53}{section.3.6}%
-\contentsline {subsection}{\numberline {3.6.1}Segmentation Pipeline}{53}{subsection.3.6.1}%
-\contentsline {subsection}{\numberline {3.6.2}Retrieval Pipeline}{54}{subsection.3.6.2}%
-\contentsline {subsection}{\numberline {3.6.3}Qdrant Vector Database Design}{54}{subsection.3.6.3}%
-\contentsline {subsection}{\numberline {3.6.4}Model and Index Maintenance}{54}{subsection.3.6.4}%
-\contentsline {section}{\numberline {3.7}Deployment Architecture}{56}{section.3.7}%
-\contentsline {subsection}{\numberline {3.7.1}Docker Compose Topology}{56}{subsection.3.7.1}%
-\contentsline {subsection}{\numberline {3.7.2}CI/CD Pipeline}{56}{subsection.3.7.2}%
-\contentsline {section}{\numberline {3.8}Data Visualization Charts}{56}{section.3.8}%
-\contentsline {section}{\numberline {3.9}Summary}{58}{section.3.9}%
-\contentsline {chapter}{\numberline {4}AGENTIC ENGINEERING \& EVALUATION}{59}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Motivation}{59}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Multi-Agent Architecture}{59}{section.4.2}%
-\contentsline {subsection}{\numberline {4.2.1}Delegation Map}{59}{subsection.4.2.1}%
-\contentsline {section}{\numberline {4.3}Reducing Hallucinations}{60}{section.4.3}%
-\contentsline {section}{\numberline {4.4}Overcoming Context Window Limits}{61}{section.4.4}%
-\contentsline {subsection}{\numberline {4.4.1}Caveman Mode}{61}{subsection.4.4.1}%
-\contentsline {subsection}{\numberline {4.4.2}Subagents and Worktrees}{61}{subsection.4.4.2}%
-\contentsline {subsection}{\numberline {4.4.3}Reusable Skills}{61}{subsection.4.4.3}%
-\contentsline {section}{\numberline {4.5}Experiment Results}{61}{section.4.5}%
-\contentsline {subsection}{\numberline {4.5.1}Summary Table}{61}{subsection.4.5.1}%
-\contentsline {section}{\numberline {4.6}End-to-End Agent-Browser Testing}{61}{section.4.6}%
-\contentsline {subsection}{\numberline {4.6.1}Test Configuration}{61}{subsection.4.6.1}%
-\contentsline {subsection}{\numberline {4.6.2}Test Flow}{62}{subsection.4.6.2}%
-\contentsline {subsection}{\numberline {4.6.3}Configurational Alignment Verification}{64}{subsection.4.6.3}%
-\contentsline {chapter}{\numberline {5}CONCLUSION AND FUTURE WORK}{65}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Summary}{65}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Future Work}{65}{section.5.2}%
-\contentsline {chapter}{REFERENCE}{69}{section*.46}%
-\contentsline {chapter}{\numberline {A}USE CASE DESCRIPTIONS}{71}{chapter.1.A}%
-\contentsline {section}{\numberline {A.1}Use Case Specifications}{72}{section.1.A.1}%
-\contentsline {subsection}{\numberline {A.1.1}UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}{72}{subsection.1.A.1.1}%
-\contentsline {subsection}{\numberline {A.1.2}UC-DATA-01: Index New Data}{73}{subsection.1.A.1.2}%
-\contentsline {section}{\numberline {A.2}Detailed Experiment Results}{73}{section.1.A.2}%
-\contentsline {subsection}{\numberline {A.2.1}Retrieval Pipeline Full Results ($K=7$, \texttt {weighted}, E1)}{73}{subsection.1.A.2.1}%
-\contentsline {subsection}{\numberline {A.2.2}Cross-Validation Results (ResNet50 Finetuned, 5-Fold)}{74}{subsection.1.A.2.2}%
-\contentsline {subsection}{\numberline {A.2.3}Threshold Analysis Results}{74}{subsection.1.A.2.3}%
-\contentsline {section}{\numberline {A.3}Media Strategy Definitions}{76}{section.1.A.3}%
-\contentsline {section}{\numberline {A.4}Species Labels in Test Set}{76}{section.1.A.4}%
-\contentsline {section}{\numberline {A.5}Prediction Visualizations}{77}{section.1.A.5}%
-\contentsline {subsection}{\numberline {A.5.1}Confusion Matrices}{77}{subsection.1.A.5.1}%
-\contentsline {subsection}{\numberline {A.5.2}Correct and Incorrect Prediction Examples}{77}{subsection.1.A.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Use-Case Flow Demonstration with Agent-Browser}{53}{subsection.3.5.3}%
+\contentsline {subsection}{\numberline {3.5.4}Key Page: Dataset Browser}{55}{subsection.3.5.4}%
+\contentsline {subsection}{\numberline {3.5.5}Key Page: Dashboard}{55}{subsection.3.5.5}%
+\contentsline {subsection}{\numberline {3.5.6}Key Page: User Management and Audit Log}{55}{subsection.3.5.6}%
+\contentsline {section}{\numberline {3.6}Core Backend Pipelines}{55}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Segmentation Pipeline}{55}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Retrieval Pipeline}{55}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Qdrant Vector Database Design}{55}{subsection.3.6.3}%
+\contentsline {subsection}{\numberline {3.6.4}Model and Index Maintenance}{56}{subsection.3.6.4}%
+\contentsline {section}{\numberline {3.7}Deployment Architecture}{58}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}Docker Compose Topology}{58}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}CI/CD Pipeline}{58}{subsection.3.7.2}%
+\contentsline {section}{\numberline {3.8}Data Visualization Charts}{58}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Summary}{60}{section.3.9}%
+\contentsline {chapter}{\numberline {4}AGENTIC ENGINEERING \& EVALUATION}{61}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Motivation}{61}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Multi-Agent Architecture}{61}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Delegation Map}{61}{subsection.4.2.1}%
+\contentsline {paragraph}{Cost-aware model routing.}{61}{paragraph*.45}%
+\contentsline {paragraph}{Why experiment-first iteration was preferred.}{62}{paragraph*.46}%
+\contentsline {paragraph}{Why isolated subagents matter.}{62}{paragraph*.47}%
+\contentsline {section}{\numberline {4.3}Reducing Hallucinations}{62}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Overcoming Context Window Limits}{63}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Reduce-Token-Usage Tools}{63}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Subagents and Worktrees}{63}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}Reusable Skills}{63}{subsection.4.4.3}%
+\contentsline {paragraph}{Reference implementations.}{63}{paragraph*.48}%
+\contentsline {section}{\numberline {4.5}Summary}{63}{section.4.5}%
+\contentsline {chapter}{\numberline {5}CONCLUSION AND FUTURE WORK}{64}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Summary}{64}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Future Work}{64}{section.5.2}%
+\contentsline {chapter}{REFERENCE}{68}{section*.50}%
+\contentsline {chapter}{\numberline {A}USE CASE DESCRIPTIONS}{70}{chapter.1.A}%
+\contentsline {section}{\numberline {A.1}Use Case Specifications}{71}{section.1.A.1}%
+\contentsline {subsection}{\numberline {A.1.1}UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}{71}{subsection.1.A.1.1}%
+\contentsline {subsection}{\numberline {A.1.2}UC-DATA-01: Index New Data}{72}{subsection.1.A.1.2}%
+\contentsline {section}{\numberline {A.2}Detailed Experiment Results}{72}{section.1.A.2}%
+\contentsline {subsection}{\numberline {A.2.1}Retrieval Pipeline Results (All K, YOLO Segments)}{72}{subsection.1.A.2.1}%
+\contentsline {subsection}{\numberline {A.2.2}Cross-Validation Results (EfficientNetB1 Finetuned, 5-Fold)}{73}{subsection.1.A.2.2}%
+\contentsline {subsection}{\numberline {A.2.3}Threshold Analysis Results}{73}{subsection.1.A.2.3}%
+\contentsline {section}{\numberline {A.3}Media Strategy Definitions}{75}{section.1.A.3}%
+\contentsline {section}{\numberline {A.4}Species Labels in Test Set}{75}{section.1.A.4}%
+\contentsline {section}{\numberline {A.5}Confusion Matrices}{75}{section.1.A.5}%
 \contentsfinish 

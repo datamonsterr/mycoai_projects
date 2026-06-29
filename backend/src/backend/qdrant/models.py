@@ -17,7 +17,7 @@ class NeighborResult(BaseModel):
     score: float = 0.0
     distance: float = 1.0
     strain: str | None = None
-    environment: str | None = None
+    media: str | None = None
     angle: str | None = None
     specy: str | None = None
     parent_id: str | None = None
@@ -27,9 +27,9 @@ class NeighborResult(BaseModel):
 
 
 class FilterSpec(BaseModel):
-    environment: str | None = None
-    environment_strategy: str | None = None
-    exclude_environment: str | None = None
+    media: str | None = None
+    media_strategy: str | None = None
+    exclude_media: str | None = None
     exclude_strain: str | None = None
     angle: str | None = None
     strain: str | None = None

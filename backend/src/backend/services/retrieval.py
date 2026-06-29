@@ -2,11 +2,11 @@
 
 Default configuration (research-verified):
   - Extractor: EfficientNetB1_finetuned
-  - Environment strategy: same_media (E1 — query only same growth medium)
+  - Media strategy: same_media (E1 — query only same growth medium)
   - Aggregation: freq_strength
   - K: 11 (from threshold experiment default)
 
-Allows per-query overrides for extractor, K, aggregation, and environment strategy.
+Allows per-query overrides for extractor, K, aggregation, and media strategy.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def _neighbor_to_raw(
         "score": neighbor.score,
         "strain": neighbor.strain,
         "extractor": neighbor.extractor or "default",
-        "environment": neighbor.environment,
+        "media": neighbor.media,
         "image_id": neighbor.image_id,
     }
 
@@ -43,15 +43,15 @@ async def retrieve_by_point_id(
     collection: str,
     point_id: int,
     k: int = 11,
-    environment: str | None = None,
+    media: str | None = None,
     exclude_strain: str | None = None,
     vector_name: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[NeighborResult]]:
     """Query Qdrant by existing point ID, return raw results and all neighbors."""
     settings = get_qdrant_settings()
     filter_spec = FilterSpec()
-    if environment is not None:
-        filter_spec.environment = environment
+    if media is not None:
+        filter_spec.media = media
     if exclude_strain is not None:
         filter_spec.exclude_strain = exclude_strain
 
@@ -90,7 +90,7 @@ async def retrieve_by_vector(
     collection: str,
     query_vector: list[float],
     k: int = 11,
-    environment: str | None = None,
+    media: str | None = None,
     exclude_strain: str | None = None,
     vector_name: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[NeighborResult]]:
@@ -100,8 +100,8 @@ async def retrieve_by_vector(
 
     settings = get_qdrant_settings()
     filter_spec = FilterSpec()
-    if environment is not None:
-        filter_spec.environment = environment
+    if media is not None:
+        filter_spec.media = media
     if exclude_strain is not None:
         filter_spec.exclude_strain = exclude_strain
 
@@ -150,7 +150,7 @@ def run_aggregation(
 
 RESEARCH_DEFAULTS = {
     "extractor": "EfficientNetB1_finetuned",
-    "environment_strategy": "same_media",
+    "media_strategy": "same_media",
     "aggregation": "freq_strength",
     "k": 11,
     "collection": "myco_fungi_features_full_finetuned",

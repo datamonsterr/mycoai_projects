@@ -515,7 +515,7 @@ def test_retrieval_query_requires_auth(client: TestClient) -> None:
             "image_id": "fake-id",
             "k": 5,
             "aggregation": "weighted",
-            "environment_strategy": "E1",
+            "media_strategy": "E1",
         },
     )
     assert resp.status_code == 401
@@ -528,7 +528,7 @@ def test_retrieval_flow(client: TestClient, owner_headers: dict[str, str]) -> No
             "image_id": "00000000-0000-0000-0000-000000000000",
             "k": 3,
             "aggregation": "weighted",
-            "environment_strategy": "E1",
+            "media_strategy": "E1",
         },
         headers=owner_headers,
     )
@@ -556,7 +556,7 @@ def test_retrieval_query_sync(
             "image_id": "00000000-0000-0000-0000-000000000000",
             "k": 3,
             "aggregation": "avg",
-            "environment_strategy": "E2",
+            "media_strategy": "E2",
         },
         headers=owner_headers,
     )
@@ -600,8 +600,8 @@ def test_qdrant_collections_stats(client: TestClient) -> None:
     assert resp.status_code in (200, 503)
 
 
-def test_qdrant_environments(client: TestClient) -> None:
-    resp = client.get("/api/collections/environments")
+def test_qdrant_media(client: TestClient) -> None:
+    resp = client.get("/api/collections/media")
     assert resp.status_code in (200, 503)
 
 

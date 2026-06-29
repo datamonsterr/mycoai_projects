@@ -23,7 +23,7 @@ The web application design is aligned with the generated Software Requirements S
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.72\textheight,keepaspectratio]{figures/ch03_usecase_diagram.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_usecase_diagram.png}
 \caption{Use case diagram for MycoAI Retrieval derived from the generated SRS.}
 \label{fig:ch03-usecase-diagram}
 \end{figure}
@@ -80,7 +80,7 @@ The system follows a decoupled client-server architecture with six containerized
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.7\textheight,keepaspectratio]{figures/ch03_architecture.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_architecture.png}
 \caption{High-level system architecture: React SPA frontend, FastAPI backend, PostgreSQL, Qdrant, Redis, and Celery worker.}
 \label{fig:ch03-architecture}
 \end{figure}
@@ -162,7 +162,7 @@ The relational schema is implemented as SQLAlchemy ORM models across the backend
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.75\textheight,keepaspectratio]{figures/ch03_erd.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_erd.png}
 \caption{Entity-Relationship Diagram for the MycoAI Retrieval PostgreSQL schema.}
 \label{fig:ch03-erd}
 \end{figure}
@@ -179,7 +179,7 @@ The relational schema is implemented as SQLAlchemy ORM models across the backend
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.65\textheight,keepaspectratio]{figures/ch03_data_state_machine.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_data_state_machine.png}
 \caption{State transition diagram for \texttt{data\_update\_status}, which drives Qdrant re-indexing decisions.}
 \label{fig:ch03-data-state-machine}
 \end{figure}
@@ -240,7 +240,7 @@ The FastAPI backend exposes domain routers under the versioned API prefix: authe
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.68\textheight,keepaspectratio]{figures/ch03_auth_sequence.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_auth_sequence.png}
 \caption{Authentication sequence for login, token refresh, logout, and Data Owner provisioning.}
 \label{fig:ch03-auth-sequence}
 \end{figure}
@@ -251,7 +251,7 @@ The retrieval sequence follows the generated SRS: the browser uploads image and 
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.72\textheight,keepaspectratio]{figures/ch03_srs_retrieve_sequence.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_srs_retrieve_sequence.png}
 \caption{High-level retrieval sequence diagram derived from the SRS and checked against the implemented frontend/backend boundary.}
 \label{fig:ch03-retrieve-sequence}
 \end{figure}
@@ -262,14 +262,14 @@ Data Owner indexing reuses upload and segmentation behavior but writes reference
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.68\textheight,keepaspectratio]{figures/ch03_srs_index_sequence.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_srs_index_sequence.png}
 \caption{Data Owner reference-data indexing sequence.}
 \label{fig:ch03-index-sequence}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.68\textheight,keepaspectratio]{figures/ch03_srs_feedback_sequence.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_srs_feedback_sequence.png}
 \caption{Feedback submission and Data Owner review sequence.}
 \label{fig:ch03-feedback-sequence}
 \end{figure}
@@ -296,36 +296,58 @@ The Retrieve page implements a three-step workflow:
 \item \textbf{Results}: system shows ranked species predictions with supporting nearest neighbors.
 \end{itemize}
 
-\begin{quote}
-\textbf{Screenshot Placeholder --- Figure 3.11}
+\subsection{Use-Case Flow Demonstration with Agent-Browser}\label{use-case-flow-demonstration}
 
-Capture the retrieve workflow in three states: upload, segmentation review, and final results.
-\end{quote}
+To document implemented use-case behavior, screenshots were captured with \texttt{agent-browser}, a headless browser automation CLI built in Rust on Chrome DevTools Protocol. This provided repeatable visual evidence for important interaction steps across authentication, retrieval, and owner-facing governance pages.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{e2e_login.png}
+\caption{Authentication flow entry point: login page used in the end-to-end browser-driven walkthrough.}
+\label{fig:ch03-e2e-login}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{e2e_dashboard.png}
+\caption{Post-login dashboard overview showing dataset scale, summary cards, and operator-facing status information.}
+\label{fig:ch03-e2e-dashboard}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{e2e_retrieve_upload.png}
+\caption{Retrieve Species upload step with batch ZIP support and retrieval configuration controls.}
+\label{fig:ch03-e2e-upload}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{e2e_segmentation.png}
+\caption{Segmentation review step with editable bounding boxes before final retrieval.}
+\label{fig:ch03-e2e-segmentation}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{e2e_retrieval_results.png}
+\caption{Retrieval result step showing ranked species predictions, confidence status, nearest-neighbour evidence, and distribution summary.}
+\label{fig:ch03-e2e-results}
+\end{figure}
+
+The browser-driven walkthrough aligns with UC-AUTH-01 and UC-RETRIEVE-01 in Appendix~B, and demonstrates that implemented page flow matches the specified interaction sequence from authentication to retrieval result review.
 
 \subsection{Key Page: Dataset Browser}\label{key-page-dataset-browser-data-owner}
 
-\begin{quote}
-\textbf{Screenshot Placeholder --- Figure 3.12}
-
-Capture the owner-only dataset browser with filters, grouped rows, metadata badges, and archive/restore actions.
-\end{quote}
+The Dataset Browser supports owner-only filtering, grouped inspection, metadata review, and reversible archive/restore actions for governed reference data.
 
 \subsection{Key Page: Dashboard}\label{key-page-dashboard-data-owner}
 
-\begin{quote}
-\textbf{Screenshot Placeholder --- Figure 3.13}
-
-Capture the dashboard with summary cards, species/media charts, and Qdrant index status.
-\end{quote}
+The Dashboard consolidates dataset scale, species/media distribution, and system status so operators can quickly assess repository health and retrieval readiness.
 
 \subsection{Key Page: User Management and Audit Log}\label{key-page-user-management-audit-log-data-owner}
 
-\begin{quote}
-\textbf{Screenshot Placeholder --- Figure 3.14}
-
-Capture the owner-only user management and audit log pages.
-\end{quote}
-
+User Management and Audit Log pages provide governance controls for account administration and traceable operational changes.
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
 \section{Core Backend Pipelines}\label{core-backend-pipelines}
@@ -362,14 +384,14 @@ The Model Index page manages re-indexing and candidate-model assessment, while h
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.75\textheight,keepaspectratio]{figures/ch03_candidate_model.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_candidate_model.png}
 \caption{Candidate Model promotion flow (UC-MODEL-01 Maintain Model and Index): Data Owner uploads, evaluates side-by-side against the current active model on a fixed evaluation set, and manually promotes or rejects.}
 \label{fig:ch03-candidate-model}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.75\textheight,keepaspectratio]{figures/ch03_reindex_warning.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_reindex_warning.png}
 \caption{Re-index trigger and external retraining guidance for UC-MODEL-01: the Data Owner inspects index status including changed-data and accumulated-feedback counts, re-indexes Qdrant for stale items, and receives external retraining guidance when the change threshold is crossed.}
 \label{fig:ch03-reindex-warning}
 \end{figure}
@@ -382,7 +404,7 @@ The Model Index page manages re-indexing and candidate-model assessment, while h
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.65\textheight,keepaspectratio]{figures/ch03_deployment.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_deployment.png}
 \caption{Production Docker Compose topology: services, network boundaries, and persistent volumes.}
 \label{fig:ch03-deployment}
 \end{figure}
@@ -413,21 +435,21 @@ The dashboard generates species and media distribution charts, while the thesis 
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{figures/ch03_species_distribution.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_species_distribution.png}
 \caption{Species distribution in the reference dataset.}
 \label{fig:ch03-species-distribution}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{figures/ch03_media_distribution.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_media_distribution.png}
 \caption{Growth media distribution.}
 \label{fig:ch03-media-distribution}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.45\textheight,keepaspectratio]{figures/ch03_response_time.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/ch03_response_time.png}
 \caption{Retrieval response-time histogram.}
 \label{fig:ch03-response-time}
 \end{figure}

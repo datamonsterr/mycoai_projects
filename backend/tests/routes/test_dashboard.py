@@ -53,7 +53,7 @@ def test_chart_strain(client: TestClient, headers: dict[str, str]) -> None:
     assert isinstance(resp.json(), list)
 
 
-def test_chart_environment(client: TestClient, headers: dict[str, str]) -> None:
-    resp = client.get("/api/v1/dashboard/charts/environment-distribution", headers=headers)
+def test_chart_media(client: TestClient, headers: dict[str, str]) -> None:
+    resp = client.get("/api/v1/dashboard/charts/media-distribution", headers=headers)
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)

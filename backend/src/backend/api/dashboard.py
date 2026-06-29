@@ -9,7 +9,6 @@ from ..database import get_db
 from ..models import Image, Media, Species, Strain
 from ..schemas.dashboard import (
     DashboardStats,
-    EnvironmentDistributionItem,
     MediaDistributionItem,
     SpeciesDistributionItem,
     StrainDistributionItem,
@@ -99,40 +98,8 @@ async def strain_distribution(
     )
     rows = result.all()
     return [
-        StrainDistributionItem(strain_name=row.name or "unknown", image_count=row.image_count)
-        for row in rows
-    ]
-
-
-@router.get(
-    "/charts/environment-distribution",
-    response_model=list[EnvironmentDistributionItem],
-)
-async def environment_distribution(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    user: CurrentUser,
-) -> list[EnvironmentDistributionItem]:
-    from ..models import Image as ImageModel
-
-    result = await db.execute(
-        select(Media.name, func.count(ImageModel.id).label("image_count"))
-        .outerjoin(ImageModel, ImageModel.media_id == Media.id)
-        .where(Media.is_archived.is_(False))
-        .group_by(Media.id, Media.name)
-        .order_by(func.count(ImageModel.id).desc())
-        .limit(15)
-    )
-    rows = result.all()
-    if not rows:
-        return [
-            EnvironmentDistributionItem(
-                environment_name=name, image_count=0
-            )
-            for name in ["CYA", "MEA", "CREA", "DG18", "YES"]
-        ]
-    return [
-        EnvironmentDistributionItem(
-            environment_name=row.name or "unknown", image_count=row.image_count
+        StrainDistributionItem(
+            strain_name=row.name or "unknown", image_count=row.image_count
         )
         for row in rows
     ]

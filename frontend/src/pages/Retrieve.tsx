@@ -12,7 +12,7 @@ import { uploadImage, uploadBatchZip, autoSegment } from '@/services/images'
 import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Loader2, Plus, Trash2, FileText, FileArchive } from 'lucide-react'
 import { useStartRetrieval, useJobStatus, useJobResults } from '@/hooks/use-retrieval'
 import { useToast } from '@/hooks/use-toast'
-import type { RetrievalRanking, RetrievalNeighbor } from '@/services/types'
+import type { RetrievalRanking, RetrievalNeighbor, RetrievalQueryImageResult } from '@/services/types'
 
 type Step = 'upload' | 'segmentation' | 'processing' | 'results'
 
@@ -404,7 +404,7 @@ function ResultDetail({
   knnK,
   aggMethod,
   rankings: apiRankings,
-  topNeighbors: apiNeighbors,
+  queriedImages,
   threshold,
 }: {
   strain: string
@@ -412,11 +412,10 @@ function ResultDetail({
   knnK: number
   aggMethod: 'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'
   rankings?: RetrievalRanking[]
-  topNeighbors?: RetrievalNeighbor[]
+  queriedImages?: RetrievalQueryImageResult[]
   threshold?: import('@/services/types').ThresholdConfidence | null
 }) {
   const displayRanks = apiRankings ?? ranks
-  const displayNeighbors = apiNeighbors ? apiNeighborsToDisplay(apiNeighbors) : null
   const showThreshold = threshold != null && threshold.confidence != null
   return (
     <div className="space-y-4">
@@ -461,39 +460,59 @@ function ResultDetail({
           <CardDescription>Each uploaded image shows its top k={knnK} matching database images ({aggMethod}).</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 pt-0">
-          {images.map((image) => (
-            <details key={image.id} className="rounded-lg border border-border bg-card" open>
-              <summary className="grid cursor-pointer grid-cols-[160px_1fr_120px] items-center gap-3 p-3 text-sm hover:bg-muted/50">
-                {getDisplayImageUrl(image) ? (
-                  <img src={getDisplayImageUrl(image)} alt={`${image.fileName} query`} className="h-28 w-40 rounded-md object-contain border border-border bg-muted" />
-                ) : (
-                  <div className="flex h-28 w-40 items-center justify-center rounded-md border border-border bg-muted text-xs text-muted-foreground">No preview</div>
-                )}
-                <div>
-                  <div className="font-heading font-semibold">{image.fileName}</div>
-                  <div className="text-xs text-muted-foreground">Query image · media {image.media} · {image.segments?.length ?? 0} segments</div>
-                </div>
-                <Badge variant="secondary">K={knnK}</Badge>
-              </summary>
-              <div className="grid grid-cols-1 gap-3 border-t border-border p-3 md:grid-cols-5">
-                  {(displayNeighbors ?? getNeighbors(image, knnK)).map((neighbor, index) => (
-                    <div key={`${image.id}-${neighbor.strain}-${neighbor.media}-${index}`} className="overflow-hidden rounded-lg border border-border bg-muted">
-                      {getNeighborImageUrl(neighbor.original) ? (
-                        <img src={getNeighborImageUrl(neighbor.original)} alt={`${neighbor.species} ${neighbor.media}`} className="h-32 w-full object-contain" />
-                      ) : (
-                        <div className="flex h-32 w-full items-center justify-center text-xs text-muted-foreground">No neighbor image</div>
-                      )}
+          {images.map((image) => {
+            const queriedImage = queriedImages?.find((item) => item.image_id === image.id)
+            const displayNeighbors = queriedImage ? apiNeighborsToDisplay(queriedImage.neighbors) : getNeighbors(image, knnK)
+            const displayImageUrl = queriedImage?.image_url || getDisplayImageUrl(image)
+            const segmentUrls = queriedImage?.segment_image_urls ?? image.segments?.slice(0, 3).map((segment) => segment.url) ?? []
 
-                    <div className="space-y-1 bg-card p-2 text-xs">
-                      <div className="font-heading font-semibold truncate">#{index + 1} {neighbor.species}</div>
-                      <div className="font-mono text-muted-foreground">{neighbor.strain} · {neighbor.media}</div>
-                      <div className="font-mono">sim {neighbor.similarity.toFixed(2)}</div>
-                    </div>
+            return (
+              <details key={image.id} className="rounded-lg border border-border bg-card" open>
+                <summary className="grid cursor-pointer grid-cols-[160px_1fr_120px] items-center gap-3 p-3 text-sm hover:bg-muted/50">
+                  {displayImageUrl ? (
+                    <img src={displayImageUrl} alt={`${image.fileName} query`} className="h-28 w-40 rounded-md object-contain border border-border bg-muted" />
+                  ) : (
+                    <div className="flex h-28 w-40 items-center justify-center rounded-md border border-border bg-muted text-xs text-muted-foreground">No preview</div>
+                  )}
+                  <div>
+                    <div className="font-heading font-semibold">{image.fileName}</div>
+                    <div className="text-xs text-muted-foreground">Query image · media {queriedImage?.media ?? image.media} · {segmentUrls.length} segments shown</div>
                   </div>
-                ))}
-              </div>
-            </details>
-          ))}
+                  <Badge variant="secondary">K={knnK}</Badge>
+                </summary>
+                <div className="space-y-3 border-t border-border p-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    {segmentUrls.map((segmentUrl, index) => (
+                      <div key={`${image.id}-segment-preview-${index}`} className="overflow-hidden rounded-lg border border-border bg-muted">
+                        {segmentUrl ? (
+                          <img src={segmentUrl} alt={`${image.fileName} segment ${index + 1}`} className="h-28 w-full object-contain" />
+                        ) : (
+                          <div className="flex h-28 w-full items-center justify-center text-xs text-muted-foreground">No segment image</div>
+                        )}
+                        <div className="bg-card p-2 text-xs font-medium">Segment {index + 1}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+                    {displayNeighbors.map((neighbor, index) => (
+                      <div key={`${image.id}-${neighbor.strain}-${neighbor.media}-${index}`} className="overflow-hidden rounded-lg border border-border bg-muted">
+                        {getNeighborImageUrl(neighbor.original) ? (
+                          <img src={getNeighborImageUrl(neighbor.original)} alt={`${neighbor.species} ${neighbor.media}`} className="h-32 w-full object-contain" />
+                        ) : (
+                          <div className="flex h-32 w-full items-center justify-center text-xs text-muted-foreground">No neighbor image</div>
+                        )}
+                        <div className="space-y-1 bg-card p-2 text-xs">
+                          <div className="font-heading font-semibold truncate">#{index + 1} {neighbor.species}</div>
+                          <div className="font-mono text-muted-foreground">{neighbor.strain} · {neighbor.media}</div>
+                          <div className="font-mono">sim {neighbor.similarity.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </details>
+            )
+          })}
         </CardContent>
       </Card>
     </div>
@@ -1101,10 +1120,11 @@ export default function RetrievePage() {
                   <Button variant="outline" size="sm" className="w-full"><Download className="h-4 w-4" /> Export Batch CSV</Button>
                 </CardContent>
               </Card>
-              <ResultDetail strain={activeResult?.strain || 'Strain'} images={activeResult?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} topNeighbors={jobResults.data?.rankings?.[0]?.neighbors} threshold={jobResults.data?.threshold} />
+               <ResultDetail strain={activeResult?.strain || 'Strain'} images={activeResult?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} queriedImages={jobResults.data?.queried_images} threshold={jobResults.data?.threshold} />
+
             </div>
           ) : (
-            <ResultDetail strain={strains[0]?.strain || 'Single strain'} images={strains[0]?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} topNeighbors={jobResults.data?.rankings?.[0]?.neighbors} threshold={jobResults.data?.threshold} />
+            <ResultDetail strain={strains[0]?.strain || 'Single strain'} images={strains[0]?.images ?? []} knnK={knnK} aggMethod={aggMethod} rankings={jobResults.data?.rankings} queriedImages={jobResults.data?.queried_images} threshold={jobResults.data?.threshold} />
           )}
         </div>
       )}
@@ -1119,13 +1139,15 @@ export default function RetrievePage() {
                if (!queryImageId) return
 
               setStep('processing')
-              startRetrieval.mutate(
-                {
-                  image_id: queryImageId,
-                  k: knnK,
-                  aggregation: aggMethod,
-                  environment_strategy: 'same_media',
-                },
+               startRetrieval.mutate(
+                 {
+                   image_id: queryImageId,
+                   image_ids: retrievalReadyImages.map((image) => image.id),
+                   k: knnK,
+                   aggregation: aggMethod,
+                   media_strategy: 'same_media',
+                 },
+
                 {
                   onSuccess: (data) => setJobId(data.job_id),
                 },

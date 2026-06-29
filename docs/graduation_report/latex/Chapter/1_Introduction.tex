@@ -27,7 +27,7 @@ Species $ightarrow$ Strain $ightarrow$ Growth Medium $ightarrow$ Image (obliq
 \item
   \textbf{Strain} (31): A genetically distinct isolate within a species. Each strain is cultured across multiple media.
 \item
-  \textbf{Growth Medium} (7): CREA, CYA, CYA30, CYAS, DG18, MEA, and YES. Different media induce different colony morphologies, and comparing across media is essential for accurate identification.
+  \textbf{Growth Medium} (5 distinct + 7 labels): CREA, CYA, DG18, MEA, and YES are the base media. Two additional labels---CYA30 and CYAS---are variants of CYA (different concentration and sucrose supplement), treated as separate media labels in source filenames but normalized to CYA for analysis.
 \item
   \textbf{Angle} (2): Oblique (\texttt{ob}) and reverse (\texttt{rev}), providing complementary visual information.
 \item
@@ -51,7 +51,7 @@ To understand the dataset's composition and identify challenges for machine lear
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_dataset_overview.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_dataset_overview.png}
 \caption{Dataset scale overview showing the relationship between original images, segmented colonies, strains, and species.}
 \label{fig:eda-dataset-overview}
 \end{figure}
@@ -60,7 +60,7 @@ To understand the dataset's composition and identify challenges for machine lear
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_species_distribution.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_species_distribution.png}
 \caption{Number of original dish images per species in the curated dataset.}
 \label{fig:eda-species-distribution}
 \end{figure}
@@ -69,16 +69,16 @@ To understand the dataset's composition and identify challenges for machine lear
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_strain_distribution.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_strain_distribution.png}
 \caption{Images per strain, colored by species. Most strains contribute 14 images (7 media $\times$ 2 angles).}
 \label{fig:eda-strain-distribution}
 \end{figure}
 
-\textbf{Growth media coverage.} Figure 1.5 shows that images are evenly distributed across the seven growth media, with each medium contributing between 60 and 64 images. This balanced coverage is important because colony appearance can vary dramatically across media---a species that looks distinctive on CYA may appear nearly identical to another species on DG18. The system must learn features that are robust to these media-induced variations.
+\textbf{Growth media coverage.} Figure 1.5 shows the distribution of images across growth media for the full dataset (curated + incoming). After normalizing CYA30 and CYAS variants into the base CYA medium, the dataset contains 294 CYA images (48.3\%), 169 MEA images (27.8\%), 146 DG18 images (24.0\%), 142 YES images (23.3\%), and 132 CREA images (21.7\%). The CYA-dominant distribution reflects that multiple CYA variants (standard, 30\% concentration, sucrose-supplemented) were collected under different labels but represent the same base medium. For curated-only experiments, each of the 7 original labels contributes exactly 62 images. This media diversity is important because colony appearance can vary dramatically across media---a species that looks distinctive on CYA may appear nearly identical to another species on DG18. The system must learn features that are robust to these media-induced variations.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_media_distribution.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_media_distribution.png}
 \caption{Distribution of images across seven growth media.}
 \label{fig:eda-media-distribution}
 \end{figure}
@@ -87,7 +87,7 @@ To understand the dataset's composition and identify challenges for machine lear
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_media_species_heatmap.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_media_species_heatmap.png}
 \caption{Heatmap showing the number of images per species per growth medium.}
 \label{fig:eda-media-species-heatmap}
 \end{figure}
@@ -98,7 +98,7 @@ The dataset's most critical characteristic is the mismatch between the number of
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.42\textheight,keepaspectratio]{figures/eda_fewshot_scatter.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_fewshot_scatter.png}
 \caption{Few-shot classification challenge. Each point represents one species, positioned by its number of strains and number of images.}
 \label{fig:eda-fewshot-scatter}
 \end{figure}
@@ -115,7 +115,7 @@ The threshold experiment uses a second dataset source, referred to in the codeba
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.35\textheight,keepaspectratio]{figures/eda_new_comparison_overview.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_new_comparison_overview.png}
 \caption{Comparison between the curated dataset used for retrieval evaluation and the incoming/new\_data dataset used for threshold analysis.}
 \label{fig:eda-new-comparison-overview}
 \end{figure}
@@ -124,7 +124,7 @@ Figure 1.9 makes this imbalance explicit. In the incoming dataset, \textbf{38 ou
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.35\textheight,keepaspectratio]{figures/eda_new_strains_per_species.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_new_strains_per_species.png}
 \caption{Distribution of strains per species. Most incoming/new\_data species have only one strain, while the curated/original dataset has deeper strain coverage per species.}
 \label{fig:eda-new-strains-per-species}
 \end{figure}
@@ -145,17 +145,17 @@ Figure 1.10 shows the top species in the incoming dataset by image count. Even t
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.5\textheight,keepaspectratio]{figures/eda_new_incoming_species_top20.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_new_incoming_species_top20.png}
 \caption{Top 20 species by image count in the incoming/new\_data dataset. The long tail supports open-set evaluation rather than dense supervised training.}
 \label{fig:eda-new-incoming-species-top20}
 \end{figure}
 
-\textbf{Environment coverage and morphology examples.} Figure 1.11 shows that incoming images still span multiple culture environments, with CYA and MEA most common and DG18, YES, and CREA also well represented. This matters because thresholding must remain robust to media-induced appearance changes, not only species identity.
+\textbf{Media coverage and morphology examples.} Figure 1.11 shows that incoming images still span multiple culture media, with CYA and MEA most common and DG18, YES, and CREA also well represented. This matters because thresholding must remain robust to media-induced appearance changes, not only species identity.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth,height=0.35\textheight,keepaspectratio]{figures/eda_new_incoming_environments.png}
-\caption{Environment distribution in the incoming/new\_data dataset used for threshold analysis.}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_new_incoming_environments.png}
+\caption{Media distribution in the incoming/new\_data dataset used for threshold analysis.}
 \label{fig:eda-new-incoming-environments}
 \end{figure}
 
@@ -163,8 +163,8 @@ Figure 1.12 presents example segmented colonies from the incoming dataset. The i
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.6\textheight,keepaspectratio]{figures/eda_new_sample_images.png}
-\caption{Example segmented colony crops from incoming/new\_data across multiple growth environments.}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_new_sample_images.png}
+\caption{Example segmented colony crops from incoming/new\_data across multiple growth media.}
 \label{fig:eda-new-sample-images}
 \end{figure}
 
@@ -172,7 +172,7 @@ Figure 1.12 presents example segmented colonies from the incoming dataset. The i
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.6\textheight,keepaspectratio]{figures/eda_new_yolo_bbox_demo.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/eda_new_yolo_bbox_demo.png}
 \caption{Bounding-box overlays from the fine-tuned YOLO26 segmentation pipeline on \texttt{Dataset/new\_data\_prepared/} images from the incoming/new\_data collection. Used as a qualitative segmentation illustration rather than as the primary retrieval preprocessing path.}
 \label{fig:eda-new-yolo-bbox-demo}
 \end{figure}
@@ -226,7 +226,7 @@ The proposed solution is a \textbf{retrieval-based classification pipeline} that
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth,height=0.5\textheight,keepaspectratio]{figures/query_flow.png}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/query_flow.png}
 \caption{High-level architecture of the retrieval-based classification pipeline. A query image passes through segmentation, feature extraction, vector search, and aggregation to produce a species prediction.}
 \label{fig:query-flow}
 \end{figure}
@@ -251,7 +251,7 @@ The pipeline operates in two phases:
   \textbf{Result Presentation}: The user sees the predicted species, a confidence score, and the top retrieved reference images for visual inspection and validation.
 \end{enumerate}
 
-A full treatment of each pipeline stage---including segmentation algorithms, feature extractor architectures, aggregation formulas, and environment selection strategies---is presented in Chapter 2.
+A full treatment of each pipeline stage---including segmentation algorithms, feature extractor architectures, aggregation formulas, and media selection strategies---is presented in Chapter 2.
 
 \subsubsection{Why a Retrieval Pipeline?}\label{why-a-retrieval-pipeline}
 

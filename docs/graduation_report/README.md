@@ -115,6 +115,138 @@ uvx --from mermaid-cli mmdc -i input.mmd -o output.png
 
 Mermaid diagrams are rendered separately and committed as PNGs. Source `.mmd` files should live alongside the output.
 
+### Draw.io Thesis Diagrams
+
+`drawio-ai-kit` is vendored at `tools/drawio-ai-kit/` so thesis diagram source and tooling stay pinned in repo state. Local use still requires `npm install` in the vendored path and a locally installed draw.io desktop CLI for PNG export.
+
+Supported local prerequisites for thesis diagram work: Node 18+ and draw.io desktop available on `PATH` (or exposed through `DRAWIO_CLI`).
+
+#### Install and Verify Vendored Tool
+
+```bash
+# From monorepo root
+npm install --prefix tools/drawio-ai-kit
+node tools/drawio-ai-kit/src/cli.mjs principles
+npm test --prefix tools/drawio-ai-kit
+```
+
+Use upstream install flow inside this repo: install Node dependencies in the vendored path, then verify the CLI and test suite before editing thesis draw.io assets.
+
+#### PNG Export: draw.io Desktop or Headless Chromium
+
+Two export paths, tried in order by `code/export_drawio_diagrams.py`:
+
+1. **draw.io desktop CLI** (preferred) — set `DRAWIO_CLI` or ensure `drawio` on `PATH`.
+   ```bash
+   export DRAWIO_CLI="/absolute/path/to/drawio"
+   ```
+2. **Headless Chromium** (fallback) — automatic when draw.io desktop not found. Requires `puppeteer` and `chromium` (`pacman -S puppeteer chromium`).
+   ```bash
+   npm install --prefix /tmp/puppeteer puppeteer
+   NODE_PATH=/tmp/puppeteer/node_modules node code/export_drawio_headless.cjs
+   ```
+
+`drawio-ai-kit` can lint and generate XML without either export path.
+
+#### Thesis Migration Targets and Exclusions
+
+Draw.io-backed thesis diagram targets are fixed to current LaTeX includes so chapter files stay stable:
+
+| Figure | Chapter source | Role | Planned editable source |
+|--------|----------------|------|--------------------------|
+| `ch03_architecture.png` | `latex/Chapter/3_Methodology.tex` | system architecture | `latex/figures/src/ch03_architecture.drawio` |
+| `ch03_erd.png` | `latex/Chapter/3_Methodology.tex` | PostgreSQL ERD | `latex/figures/src/ch03_erd.dbml` (DBML) |
+| `ch02_research_pipeline.png` | `latex/Chapter/2_Literature_Review.tex` | methodology pipeline | `latex/figures/src/ch02_research_pipeline.drawio` |
+| `threshold_pipeline_diagram.png` | `latex/Chapter/2_Literature_Review.tex` | threshold algorithm flow | `latex/figures/src/threshold_pipeline_diagram.drawio` |
+
+Migration exclusions are explicit:
+
+- Keep `ch03_usecase_diagram.png` on current source path and workflow.
+- Keep sequence diagrams Mermaid-sourced with neutral grey theme: `ch03_auth_sequence.png`, `ch03_srs_retrieve_sequence.png`, `ch03_srs_index_sequence.png`, `ch03_srs_feedback_sequence.png`.Sources live as `.mmd` files in `latex/figures/src/`, rendered via `code/render_mermaid_ink.py` (mermaid.ink API).
+- Do not rename output PNGs without updating thesis chapter includes.
+
+Migration rule for thesis diagrams: system design and algorithm diagrams use draw.io sources; ERD uses DBML (dbdiagram); sequence diagrams use Mermaid (neutral theme); use-case diagram remains current source.
+
+#### Backend schema inventory for thesis ERD work
+
+Backend schema source of truth for upcoming ERD work is `backend/src/backend/models/__init__.py` plus Alembic migrations in `backend/migrations/versions/`.
+
+Major entities and relations confirmed during Task 2 review:
+
+- `users` → `refresh_tokens`, `retrieval_jobs`, `feedback`, `training_jobs`, `audit_log`, `invite_tokens`
+- `species` → `strains`, `images`
+- `media` → `images`
+- `strains` → `images`
+- `images` → `segments`, `feedback`; also links back to `species`, `media`, `strains`
+- `segments` → optional `qdrant_index_state`
+- `retrieval_jobs` → `retrieval_results` → `retrieval_neighbors`
+- `feedback` optionally links to `retrieval_results` and `images`, with submitter/reviewer both from `users`
+- `training_jobs`, `audit_log`, `system_state`, and `invite_tokens` exist and may need thesis-level inclusion where model/index governance is discussed
+
+Use backend schema as source of truth over thesis prose when building `ch03_erd.dbml`.
+
+#### ERD Export (DBML → PNG)
+
+```bash
+npm install --prefix /tmp/dbml @softwaretechnik/dbml-renderer
+bash docs/graduation_report/code/render_erd.sh
+```
+
+Requires `dbml-renderer` and `rsvg-convert` (librsvg). Source is `latex/figures/src/ch03_erd.dbml`.
+
+#### Sequence Diagram Export (Mermaid → PNG, neutral theme)
+
+```bash
+python docs/graduation_report/code/render_mermaid_ink.py \
+  docs/graduation_report/latex/figures/src/<name>.mmd \
+  docs/graduation_report/latex/figures/<name>.png
+```
+
+Uses mermaid.ink API. Requires internet.
+
+#### Thesis Export Workflow
+
+1. Keep editable `.drawio` sources under `docs/graduation_report/latex/figures/src/`.
+2. Export PNG outputs into `docs/graduation_report/latex/figures/` with filenames matching the LaTeX includes.
+3. Choose export path (draw.io desktop or headless Chromium) — both write the same PNG set.
+4. After export, rebuild LaTeX and verify updated figures render in thesis PDF.
+
+Manual export fallback from repo root (draw.io desktop):
+
+```bash
+"${DRAWIO_CLI:-drawio}" --export --format png --output docs/graduation_report/latex/figures/<figure-name>.png docs/graduation_report/latex/figures/src/<figure-name>.drawio
+```
+
+Headless Chromium export fallback (no draw.io desktop needed):
+
+```bash
+NODE_PATH=/tmp/puppeteer/node_modules node docs/graduation_report/code/export_drawio_headless.cjs
+```
+
+Exact full regenerate sequence from repo root:
+
+```bash
+npm install --prefix tools/drawio-ai-kit
+npm test --prefix tools/drawio-ai-kit
+python docs/graduation_report/code/export_drawio_diagrams.py
+cd docs/graduation_report/latex
+pdflatex -interaction=nonstopmode main.tex
+bibtex main
+pdflatex -interaction=nonstopmode main.tex
+pdflatex -interaction=nonstopmode main.tex
+```
+
+`export_drawio_diagrams.py` tries draw.io desktop first; if absent, falls back to headless Chromium (`export_drawio_headless.cjs`). If both unavailable, generators still run but PNG export is skipped (script exits non-zero).
+
+Sequence diagrams remain Mermaid-driven unless a later task explicitly migrates them.
+
+#### Thesis chapter references inspected for migration
+
+- `latex/Chapter/2_Literature_Review.tex` uses `ch02_research_pipeline.png` for overall retrieval methodology and `threshold_pipeline_diagram.png` for threshold decision flow.
+- `latex/Chapter/3_Methodology.tex` uses `ch03_architecture.png` for system architecture, `ch03_erd.png` for database design, `ch03_usecase_diagram.png` for use-case scope, and four `ch03_*sequence*.png` files for API workflow sequences.
+- `docs/graduation_report/content/methodology_pipeline.md` currently holds Mermaid methodology source semantics that upcoming draw.io work should preserve.
+
+
 ### New Figure Integration
 
 1. Generate the PNG in `docs/graduation_report/latex/figures/`

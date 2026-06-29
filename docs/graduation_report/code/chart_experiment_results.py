@@ -22,9 +22,9 @@ REPORT_DIR = PROJECT / "graduation_report/report/figures"
 for d in (LATEX_DIR, REPORT_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
-RETRIEVAL_LATEST = PROJECT / "results/retrieval_pipeline_latest"   # latest retrieval benchmark
-RETRIEVAL_K3 = PROJECT / "results/retrieval_pipeline_latest"        # same for K=3
-RETRIEVAL_KMEANS = PROJECT / "results/retrieval_k7_kmeans_local"    # kmeans comparison
+RETRIEVAL_LATEST = PROJECT / "results/retrieval_k7_yolo_finalcheck"
+RETRIEVAL_K3 = PROJECT / "results/retrieval_20260629_192407"
+RETRIEVAL_KMEANS = PROJECT / "results/retrieval_k7_kmeans_local"
 THRESH_CSV = PROJECT / "results/threshold/log/all_experiments.csv"
 THRESH_SUMMARY = PROJECT / "results/threshold/metric_analysis.json"
 CV_SUMMARY = PROJECT / "results/cross_validation/cv_summary_table.csv"
@@ -55,6 +55,8 @@ def copy_img(src, dst_name):
 
 def load_accuracies(base_dir):
     rows = []
+    if not base_dir.exists():
+        return rows
     for d in base_dir.iterdir():
         if not d.is_dir():
             continue
@@ -65,8 +67,8 @@ def load_accuracies(base_dir):
         rows.append({
             "dir": d.name,
             "accuracy": data["overall_accuracy"],
-            "correct": data["correct_predictions"],
-            "total": data["total_strains"],
+            "correct": data.get("correct_predictions", 0),
+            "total": data.get("total_strains", 0),
         })
     return rows
 
@@ -75,7 +77,7 @@ def load_accuracies(base_dir):
 # 1. Extractor comparison bar chart (weighted, E1, K=7, YOLO)
 # ═══════════════════════════════════════════════════════════════════════════
 def chart_extractor_comparison():
-    rows = load_accuracies(RETRIEVAL_LATEST) if RETRIEVAL_LATEST.exists() else []
+    rows = load_accuracies(RETRIEVAL_LATEST)
     if not rows:
         rows = load_accuracies(RETRIEVAL_K3)
     if not rows:
@@ -305,10 +307,20 @@ def chart_fold_variance():
     df = pd.read_csv(cv_csv)
     if df.empty:
         return
-    resnet = df[df["extractor"].str.contains("resnet", na=False)]
-    if resnet.empty:
-        resnet = df
-    fold_means = resnet.groupby("fold")["correct"].mean()
+    target = df[
+        (df["extractor"].astype(str).str.contains("efficientnetb1_finetuned", na=False))
+        & (df["agg_strategy"] == "freq_strength")
+        & (df["k"] == 3)
+        & ((df.get("media_strategy", df.get("env_strategy")) == "E2") if "media_strategy" in df.columns or "env_strategy" in df.columns else True)
+    ].copy()
+    if target.empty:
+        target = df[
+            (df["extractor"].astype(str).str.contains("efficientnetb1_finetuned", na=False))
+            & (df["agg_strategy"] == "freq_strength")
+        ].copy()
+    if target.empty:
+        target = df.copy()
+    fold_means = target.groupby("fold")["correct"].mean()
     if len(fold_means) == 0:
         return
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -318,59 +330,10 @@ def chart_fold_variance():
         ax.text(f, acc * 100 + 0.5, f"{acc:.1%}", ha="center")
     ax.set_xlabel("Fold")
     ax.set_ylabel("Accuracy (%)")
-    ax.set_title("Per-Fold Retrieval Accuracy (ResNet50 Finetuned)")
+    ax.set_title("Per-Fold Retrieval Accuracy (best fold-specific CV setting)")
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
     save("fold_variance_new.png", fig)
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 8. Staircase chart for threshold
-# ═══════════════════════════════════════════════════════════════════════════
-def chart_threshold_staircase():
-    if not THRESH_CSV.exists():
-        return
-    df = pd.read_csv(THRESH_CSV)
-    if df.empty or "f1" not in df.columns:
-        return
-    df = df.sort_values("f1", ascending=False).reset_index(drop=True)
-    if len(df) == 0:
-        return
-    f1_values = df["f1"].values
-    idx = np.arange(len(f1_values))
-    running_best = np.maximum.accumulate(f1_values)
-    is_best = np.diff(running_best, prepend=-1) > 0
-
-    fig, ax = plt.subplots(figsize=(14, 6))
-    ax.scatter(idx[~is_best], f1_values[~is_best], s=15, c="gray", alpha=0.4, label="Discarded")
-    ax.scatter(idx[is_best], f1_values[is_best], s=60, c="green", edgecolor="white", linewidth=1, label="New Best")
-    best_idx = np.where(is_best)[0]
-    best_vals = running_best[best_idx]
-    for i in range(len(best_idx)):
-        if i == 0:
-            xs = [0, best_idx[i]]
-            ys = [best_vals[i], best_vals[i]]
-        else:
-            xs = [best_idx[i - 1], best_idx[i]]
-            ys = [best_vals[i - 1], best_vals[i]]
-        # Horizontal from prev to current
-        if i > 0:
-            ax.plot([best_idx[i - 1], best_idx[i]], [best_vals[i - 1], best_vals[i - 1]], "green", linewidth=1.5)
-        # Vertical step up
-        ax.plot([best_idx[i], best_idx[i]], [best_vals[i - 1] if i > 0 else 0, best_vals[i]], "green", linewidth=1.5)
-
-    for bi, bv in zip(best_idx[:10], best_vals[:10]):
-        name = df.iloc[bi]["formula"] + "_" + df.iloc[bi]["algorithm"] if "algorithm" in df.columns else str(bi)
-        ax.text(bi, bv + 0.01, name[:20], fontsize=5, rotation=45, ha="left", va="bottom")
-
-    ax.set_xlabel("Experiment Index")
-    ax.set_ylabel("F1 Score")
-    ax.set_title("Threshold Autoresearch Staircase (sorted by F1)")
-    ax.set_ylim(0, max(f1_values) * 1.15)
-    ax.legend(fontsize=7, loc="lower right")
-    ax.grid(axis="y", alpha=0.3)
-    fig.tight_layout()
-    save("staircase_threshold.png", fig)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -380,16 +343,23 @@ def chart_eda_media_distribution():
     """Regenerate media distribution charts using normalized environment labels."""
     import sys
     sys.path.insert(0, str(PROJECT / "research"))
+    from src.config import ORIGINAL_PREPARED_DATASET_DIR
     from src.prepare.dataset import (
         load_source_collections,
         iter_source_images,
         load_strain_species_mapping,
+        normalize_label,
         parse_curated_metadata,
         parse_incoming_metadata,
     )
 
     collections = load_source_collections()
     strain_species_mapping = load_strain_species_mapping()
+    original_prepared_species = {
+        normalize_label(species_dir.name.replace("-", " "))
+        for species_dir in ORIGINAL_PREPARED_DATASET_DIR.iterdir()
+        if species_dir.is_dir()
+    }
     env_counts: Counter = Counter()
 
     for key in ["curated", "incoming"]:
@@ -438,7 +408,11 @@ def chart_eda_media_distribution():
                 metadata = parse_incoming_metadata(image_path, strain_species_mapping)
             else:
                 metadata = parse_curated_metadata(image_path, strain_species_mapping)
-            if metadata.species != "unknown" and metadata.environment != "unknown":
+            if (
+                metadata.species != "unknown"
+                and metadata.environment != "unknown"
+                and metadata.species in original_prepared_species
+            ):
                 species_env[(metadata.species, metadata.environment)] += 1
 
     environments = sorted({e for (_, e) in species_env})
@@ -460,6 +434,13 @@ def chart_eda_media_distribution():
     ax.set_yticks(range(len(top_names)))
     ax.set_yticklabels([n[:30] for n in top_names], fontsize=6)
     ax.set_title("Species x Media Distribution (CYA variants normalized)")
+    for i in range(len(top_names)):
+        for j in range(len(environments)):
+            val = mat[i, j]
+            if val > 0:
+                ax.text(j, i, str(int(val)), ha="center", va="center",
+                        fontsize=7, fontweight="bold",
+                        color="white" if val > mat.max() / 2 else "black")
     plt.colorbar(im, ax=ax, label="Images")
     fig.tight_layout()
     save("eda_media_species_heatmap.png", fig)
@@ -500,6 +481,5 @@ if __name__ == "__main__":
     chart_cv_training_curves()
     copy_confusion_matrices()
     chart_fold_variance()
-    chart_threshold_staircase()
     chart_eda_media_distribution()
     print("Done.")

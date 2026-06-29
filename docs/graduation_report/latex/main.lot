@@ -11,17 +11,15 @@
 \contentsline {table}{\numberline {3.2}{\ignorespaces Frontend route hierarchy from the implemented React 19 application. Routes available to both User and Data Owner are listed first; Data Owner governance routes are marked (owner). Non-owner requests to owner routes are redirected to /retrieve.}}{45}{table.3.2}%
 \contentsline {table}{\numberline {3.3}{\ignorespaces REST API endpoint groups and role-gated access boundaries. Endpoints above the rule are accessible to both User and Data Owner; endpoints below require Data Owner role (return 403 Forbidden for User).}}{49}{table.3.3}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {4.1}{\ignorespaces Summary of all experiment results}}{61}{table.4.1}%
-\contentsline {table}{\numberline {4.2}{\ignorespaces Configuration alignment: research experiment vs. production webapp}}{64}{table.4.2}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {A.1}{\ignorespaces UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}}{72}{table.1.A.1}%
-\contentsline {table}{\numberline {A.2}{\ignorespaces UC-DATA-01: Index New Data}}{73}{table.1.A.2}%
-\contentsline {table}{\numberline {A.3}{\ignorespaces Finetuned vs.\ pretrained retrieval comparison (weighted, E1, $K=7$, YOLO segments)}}{74}{table.1.A.3}%
-\contentsline {table}{\numberline {A.4}{\ignorespaces YOLO vs.\ KMeans segmentation comparison (ResNet50, weighted, E1, $K=7$)}}{74}{table.1.A.4}%
-\contentsline {table}{\numberline {A.5}{\ignorespaces Top 10 cross-validation configurations by mean accuracy (ResNet50 finetuned)}}{74}{table.1.A.5}%
-\contentsline {table}{\numberline {A.6}{\ignorespaces Top 10 threshold strategies by F1 score}}{75}{table.1.A.6}%
-\contentsline {table}{\numberline {A.7}{\ignorespaces Media strategy definitions used in all experiments}}{76}{table.1.A.7}%
-\contentsline {table}{\numberline {A.8}{\ignorespaces Test set species and representative strains}}{77}{table.1.A.8}%
+\contentsline {table}{\numberline {A.1}{\ignorespaces UC-RETRIEVE-01: Species Retrieval from Segmented Dish Image}}{71}{table.1.A.1}%
+\contentsline {table}{\numberline {A.2}{\ignorespaces UC-DATA-01: Index New Data}}{72}{table.1.A.2}%
+\contentsline {table}{\numberline {A.3}{\ignorespaces Retrieval accuracy by feature extractor (Mean, Min, Max across all configurations)}}{73}{table.1.A.3}%
+\contentsline {table}{\numberline {A.4}{\ignorespaces Retrieval accuracy by aggregation strategy (Mean, Min, Max across all configurations)}}{73}{table.1.A.4}%
+\contentsline {table}{\numberline {A.5}{\ignorespaces Top 10 cross-validation configurations by mean accuracy}}{73}{table.1.A.5}%
+\contentsline {table}{\numberline {A.6}{\ignorespaces Top threshold strategies by F1 score}}{74}{table.1.A.6}%
+\contentsline {table}{\numberline {A.7}{\ignorespaces Media strategy definitions used in all experiments}}{75}{table.1.A.7}%
+\contentsline {table}{\numberline {A.8}{\ignorespaces Test set species and representative strains}}{75}{table.1.A.8}%
 \contentsfinish 
 \contentsfinish 

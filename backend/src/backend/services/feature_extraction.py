@@ -143,7 +143,7 @@ async def index_segment_to_qdrant(
         "strain": strain_name,
         "specy": species_name,
         "species": species_name,
-        "environment": media_name,
+        "media": media_name,
         "angle": "",
         "extractor": "colorhistogram",
         "bbox": {

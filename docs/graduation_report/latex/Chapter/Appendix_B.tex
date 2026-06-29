@@ -1,4 +1,4 @@
-% Appendix A: Use Case Descriptions, Experiment Results, and Visualizations
+% Appendix: Use Case Descriptions, Experiment Results, and Visualizations
 
 \section{Use Case Specifications}
 
@@ -105,126 +105,121 @@ Assumptions & Reference images follow the same imaging protocol as query images 
 
 \section{Detailed Experiment Results}
 
-\subsection{Retrieval Pipeline Full Results (\texorpdfstring{$K=7$}{K=7}, \texttt{weighted}, E1)}
+\subsection{Retrieval Pipeline Results (All K, YOLO Segments)}
 
-The latest retrieval comparison evaluated 10 feature extractors using the holdout
-strain-test protocol (7 held-out test strains, $K=7$, \texttt{weighted} aggregation,
-E1 same-media environment). All finetuned deep encoders outperform their
-ImageNet-pretrained baselines under this configuration.
+The comprehensive retrieval sweep evaluated 2,985 configurations across all
+extractors, media strategies, aggregation strategies, and $K \in \{3,5,7,11,13,15\}$.
 
 \begin{table}[H]
 \centering
-\caption{Finetuned vs.\ pretrained retrieval comparison (weighted, E1, $K=7$, YOLO segments)}
-\label{tab:retrieval_latest}
+\caption{Retrieval accuracy by feature extractor (Mean, Min, Max across all configurations)}
+\label{tab:app_by_extractor}
 \small
-\begin{tabular}{@{}l c c c@{}}
+\begin{tabular}{@{}l r r r@{}}
 \toprule
-\textbf{Extractor} & \textbf{Pretrained} & \textbf{Finetuned} & \textbf{$\Delta$} \\
+\textbf{Extractor} & \textbf{Min} & \textbf{Mean} & \textbf{Max} \\
 \midrule
-ResNet50 & 0.714 & \textbf{0.810} & +0.096 \\
-MobileNetV2 & 0.643 & \textbf{0.786} & +0.143 \\
-EfficientNetB1 & 0.548 & \textbf{0.762} & +0.214 \\
-\bottomrule
-\end{tabular}
-
-\vspace{0.5em}
-
-Traditional extractor baselines (weighted, E1, $K=7$, YOLO):
-ColorHistogram 0.571, ColorHistogramHS 0.524, HOG 0.429, Gabor 0.405.
-\end{table}
-
-\begin{table}[H]
-\centering
-\caption{YOLO vs.\ KMeans segmentation comparison (ResNet50, weighted, E1, $K=7$)}
-\label{tab:seg_comparison}
-\small
-\begin{tabular}{@{}l c c@{}}
-\toprule
-\textbf{Segmentation} & \textbf{Pretrained (ResNet50)} & \textbf{Finetuned (ResNet50)} \\
-\midrule
-YOLO & 0.714 & 0.810 \\
-KMeans & 0.738 & 0.810 \\
+EfficientNetB1 FT & 0.286 & 0.657 & 0.881 \\
+MobileNetV2 FT    & 0.310 & 0.624 & 0.833 \\
+ResNet50 FT       & 0.071 & 0.581 & 0.857 \\
+ResNet50 PT       & 0.071 & 0.533 & 0.786 \\
+EfficientNetB1 PT & 0.119 & 0.494 & 0.786 \\
+MobileNetV2 PT    & 0.071 & 0.491 & 0.810 \\
+ColorHist HSV     & 0.262 & 0.482 & 0.738 \\
+ColorHist HS      & 0.143 & 0.403 & 0.595 \\
+HOG               & 0.048 & 0.294 & 0.571 \\
+Gabor             & 0.048 & 0.273 & 0.452 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Cross-Validation Results (ResNet50 Finetuned, 5-Fold)}
+\begin{table}[H]
+\centering
+\caption{Retrieval accuracy by aggregation strategy (Mean, Min, Max across all configurations)}
+\label{tab:app_by_agg}
+\small
+\begin{tabular}{@{}l r r r@{}}
+\toprule
+\textbf{Aggregation} & \textbf{Min} & \textbf{Mean} & \textbf{Max} \\
+\midrule
+freq\_strength      & 0.095 & 0.603 & 0.857 \\
+relative            & 0.262 & 0.605 & 0.833 \\
+weighted            & 0.262 & 0.602 & 0.833 \\
+perquery\_avg       & 0.262 & 0.605 & 0.833 \\
+perquery\_norm\_avg  & 0.262 & 0.602 & 0.833 \\
+uni                 & 0.262 & 0.600 & 0.833 \\
+max\_score           & 0.190 & 0.489 & 0.714 \\
+per\_species\_avg     & 0.048 & 0.254 & 0.619 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-5-fold strain-level cross-validation run with fold-specific finetuned ResNet50 weights,
-using the stored \texttt{folds.csv} assignment and the \texttt{qdrant-research} collection.
-Evaluated across $K \in \{3,5,7,11,13,15\}$, 8 aggregation strategies, and
-2 environment strategies (E1, E2) --- 480 total configurations.
+\subsection{Cross-Validation Results (EfficientNetB1 Finetuned, 5-Fold)}
+
+5-fold strain-level cross-validation using fold-specific EfficientNetB1 finetuned
+weights on the \texttt{myco\_fungi\_features\_full\_finetuned} Qdrant collection.
 
 \begin{table}[H]
 \centering
-\caption{Top 10 cross-validation configurations by mean accuracy (ResNet50 finetuned)}
+\caption{Top 10 cross-validation configurations by mean accuracy}
 \label{tab:cv_top10}
 \small
-\begin{tabular}{@{}l l c c c c@{}}
+\begin{tabular}{@{}l l c c c@{}}
 \toprule
-\textbf{Environment} & \textbf{Aggregation} & \textbf{K} & \textbf{Mean Acc.} & \textbf{Std} & \textbf{Range} \\
+\textbf{Media} & \textbf{Aggregation} & \textbf{K} & \textbf{Mean Acc.} & \textbf{Std} \\
 \midrule
-\multicolumn{6}{c}{\emph{Results from \texttt{results/cross\_validation/cv\_summary\_table.csv}}} \\
+E2 & freq\_strength      & 3  & 0.829 & 0.091 \\
+E2 & weighted            & 3  & 0.825 & 0.090 \\
+E2 & uni                 & 3  & 0.825 & 0.090 \\
+E2 & relative            & 3  & 0.825 & 0.090 \\
+E1 & freq\_strength      & 7  & 0.821 & 0.090 \\
+E1 & perquery\_norm\_avg  & 7  & 0.817 & 0.094 \\
+E1 & relative            & 7  & 0.817 & 0.094 \\
+E1 & perquery\_avg       & 7  & 0.817 & 0.091 \\
+E1 & weighted            & 7  & 0.813 & 0.092 \\
+E1 & freq\_strength      & 3  & 0.813 & 0.117 \\
 \bottomrule
 \end{tabular}
-
-\vspace{0.5em}
-
-See the canonical summary table at \texttt{results/cross\_validation/cv\_summary\_table.csv}
-for the full ranked grid. Heatmap visualisations are generated in
-\texttt{docs/graduation\_report/code/} and included as figures in Chapter~2.
 \end{table}
 
 \subsection{Threshold Analysis Results}
 
-The threshold experiment evaluated 162 formula variants across 3 threshold-finding algorithms
-(f1\_grid, roc\_opt, otsu), generating 576 experiment configurations. Each formula maps the
-top-5 neighbor scores $(s_0, s_1, s_2, s_3, s_4)$ to a scalar confidence value. A threshold
-classifies confidence as known ($\geq t$) or unknown ($< t$). The test set comprises 210 known
-images (7 held-out \textit{Penicillium} species) and 651 unknown images (44 other species).
+The threshold experiment used 342 grouped query samples (48 known, 294 unknown). The best formula achieved
+F1~=~0.341 using \texttt{gap\_0\_2} with ROC-based threshold optimization.
 
 \begin{table}[H]
 \centering
-\caption{Top 10 threshold strategies by F1 score}
+\caption{Top threshold strategies by F1 score}
 \label{tab:threshold_top10}
 \small
-\begin{tabular}{@{}l c c c c@{}}
+\begin{tabular}{@{}l c c c@{}}
 \toprule
-\textbf{Strategy (formula\_algorithm)} & \textbf{F1} & \textbf{Precision} & \textbf{Recall} & \textbf{AUROC} \\
+\textbf{Strategy (formula\_algorithm)} & \textbf{F1} & \textbf{Precision} & \textbf{Recall} \\
 \midrule
-gap\_0\_2\_roc\_opt & 0.341 & 0.234 & 0.625 & 0.598 \\
-gap\_0\_2\_otsu & 0.341 & 0.234 & 0.625 & -- \\
-gap0\_r2\_roc\_opt & 0.341 & 0.234 & 0.625 & 0.598 \\
-gap0\_r2\_otsu & 0.341 & 0.234 & 0.625 & -- \\
-gap02\_sq\_roc\_opt & 0.341 & 0.234 & 0.625 & 0.598 \\
-exp\_decay\_20\_f1\_grid & 0.337 & 0.234 & 0.604 & 0.616 \\
-avg\_top4\_f1\_grid & 0.336 & 0.258 & 0.479 & 0.609 \\
-gap0\_r3\_f1\_grid & 0.333 & 0.237 & 0.563 & 0.610 \\
-gnorm\_0\_2\_f1\_grid & 0.339 & 0.233 & 0.625 & 0.598 \\
-gap02\_sq\_f1\_grid & 0.337 & 0.231 & 0.625 & -- \\
+gap\_0\_2\_roc\_opt    & 0.341 & 0.234 & 0.625 \\
+gap\_0\_2\_otsu       & 0.341 & 0.234 & 0.625 \\
+gap0\_r2\_roc\_opt    & 0.341 & 0.234 & 0.625 \\
+gnorm\_0\_2\_f1\_grid  & 0.339 & 0.233 & 0.625 \\
+exp\_decay\_20\_f1\_grid & 0.337 & 0.234 & 0.604 \\
+gap02\_sq\_f1\_grid   & 0.337 & 0.231 & 0.625 \\
+avg\_top4\_f1\_grid   & 0.336 & 0.258 & 0.479 \\
+gap0\_r3\_f1\_grid    & 0.333 & 0.237 & 0.563 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{figure}[ht]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.55\textheight,keepaspectratio]{figures/threshold_known_species_accuracy.png}
-\caption{Per-species accuracy for the 5 known test species from regenerated threshold retrieval. \emph{P. polonicum} achieves perfect accuracy; \emph{P. melanoconidium} remains the hardest case (0/6).}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/threshold_known_species_accuracy.png}
+\caption{Per-species accuracy for the 5 known test species from threshold retrieval. \emph{P. polonicum} achieves perfect accuracy; \emph{P. melanoconidium} remains the hardest case (0/6).}
 \label{fig:threshold_known_species}
 \end{figure}
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.95\textwidth,height=0.55\textheight,keepaspectratio]{figures/threshold_full_species_distribution.png}
-\caption{Formula score distribution across all species (known + unknown), showing separation boundary for the best threshold formula gap\_0\_2.}
-\label{fig:threshold_distribution}
-\end{figure}
-
-\section{Environment Strategy Definitions}
+\section{Media Strategy Definitions}
 
 \begin{table}[H]
 \centering
-\caption{Environment (growth medium) strategy definitions used in all experiments}
+\caption{Media strategy definitions used in all experiments}
 \label{tab:env_strategies}
 \small
 \begin{tabular}{@{}l p{10cm}@{}}
@@ -232,17 +227,17 @@ gap02\_sq\_f1\_grid & 0.337 & 0.231 & 0.625 & -- \\
 \textbf{Strategy} & \textbf{Description} \\
 \midrule
 E1 (same\_media) & Query only neighbors grown on the same medium as the query image \\
-E2 (all\_media) & Query across all growth media --- no medium filter \\
+E2 (all\_media)  & Query across all growth media --- no medium filter \\
 E3\_CREA & Query only neighbors grown on CREA medium \\
-E3\_CYA & Query only neighbors grown on CYA medium \\
+E3\_CYA  & Query only neighbors grown on CYA medium \\
 E3\_DG18 & Query only neighbors grown on DG18 medium \\
-E3\_MEA & Query only neighbors grown on MEA medium \\
-E3\_YES & Query only neighbors grown on YES medium \\
+E3\_MEA  & Query only neighbors grown on MEA medium \\
+E3\_YES  & Query only neighbors grown on YES medium \\
 E4\_CREA & Exclude CREA medium, query all others \\
 E4\_CYAS & Exclude CYAS medium, query all others \\
 E4\_DG18 & Exclude DG18 medium, query all others \\
-E4\_MEA & Exclude MEA medium, query all others \\
-E4\_YES & Exclude YES medium, query all others \\
+E4\_MEA  & Exclude MEA medium, query all others \\
+E4\_YES  & Exclude YES medium, query all others \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -271,36 +266,50 @@ The 7 held-out \textit{Penicillium} species used for strain-level hold-out evalu
 \end{tabular}
 \end{table}
 
-\section{Prediction Visualizations}
+\section{Confusion Matrices}
 
-\subsection{Confusion Matrices}
+Confusion matrices for best and worst configurations across the three extractor
+families (Fine-tuned, Pretrained, Traditional), generated from 2,985 configs
+across $K \in \{3,5,7,11,13,15\}$.
 
-\begin{figure}[ht]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.58\textheight,keepaspectratio]{figures/confusion_best_finetuned.png}
-\caption{Confusion matrix for the best fine-tuned configuration from the latest YOLO rerun. Diagonal cells show correct predictions; off-diagonal cells show the remaining species confusions under the updated E1/E2, $K=7$ protocol.}
-\label{fig:confusion_finetuned_best}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_fine-tuned_best.png}
+\caption{Fine-tuned --- best: EfficientNetB1 FT, $K=3$, freq\_strength, E3\_YES (88.1\%, 37/42).}
+\label{fig:app_conf_ft_best}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth,height=0.58\textheight,keepaspectratio]{figures/confusion_best_pretrained.png}
-\caption{Confusion matrix for the best pretrained configuration from the latest YOLO rerun: EfficientNetB1 with \texttt{freq\_strength}, E1, and $K=7$.}
-\label{fig:confusion_efficientnetb1}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_fine-tuned_worst.png}
+\caption{Fine-tuned --- worst: ResNet50 FT, $K=3$, per\_species\_avg, E4\_YES (7.1\%, 3/42).}
+\label{fig:app_conf_ft_worst}
 \end{figure}
 
-\subsection{Correct and Incorrect Prediction Examples}
-
-\begin{figure}[ht]
+\begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.50\textheight,keepaspectratio]{figures/pred_correct_example.jpg}
-\caption{Example of a \textbf{correct} prediction: the query colony on the left is matched to the correct species, with top-K nearest neighbor reference images shown on the right.}
-\label{fig:pred_correct}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_pretrained_best.png}
+\caption{Pretrained --- best: MobileNetV2 PT, $K=5$, freq\_strength, E4\_DG18 (81.0\%, 34/42).}
+\label{fig:app_conf_pt_best}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.50\textheight,keepaspectratio]{figures/pred_incorrect_example.jpg}
-\caption{Example of an \textbf{incorrect} prediction: the query colony is matched to a visually similar but wrong species. Nearest neighbors show why the misclassification occurred.}
-\label{fig:pred_incorrect}
+\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_pretrained_worst.png}
+\caption{Pretrained --- worst: ResNet50 PT, $K=5$, per\_species\_avg, E1 (7.1\%, 3/42).}
+\label{fig:app_conf_pt_worst}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_traditional_best.png}
+\caption{Traditional --- best: ColorHist HSV, $K=3$, perquery\_avg, E1 (73.8\%, 31/42).}
+\label{fig:app_conf_trad_best}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_traditional_worst.png}
+\caption{Traditional --- worst: HOG, $K=5$, per\_species\_avg, E1 (4.8\%, 2/42).}
+\label{fig:app_conf_trad_worst}
 \end{figure}

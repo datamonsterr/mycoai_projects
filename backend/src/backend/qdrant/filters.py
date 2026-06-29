@@ -7,7 +7,7 @@ from qdrant_client.models import FieldCondition, Filter, MatchValue
 from .models import FilterSpec
 
 _FIELD_STRAIN = "strain"
-_FIELD_ENVIRONMENT = "environment"
+_FIELD_MEDIA = "media"
 _FIELD_ANGLE = "angle"
 _FIELD_SPECY = "specy"
 _FIELD_PARENT_ID = "parent_item_id"
@@ -20,19 +20,19 @@ def build_filter(filter_spec: FilterSpec | None) -> Filter | None:
     must: list[FieldCondition] = []
     must_not: list[FieldCondition] = []
 
-    if filter_spec.environment is not None:
+    if filter_spec.media is not None:
         must.append(
             FieldCondition(
-                key=_FIELD_ENVIRONMENT,
-                match=MatchValue(value=filter_spec.environment),
+                key=_FIELD_MEDIA,
+                match=MatchValue(value=filter_spec.media),
             )
         )
 
-    if filter_spec.exclude_environment is not None:
+    if filter_spec.exclude_media is not None:
         must_not.append(
             FieldCondition(
-                key=_FIELD_ENVIRONMENT,
-                match=MatchValue(value=filter_spec.exclude_environment),
+                key=_FIELD_MEDIA,
+                match=MatchValue(value=filter_spec.exclude_media),
             )
         )
 

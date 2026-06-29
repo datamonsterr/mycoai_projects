@@ -8,7 +8,6 @@ import {
   useSpeciesDistribution,
   useMediaDistribution,
   useStrainDistribution,
-  useEnvironmentDistribution,
   useQdrantStatus,
 } from '@/hooks/use-dashboard'
 import { useAuth } from '@/lib/use-auth'
@@ -129,7 +128,6 @@ export default function DashboardPage() {
   const { data: speciesDist, isLoading: speciesLoading } = useSpeciesDistribution()
   const { data: mediaDist, isLoading: mediaLoading } = useMediaDistribution()
   const { data: strainDist, isLoading: strainLoading } = useStrainDistribution()
-  const { data: envDist, isLoading: envLoading } = useEnvironmentDistribution()
 
   const metrics = [
     { label: 'Total Strains', value: statsLoading ? '…' : stats?.total_strains ?? '-', icon: FlaskConical, color: 'text-primary' },
@@ -144,7 +142,6 @@ export default function DashboardPage() {
     },
     { label: 'Total Species', value: statsLoading ? '…' : stats?.total_species ?? '-', icon: Tags, color: 'text-success' },
     { label: 'Media Types', value: statsLoading ? '…' : stats?.total_media ?? '-', icon: Database, color: 'text-warning' },
-    { label: 'Environments', value: statsLoading ? '…' : stats?.total_environments ?? '-', icon: FlaskConical, color: 'text-primary' },
     {
       label: 'Needs Reindex',
       value: qdrantLoading ? '…' : qdrantStatus?.qdrant_index_status !== 'current' ? 'Yes' : 'No',
@@ -178,15 +175,6 @@ export default function DashboardPage() {
         count: d.image_count,
       })).filter((d) => d.count > 0) ?? [],
     [strainDist],
-  )
-
-  const envData = useMemo(
-    () =>
-      envDist?.map((d) => ({
-        name: d.environment_name ?? 'Unknown',
-        count: d.image_count,
-      })).filter((d) => d.count > 0) ?? [],
-    [envDist],
   )
 
   return (
@@ -302,22 +290,6 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground text-center py-8">No strain data available.</p>
             ) : (
               <PieChart data={strainData} />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Environment Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-heading text-base">Environment Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {envLoading ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
-            ) : envData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No environment data available.</p>
-            ) : (
-              <PieChart data={envData} />
             )}
           </CardContent>
         </Card>

@@ -17,10 +17,6 @@ export function getStrainDistribution(): Promise<DistributionItem[]> {
   return api.get<DistributionItem[]>('/dashboard/charts/strain-distribution')
 }
 
-export function getEnvironmentDistribution(): Promise<DistributionItem[]> {
-  return api.get<DistributionItem[]>('/dashboard/charts/environment-distribution')
-}
-
 export function getTimeline(): Promise<unknown[]> {
   return api.get<unknown[]>('/dashboard/charts/timeline')
 }

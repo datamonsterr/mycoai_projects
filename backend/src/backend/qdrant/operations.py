@@ -24,7 +24,7 @@ def _neighbor_from_point(point: Any) -> NeighborResult:
         score=score,
         distance=1.0 - score,
         strain=payload.get("strain"),
-        environment=payload.get("environment"),
+        media=payload.get("media"),
         angle=payload.get("angle"),
         specy=payload.get("specy") or payload.get("species"),
         parent_id=payload.get("parent_id") or payload.get("parent_item_id"),
