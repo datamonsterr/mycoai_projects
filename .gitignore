@@ -27,3 +27,4 @@ worktrees/
 .vite/
 frontend/playwright-report/
 frontend/test-results/
+*.AppImage
