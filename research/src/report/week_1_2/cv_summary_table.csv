@@ -1,10 +1,8 @@
-env_strategy,agg_strategy,k,extractor,collection,mean_accuracy,std_accuracy,min_accuracy,max_accuracy
-E1,freq_strength,7,efficientnetb1_finetuned,myco_fungi_features_full_finetuned,0.8208333333333334,0.09033118078616169,0.6666666666666666,0.875
-E1,weighted,9,efficientnetb1_finetuned,myco_fungi_features_full_finetuned,0.8125,0.10825317547305484,0.625,0.875
-E1,freq_strength,9,efficientnetb1_finetuned,myco_fungi_features_full_finetuned,0.8125,0.10825317547305484,0.625,0.875
-E1,weighted,7,efficientnetb1_finetuned,myco_fungi_features_full_finetuned,0.8125,0.10825317547305484,0.625,0.875
-E1,weighted,5,efficientnetb1_finetuned,myco_fungi_features_full_finetuned,0.8125,0.10825317547305484,0.625,0.875
-E1,freq_strength,5,efficientnetb1_finetuned,myco_fungi_features_full_finetuned,0.8083333333333333,0.11729740216882707,0.6041666666666666,0.875
-E1,freq_strength,7,efficientnetb1,myco_fungi_features_full,0.5333333333333334,0.09838099127597996,0.4166666666666667,0.6458333333333334
-E1,relative,7,efficientnetb1,myco_fungi_features_full,0.525,0.1468713061001214,0.3333333333333333,0.6875
-E1,weighted,7,efficientnetb1,myco_fungi_features_full,0.525,0.1468713061001214,0.3333333333333333,0.6875
+env_strategy,agg_strategy,k,mean_accuracy,std_accuracy,min_accuracy,max_accuracy,setting
+E1,freq_strength,9,0.8125,0.10825317547305484,0.625,0.875,E1 / freq_strength
+E1,weighted,9,0.8125,0.10825317547305484,0.625,0.875,E1 / weighted
+E1,weighted,5,0.8125,0.10825317547305484,0.625,0.875,E1 / weighted
+E1,freq_strength,5,0.8083333333333333,0.11729740216882707,0.6041666666666666,0.875,E1 / freq_strength
+E1,freq_strength,7,0.6770833333333334,0.04941058844013091,0.6145833333333334,0.75,E1 / freq_strength
+E1,weighted,7,0.66875,0.06395867263753649,0.6041666666666666,0.75,E1 / weighted
+E1,relative,7,0.525,0.1468713061001214,0.3333333333333333,0.6875,E1 / relative

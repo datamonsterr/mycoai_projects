@@ -84,7 +84,7 @@
 \begin{frame}{YOLO vs K-Means: Segmentation Comparison}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{segmentation_comparison.png}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{09_segmentation/segmentation_comparison.png}
     \caption{Segmentation quality: YOLO (right) vs K-Means (left)}
   \end{figure}
 \end{frame}
@@ -92,7 +92,7 @@
 \begin{frame}{YOLO Segmentation: Detailed Results}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{kmeans_vs_yolo_comparison.png}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{06_retrieval/kmeans_vs_yolo_comparison.png}
     \caption{Retrieval accuracy using YOLO vs K-Means segmented colonies}
   \end{figure}
 \end{frame}
@@ -165,7 +165,7 @@
 \begin{frame}{Threshold: Top Strategies}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{threshold_top_bar.png}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{07_threshold/threshold_top_bar.png}
     \caption{Top-15 threshold strategies by F1 score}
   \end{figure}
 
@@ -178,7 +178,7 @@
 \begin{frame}{Threshold: Score Distribution}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.65\textheight,keepaspectratio]{threshold_top_strategies_new.png}
+    \includegraphics[width=\textwidth,height=0.65\textheight,keepaspectratio]{07_threshold/threshold_top_strategies_new.png}
     \caption{Best strategies: known vs unknown score separation}
   \end{figure}
 
@@ -191,7 +191,7 @@
 \begin{frame}{Threshold: Confusion Matrix}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{threshold_confusion_full.png}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{07_threshold/threshold_confusion_full.png}
     \caption{Threshold confusion matrix: \texttt{EfficientNetB1\_finetuned}, \texttt{E1}, \texttt{weighted}, \texttt{k=11}}
   \end{figure}
 \end{frame}
@@ -288,7 +288,7 @@
 \begin{frame}{Retrieval Pipeline Overview}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{query_flow.png}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{12_misc/query_flow.png}
     \caption{Full retrieval pipeline: segmentation $\to$ feature extraction $\to$ Qdrant search $\to$ aggregation}
   \end{figure}
 \end{frame}
@@ -366,9 +366,9 @@
 \begin{frame}{Retrieval Performance: Heatmaps}
   \begin{figure}
     \centering
-    \includegraphics[width=0.49\textwidth,height=0.60\textheight,keepaspectratio]{cv_heatmap_weighted_k_vs_media.png}
+    \includegraphics[width=0.49\textwidth,height=0.60\textheight,keepaspectratio]{05_cross_validation/cv_heatmap_weighted_k_vs_media.png}
     \hfill
-    \includegraphics[width=0.49\textwidth,height=0.60\textheight,keepaspectratio]{cv_heatmap_uni_k_vs_media.png}
+    \includegraphics[width=0.49\textwidth,height=0.60\textheight,keepaspectratio]{05_cross_validation/cv_heatmap_uni_k_vs_media.png}
     \caption{Left: weighted strategy. Right: uni strategy. K vs environment media type}
   \end{figure}
 \end{frame}
@@ -376,7 +376,7 @@
 \begin{frame}{Cross-Validation: Confusion Matrix}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{confusion_matrix_cv_best.png}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{06_retrieval/confusion_matrix_cv_best.png}
     \caption{5-fold CV confusion matrix (fold 0): \texttt{EfficientNetB1\_finetuned}, \texttt{E2}, \texttt{freq\_strength}, \texttt{k=7}}
   \end{figure}
 \end{frame}
@@ -384,7 +384,7 @@
 \begin{frame}{Best Single-Run Confusion Matrix}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{confusion_matrix_finetuned_best.png}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{06_retrieval/confusion_matrix_finetuned_best.png}
     \caption{Single-run best: \texttt{EfficientNetB1\_finetuned}, \texttt{E1}, \texttt{freq\_strength}, \texttt{k=5}. 7 test species, accuracy = 0.714}
   \end{figure}
 \end{frame}
@@ -392,9 +392,9 @@
 \begin{frame}{Cross-Validation: Aggregation Heatmaps}
   \begin{figure}
     \centering
-    \includegraphics[width=0.49\textwidth,height=0.55\textheight,keepaspectratio]{cv_heatmap_agg_vs_k.png}
+    \includegraphics[width=0.49\textwidth,height=0.55\textheight,keepaspectratio]{05_cross_validation/cv_heatmap_agg_vs_k.png}
     \hfill
-    \includegraphics[width=0.49\textwidth,height=0.55\textheight,keepaspectratio]{cv_heatmap_media_vs_agg.png}
+    \includegraphics[width=0.49\textwidth,height=0.55\textheight,keepaspectratio]{05_cross_validation/cv_heatmap_media_vs_agg.png}
     \caption{Heatmaps: \texttt{EfficientNetB1\_finetuned}, 5-fold CV. Left: Aggregation vs K. Right: Media (environment) vs Aggregation}
   \end{figure}
 \end{frame}
@@ -402,9 +402,9 @@
 \begin{frame}{Cross-Validation: Accuracy vs K \& Best Configs}
   \begin{figure}
     \centering
-    \includegraphics[width=0.49\textwidth,height=0.60\textheight,keepaspectratio]{cv_accuracy_vs_k_fullprepared.png}
+    \includegraphics[width=0.49\textwidth,height=0.60\textheight,keepaspectratio]{05_cross_validation/cv_accuracy_vs_k_fullprepared.png}
     \hfill
-    \includegraphics[width=0.49\textwidth,height=0.60\textheight,keepaspectratio]{cv_best_configs_new.png}
+    \includegraphics[width=0.49\textwidth,height=0.60\textheight,keepaspectratio]{05_cross_validation/cv_best_configs_new.png}
     \caption{Left: Accuracy vs K (all strategies). Right: Best configurations -- \texttt{EfficientNetB1\_finetuned}. Top CV: \texttt{E2, freq\_strength, k=3} = 0.829}
   \end{figure}
 \end{frame}
@@ -412,7 +412,7 @@
 \begin{frame}{Retrieval: Feature Extractor Comparison}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{extractor_comparison.png}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{06_retrieval/extractor_comparison.png}
     \caption{Accuracy by feature extractor family (Fine-tuned = blue, Pretrained = orange, Traditional = green)}
   \end{figure}
 \end{frame}
@@ -420,7 +420,7 @@
 \begin{frame}{Retrieval: Top Configurations}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{retrieval_top_configs.png}
+    \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{06_retrieval/retrieval_top_configs.png}
     \caption{Top retrieval configurations ranked by accuracy}
   \end{figure}
 \end{frame}
@@ -428,7 +428,7 @@
 \begin{frame}{Retrieval: Staircase Progress}
   \begin{figure}
     \centering
-    \includegraphics[width=\textwidth,height=0.65\textheight,keepaspectratio]{staircase_retrieval.png}
+    \includegraphics[width=\textwidth,height=0.65\textheight,keepaspectratio]{06_retrieval/staircase_retrieval.png}
     \caption{Experiment staircase: each dot = one experiment, green = new best, gray = below best}
   \end{figure}
 

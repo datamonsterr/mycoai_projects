@@ -671,7 +671,7 @@ export default function RetrievePage() {
         for (const img of strain.images) {
           if (!img.id) continue
           try {
-            const result = await autoSegment(img.id, 'kmeans')
+            const result = await autoSegment(img.id, 'yolo')
             setStrains((prev) => prev.map((s) => ({
               ...s,
               images: s.images.map((i) => {

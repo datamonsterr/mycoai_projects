@@ -6,7 +6,8 @@ Vector dimensions produced:
   - colorhistogram: 96-dim (RGB 32-bin histograms)
   - colorhistogramhs: 64-dim (HSV 32-bin hue+sat histograms)
   - gabor: 32-dim (Gabor filter bank)
-  - efficientnetb1_finetuned: 1280-dim (from research collection — fallback for new segments)
+   - efficientnetb1_finetuned: 1280-dim (from research collection)
+   - (fallback for new segments)
   - resnet50_finetuned: 2048-dim
   - mobilenetv2_finetuned: 1280-dim
 """
@@ -15,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -37,6 +38,173 @@ VECTOR_DIMS: dict[str, int] = {
     "colorhistogramhs": 64,
 }
 
+# ---- Deep Learning feature extraction (lazy-loaded) ----
+
+_WEIGHTS_DIR = Path("/app/weights") if Path("/app/weights").exists() else Path(__file__).resolve().parent.parent.parent.parent.parent / "research" / "weights"
+_IMAGENET_MEAN = (0.485, 0.456, 0.406)
+_IMAGENET_STD = (0.229, 0.224, 0.225)
+_DL_INPUT_SIZE = 224
+
+_effnet_model: Any = None
+_resnet_model: Any = None
+_mobilenet_model: Any = None
+_torch_available: bool | None = None
+
+
+def _check_torch() -> bool:
+    global _torch_available
+    if _torch_available is None:
+        try:
+            import torch  # noqa: F401
+            import torchvision  # noqa: F401
+
+            _torch_available = True
+        except ImportError:
+            _torch_available = False
+    return _torch_available
+
+
+def _preprocess_dl(img_rgb: np.ndarray):
+    import torch
+    import torch.nn.functional as F
+
+    t = torch.from_numpy(img_rgb).permute(2, 0, 1).float().div_(255.0)
+    t = F.interpolate(
+        t.unsqueeze(0),
+        size=(_DL_INPUT_SIZE, _DL_INPUT_SIZE),
+        mode="bilinear",
+        align_corners=False,
+    ).squeeze(0)
+    mean = torch.tensor(_IMAGENET_MEAN, dtype=t.dtype).view(3, 1, 1)
+    std = torch.tensor(_IMAGENET_STD, dtype=t.dtype).view(3, 1, 1)
+    t = (t - mean) / std
+    return t.unsqueeze(0)
+
+
+def _load_efficientnetb1_finetuned():
+    global _effnet_model
+    if _effnet_model is not None:
+        return _effnet_model
+    if not _check_torch():
+        return None
+    import torch
+    import torch.nn as nn
+    from torchvision.models import efficientnet_b1
+
+    model = efficientnet_b1(weights=None)
+    weights_path = _WEIGHTS_DIR / "EfficientNetB1_finetuned.pth"
+    if weights_path.exists():
+        try:
+            checkpoint = torch.load(weights_path, map_location="cpu")
+            if isinstance(checkpoint, dict):
+                state_dict = checkpoint.get("state_dict", checkpoint)
+            else:
+                state_dict = checkpoint
+            state_dict = {k.removeprefix("module."): v for k, v in state_dict.items()}
+            filtered = {
+                k: v for k, v in state_dict.items() if not k.startswith("classifier.")
+            }
+            model.load_state_dict(filtered, strict=False)
+            logger.info("Loaded EfficientNetB1_finetuned weights")
+        except Exception as exc:
+            logger.warning("Failed to load EfficientNetB1_finetuned weights: %s", exc)
+            return None
+    model.classifier = nn.Identity()
+    model.eval()
+    _effnet_model = model
+    return model
+
+
+def _load_resnet50_finetuned():
+    global _resnet_model
+    if _resnet_model is not None:
+        return _resnet_model
+    if not _check_torch():
+        return None
+    import torch
+    import torch.nn as nn
+    from torchvision.models import resnet50
+
+    model = resnet50(weights=None)
+    weights_path = _WEIGHTS_DIR / "ResNet50_finetuned.pth"
+    if weights_path.exists():
+        try:
+            checkpoint = torch.load(weights_path, map_location="cpu")
+            if isinstance(checkpoint, dict):
+                state_dict = checkpoint.get("state_dict", checkpoint)
+            else:
+                state_dict = checkpoint
+            state_dict = {k.removeprefix("module."): v for k, v in state_dict.items()}
+            filtered = {k: v for k, v in state_dict.items() if not k.startswith("fc.")}
+            model.load_state_dict(filtered, strict=False)
+            logger.info("Loaded ResNet50_finetuned weights")
+        except Exception as exc:
+            logger.warning("Failed to load ResNet50_finetuned weights: %s", exc)
+            return None
+    model.fc = nn.Identity()
+    model.eval()
+    _resnet_model = model
+    return model
+
+
+def _load_mobilenetv2_finetuned():
+    global _mobilenet_model
+    if _mobilenet_model is not None:
+        return _mobilenet_model
+    if not _check_torch():
+        return None
+    import torch
+    import torch.nn as nn
+    from torchvision.models import mobilenet_v2
+
+    model = mobilenet_v2(weights=None)
+    weights_path = _WEIGHTS_DIR / "MobileNetV2_finetuned.pth"
+    if weights_path.exists():
+        try:
+            checkpoint = torch.load(weights_path, map_location="cpu")
+            if isinstance(checkpoint, dict):
+                state_dict = checkpoint.get("state_dict", checkpoint)
+            else:
+                state_dict = checkpoint
+            state_dict = {k.removeprefix("module."): v for k, v in state_dict.items()}
+            filtered = {
+                k: v for k, v in state_dict.items() if not k.startswith("classifier.")
+            }
+            model.load_state_dict(filtered, strict=False)
+            logger.info("Loaded MobileNetV2_finetuned weights")
+        except Exception as exc:
+            logger.warning("Failed to load MobileNetV2_finetuned weights: %s", exc)
+            return None
+    model.classifier = nn.Identity()
+    model.eval()
+    _mobilenet_model = model
+    return model
+
+
+def _extract_dl_feature(model, img_rgb: np.ndarray) -> list[float]:
+    import torch
+
+    input_tensor = _preprocess_dl(img_rgb)
+    with torch.no_grad():
+        output = model(input_tensor)
+    return output.cpu().flatten().tolist()
+
+
+def _extract_dl_vectors(vectors: dict[str, list[float]], img_rgb: np.ndarray) -> None:
+    if not _check_torch():
+        return
+    for model_name, loader in [
+        ("efficientnetb1_finetuned", _load_efficientnetb1_finetuned),
+        ("resnet50_finetuned", _load_resnet50_finetuned),
+        ("mobilenetv2_finetuned", _load_mobilenetv2_finetuned),
+    ]:
+        try:
+            model = loader()
+            if model is not None:
+                vectors[model_name] = _extract_dl_feature(model, img_rgb)
+        except Exception as exc:
+            logger.warning("DL extraction failed for %s: %s", model_name, exc)
+
 
 def extract_features(image_path: Path) -> dict[str, list[float]]:
     """Extract all feature vectors from a segment crop image file."""
@@ -55,6 +223,8 @@ def extract_features(image_path: Path) -> dict[str, list[float]]:
     vectors["colorhistogram"] = _rgb_histogram(img_rgb, bins=32)
     vectors["colorhistogramhs"] = _hs_histogram(img, bins=32)
     vectors["gabor"] = _gabor_features(img_rgb)
+
+    _extract_dl_vectors(vectors, img_rgb)
 
     for name in VECTOR_DIMS:
         if name not in vectors:
@@ -81,6 +251,8 @@ def extract_features_from_bytes(image_bytes: bytes) -> dict[str, list[float]]:
     vectors["colorhistogram"] = _rgb_histogram(img_rgb, bins=32)
     vectors["colorhistogramhs"] = _hs_histogram(img, bins=32)
     vectors["gabor"] = _gabor_features(img_rgb)
+
+    _extract_dl_vectors(vectors, img_rgb)
 
     for name in VECTOR_DIMS:
         if name not in vectors:

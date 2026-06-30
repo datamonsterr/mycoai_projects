@@ -1,0 +1,9 @@
+Extractor,Media Strategy,Aggregation,K,accuracy_pct
+EfficientNetB1 FT,E1,Freq×Strength,13,81.0
+EfficientNetB1 FT,E1,Freq×Strength,13,81.0
+MobileNetV2 FT,E1,Freq×Strength,13,73.8
+EfficientNetB1 FT,E1,Freq×Strength,15,73.8
+ResNet50 FT,E1,Freq×Strength,13,69.0
+EfficientNetB1 PT,E1,Freq×Strength,3,66.7
+ColorHist HSV,E1,Freq×Strength,3,64.3
+ColorHist HS,E1,Freq×Strength,3,47.6

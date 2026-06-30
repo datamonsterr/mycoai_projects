@@ -17,7 +17,6 @@ from ..qdrant.aggregation import aggregate_predictions
 from ..qdrant.client import get_collection_name, get_qdrant_client
 from ..qdrant.models import FilterSpec, NeighborResult, QueryResult
 from ..qdrant.operations import query_points_by_id
-from ..repos.strain import StrainRepository
 from ..schemas import (
     RetrievalJobResponse,
     RetrievalQueryRequest,
@@ -36,11 +35,22 @@ def _parse_uuid(value: str, resource: str = "Resource") -> uuid.UUID:
         raise NotFoundError(f"{resource} '{value}' not found") from err
 
 
-def _strain_to_species_map(
-    db_neighbors: list, strain_repo: StrainRepository
+async def _strain_to_species_map(
+    db_neighbors: list[dict[str, str]], db: AsyncSession
 ) -> dict[str, str]:
+    from ..models import Species, Strain
+
     strain_names = {n.get("strain") for n in db_neighbors if n.get("strain")}
-    return {s: s for s in strain_names if s}
+    if not strain_names:
+        return {}
+
+    result = await db.execute(
+        select(Strain.name, Species.name)
+        .join(Species, Strain.species_id == Species.id)
+        .where(Strain.name.in_(strain_names))
+    )
+    strain_to_species: dict[str, str] = {row[0]: row[1] for row in result.all()}
+    return {s: strain_to_species.get(s, s) for s in strain_names}
 
 
 async def _resolve_species_name(db: AsyncSession, strain_name: str) -> str:
@@ -210,9 +220,9 @@ async def start_query(
                 "estimated_seconds": 0,
             }
 
-        strain_map = _strain_to_species_map(
+        strain_map = await _strain_to_species_map(
             [{"strain": n.strain} for n in all_neighbors],
-            StrainRepository(),
+            db,
         )
 
         aggregation_result = aggregate_predictions(

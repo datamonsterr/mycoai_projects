@@ -335,8 +335,8 @@ def chart_top15_accuracy(df: pd.DataFrame):
     table = table.rename(columns={"extractor_full": "Extractor", "env": "Media Strategy",
                                    "agg_full": "Aggregation", "k": "K"})
     table = table[["Extractor", "Media Strategy", "Aggregation", "K", "accuracy_pct"]]
-    table.to_csv(LATEX_FIGURES / "table_top15_accuracy.csv", index=False)
-    table.to_csv(REPORT_FIGURES / "table_top15_accuracy.csv", index=False)
+    table.to_csv(LATEX_FIGURES / "10_tables" / "table_top15_accuracy.csv", index=False)
+    table.to_csv(REPORT_FIGURES / "10_tables" / "table_top15_accuracy.csv", index=False)
     print(f"  saved retrieval_top15_accuracy.png + table")
 
 
@@ -576,12 +576,11 @@ def _hyperparam_stats_table(df: pd.DataFrame):
     table = table[["Parameter", "Value", "Min_pct", "Mean_pct", "Max_pct", "Count"]]
     table.columns = ["Parameter", "Value", "Min (%)", "Mean (%)", "Max (%)", "Samples"]
 
-    table_path = LATEX_FIGURES / "table_hyperparam_stats.csv"
+    table_path = LATEX_FIGURES / "10_tables" / "table_hyperparam_stats.csv"
     table.to_csv(table_path, index=False)
-    table.to_csv(REPORT_FIGURES / "table_hyperparam_stats.csv", index=False)
+    table.to_csv(REPORT_FIGURES / "10_tables" / "table_hyperparam_stats.csv", index=False)
 
-    # Also export as LaTeX table
-    latex_path = LATEX_FIGURES / "table_hyperparam_stats.tex"
+    latex_path = LATEX_FIGURES / "10_tables" / "table_hyperparam_stats.tex"
     _write_latex_table(table, latex_path, "Hyperparameter Statistics: Min/Mean/Max Accuracy")
     print(f"  saved hyperparam stats table + LaTeX")
 
@@ -679,14 +678,15 @@ def chart_extractor_family(df: pd.DataFrame):
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _save(name: str, fig=None):
+def _save(name: str, fig=None, subfolder: str = "06_retrieval"):
     if fig is None:
         return
     for outdir in (LATEX_FIGURES, REPORT_FIGURES):
-        path = outdir / name
-        fig.savefig(path, dpi=200, bbox_inches="tight")
+        out = outdir / subfolder / name
+        out.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out, dpi=200, bbox_inches="tight")
     plt.close(fig)
-    print(f"  saved {name}")
+    print(f"  saved {subfolder}/{name}")
 
 
 def _collect_prediction_samples(df: pd.DataFrame):

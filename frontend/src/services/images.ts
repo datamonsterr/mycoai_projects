@@ -107,6 +107,6 @@ export interface AutoSegmentRequest {
   method: string
 }
 
-export function autoSegment(imageId: string, method: string = 'kmeans'): Promise<AutoSegmentResult> {
+export function autoSegment(imageId: string, method: string = 'yolo'): Promise<AutoSegmentResult> {
   return api.post<AutoSegmentResult>(`/images/${imageId}/segment`, { method })
 }

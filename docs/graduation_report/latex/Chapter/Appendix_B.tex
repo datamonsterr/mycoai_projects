@@ -157,7 +157,7 @@ per\_species\_avg     & 0.048 & 0.254 & 0.619 \\
 \subsection{Cross-Validation Results (EfficientNetB1 Finetuned, 5-Fold)}
 
 5-fold strain-level cross-validation using fold-specific EfficientNetB1 finetuned
-weights on the \texttt{myco\_fungi\_features\_full\_finetuned} Qdrant collection.
+weights on the fine-tuned feature Qdrant collection.
 
 \begin{table}[H]
 \centering
@@ -210,7 +210,7 @@ gap0\_r3\_f1\_grid    & 0.333 & 0.237 & 0.563 \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{figures/threshold_known_species_accuracy.png}
+\includegraphics[width=\textwidth,keepaspectratio]{07_threshold/threshold_known_species_accuracy.png}
 \caption{Per-species accuracy for the 5 known test species from threshold retrieval. \emph{P. polonicum} achieves perfect accuracy; \emph{P. melanoconidium} remains the hardest case (0/6).}
 \label{fig:threshold_known_species}
 \end{figure}
@@ -274,42 +274,42 @@ across $K \in \{3,5,7,11,13,15\}$.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_fine-tuned_best.png}
+\includegraphics[width=\textwidth,keepaspectratio]{06_retrieval/confusion_matrix_fine-tuned_best.png}
 \caption{Fine-tuned --- best: EfficientNetB1 FT, $K=3$, freq\_strength, E3\_YES (88.1\%, 37/42).}
 \label{fig:app_conf_ft_best}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_fine-tuned_worst.png}
+\includegraphics[width=\textwidth,keepaspectratio]{06_retrieval/confusion_matrix_fine-tuned_worst.png}
 \caption{Fine-tuned --- worst: ResNet50 FT, $K=3$, per\_species\_avg, E4\_YES (7.1\%, 3/42).}
 \label{fig:app_conf_ft_worst}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_pretrained_best.png}
+\includegraphics[width=\textwidth,keepaspectratio]{06_retrieval/confusion_matrix_pretrained_best.png}
 \caption{Pretrained --- best: MobileNetV2 PT, $K=5$, freq\_strength, E4\_DG18 (81.0\%, 34/42).}
 \label{fig:app_conf_pt_best}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_pretrained_worst.png}
+\includegraphics[width=\textwidth,keepaspectratio]{06_retrieval/confusion_matrix_pretrained_worst.png}
 \caption{Pretrained --- worst: ResNet50 PT, $K=5$, per\_species\_avg, E1 (7.1\%, 3/42).}
 \label{fig:app_conf_pt_worst}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_traditional_best.png}
+\includegraphics[width=\textwidth,keepaspectratio]{06_retrieval/confusion_matrix_traditional_best.png}
 \caption{Traditional --- best: ColorHist HSV, $K=3$, perquery\_avg, E1 (73.8\%, 31/42).}
 \label{fig:app_conf_trad_best}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{figures/confusion_matrix_traditional_worst.png}
+\includegraphics[width=\textwidth,keepaspectratio]{06_retrieval/confusion_matrix_traditional_worst.png}
 \caption{Traditional --- worst: HOG, $K=5$, per\_species\_avg, E1 (4.8\%, 2/42).}
 \label{fig:app_conf_trad_worst}
 \end{figure}

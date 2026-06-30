@@ -428,7 +428,7 @@ export default function IndexNewDataPage() {
         for (const img of strain.images) {
           if (!img.imageId) continue
           try {
-            const result = await autoSegment(img.imageId, 'kmeans')
+            const result = await autoSegment(img.imageId, 'yolo')
             setSegmentsByImage((prev) => ({
               ...prev,
               [img.imageId]: result.segments.map((s) => ({

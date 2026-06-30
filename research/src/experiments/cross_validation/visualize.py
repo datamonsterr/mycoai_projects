@@ -34,7 +34,7 @@ IMAGES_DIR = REPORT_DIR / "images"
 
 SETTING_ORDER = ["E1 / uni", "E1 / weighted", "E2 / uni", "E2 / weighted"]
 SETTING_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
-K_VALUES = [3, 5, 7, 9, 11]
+K_VALUES = [3, 5, 7, 9, 11, 13, 15]
 
 
 # ---------------------------------------------------------------------------

@@ -40,20 +40,28 @@ def aggregate_predictions(
                 species_counts[specy] += 1
                 # Count query presence later with a second pass to avoid double-count.
 
-    # Second pass to compute query_species_counts (species presence per query)
+    # Second pass to compute query_species_counts, per_query_species, per_query_total
     query_species_counts.clear()
-    for result in raw_results:
+    per_query_species: dict[int, dict[str, float]] = {}
+    per_query_total: dict[int, float] = {}
+    for qi, result in enumerate(raw_results):
         seen_in_query: set[str] = set()
+        qmap: dict[str, float] = {}
         for neighbor in result["neighbors"]:
             specy = neighbor.get("specy")
+            score = neighbor.get("score", 0.0)
             if not specy or specy == "unknown":
                 strain = neighbor.get("strain")
                 if strain:
                     specy = strain_to_specy.get(strain, "unknown")
             if specy and specy != "unknown":
                 seen_in_query.add(specy)
+                qmap[specy] = qmap.get(specy, 0.0) + score
         for specy in seen_in_query:
             query_species_counts[specy] += 1
+        per_query_species[qi] = qmap
+        qt = sum(qmap.values())
+        per_query_total[qi] = qt if qt > 0 else 1.0
 
     total_neighbors = sum(species_counts.values())
     ranked: list[tuple[str, float]] = []
@@ -77,6 +85,34 @@ def aggregate_predictions(
             final = freq * strength
         elif strategy == "manual_weighted":
             final = total_score / total_neighbors if total_neighbors > 0 else 0.0
+        elif strategy == "per_species_avg":
+            final = total_score / count if count > 0 else 0.0
+        elif strategy == "max_score":
+            best = 0.0
+            for result in raw_results:
+                for neighbor in result["neighbors"]:
+                    nb_specy = neighbor.get("specy")
+                    if not nb_specy or nb_specy == "unknown":
+                        nb_strain = neighbor.get("strain")
+                        if nb_strain:
+                            nb_specy = strain_to_specy.get(nb_strain, "unknown")
+                    if nb_specy == specy:
+                        best = max(best, neighbor.get("score", 0.0))
+            final = best
+        elif strategy == "perquery_avg":
+            num_queries = total_queries
+            accum = 0.0
+            for qi in range(num_queries):
+                qs = per_query_species[qi].get(specy, 0.0)
+                accum += qs / k
+            final = accum / num_queries if num_queries > 0 else 0.0
+        elif strategy == "perquery_norm_avg":
+            num_queries = total_queries
+            accum = 0.0
+            for qi in range(num_queries):
+                qs = per_query_species[qi].get(specy, 0.0)
+                accum += qs / per_query_total[qi]
+            final = accum / num_queries if num_queries > 0 else 0.0
         else:
             final = float(total_score)
         ranked.append((specy, final))

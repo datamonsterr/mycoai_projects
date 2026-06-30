@@ -128,3 +128,15 @@ run = "specify check"
 [tasks.specify-init-opencode]
 description = "Initialize Spec Kit for OpenCode"
 run = "specify init --here --ai opencode --no-git --force"
+
+[tasks.report-clean]
+description = "Clean LaTeX render artifacts, keep .tex/figures/tables/*.zip"
+run = "bash docs/graduation_report/latex/clean.sh"
+
+[tasks.report-render]
+description = "Render graduation report PDF"
+run = "bash docs/graduation_report/latex/render.sh"
+
+[tasks.report-upload]
+description = "Package and upload graduation report zip to mycoai-data"
+run = "bash docs/graduation_report/latex/upload.sh"

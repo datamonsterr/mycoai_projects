@@ -1083,16 +1083,18 @@
 
   \entry{speckit}{software}{}{}
     \name{author}{1}{}{%
-      {{hash=S}{%
-         family={{Speckit Contributors}},
-         familyi={S\bibinitperiod},
+      {{hash=CD}{%
+         family={Chiyo},
+         familyi={C\bibinitperiod},
+         given={Daisuke},
+         giveni={D\bibinitperiod},
       }}%
     }
-    \strng{namehash}{S1}
-    \strng{fullhash}{S1}
+    \strng{namehash}{CD1}
+    \strng{fullhash}{CD1}
     \field{labelnamesource}{author}
     \field{labeltitlesource}{title}
-    \field{title}{{Speckit}: Agent Skills for Spec-Driven Development Workflows}
+    \field{title}{Speckit Agent Skills}
     \verb{url}
     \verb https://github.com/dceoy/speckit-agent-skills
     \endverb
@@ -1113,6 +1115,64 @@
     \field{title}{{OpenSpec}: Spec-Driven Development {CLI} and Living Specification Framework}
     \verb{url}
     \verb https://github.com/Fission-AI/OpenSpec
+    \endverb
+    \field{year}{2025}
+  \endentry
+
+  \entry{caveman}{software}{}{}
+    \name{author}{1}{}{%
+      {{hash=BJ}{%
+         family={Brussee},
+         familyi={B\bibinitperiod},
+         given={Julius},
+         giveni={J\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{BJ1}
+    \strng{fullhash}{BJ1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{title}{caveman}
+    \verb{url}
+    \verb https://github.com/juliusbrussee/caveman
+    \endverb
+    \field{year}{2025}
+  \endentry
+
+  \entry{router9}{software}{}{}
+    \name{author}{1}{}{%
+      {{hash=d}{%
+         family={decolua},
+         familyi={d\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{d1}
+    \strng{fullhash}{d1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{title}{9router}
+    \verb{url}
+    \verb https://github.com/decolua/9router
+    \endverb
+    \field{year}{2025}
+  \endentry
+
+  \entry{rtk}{software}{}{}
+    \name{author}{1}{}{%
+      {{hash=AR}{%
+         family={AI},
+         familyi={A\bibinitperiod},
+         given={RTK},
+         giveni={R\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{AR1}
+    \strng{fullhash}{AR1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{title}{RTK}
+    \verb{url}
+    \verb https://github.com/rtk-ai/rtk
     \endverb
     \field{year}{2025}
   \endentry

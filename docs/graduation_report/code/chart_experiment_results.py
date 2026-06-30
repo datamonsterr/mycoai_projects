@@ -25,6 +25,7 @@ for d in (LATEX_DIR, REPORT_DIR):
 RETRIEVAL_LATEST = PROJECT / "results/retrieval_k7_yolo_finalcheck"
 RETRIEVAL_K3 = PROJECT / "results/retrieval_20260629_192407"
 RETRIEVAL_KMEANS = PROJECT / "results/retrieval_k7_kmeans_local"
+RETRIEVAL_K7_ALL = PROJECT / "results/retrieval_k7_all"
 THRESH_CSV = PROJECT / "results/threshold/log/all_experiments.csv"
 THRESH_SUMMARY = PROJECT / "results/threshold/metric_analysis.json"
 CV_SUMMARY = PROJECT / "results/cross_validation/cv_summary_table.csv"
@@ -36,19 +37,22 @@ YOLO_GREEN = "#2ecc71"
 KMEANS_BLUE = "#3498db"
 
 
-def save(name, fig=None):
+def save(name, fig=None, subfolder=None):
     if fig is None:
         return
-    for out in (LATEX_DIR / name, REPORT_DIR / name):
+    sf = subfolder + "/" if subfolder else ""
+    for out in (LATEX_DIR / sf / name, REPORT_DIR / sf / name):
+        out.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(out, dpi=200, bbox_inches="tight")
     plt.close(fig)
-    print(f"  saved {name}")
+    print(f"  saved {sf}{name}")
 
 
-def copy_img(src, dst_name):
+def copy_img(src, dst_name, subfolder=None):
     src = Path(src) if isinstance(src, str) else src
     if src.exists():
-        for out in (LATEX_DIR / dst_name, REPORT_DIR / dst_name):
+        sf = subfolder + "/" if subfolder else ""
+        for out in (LATEX_DIR / sf / dst_name, REPORT_DIR / sf / dst_name):
             shutil.copy2(src, out)
         print(f"  copied {dst_name}")
 
@@ -74,46 +78,53 @@ def load_accuracies(base_dir):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 1. Extractor comparison bar chart (weighted, E1, K=7, YOLO)
+# 1. Extractor comparison bar chart (freq_strength, E1, K=7)
 # ═══════════════════════════════════════════════════════════════════════════
 def chart_extractor_comparison():
-    rows = load_accuracies(RETRIEVAL_LATEST)
-    if not rows:
-        rows = load_accuracies(RETRIEVAL_K3)
-    if not rows:
+    all_rows = load_accuracies(RETRIEVAL_K7_ALL)
+    if not all_rows:
+        yolo_rows = load_accuracies(RETRIEVAL_LATEST)
+        km_rows = load_accuracies(RETRIEVAL_KMEANS)
+        if not yolo_rows and not km_rows:
+            return
+        all_rows = yolo_rows + km_rows
+
+    exact = [
+        ("efficientnetb1_finetuned_7_freq_strength_E1_yolo", "EfficientNetB1 (FT)", FT_BLUE, "YOLO"),
+        ("mobilenetv2_finetuned_7_freq_strength_E1_yolo", "MobileNetV2 (FT)", FT_BLUE, "YOLO"),
+        ("resnet50_finetuned_7_freq_strength_E1_yolo", "ResNet50 (FT)", FT_BLUE, "YOLO"),
+        ("efficientnetb1_7_freq_strength_E1_yolo", "EfficientNetB1 (PT)", PT_ORANGE, "YOLO"),
+        ("mobilenetv2_7_freq_strength_E1_yolo", "MobileNetV2 (PT)", PT_ORANGE, "YOLO"),
+        ("resnet50_7_freq_strength_E1_yolo", "ResNet50 (PT)", PT_ORANGE, "YOLO"),
+        ("colorhistogramhs_7_freq_strength_E1_kmeans", "ColorHist HS", TRAD_GREEN, "K-Means"),
+        ("colorhistogram_7_freq_strength_E1_kmeans", "ColorHist HSV", TRAD_GREEN, "K-Means"),
+        ("hog_7_freq_strength_E1_kmeans", "HOG", TRAD_GREEN, "K-Means"),
+        ("gabor_7_freq_strength_E1_kmeans", "Gabor", TRAD_GREEN, "K-Means"),
+    ]
+
+    results = []
+    for folder, label, color, segmenter in exact:
+        match = next((r for r in all_rows if r["dir"] == folder), None)
+        if match is not None:
+            results.append((label, match["accuracy"] * 100, color, segmenter))
+
+    if not results:
         return
 
-    order = [
-        ("resnet50_finetuned_", "ResNet50 (FT)", FT_BLUE),
-        ("efficientnetb1_finetuned_", "EfficientNetB1 (FT)", FT_BLUE),
-        ("mobilenetv2_finetuned_", "MobileNetV2 (FT)", FT_BLUE),
-        ("resnet50_", "ResNet50 (PT)", PT_ORANGE),
-        ("efficientnetb1_", "EfficientNetB1 (PT)", PT_ORANGE),
-        ("mobilenetv2_", "MobileNetV2 (PT)", PT_ORANGE),
-        ("colorhistogram_", "ColorHistogram (TR)", TRAD_GREEN),
-        ("colorhistogramhs_", "ColorHistogramHS (TR)", TRAD_GREEN),
-        ("hog_", "HOG (TR)", TRAD_GREEN),
-        ("gabor_", "Gabor (TR)", TRAD_GREEN),
-    ]
-    results = []
-    for prefix, label, color in order:
-        matched = [r for r in rows if r["dir"].startswith(prefix)]
-        acc = matched[0]["accuracy"] * 100 if matched else 0.0
-        results.append((label, acc, color))
     results.sort(key=lambda x: x[1], reverse=True)
-
-    labels, scores, colors = zip(*results)
-    fig, ax = plt.subplots(figsize=(9, 5))
+    labels = [f"{label}\n({segmenter})" for label, _, _, segmenter in results]
+    scores = [score for _, score, _, _ in results]
+    colors = [color for _, _, color, _ in results]
+    fig, ax = plt.subplots(figsize=(10, 5.6))
     bars = ax.bar(range(len(labels)), scores, color=colors, edgecolor="white", linewidth=0.5)
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, fontsize=7, rotation=25, ha="right")
     ax.set_ylabel("Accuracy (%)")
-    ax.set_title("Feature Extractor Comparison (weighted, E1, K=7, YOLO)")
+    ax.set_title("Feature Extractor Comparison (freq_strength, E1, K=7)")
     ax.set_ylim(0, max(scores) * 1.2 if max(scores) > 0 else 100)
     for bar, score in zip(bars, scores):
-        if score > 0:
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
-                    f"{score:.1f}%", ha="center", va="bottom", fontsize=7, fontweight="bold")
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
+                f"{score:.1f}%", ha="center", va="bottom", fontsize=7, fontweight="bold")
     ax.legend(handles=[
         plt.matplotlib.patches.Patch(facecolor=FT_BLUE, label="Fine-tuned DL"),
         plt.matplotlib.patches.Patch(facecolor=PT_ORANGE, label="Pretrained DL"),
@@ -121,7 +132,7 @@ def chart_extractor_comparison():
     ], loc="upper right", fontsize=7)
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
-    save("extractor_comparison.png", fig)
+    save("extractor_comparison.png", fig, subfolder="06_retrieval")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -162,7 +173,7 @@ def chart_kmeans_vs_yolo():
     ax.legend(fontsize=8)
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
-    save("kmeans_vs_yolo_latest.png", fig)
+    save("kmeans_vs_yolo_latest.png", fig, subfolder="06_retrieval")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -204,7 +215,7 @@ def chart_cv_heatmaps():
         ax.set_title(f"CV Accuracy: {agg} (mean across extracts)")
         plt.colorbar(im, ax=ax, label="Accuracy %")
         fig.tight_layout()
-        save(f"cv_heatmap_{agg}.png", fig)
+        save(f"cv_heatmap_{agg}.png", fig, subfolder="05_cross_validation")
 
     mat2 = np.zeros((len(agg_vals), len(k_vals)))
     for i, a in enumerate(agg_vals):
@@ -224,7 +235,7 @@ def chart_cv_heatmaps():
     ax.set_title("CV: Aggregation vs K")
     plt.colorbar(im, ax=ax, label="Accuracy %")
     fig.tight_layout()
-    save("cv_heatmap_agg_vs_k.png", fig)
+    save("cv_heatmap_agg_vs_k.png", fig, subfolder="05_cross_validation")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -253,7 +264,7 @@ def chart_threshold_top():
     ax.set_xlim(0, max(top["f1"]) * 1.3)
     ax.grid(axis="x", alpha=0.3)
     fig.tight_layout()
-    save("threshold_top_bar.png", fig)
+    save("threshold_top_bar.png", fig, subfolder="07_threshold")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -268,10 +279,10 @@ def copy_confusion_matrices():
             src = RETRIEVAL_LATEST / cfg / "confusion_matrix.png"
             if src.exists():
                 fn = f"confusion_matrix_{cfg.split('_')[0]}.png"
-                copy_img(src, fn)
+                copy_img(src, fn, subfolder="06_retrieval")
     thresh_cm = PROJECT / "results/threshold/confusion_matrix_threshold.png"
     if thresh_cm.exists():
-        copy_img(thresh_cm, "confusion_matrix_threshold.png")
+        copy_img(thresh_cm, "confusion_matrix_threshold.png", subfolder="06_retrieval")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -294,7 +305,7 @@ def chart_cv_training_curves():
         ax.legend(fontsize=7)
         ax.grid(alpha=0.3)
     fig.tight_layout()
-    save("cv_training_curves_folds.png", fig)
+    save("cv_training_curves_folds.png", fig, subfolder="05_cross_validation")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -333,7 +344,7 @@ def chart_fold_variance():
     ax.set_title("Per-Fold Retrieval Accuracy (best fold-specific CV setting)")
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
-    save("fold_variance_new.png", fig)
+    save("fold_variance_new.png", fig, subfolder="08_training")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -343,7 +354,6 @@ def chart_eda_media_distribution():
     """Regenerate media distribution charts using normalized environment labels."""
     import sys
     sys.path.insert(0, str(PROJECT / "research"))
-    from src.config import ORIGINAL_PREPARED_DATASET_DIR
     from src.prepare.dataset import (
         load_source_collections,
         iter_source_images,
@@ -355,19 +365,11 @@ def chart_eda_media_distribution():
 
     collections = load_source_collections()
     strain_species_mapping = load_strain_species_mapping()
-    original_prepared_species = {
-        normalize_label(species_dir.name.replace("-", " "))
-        for species_dir in ORIGINAL_PREPARED_DATASET_DIR.iterdir()
-        if species_dir.is_dir()
-    }
     env_counts: Counter = Counter()
 
-    for key in ["curated", "incoming"]:
+    for key in ["curated"]:
         for image_path in iter_source_images(collections[key]):
-            if key == "incoming":
-                metadata = parse_incoming_metadata(image_path, strain_species_mapping)
-            else:
-                metadata = parse_curated_metadata(image_path, strain_species_mapping)
+            metadata = parse_curated_metadata(image_path, strain_species_mapping)
             env_counts[metadata.environment] += 1
 
     filtered = {k: v for k, v in sorted(env_counts.items()) if k != "unknown"}
@@ -377,11 +379,11 @@ def chart_eda_media_distribution():
 
     colors = ["#1f77b4" if l == "CYA" else "#ff7f0e" for l in labels]
 
-    for filename in ["eda_media_distribution.png", "ch03_media_distribution.png"]:
+    for filename in ["eda_media_distribution.png"]:
         fig, ax = plt.subplots(figsize=(9, 4.5))
         bars = ax.bar(labels, values, color=colors, edgecolor="white", linewidth=0.5)
         ax.set_ylabel("Number of Images")
-        ax.set_title("Media Distribution Across Dataset (CYA/CYA30/CYAS normalized)")
+        ax.set_title("Media Distribution — Curated Dataset")
         ax.set_ylim(0, max(values) * 1.25)
 
         for bar, val in zip(bars, values):
@@ -398,20 +400,16 @@ def chart_eda_media_distribution():
                 va="top", style="italic", color="gray")
         ax.grid(axis="y", alpha=0.3)
         fig.tight_layout()
-        save(filename, fig)
+        save(filename, fig, subfolder="04_eda")
 
     # ── EDA media × species heatmap ──
     species_env: Counter = Counter()
-    for key in ["curated", "incoming"]:
+    for key in ["curated"]:
         for image_path in iter_source_images(collections[key]):
-            if key == "incoming":
-                metadata = parse_incoming_metadata(image_path, strain_species_mapping)
-            else:
-                metadata = parse_curated_metadata(image_path, strain_species_mapping)
+            metadata = parse_curated_metadata(image_path, strain_species_mapping)
             if (
                 metadata.species != "unknown"
                 and metadata.environment != "unknown"
-                and metadata.species in original_prepared_species
             ):
                 species_env[(metadata.species, metadata.environment)] += 1
 
@@ -443,13 +441,13 @@ def chart_eda_media_distribution():
                         color="white" if val > mat.max() / 2 else "black")
     plt.colorbar(im, ax=ax, label="Images")
     fig.tight_layout()
-    save("eda_media_species_heatmap.png", fig)
+    save("eda_media_species_heatmap.png", fig, subfolder="04_eda")
 
     # ── EDA media vs other bar ──
     fig, ax = plt.subplots(figsize=(9, 4.5))
     bars = ax.bar(labels, values, color=colors, edgecolor="white", linewidth=0.5)
     ax.set_ylabel("Number of Images")
-    ax.set_title("Media Distribution — Full Dataset (curated + incoming)")
+    ax.set_title("Media Distribution — Curated Dataset")
     ax.set_ylim(0, max(values) * 1.25)
     for bar, val in zip(bars, values):
         pct = val / total * 100
@@ -459,14 +457,111 @@ def chart_eda_media_distribution():
             f"{val}\n({pct:.1f}%)",
             ha="center", va="bottom", fontsize=8,
         )
-    note = "CYA includes CYA30 and CYAS variants. CREA n=132, CYA n=294, DG18 n=146, MEA n=169, OA n=10, YES n=142"
-    ax.text(0.5, -0.12, note, transform=ax.transAxes, fontsize=6, ha="center",
+    note = "CYA includes CYA30 and CYAS variants"
+    ax.text(0.5, -0.12, note, transform=ax.transAxes, fontsize=7, ha="center",
             va="top", style="italic", color="gray")
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
-    save("eda_media_vs_other.png", fig)
+    save("eda_media_vs_other.png", fig, subfolder="04_eda")
 
     print(f"  eda media: {dict(sorted(env_counts.items()))}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 10. EDA curated-only charts (species distribution, strain distribution, few-shot scatter)
+# ═══════════════════════════════════════════════════════════════════════════
+def chart_eda_curated():
+    """Regenerate EDA charts using only the curated dataset."""
+    import sys
+    sys.path.insert(0, str(PROJECT / "research"))
+    from src.prepare.dataset import (
+        load_source_collections,
+        iter_source_images,
+        load_strain_species_mapping,
+        parse_curated_metadata,
+    )
+
+    collections = load_source_collections()
+    strain_species_mapping = load_strain_species_mapping()
+    species_counts: Counter = Counter()
+    strain_species: dict[str, str] = {}  # strain -> species
+    strain_img_counts: Counter = Counter()
+
+    for image_path in iter_source_images(collections["curated"]):
+        metadata = parse_curated_metadata(image_path, strain_species_mapping)
+        species_counts[metadata.species] += 1
+        strain_species[metadata.strain] = metadata.species
+        strain_img_counts[metadata.strain] += 1
+
+    # ── Species distribution (horizontal bar) ──
+    sorted_species = sorted(species_counts.items(), key=lambda x: -x[1])
+    sp_names = [s for s, _ in sorted_species]
+    sp_vals = [v for _, v in sorted_species]
+    fig, ax = plt.subplots(figsize=(9, 4))
+    bars = ax.barh(range(len(sp_names)), sp_vals[::-1], color="#1f77b4", edgecolor="white", linewidth=0.5)
+    ax.set_yticks(range(len(sp_names)))
+    ax.set_yticklabels(sp_names[::-1], fontsize=8)
+    ax.set_xlabel("Number of Dish Images")
+    ax.set_title("Species Distribution — Curated Dataset")
+    for bar, val in zip(bars, sp_vals[::-1]):
+        ax.text(bar.get_width() + 0.5, bar.get_y() + bar.get_height() / 2,
+                str(val), va="center", fontsize=8)
+    ax.set_xlim(0, max(sp_vals) * 1.15)
+    fig.tight_layout()
+    save("eda_species_distribution.png", fig, subfolder="04_eda")
+
+    # ── Strain distribution (per-species colour) ──
+    sorted_strains = sorted(strain_img_counts.items(), key=lambda x: -x[1])
+    st_names = [s for s, _ in sorted_strains]
+    st_vals = [v for _, v in sorted_strains]
+    st_species = [strain_species.get(s, "unknown") for s in st_names]
+    unique_species = sorted(set(st_species))
+    palette = plt.cm.tab10.colors
+    sp_color = {sp: palette[i % 10] for i, sp in enumerate(unique_species)}
+
+    fig, ax = plt.subplots(figsize=(12, 4.5))
+    colors = [sp_color[sp] for sp in st_species]
+    bars = ax.bar(range(len(st_names)), st_vals, color=colors, edgecolor="white", linewidth=0.5)
+    ax.set_xticks(range(len(st_names)))
+    ax.set_xticklabels(st_names, rotation=45, ha="right", fontsize=7)
+    ax.set_ylabel("Number of Images")
+    ax.set_title("Images per Strain — Curated Dataset")
+    for bar, val in zip(bars, st_vals):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3,
+                str(val), ha="center", va="bottom", fontsize=7)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=sp_color[sp]) for sp in unique_species]
+    ax.legend(handles, unique_species, fontsize=6, loc="upper right")
+    ax.set_ylim(0, max(st_vals) * 1.2)
+    fig.tight_layout()
+    save("eda_strain_distribution.png", fig, subfolder="04_eda")
+
+    # ── Few-shot scatter (species: strains vs images) ──
+    sp_strain_count = Counter()
+    sp_image_count = Counter()
+    for strain, sp in strain_species.items():
+        sp_strain_count[sp] += 1
+    for sp, cnt in species_counts.items():
+        sp_image_count[sp] = cnt
+
+    sp_list = sorted(species_counts.keys())
+    x_vals = [sp_strain_count.get(sp, 0) for sp in sp_list]
+    y_vals = [sp_image_count.get(sp, 0) for sp in sp_list]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.scatter(x_vals, y_vals, c="#1f77b4", s=200, edgecolors="white", linewidth=0.8, zorder=3)
+    for sp, x, y in zip(sp_list, x_vals, y_vals):
+        short = sp.replace("Penicillium ", "P. ")
+        ax.annotate(short, (x, y), textcoords="offset points", xytext=(5, 5), fontsize=8)
+    ax.set_xlabel("Number of Strains")
+    ax.set_ylabel("Number of Dish Images")
+    ax.set_title("Few-Shot Classification Challenge — Curated Dataset")
+    ax.set_xlim(-0.5, max(x_vals) + 1.5)
+    ax.set_ylim(-5, max(y_vals) + 15)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    save("eda_fewshot_scatter.png", fig, subfolder="04_eda")
+
+    print(f"  eda curated: {len(species_counts)} species, {len(strain_img_counts)} strains, {sum(species_counts.values())} images")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -482,4 +577,5 @@ if __name__ == "__main__":
     copy_confusion_matrices()
     chart_fold_variance()
     chart_eda_media_distribution()
+    chart_eda_curated()
     print("Done.")

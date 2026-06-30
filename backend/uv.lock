@@ -1255,6 +1255,8 @@ dependencies = [
     { name = "redis" },
     { name = "scikit-learn" },
     { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "torch" },
+    { name = "torchvision" },
     { name = "ultralytics" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1292,6 +1294,8 @@ requires-dist = [
     { name = "redis", specifier = ">=5.2.1" },
     { name = "scikit-learn", specifier = ">=1.9.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.41" },
+    { name = "torch", specifier = ">=2.6.0" },
+    { name = "torchvision", specifier = ">=0.21.0" },
     { name = "ultralytics", specifier = ">=8.3.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.44.0" },
 ]
