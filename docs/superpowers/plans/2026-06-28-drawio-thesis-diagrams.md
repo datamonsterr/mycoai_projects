@@ -4,7 +4,7 @@
 
 **Goal:** Vendor `drawio-ai-kit` into this repo, wire reproducible local diagram generation for graduation thesis assets, and replace selected Mermaid/manual PNG architecture diagrams with draw.io-sourced exports while keeping sequence and use-case diagrams unchanged.
 
-**Architecture:** Keep `drawio-ai-kit` as a vendored tool under `tools/` so thesis assets remain reproducible from repo state. Store source `.drawio` and/or generator scripts beside thesis assets under `docs/graduation_report/latex/figures/`, export PNGs consumed by LaTeX, and document exact regeneration commands in the graduation report README.
+**Architecture:** Keep `drawio-ai-kit` as a vendored tool under `tools/` so thesis assets remain reproducible from repo state. Store source `.drawio` and/or generator scripts beside thesis assets under `graduation_report/figures/`, export PNGs consumed by LaTeX, and document exact regeneration commands in the graduation report README.
 
 **Tech Stack:** Node 18+, npm, draw.io desktop CLI, vendored drawio-ai-kit, LaTeX, existing thesis chapter files
 
@@ -42,16 +42,16 @@ Add README section covering vendored path, install command, draw.io desktop requ
 
 **Files:**
 - Modify: `docs/graduation_report/README.md`
-- Inspect: `docs/graduation_report/latex/Chapter/2_Literature_Review.tex`
-- Inspect: `docs/graduation_report/latex/Chapter/3_Methodology.tex`
+- Inspect: `graduation_report/Chapter/2_Literature_Review.tex`
+- Inspect: `graduation_report/Chapter/3_Methodology.tex`
 
 - [ ] **Step 1: Confirm exact thesis assets to migrate**
 
 Targets:
-- `docs/graduation_report/latex/figures/ch03_architecture.png`
-- `docs/graduation_report/latex/figures/ch03_erd.png`
-- `docs/graduation_report/latex/figures/ch02_research_pipeline.png`
-- `docs/graduation_report/latex/figures/threshold_pipeline_diagram.png`
+- `graduation_report/figures/ch03_architecture.png`
+- `graduation_report/figures/ch03_erd.png`
+- `graduation_report/figures/ch02_research_pipeline.png`
+- `graduation_report/figures/threshold_pipeline_diagram.png`
 
 - [ ] **Step 2: Preserve exclusions explicitly**
 
@@ -66,16 +66,16 @@ Document that system design, ERD, methodology, and algorithm diagrams use draw.i
 ### Task 3: Add source asset structure for draw.io thesis diagrams
 
 **Files:**
-- Create: `docs/graduation_report/latex/figures/src/`
-- Create: `docs/graduation_report/latex/figures/src/ch03_architecture.drawio`
-- Create: `docs/graduation_report/latex/figures/src/ch03_erd.drawio`
-- Create: `docs/graduation_report/latex/figures/src/ch02_research_pipeline.drawio`
-- Create: `docs/graduation_report/latex/figures/src/threshold_pipeline_diagram.drawio`
-- Create: `docs/graduation_report/code/export_drawio_diagrams.py` or `docs/graduation_report/code/export_drawio_diagrams.sh`
+- Create: `graduation_report/figures/src/`
+- Create: `graduation_report/figures/src/ch03_architecture.drawio`
+- Create: `graduation_report/figures/src/ch03_erd.drawio`
+- Create: `graduation_report/figures/src/ch02_research_pipeline.drawio`
+- Create: `graduation_report/figures/src/threshold_pipeline_diagram.drawio`
+- Create: `graduation_report/code/export_drawio_diagrams.py` or `graduation_report/code/export_drawio_diagrams.sh`
 
 - [ ] **Step 1: Create source directory for versioned draw.io assets**
 
-Use `docs/graduation_report/latex/figures/src/` so thesis consumers can track editable diagram sources separately from exported PNGs.
+Use `graduation_report/figures/src/` so thesis consumers can track editable diagram sources separately from exported PNGs.
 
 - [ ] **Step 2: Add source diagrams with thesis-aligned names**
 
@@ -83,7 +83,7 @@ Source and export naming must match existing LaTeX references so chapter files n
 
 - [ ] **Step 3: Add one export entrypoint**
 
-Script must export each `.drawio` source to `docs/graduation_report/latex/figures/*.png` using draw.io CLI, for example:
+Script must export each `.drawio` source to `graduation_report/figures/*.png` using draw.io CLI, for example:
 
 ```bash
 DRAWIO_CLI=${DRAWIO_CLI:-drawio}
@@ -93,18 +93,18 @@ DRAWIO_CLI=${DRAWIO_CLI:-drawio}
 ### Task 4: Create architecture and methodology diagrams with drawio-ai-kit workflow
 
 **Files:**
-- Create/Modify: `docs/graduation_report/latex/figures/src/ch03_architecture.drawio`
-- Create/Modify: `docs/graduation_report/latex/figures/src/ch02_research_pipeline.drawio`
-- Create/Modify: `docs/graduation_report/latex/figures/src/threshold_pipeline_diagram.drawio`
-- Optional Create: `docs/graduation_report/code/drawio_generators/*.mjs`
+- Create/Modify: `graduation_report/figures/src/ch03_architecture.drawio`
+- Create/Modify: `graduation_report/figures/src/ch02_research_pipeline.drawio`
+- Create/Modify: `graduation_report/figures/src/threshold_pipeline_diagram.drawio`
+- Optional Create: `graduation_report/code/drawio_generators/*.mjs`
 
 - [ ] **Step 1: Build system architecture diagram**
 
-Contents must match `docs/graduation_report/latex/Chapter/3_Methodology.tex:79-85`: React SPA frontend, FastAPI backend, PostgreSQL, Qdrant, Redis, Celery worker, containerized boundaries.
+Contents must match `graduation_report/Chapter/3_Methodology.tex:79-85`: React SPA frontend, FastAPI backend, PostgreSQL, Qdrant, Redis, Celery worker, containerized boundaries.
 
 - [ ] **Step 2: Build research methodology pipeline diagram**
 
-Translate `docs/graduation_report/content/methodology_pipeline.md:1-54` from Mermaid flow to draw.io with four stages and branching paths.
+Translate `graduation_report/content/methodology_pipeline.md:1-54` from Mermaid flow to draw.io with four stages and branching paths.
 
 - [ ] **Step 3: Build threshold/algorithm pipeline diagram**
 
@@ -117,7 +117,7 @@ Run export script and verify no clipped labels, crossed connectors, or illegible
 ### Task 5: Create ERD diagram from backend schema
 
 **Files:**
-- Create/Modify: `docs/graduation_report/latex/figures/src/ch03_erd.drawio`
+- Create/Modify: `graduation_report/figures/src/ch03_erd.drawio`
 - Inspect: backend model files for actual entities/relations
 
 - [ ] **Step 1: Read backend schema source before drawing**
@@ -144,7 +144,7 @@ Prefer same output PNG filenames so references in `Chapter/2_Literature_Review.t
 
 - [ ] **Step 2: Rebuild thesis PDF**
 
-Run LaTeX compile from `docs/graduation_report/latex/` until references settle.
+Run LaTeX compile from `graduation_report/` until references settle.
 Expected: PDF builds and new draw.io-generated figures appear in correct chapters.
 
 - [ ] **Step 3: Run local validation commands**
@@ -152,7 +152,7 @@ Expected: PDF builds and new draw.io-generated figures appear in correct chapter
 Run:
 - `npm test` in `tools/drawio-ai-kit`
 - thesis export script for draw.io assets
-- LaTeX compile for `docs/graduation_report/latex/main.tex`
+- LaTeX compile for `graduation_report/main.tex`
 
 - [ ] **Step 4: Final README note**
 

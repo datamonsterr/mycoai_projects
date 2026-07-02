@@ -12,11 +12,11 @@ import seaborn as sns
 
 from qdrant_client import QdrantClient
 
-RESULTS_DIR = Path("/home/dat/dev/mycoai_projects/results")
+RESULTS_DIR = Path("/home/dat/dev/mycoai/results")
 THRESHOLD_DIR = RESULTS_DIR / "threshold"
 THRESHOLD_DIR.mkdir(parents=True, exist_ok=True)
-GRAD_FIG = Path("/home/dat/dev/mycoai_projects/graduation_report/report/figures")
-LATEX_FIG = Path("/home/dat/dev/mycoai_projects/docs/graduation_report/latex/figures")
+GRAD_FIG = Path("/home/dat/dev/mycoai/graduation_report/report/figures")
+LATEX_FIG = Path("/home/dat/dev/mycoai/graduation_report/figures")
 GRAD_FIG.mkdir(parents=True, exist_ok=True)
 LATEX_FIG.mkdir(parents=True, exist_ok=True)
 

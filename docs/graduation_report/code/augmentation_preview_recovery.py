@@ -12,8 +12,8 @@ from torchvision import transforms
 
 from src.config import ORIGINAL_PREPARED_DATASET_DIR
 
-LATEX_DIR = Path("/home/dat/dev/mycoai_projects/docs/graduation_report/latex/figures")
-REPORT_DIR = Path("/home/dat/dev/mycoai_projects/graduation_report/report/figures")
+LATEX_DIR = Path("/home/dat/dev/mycoai/graduation_report/figures")
+REPORT_DIR = Path("/home/dat/dev/mycoai/graduation_report/report/figures")
 for directory in (LATEX_DIR, REPORT_DIR):
     directory.mkdir(parents=True, exist_ok=True)
 

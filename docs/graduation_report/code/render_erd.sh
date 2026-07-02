@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/../../.."
-SRC="$ROOT/docs/graduation_report/latex/figures/src"
-OUT="$ROOT/docs/graduation_report/latex/figures"
+SRC="$ROOT/graduation_report/figures/src"
+OUT="$ROOT/graduation_report/figures"
 DBML="$SRC/ch03_erd.dbml"
 SVG=/tmp/opencode/erd_output.svg
 

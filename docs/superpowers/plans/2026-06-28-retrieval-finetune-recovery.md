@@ -18,13 +18,13 @@
 - Modify: `research/src/experiments/feature_extraction/generate_features.py`
 - Modify: `research/src/experiments/retrieval/run.py`
 - Modify: `research/src/utils/upload_qdrant.py`
-- Modify: `docs/graduation_report/code/chart_experiment_results.py`
-- Modify: `docs/graduation_report/latex/Chapter/2_Literature_Review.tex`
+- Modify: `graduation_report/code/chart_experiment_results.py`
+- Modify: `graduation_report/Chapter/2_Literature_Review.tex`
 - Modify: `docs/graduation_report/README.md`
-- Create: `docs/graduation_report/code/chart_finetune_retrieval_recovery.py`
-- Create: `docs/graduation_report/code/augmentation_preview_recovery.py`
-- Create: `docs/graduation_report/latex/figures/finetune_retrieval_recovery_flow.mmd`
-- Create: `docs/graduation_report/latex/figures/finetune_retrieval_recovery_flow.png`
+- Create: `graduation_report/code/chart_finetune_retrieval_recovery.py`
+- Create: `graduation_report/code/augmentation_preview_recovery.py`
+- Create: `graduation_report/figures/finetune_retrieval_recovery_flow.mmd`
+- Create: `graduation_report/figures/finetune_retrieval_recovery_flow.png`
 - Create: `results/retrieval_<datetime>/...` via pipeline
 - Create: `results/augmentation_preview/...` via pipeline
 
@@ -128,7 +128,7 @@ Expected: commit succeeds with detailed message.
 **Files:**
 - Modify: `research/src/experiments/finetune_dl/train_strain_holdout.py`
 - Modify: `research/src/experiments/finetune_dl/train_models.py`
-- Create: `docs/graduation_report/code/augmentation_preview_recovery.py`
+- Create: `graduation_report/code/augmentation_preview_recovery.py`
 - Test: local preview/training smoke commands
 
 - [ ] **Step 1: Extend training augmentations to include random cuts + brightness/contrast**
@@ -150,7 +150,7 @@ Update `run_strain_holdout_finetuning` summary payload in `research/src/experime
 
 - [ ] **Step 3: Create augmentation preview script for report assets**
 
-Create `docs/graduation_report/code/augmentation_preview_recovery.py` with code that loads one or more sample YOLO segment images, applies baseline + augmented transforms deterministically, and saves grid PNGs to `docs/graduation_report/latex/figures/` and mirrored report output.
+Create `graduation_report/code/augmentation_preview_recovery.py` with code that loads one or more sample YOLO segment images, applies baseline + augmented transforms deterministically, and saves grid PNGs to `graduation_report/figures/` and mirrored report output.
 
 Core code:
 ```python
@@ -167,7 +167,7 @@ Include views for crop, brightness+, contrast+, combined, and rotation.
 
 Run:
 ```bash
-uv --directory research run python docs/graduation_report/code/augmentation_preview_recovery.py
+uv --directory research run python graduation_report/code/augmentation_preview_recovery.py
 uv --directory research run python -m src.experiments.finetune_dl.train_strain_holdout --model-name ResNet50 --segment-method yolo --epochs 1 --batch-size 4 --learning-rate 1e-4
 ```
 Expected: preview figure saved and smoke training writes summary/weights without crash.
@@ -176,7 +176,7 @@ Expected: preview figure saved and smoke training writes summary/weights without
 
 Run:
 ```bash
-git add research/src/experiments/finetune_dl/train_strain_holdout.py research/src/experiments/finetune_dl/train_models.py docs/graduation_report/code/augmentation_preview_recovery.py
+git add research/src/experiments/finetune_dl/train_strain_holdout.py research/src/experiments/finetune_dl/train_models.py graduation_report/code/augmentation_preview_recovery.py
 git commit -m "feat(research): add holdout augmentation preview and training policy"
 ```
 Expected: commit succeeds.
@@ -362,12 +362,12 @@ If repo has narrower required checks for changed paths, run them too. Only claim
 ### Task 6: Update graduation report figures, analytics, and narrative
 
 **Files:**
-- Create: `docs/graduation_report/code/chart_finetune_retrieval_recovery.py`
-- Modify: `docs/graduation_report/code/chart_experiment_results.py`
-- Modify: `docs/graduation_report/latex/Chapter/2_Literature_Review.tex`
+- Create: `graduation_report/code/chart_finetune_retrieval_recovery.py`
+- Modify: `graduation_report/code/chart_experiment_results.py`
+- Modify: `graduation_report/Chapter/2_Literature_Review.tex`
 - Modify: `docs/graduation_report/README.md`
-- Create: `docs/graduation_report/latex/figures/finetune_retrieval_recovery_flow.mmd`
-- Create: `docs/graduation_report/latex/figures/finetune_retrieval_recovery_flow.png`
+- Create: `graduation_report/figures/finetune_retrieval_recovery_flow.mmd`
+- Create: `graduation_report/figures/finetune_retrieval_recovery_flow.png`
 
 - [ ] **Step 1: Create recovery chart script from final local retrieval outputs**
 
@@ -410,8 +410,8 @@ Document new chart script, retrieval folder naming, and recovery workflow in `do
 
 Run:
 ```bash
-python docs/graduation_report/code/chart_finetune_retrieval_recovery.py
-python docs/graduation_report/code/augmentation_preview_recovery.py
+python graduation_report/code/chart_finetune_retrieval_recovery.py
+python graduation_report/code/augmentation_preview_recovery.py
 ```
 Then compile:
 ```bash
@@ -420,14 +420,14 @@ bibtex main
 pdflatex main.tex
 pdflatex main.tex
 ```
-from `docs/graduation_report/latex/`.
+from `graduation_report/`.
 Expected: PDF builds and new figures appear.
 
 - [ ] **Step 6: Commit report updates**
 
 Run:
 ```bash
-git add docs/graduation_report/code docs/graduation_report/latex/Chapter/2_Literature_Review.tex docs/graduation_report/README.md docs/graduation_report/latex/figures/finetune_retrieval_recovery_flow.mmd docs/graduation_report/latex/figures/finetune_retrieval_recovery_flow.png
+git add graduation_report/code graduation_report/Chapter/2_Literature_Review.tex docs/graduation_report/README.md graduation_report/figures/finetune_retrieval_recovery_flow.mmd graduation_report/figures/finetune_retrieval_recovery_flow.png
 git commit -m "docs(graduation): add finetune retrieval recovery analysis"
 ```
 Expected: final report commit succeeds.

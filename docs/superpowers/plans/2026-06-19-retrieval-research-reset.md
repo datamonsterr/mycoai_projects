@@ -22,7 +22,7 @@
 - Create: `research/src/experiments/research_audit/` — dataset/Qdrant/weights/report audit entrypoint.
 - Create: `research/src/experiments/research_plan/` — experiment order manifest and status ledger.
 - Create: `docs/RESEARCH.md` — cumulative research progress log and comparison table.
-- Modify: `docs/graduation_report/content/02-retrieval-model.md` — replace stale claims with confirmed experiment-backed content.
+- Modify: `graduation_report/content/02-retrieval-model.md` — replace stale claims with confirmed experiment-backed content.
 - Modify later: `backend/` and `frontend/` integration files after best experiment confirmed.
 
 ### Task 1: Freeze research protocol and terminology
@@ -144,8 +144,8 @@
 ### Task 11: Graduation report update
 
 **Files:**
-- Modify: `docs/graduation_report/content/02-retrieval-model.md`
-- Modify: `docs/graduation_report/content/main.md`
+- Modify: `graduation_report/content/02-retrieval-model.md`
+- Modify: `graduation_report/content/main.md`
 
 - [ ] Remove stale hardcoded metrics and unsupported claims.
 - [ ] Insert only confirmed experiment-backed numbers, diagrams, and limitations.
@@ -175,7 +175,7 @@
 - `research/src/experiments/finetune_dl/train_models.py` uses one global `Test` column, not fold-safe training.
 - `research/src/utils/qdrant_query.py` supports `exclude_strain`, but benchmark codepaths are not yet uniformly forced through fresh-query mode.
 - `research/src/experiments/cross_validation/run.py` still benchmarks only E1/E2 and `weighted`/`uni`.
-- `docs/graduation_report/content/02-retrieval-model.md` contains stale metrics that must be replaced after reruns.
+- `graduation_report/content/02-retrieval-model.md` contains stale metrics that must be replaced after reruns.
 
 ## User confirmation gates
 

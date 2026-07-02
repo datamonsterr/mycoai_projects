@@ -37,7 +37,7 @@ from src.config import (
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "report" / "eda_new_data"
 IMAGES_OUT = OUTPUT_DIR / "images"
-REPORT_FIGURES = Path("/home/dat/dev/mycoai_projects/docs/graduation_report/content/figures")
+REPORT_FIGURES = Path("/home/dat/dev/mycoai/graduation_report/content/figures")
 SEED = 42
 
 FONT_TITLE = 14

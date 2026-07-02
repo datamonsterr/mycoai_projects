@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-FIG_SRC = ROOT / "docs/graduation_report/latex/figures/src"
-FIG_OUT = ROOT / "docs/graduation_report/latex/figures"
+FIG_SRC = ROOT / "graduation_report/figures/src"
+FIG_OUT = ROOT / "graduation_report/figures"
 GEN_DIR = ROOT / "docs/graduation_report/code/drawio_generators"
 DIAGRAMS = [
     {

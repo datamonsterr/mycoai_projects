@@ -8,7 +8,7 @@ Applies to all LaTeX academic documents in `docs/`, `report/`, and any
 ## Toolchain
 
 - **Compiler**: pdflatex (TinyTeX) — no XeLaTeX/LuaLaTeX, no Docker
-- **Build**: `latexmk -pdf -interaction=nonstopmode` or `docs/graduation_report/render.sh`
+- **Build**: `latexmk -pdf -interaction=nonstopmode main.tex` from `graduation_report/` or a repo-local build wrapper that runs there
 - **Bib**: bibtex (backend=bibtex, style=ieee)
 - **Figures**: PNG/JPG at 150–300 DPI, `\graphicspath{{figures/}}`
 - **Font**: Times (`\usepackage{times}`) — compact, academic, works with T5 encoding

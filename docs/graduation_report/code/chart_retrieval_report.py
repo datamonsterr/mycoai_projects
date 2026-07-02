@@ -28,10 +28,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-PROJECT = Path("/home/dat/dev/mycoai_projects")
-LATEX_FIGURES = PROJECT / "docs/graduation_report/latex/figures"
+PROJECT = Path("/home/dat/dev/mycoai")
+LATEX_FIGURES = PROJECT / "graduation_report/figures"
 REPORT_FIGURES = PROJECT / "graduation_report/report/figures"
-CODE_DIR = PROJECT / "docs/graduation_report/code"
+CODE_DIR = PROJECT / "graduation_report/code"
 RESULTS_DIR = PROJECT / "results"
 LATEX_FIGURES.mkdir(parents=True, exist_ok=True)
 REPORT_FIGURES.mkdir(parents=True, exist_ok=True)

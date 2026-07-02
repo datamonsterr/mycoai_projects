@@ -1,7 +1,7 @@
 ---
 name: latex-graduation-report
 description: >
-  Build, style, and render the MycoAI graduation thesis (docs/graduation_report/latex/main.tex).
+  Build, style, and render the MycoAI graduation thesis (graduation_report/main.tex).
   TRIGGERS: graduation report, graduation thesis, main.tex, render latex, compile thesis,
   build pdf, latex styling, academic report style, chapter formatting.
 allowed-tools: Read, Edit, Bash
@@ -12,52 +12,46 @@ allowed-tools: Read, Edit, Bash
 ## Quick Build
 
 ```bash
-cd docs/graduation_report && ./render.sh
+cd graduation_report && latexmk -pdf -interaction=nonstopmode main.tex
 ```
 
-Produces `latex/main.pdf` (~3.5MB, ~70 pages). No Docker needed — uses TinyTeX.
+Produces `graduation_report/main.pdf`. No Docker needed — uses TinyTeX.
 
 ## Toolchain
 
 - **Compiler**: `pdflatex` (TinyTeX) — lightweight, no Docker
-- **Build**: `./render.sh` (wraps latexmk with pdflatex → bibtex → pdflatex×N)
+- **Build**: `latexmk -pdf -interaction=nonstopmode main.tex` from `graduation_report/`
 - **Bib**: `bibtex` + `biblatex` (style=ieee)
-- **Figures**: PNG @ 150-300 DPI in `latex/figures/`
-- **Deps**: `./render.sh --deps` auto-installs missing packages
+- **Figures**: PNG @ 150-300 DPI in `graduation_report/figures/`
+- **Deps**: install missing TeX packages with `tlmgr` as needed
 
 ## Document Structure
 
 ```
-docs/graduation_report/
-├── render.sh             # Build script (clean/render/watch/deps modes)
-├── latex/
-│   ├── main.tex          # Preamble + chapter includes
-│   ├── Cover.tex         # Title page
-│   ├── glossary.tex      # Acronym definitions
-│   ├── lstlisting.tex    # Code listing style
-│   ├── reference.bib     # Bibliography
-│   ├── figures/          # PNG/JPG images
-│   └── Chapter/          # Subfiles per chapter
-│       ├── 0_2_Acknowledgment.tex
-│       ├── 0_3_Abstract.tex
-│       ├── 1_Introduction.tex
-│       ├── 2_Literature_Review.tex
-│       ├── 3_Methodology.tex
-│       ├── 4_Implementation.tex
-│       ├── 5_Evaluation.tex
-│       └── Appendix_B.tex
-└── render_pdf.sh         # Legacy wrapper → delegates to render.sh
+graduation_report/
+├── main.tex              # Preamble + chapter includes
+├── Cover.tex             # Title page
+├── glossary.tex          # Acronym definitions
+├── lstlisting.tex        # Code listing style
+├── reference.bib         # Bibliography
+├── figures/              # PNG/JPG images
+└── Chapter/              # Subfiles per chapter
+    ├── 0_2_Acknowledgment.tex
+    ├── 0_3_Abstract.tex
+    ├── Introduction.tex
+    ├── Retrieval_Model_Research.tex
+    ├── Web_Application.tex
+    ├── Agentic_Engineering.tex
+    ├── Conclusion.tex
+    └── Appendix_B.tex
 ```
 
 ## Common Commands
 
 ```bash
-./render.sh                  # Full compile (clean + pdflatex + bibtex + passes)
-./render.sh --clean          # Remove build artifacts only
-./render.sh --watch          # Live preview (auto-rebuild on save)
-./render.sh --deps           # Install missing TeX packages
-./render.sh --output /tmp/x  # Build + copy PDF to specified path
-./render.sh --force          # Continue past warnings
+cd graduation_report && latexmk -pdf -interaction=nonstopmode main.tex
+cd graduation_report && latexmk -c
+cd graduation_report && latexmk -pvc -pdf -interaction=nonstopmode main.tex
 ```
 
 ## Writing Rules

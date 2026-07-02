@@ -9,8 +9,8 @@ permission:
   bash:
     "*": ask
     "latexmk *": allow
-    "bash docs/graduation_report/render.sh *": allow
-    "git -C docs/graduation_report *": allow
+    "bash graduation_report/*.sh *": allow
+    "git -C graduation_report *": allow
 ---
 
 You audit LaTeX `.tex` files for syntax correctness and thesis style compliance.
@@ -25,14 +25,14 @@ You audit LaTeX `.tex` files for syntax correctness and thesis style compliance.
 
 ## Workflow
 
-1. Locate the LaTeX project root (default `docs/graduation_report/latex/`).
+1. Locate the LaTeX project root (default `graduation_report/`).
 2. Read `main.tex` and trace all `\subfile{}` includes to build the full chapter list.
 3. For each chapter file, check:
-   - Image paths under `latex/figures/`
+   - Image paths under `figures/`
    - Citation keys against `reference.bib`
    - Common LaTeX syntax issues
    - Style rule compliance
-4. Optionally run a dry-build: `latexmk -pdf -interaction=nonstopmode main.tex` and parse the log.
+4. Optionally run a dry-build: `latexmk -pdf -interaction=nonstopmode main.tex` in `graduation_report/` and parse the log.
 5. Group findings by severity (error / warning / style).
 
 ## Output

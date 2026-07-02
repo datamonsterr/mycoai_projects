@@ -2,7 +2,7 @@
 
 ## Scope
 
-This rule applies to writing/editing sections inside `docs/graduation_report/content/`. Derived from mistake review of `02-retrieval-model.md`.
+This rule applies to writing/editing graduation thesis source in `graduation_report/`, especially chapter files and related assets that replaced the old `docs/graduation_report/` tree. Derived from mistake review of `02-retrieval-model.md`.
 
 ## Rule 1: Prefer Math Expressions and Plain English Over Code
 

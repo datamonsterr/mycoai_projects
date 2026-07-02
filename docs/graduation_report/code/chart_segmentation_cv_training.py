@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-GRAD = Path("/home/dat/dev/mycoai_projects/graduation_report/report/figures")
-LATEX = Path("/home/dat/dev/mycoai_projects/docs/graduation_report/latex/figures")
+GRAD = Path("/home/dat/dev/mycoai/graduation_report/report/figures")
+LATEX = Path("/home/dat/dev/mycoai/graduation_report/figures")
 for d in [GRAD, LATEX]: d.mkdir(parents=True, exist_ok=True)
 
 def save(name, fig):
@@ -23,7 +23,7 @@ def copy_img(src_name, dst_name):
             shutil.copy2(src, out)
 
 # ── 1. Segmentation comparison ──────────────────────────────────────────────
-df = pd.read_csv("/home/dat/dev/mycoai_projects/results/segmentation_comparison/comparison.csv")
+df = pd.read_csv("/home/dat/dev/mycoai/results/segmentation_comparison/comparison.csv")
 df = df[df["accuracy"] > 0]
 media_order = ["E1", "E4_CREA", "E4_CYA", "E4_DG18", "E4_MEA", "E4_YES"]
 yolo_vals = [float(df[(df.segmentation=="yolo") & (df.media==m)]["accuracy"].iloc[0]) if len(df[(df.segmentation=="yolo") & (df.media==m)]) else 0 for m in media_order]
@@ -44,7 +44,7 @@ print("1/5 segmentation comparison done")
 # ── 2. Training curves ─────────────────────────────────────────────────────
 fig, ax = plt.subplots(figsize=(10, 6))
 for fi in range(5):
-    hp = Path(f"/home/dat/dev/mycoai_projects/weights/fold{fi}_EfficientNetB1_history.json")
+    hp = Path(f"/home/dat/dev/mycoai/weights/fold{fi}_EfficientNetB1_history.json")
     if hp.exists():
         h = json.loads(hp.read_text())
         ax.plot(h.get("val_acc", []), label=f"Fold {fi+1}", linewidth=2)
@@ -54,7 +54,7 @@ save("training_curves_folds.png", fig)
 print("2/5 training curves done")
 
 # ── 3. CV best configs bar ───────────────────────────────────────────────────
-cv_sum = pd.read_csv("/home/dat/dev/mycoai_projects/results/cross_validation/cv_summary_table.csv")
+cv_sum = pd.read_csv("/home/dat/dev/mycoai/results/cross_validation/cv_summary_table.csv")
 top6 = cv_sum.head(6)
 fig, ax = plt.subplots(figsize=(12, 6))
 labels = [f"{r.media_strategy} {r.agg_strategy} k{r.k}" for r in top6.itertuples()]
@@ -68,7 +68,7 @@ save("cv_fold_configs.png", fig)
 print("3/5 cv configs done")
 
 # ── 4. Per-fold accuracy ────────────────────────────────────────────────────
-cv_df = pd.read_csv("/home/dat/dev/mycoai_projects/results/cross_validation/cv_results.csv")
+cv_df = pd.read_csv("/home/dat/dev/mycoai/results/cross_validation/cv_results.csv")
 fold_means = cv_df.groupby("fold")["correct"].mean()
 fig, ax = plt.subplots(figsize=(8, 5))
 ax.bar(fold_means.index, fold_means.values, color=["#3498db","#2ecc71","#f39c12","#e74c3c","#9b59b6"])
@@ -78,7 +78,7 @@ save("fold_variance_new.png", fig)
 print("4/5 fold variance done")
 
 # ── 5. Copy confusion matrix ────────────────────────────────────────────────
-copy_img("/home/dat/dev/mycoai_projects/results/cross_validation/fold0_E2_freq_strength_k7/confusion_matrix.png", "confusion_matrix_cv_best.png")
+copy_img("/home/dat/dev/mycoai/results/cross_validation/fold0_E2_freq_strength_k7/confusion_matrix.png", "confusion_matrix_cv_best.png")
 print("5/5 confusion matrix copied")
 
 # ── Summary ─────────────────────────────────────────────────────────────────

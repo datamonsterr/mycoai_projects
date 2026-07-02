@@ -16,8 +16,8 @@ import pandas as pd
 STYLE = {"font.family": "serif", "font.size": 8, "axes.titlesize": 9, "axes.labelsize": 8}
 plt.rcParams.update(STYLE)
 
-PROJECT = Path("/home/dat/dev/mycoai_projects")
-LATEX_DIR = PROJECT / "docs/graduation_report/latex/figures"
+PROJECT = Path("/home/dat/dev/mycoai")
+LATEX_DIR = PROJECT / "graduation_report/figures"
 REPORT_DIR = PROJECT / "graduation_report/report/figures"
 for d in (LATEX_DIR, REPORT_DIR):
     d.mkdir(parents=True, exist_ok=True)

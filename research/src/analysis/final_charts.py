@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-GRAD = Path("/home/dat/dev/mycoai_projects/graduation_report/report/figures")
-LATEX = Path("/home/dat/dev/mycoai_projects/docs/graduation_report/latex/figures")
+GRAD = Path("/home/dat/dev/mycoai/graduation_report/report/figures")
+LATEX = Path("/home/dat/dev/mycoai/graduation_report/figures")
 for d in [GRAD, LATEX]: d.mkdir(parents=True, exist_ok=True)
 
 def save(name, fig):
