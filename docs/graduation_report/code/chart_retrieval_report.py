@@ -380,34 +380,32 @@ def chart_seg_comparison(df: pd.DataFrame):
         return
 
     cf = pd.DataFrame(entries)
-    unique_labels = cf["label"].unique()
+    cf["seg_label"] = cf["seg"].map({"yolo": "YOLO Segments", "kmeans": "K-Means Segments"})
+    cf["color"] = cf["seg"].map({"yolo": YOLO_COLOR, "kmeans": KMEANS_COLOR})
+    cf = cf.sort_values("accuracy", ascending=True)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    x_pos = np.arange(len(unique_labels))
-    w = 0.42
+    fig, ax = plt.subplots(figsize=(9.5, 3.2))
+    y = np.arange(len(cf))
+    bars = ax.barh(y, cf["accuracy"] * 100, color=cf["color"], edgecolor="white", height=0.55)
 
-    for i, seg in enumerate(["yolo", "kmeans"]):
-        seg_data = cf[cf["seg"] == seg]
-        values = []
-        for lbl in unique_labels:
-            match = seg_data[seg_data["label"] == lbl]
-            values.append(match["accuracy"].values[0] * 100 if not match.empty else 0)
-        offset = (i - 0.5) * w
-        color = YOLO_COLOR if seg == "yolo" else KMEANS_COLOR
-        label = "YOLO Segments" if seg == "yolo" else "K-Means Segments"
-        bars = ax.bar(x_pos + offset, values, w, label=label, color=color, edgecolor="white")
-        for bar, val in zip(bars, values):
-            if val > 0:
-                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3,
-                        f"{val:.1f}%", ha="center", va="bottom", fontsize=8, fontweight="bold")
+    for bar, row in zip(bars, cf.itertuples(index=False)):
+        ax.text(
+            bar.get_width() + 0.8,
+            bar.get_y() + bar.get_height() / 2,
+            f"{row.accuracy*100:.1f}%",
+            va="center",
+            ha="left",
+            fontsize=11,
+            fontweight="bold",
+        )
 
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(unique_labels, fontsize=7)
-    ax.set_ylabel("Accuracy (%)")
-    ax.set_title("YOLO vs K-Means Segmentation — Retrieval Accuracy (K=5, freq_strength)")
-    ax.set_ylim(0, 100)
-    ax.legend(fontsize=8)
-    ax.grid(axis="y", alpha=0.3)
+    ax.set_yticks(y)
+    ax.set_yticklabels(cf["seg_label"], fontsize=12)
+    ax.set_xlabel("Accuracy (%)", fontsize=12)
+    ax.set_title("YOLO vs K-Means Segmentation — EfficientNetB1 FT, E1, freq_strength, K=5", fontsize=14)
+    ax.set_xlim(0, 100)
+    ax.grid(axis="x", alpha=0.3)
+    ax.set_axisbelow(True)
     fig.tight_layout()
     _save("retrieval_yolo_vs_kmeans.png", fig)
 
