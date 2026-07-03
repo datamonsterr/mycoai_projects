@@ -38,12 +38,12 @@ REPORT_FIGURES.mkdir(parents=True, exist_ok=True)
 
 STYLE = {
     "font.family": "serif",
-    "font.size": 13,
-    "axes.titlesize": 16,
-    "axes.labelsize": 15,
-    "xtick.labelsize": 14,
-    "ytick.labelsize": 14,
-    "legend.fontsize": 14,
+    "font.size": 14,
+    "axes.titlesize": 18,
+    "axes.labelsize": 16,
+    "xtick.labelsize": 15,
+    "ytick.labelsize": 15,
+    "legend.fontsize": 15,
 }
 plt.rcParams.update(STYLE)
 
@@ -358,13 +358,8 @@ def chart_seg_comparison(df: pd.DataFrame):
         print("  No data for seg comparison")
         return
 
-    # Target configs: colorhistogram E1 K=5 freq_strength,
-    #                effb1_finetuned E1 K=5 freq_strength,
-    #                effb1_finetuned E3_CREA K=5 freq_strength
     target_configs = [
-        ("colorhistogram", "E1", "freq_strength", 5),
         ("efficientnetb1_finetuned", "E1", "freq_strength", 5),
-        ("efficientnetb1_finetuned", "E3_CREA", "freq_strength", 5),
     ]
 
     entries = []
@@ -389,7 +384,7 @@ def chart_seg_comparison(df: pd.DataFrame):
 
     fig, ax = plt.subplots(figsize=(10, 6))
     x_pos = np.arange(len(unique_labels))
-    w = 0.35
+    w = 0.42
 
     for i, seg in enumerate(["yolo", "kmeans"]):
         seg_data = cf[cf["seg"] == seg]
@@ -485,30 +480,38 @@ def _media_strategy_bar(df: pd.DataFrame):
 
     labels = [ENV_FULL.get(env, env) for env in ranked["env"]]
     values = ranked["accuracy"] * 100
-    colors = [YOLO_COLOR if env in {"E1", "E2"} else KMEANS_COLOR for env in ranked["env"]]
+    colors = ["#0f766e" if env in {"E1", "E2"} else "#9ca3af" for env in ranked["env"]]
 
-    fig, ax = plt.subplots(figsize=(14.5, 7.8))
+    fig, ax = plt.subplots(figsize=(16, 8.8))
     y = np.arange(len(ranked))
-    bars = ax.barh(y, values, color=colors, edgecolor="white", linewidth=0.8, height=0.40)
+    bars = ax.barh(y, values, color=colors, edgecolor="none", height=0.52)
+    ax.set_facecolor("white")
     ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=15)
+    ax.set_yticklabels(labels, fontsize=18)
     ax.invert_yaxis()
-    ax.set_xlabel("Best Accuracy (%)", fontsize=15)
-    ax.set_title("Best Retrieval Result by Media Strategy — EfficientNetB1 FT + YOLO", fontsize=17)
-    ax.set_xlim(0, max(100, values.max() * 1.26))
+    ax.set_xlabel("Best Accuracy (%)", fontsize=18)
+    ax.set_title("Media Strategy Comparison — EfficientNetB1 FT + YOLO", fontsize=20, pad=14)
+    ax.set_xlim(0, max(100, values.max() * 1.32))
+    ax.tick_params(axis="x", labelsize=16)
+
+    for spine in ["top", "right", "left"]:
+        ax.spines[spine].set_visible(False)
+    ax.spines["bottom"].set_linewidth(1.0)
+    ax.grid(axis="x", color="#d1d5db", linewidth=0.8, alpha=0.8)
+    ax.set_axisbelow(True)
 
     for bar, row in zip(bars, ranked.itertuples(index=False)):
         ax.text(
-            bar.get_width() + 1.0,
+            bar.get_width() + 1.2,
             bar.get_y() + bar.get_height() / 2,
-            f"{row.accuracy*100:.1f}% | {AGG_FULL.get(row.agg, row.agg)} | K={int(row.k)}",
+            f"{row.accuracy*100:.1f}%   {AGG_FULL.get(row.agg, row.agg)}   K={int(row.k)}",
             va="center",
-            fontsize=13,
+            fontsize=15,
+            color="#111827",
         )
 
-    ax.grid(axis="x", alpha=0.3)
     fig.tight_layout()
-    _save("retrieval_heatmap_k_vs_media.png", fig)
+    _save("retrieval_media_strategy_best_bar.png", fig)
 
 
 

@@ -345,8 +345,7 @@ def visualize_prediction_by_environment(
     img_width, img_height = resolved_thumbnail_size
     padding = 18
     top_block_gap = 18
-    ranking_width = 270
-    middle_gap = 24
+    header_gap = 24
     card_gap = 10
     row_gap = 14
     text_gap = 4
@@ -354,8 +353,7 @@ def visualize_prediction_by_environment(
     columns = min(k + 1, 6)
     card_width = img_width + 8
     cards_width = columns * card_width + (columns - 1) * card_gap
-    header_width = cards_width
-    canvas_width = padding * 2 + header_width + middle_gap + ranking_width
+    content_width = cards_width
 
     try:
         title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 18)
@@ -431,6 +429,30 @@ def visualize_prediction_by_environment(
         card_width,
     )
 
+    info_width = content_width
+    ranking_width = 0
+    ranking_items: List[Tuple[str, ImageFont.ImageFont, Tuple[int, int, int]]] = []
+    if show_legend and aggregated_results:
+        ranking_items = [
+            (
+                f"{res['score']:.3f} - {res['specy']}",
+                score_font,
+                generate_distinct_color(res['specy'], ground_truth),
+            )
+            for res in aggregated_results[:5]
+        ]
+        ranking_width = max(_text_size(measure_draw, text, font)[0] for text, font, _ in ranking_items)
+
+    if ranking_width:
+        max_info_width = max(220, content_width - header_gap - ranking_width)
+        info_width = min(max_info_width, max(_text_size(measure_draw, text, font)[0] for text, font, _ in [
+            (f"Strain: {prediction_result['strain']}", title_font, text_color),
+            (f"GT: {ground_truth}", body_font, text_color),
+            (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, text_color),
+            (f"{feature_extractor} | {aggregation_strategy} | K={k}", small_font, text_color),
+        ]) + 8)
+        ranking_width = max(0, content_width - header_gap - info_width)
+
     top_block_height = 0
     if show_header:
         header_items = [
@@ -439,18 +461,20 @@ def visualize_prediction_by_environment(
             (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
             (f"{feature_extractor} | {aggregation_strategy} | K={k}", small_font, text_color),
         ]
-        top_block_height = max(top_block_height, measure_text_lines(measure_draw, header_items, header_width))
+        top_block_height = max(top_block_height, measure_text_lines(measure_draw, header_items, info_width))
 
-    if show_legend and aggregated_results:
-        ranking_items = [(f"{res['score']:.3f} - {res['specy']}", score_font, text_color) for res in aggregated_results[:5]]
+    if ranking_items:
         top_block_height = max(top_block_height, measure_text_lines(measure_draw, ranking_items, ranking_width))
 
+    canvas_width = padding * 2 + content_width
     rows_height = len(raw_results_sorted) * sample_card_height + max(len(raw_results_sorted) - 1, 0) * row_gap
     canvas_height = padding * 2 + (top_block_height + top_block_gap if top_block_height else 0) + rows_height
     canvas = Image.new("RGB", (canvas_width, canvas_height), bg_color)
     draw = ImageDraw.Draw(canvas)
 
     current_y = padding
+    cards_x = padding
+
     if show_header:
         header_items = [
             (f"Strain: {prediction_result['strain']}", title_font, text_color),
@@ -458,23 +482,14 @@ def visualize_prediction_by_environment(
             (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
             (f"{feature_extractor} | {aggregation_strategy} | K={k}", small_font, text_color),
         ]
-        draw_text_lines(draw, header_items, padding, current_y, header_width)
+        draw_text_lines(draw, header_items, cards_x, current_y, info_width)
 
-    cards_x = padding
-
-    if show_legend and aggregated_results:
-        ranking_x = padding + header_width + middle_gap
+    if ranking_items:
+        ranking_x = cards_x + content_width - ranking_width
         ranking_y = current_y
         line_height = _text_size(draw, "Ag", score_font)[1]
-        for res in aggregated_results[:5]:
-            line = f"{res['score']:.3f} - {res['specy']}"
-            line_width, _ = _text_size(draw, line, score_font)
-            draw.text(
-                (ranking_x + ranking_width - line_width, ranking_y),
-                line,
-                fill=text_color,
-                font=score_font,
-            )
+        for text, font, color in ranking_items:
+            draw.text((ranking_x, ranking_y), text, fill=color, font=font)
             ranking_y += line_height + 10
 
     current_y += top_block_height + (top_block_gap if top_block_height else 0)
