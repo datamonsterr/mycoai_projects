@@ -449,7 +449,7 @@ def visualize_prediction_by_environment(
             (f"Strain: {prediction_result['strain']}", title_font, text_color),
             (f"GT: {ground_truth}", body_font, text_color),
             (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, text_color),
-            (f"{feature_extractor} | {aggregation_strategy} | K={k}", small_font, text_color),
+            (f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}", small_font, text_color),
         ]) + 8)
         ranking_width = max(0, content_width - header_gap - info_width)
 
@@ -459,7 +459,7 @@ def visualize_prediction_by_environment(
             (f"Strain: {prediction_result['strain']}", title_font, text_color),
             (f"GT: {ground_truth}", body_font, text_color),
             (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
-            (f"{feature_extractor} | {aggregation_strategy} | K={k}", small_font, text_color),
+            (f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}", small_font, text_color),
         ]
         top_block_height = max(top_block_height, measure_text_lines(measure_draw, header_items, info_width))
 
@@ -480,7 +480,7 @@ def visualize_prediction_by_environment(
             (f"Strain: {prediction_result['strain']}", title_font, text_color),
             (f"GT: {ground_truth}", body_font, text_color),
             (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
-            (f"{feature_extractor} | {aggregation_strategy} | K={k}", small_font, text_color),
+            (f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}", small_font, text_color),
         ]
         draw_text_lines(draw, header_items, cards_x, current_y, info_width)
 
@@ -500,7 +500,7 @@ def visualize_prediction_by_environment(
                 "image_path": _resolve_image_path(result, segmented_image_dir, "query_image_id"),
                 "border_color": (70, 70, 70),
                 "border": 3,
-                "lines": [(result.get("query_environment", query_label), label_font, text_color)],
+                "lines": [(f"{result.get('query_environment', query_label)} | E1", label_font, text_color)],
             }
         ]
         for idx, neighbor in enumerate(result["neighbors"][:k], start=1):
