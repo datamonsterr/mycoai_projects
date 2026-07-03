@@ -344,7 +344,7 @@ def visualize_prediction_by_environment(
     resolved_thumbnail_size = thumbnail_size or (82, 82)
     img_width, img_height = resolved_thumbnail_size
     padding = 18
-    top_block_gap = 18
+    top_block_gap = 36
     header_gap = 24
     card_gap = 10
     row_gap = 14
