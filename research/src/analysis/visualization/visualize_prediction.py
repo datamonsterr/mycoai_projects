@@ -345,7 +345,6 @@ def visualize_prediction_by_environment(
     img_width, img_height = resolved_thumbnail_size
     padding = 18
     top_block_gap = 18
-    header_width = 260
     ranking_width = 270
     middle_gap = 24
     card_gap = 10
@@ -355,7 +354,8 @@ def visualize_prediction_by_environment(
     columns = min(k + 1, 6)
     card_width = img_width + 8
     cards_width = columns * card_width + (columns - 1) * card_gap
-    canvas_width = padding * 2 + header_width + middle_gap + cards_width + middle_gap + ranking_width
+    header_width = cards_width
+    canvas_width = padding * 2 + header_width + middle_gap + ranking_width
 
     try:
         title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 18)
@@ -418,23 +418,16 @@ def visualize_prediction_by_environment(
         return total
 
     def build_neighbor_lines(neighbor: Dict[str, Any], index: int) -> List[Tuple[str, ImageFont.ImageFont, Tuple[int, int, int]]]:
-        species = neighbor.get("specy", "unknown")
         score = neighbor.get("score", 0.0)
-        title = {
-            "rank_species": f"#{index} {species}",
-            "species": species,
-            "score_species": species,
-        }.get(neighbor_label_mode, f"#{index} {species}")
         return [
-            (title, label_font, text_color),
-            (f"{score:.4f}", small_font, text_color),
+            (f"{score:.2f}", label_font, text_color),
         ]
 
     measure_canvas = Image.new("RGB", (100, 100), bg_color)
     measure_draw = ImageDraw.Draw(measure_canvas)
     sample_card_height = img_height + text_gap + measure_text_lines(
         measure_draw,
-        [("#1 Sample", label_font, text_color), ("0.9999", small_font, text_color)],
+        [("0.99", label_font, text_color)],
         card_width,
     )
 
@@ -467,10 +460,10 @@ def visualize_prediction_by_environment(
         ]
         draw_text_lines(draw, header_items, padding, current_y, header_width)
 
-    cards_x = padding + header_width + middle_gap
+    cards_x = padding
 
     if show_legend and aggregated_results:
-        ranking_x = cards_x + cards_width + middle_gap
+        ranking_x = padding + header_width + middle_gap
         draw.rounded_rectangle(
             [ranking_x, current_y, ranking_x + ranking_width, current_y + top_block_height],
             radius=10,
