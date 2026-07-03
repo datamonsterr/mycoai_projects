@@ -138,6 +138,20 @@ uv --directory fungal-cv-qdrant run python -m src.utils.upload_qdrant \
   --collection myco_fungi_features_full
 ```
 
+### Qdrant Collection Naming
+
+Use these collection names consistently:
+
+- `qdrant-research`: latest YOLO-segment retrieval collection with all extractors; payload species labels come from `Dataset/strain_to_specy.csv`; training strains are excluded for retrieval evaluation
+- `qdrant-research-kmeans`: latest K-means-segment retrieval collection with all extractors; payload species labels come from `Dataset/strain_to_specy.csv`; training strains are excluded for retrieval evaluation
+- `full_prepared_features`: combined prepared-feature collection spanning incoming + original/curated data
+- `qdrant-research_fold0` ... `qdrant-research_fold4`: cross-validation collections for fold-specific experiments
+- `myco_fungi_features_full`: legacy base prepared-segment collection still referenced by older prep scripts
+- `myco_fungi_features_full_retrieval`: legacy retrieval alias/name used by older analysis scripts; prefer `qdrant-research` unless a script hard-codes legacy name
+- `fold_*` manifests under `../Dataset/folds/`: strain-level cross-validation split definitions, not Qdrant collections
+
+For current retrieval runs, use `qdrant-research` for YOLO segments or `qdrant-research-kmeans` for K-means segments.
+
 ### 5) Cross Validation
 
 ```bash
@@ -145,7 +159,18 @@ uv --directory fungal-cv-qdrant run python -m src.experiments.cross_validation.r
 uv --directory fungal-cv-qdrant run python -m src.experiments.cross_validation.visualize
 ```
 
-### 6) Finetune DL
+### 6) Retrieval Sweep for Report Tables and Charts
+
+```bash
+uv --directory fungal-cv-qdrant run python -m src.experiments.retrieval.run comprehensive \
+  --collection-name qdrant-research \
+  --identifier chapter2_rerun
+
+uv --directory fungal-cv-qdrant run python -m src.analysis.retrieval_pipeline \
+  --collection qdrant-research
+```
+
+### 7) Finetune DL
 
 ```bash
 uv --directory fungal-cv-qdrant run python -m src.experiments.finetune_dl.train_models

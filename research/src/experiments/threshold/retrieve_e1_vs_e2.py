@@ -25,6 +25,7 @@ import cv2  # noqa: E402
 from qdrant_client import QdrantClient  # noqa: E402
 
 from src.config import (  # noqa: E402
+    COLLECTION_NAME,
     DATASET_ROOT,
     QDRANT_API_KEY,
     QDRANT_URL,
@@ -41,7 +42,7 @@ from src.experiments.feature_extraction.feature_extractors import (  # noqa: E40
 )
 
 DIVERSE_METADATA_PATH = DATASET_ROOT / "diverse_data" / "diverse_data_metadata.json"
-COLLECTION = "myco_fungi_features_full_finetuned"
+COLLECTION = f"{COLLECTION_NAME}_retrieval"
 EXTRACTOR_KEY = "EfficientNetB1_finetuned"
 
 KNOWN_SPECIES_MAP = {

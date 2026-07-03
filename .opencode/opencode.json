@@ -178,6 +178,7 @@
   },
   "permission": "allow",
   "instructions": [
+    ".opencode/rules/report.md",
     ".opencode/rules/experiment-visualization.md",
     ".opencode/rules/branch-naming.md",
     ".opencode/rules/frontend-react-skills.md",

@@ -75,6 +75,8 @@ uv --directory research run python -m src.utils.upload_qdrant \
 - `research/src/config.py` auto-detects this monorepo layout and resolves shared paths from the parent workspace.
 - Threshold autoresearch artifacts are written to `results/autoresearch/` at the monorepo root.
 - Qdrant storage persists at the monorepo root in `.qdrant_storage/`.
+- Research collection map: `qdrant-research` = latest YOLO retrieval features, `qdrant-research-kmeans` = latest K-means retrieval features, `full_prepared_features` = incoming + original/curated prepared features, `qdrant-research_fold0` ... `qdrant-research_fold4` = cross-validation collections.
+- Retrieval collections use species labels from `Dataset/strain_to_specy.csv` and exclude training strains for retrieval evaluation.
 - Shared remote-workspace bootstrap and dataset sync entrypoints live at `tools/workspace_bootstrap.sh` and `tools/dataset_sync.py`.
 - Vast.ai remote workspace setup: use the canonical `tools/workspace_bootstrap.sh` entrypoint. Completion criteria: prepare finished without blockers, smoke-check passed, connection descriptor printed and usable for VS Code, and VS Code opens the correct remote workspace root. Agents must call out unavoidable manual steps (instance rental, SSH key registration, VS Code host key authorization) before starting automation.
 - The bootstrap script is rerun-safe: `prepare`, `smoke-check`, and `recover` can run multiple times without duplicating or destroying existing workspace data.

@@ -45,7 +45,9 @@ except ImportError:
     print("ERROR: qdrant_client not installed.")
     sys.exit(1)
 
-COLLECTION = "myco_fungi_features_full_finetuned"
+from src.config import COLLECTION_NAME
+
+COLLECTION = f"{COLLECTION_NAME}_retrieval"
 EXTRACTOR_KEY = "EfficientNetB1_finetuned"
 K = 11
 TOP_N = 5

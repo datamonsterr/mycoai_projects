@@ -134,7 +134,7 @@ def run_prepare(
             print("\nPrerequisites not met. Run with --skip-checks to bypass.")
             print("To fix, run the prepare pipeline first:")
             print(
-                "  uv run python -m src.prepare.init --collection myco_fungi_features_full_finetuned"
+                "  uv run python -m src.prepare.init --collection myco_fungi_features_full"
             )
             sys.exit(1)
 

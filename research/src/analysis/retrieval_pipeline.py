@@ -3,13 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+import re
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from qdrant_client import QdrantClient
@@ -20,234 +20,348 @@ from src.experiments.retrieval.run import get_extractor_by_name, run_species_eva
 PIPELINE_DIR = RESULTS_DIR / "retrieval_pipeline"
 RETRIEVAL_SWEEP_DIR = PIPELINE_DIR / "retrieval_sweep"
 ANALYTICS_DIR = PIPELINE_DIR / "analytics"
-GRAD_REPORT_FIG_DIR = Path(__file__).resolve().parent.parent.parent.parent / "graduation_report" / "report" / "figures"
-LATEX_FIG_DIR = Path(__file__).resolve().parent.parent.parent.parent / "docs" / "graduation_report" / "latex" / "figures"
+GRAD_REPORT_FIG_DIR = Path(__file__).resolve().parent.parent.parent.parent / "graduation_report" / "figures" / "06_retrieval"
+LATEX_FIG_DIR = Path(__file__).resolve().parent.parent.parent.parent / "graduation_report" / "figures" / "06_retrieval"
 
 
-@dataclass(frozen=True)
-class RetrievalConfig:
-    extractor: str
-    media: str
-    aggregation: str
-    k: int = 7
-
-    @property
-    def folder_name(self) -> str:
-        return f"{self.extractor}_{self.aggregation}_{self.media}"
-
-
-def media_to_environment(media: str) -> str | None:
-    if media == "E1":
-        return None
-    if media in {"all", "E2"}:
-        return "all"
-    return media
-
-
-def default_extractors() -> list[str]:
-    return [
-        "efficientnetb1_finetuned",
-        "resnet50_finetuned",
-        "mobilenetv2_finetuned",
-        "efficientnetb1",
-        "resnet50",
-        "mobilenetv2",
-        "hog",
-        "gabor",
-        "colorhistogram",
-        "colorhistogramhs",
-    ]
-
-
-def default_media() -> list[str]:
-    return [
-        "E1",
-        "all",
-        "E3_CREA",
-        "E3_CYA",
-        "E3_CYA30",
-        "E3_CYAS",
-        "E3_DG18",
-        "E3_MEA",
-        "E3_OA",
-        "E3_YES",
-        "E4_CREA",
-        "E4_CYA",
-        "E4_CYA30",
-        "E4_CYAS",
-        "E4_DG18",
-        "E4_MEA",
-        "E4_OA",
-        "E4_YES",
-    ]
-
-
-def default_aggregations() -> list[str]:
-    return ["weighted", "uni", "freq_strength", "relative"]
-
-
-def run_retrieval_sweep(
-    collection: str,
-    extractors: list[str] | None = None,
-    media_values: list[str] | None = None,
-    aggregations: list[str] | None = None,
-    k: int = 7,
-) -> Path:
+def run_retrieval_sweep(collection: str, extractors: list[str], media_values: list[str], aggregations: list[str], ks: list[int]) -> Path:
     RETRIEVAL_SWEEP_DIR.mkdir(parents=True, exist_ok=True)
     client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=120)
-    summary_rows: list[dict[str, Any]] = []
-    configs = [
-        RetrievalConfig(extractor, media, agg, k)
-        for extractor in (extractors or default_extractors())
-        for media in (media_values or default_media())
-        for agg in (aggregations or default_aggregations())
-    ]
-    for config in configs:
-        out_dir = RETRIEVAL_SWEEP_DIR / config.folder_name
-        out_dir.mkdir(parents=True, exist_ok=True)
-        extractor = get_extractor_by_name(config.extractor)
+    rows: list[dict] = []
+
+    for extractor_name in extractors:
+        extractor = get_extractor_by_name(extractor_name)
         if extractor is None:
-            raise ValueError(f"Unknown extractor: {config.extractor}")
-        results, _ = run_species_evaluation(
-            client=client,
-            collection_name=collection,
-            feature_extractor=extractor,
-            k=config.k,
-            without_siblings=True,
-            environment=media_to_environment(config.media),
-            strategy=config.aggregation,
-            output_dir=str(out_dir),
-            generate_visualizations=False,
-        )
-        correct = sum(1 for row in results if row.get("correct"))
-        total = len(results)
-
-        # Compute s0 and min-similarity statistics
-        s0_scores = []
-        min_sims = []
-        for row in results:
-            s0 = row.get("s0_score")
-            if s0 is not None:
-                s0_scores.append(float(s0))
-            raw = row.get("raw_results", [])
-            for qi in raw:
-                neighbors = qi.get("neighbors", [])
-                if neighbors:
-                    nb_scores = [n.get("score", 0.0) for n in neighbors]
-                    if nb_scores:
-                        min_sims.append(min(nb_scores))
-
-        mean_s0 = sum(s0_scores) / len(s0_scores) if s0_scores else 0.0
-        mean_min_sim = sum(min_sims) / len(min_sims) if min_sims else 0.0
-
-        summary_rows.append(
-            {
-                **asdict(config),
-                "accuracy": correct / total if total else 0.0,
-                "correct": correct,
-                "total": total,
-                "mean_s0": round(mean_s0, 6),
-                "mean_min_similarity": round(mean_min_sim, 6),
-                "collection": collection,
-                "result_dir": str(out_dir),
-            }
-        )
+            continue
+        for media in media_values:
+            for agg in aggregations:
+                for k in ks:
+                    out_dir = RETRIEVAL_SWEEP_DIR / f"{extractor_name}_{media}_{agg}_k{k}"
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    environment = None if media == "E1" else ("all" if media == "E2" else media)
+                    results, _ = run_species_evaluation(
+                        client=client,
+                        collection_name=collection,
+                        feature_extractor=extractor,
+                        k=k,
+                        without_siblings=True,
+                        environment=environment,
+                        strategy=agg,
+                        output_dir=str(out_dir),
+                        generate_visualizations=False,
+                    )
+                    correct = sum(1 for row in results if row.get("correct"))
+                    total = len(results)
+                    rows.append(
+                        {
+                            "extractor": extractor_name,
+                            "media": media,
+                            "aggregation": agg,
+                            "k": k,
+                            "accuracy": correct / total if total else 0.0,
+                            "correct": correct,
+                            "total": total,
+                            "result_dir": str(out_dir),
+                        }
+                    )
+    summary = pd.DataFrame(rows).sort_values(["accuracy", "extractor", "media", "aggregation", "k"], ascending=[False, True, True, True, True])
     summary_path = RETRIEVAL_SWEEP_DIR / "accuracy_summary.csv"
-    pd.DataFrame(summary_rows).sort_values("accuracy", ascending=False).to_csv(summary_path, index=False)
-    (RETRIEVAL_SWEEP_DIR / "manifest.json").write_text(
-        json.dumps({"collection": collection, "k": k, "runs": summary_rows}, indent=2)
-    )
+    summary.to_csv(summary_path, index=False)
     return summary_path
 
 
-def build_retrieval_charts(summary_csv: Path) -> list[Path]:
+def _save(fig: plt.Figure, name: str, outputs: list[Path]) -> None:
     ANALYTICS_DIR.mkdir(parents=True, exist_ok=True)
+    out = ANALYTICS_DIR / name
+    fig.savefig(out, dpi=250, bbox_inches="tight")
+    plt.close(fig)
+    outputs.append(out)
+
+
+def build_retrieval_charts(summary_csv: Path) -> list[Path]:
     df = pd.read_csv(summary_csv)
     outputs: list[Path] = []
     if df.empty:
         return outputs
-    top = df.head(20).copy()
-    fig, ax = plt.subplots(figsize=(14, 7))
-    top_cols = top.columns.tolist()
-    agg_col = next((c for c in top_cols if c in ('aggregation', 'agg')), top_cols[1])
-    media_col = next((c for c in top_cols if c in ('media', 'media_strategy')), top_cols[2])
-    extractor_col = next((c for c in top_cols if c in ('extractor', 'feature_extractor')), top_cols[0])
-    labels = [f"{r.__getattribute__(extractor_col)}\n{r.__getattribute__(media_col)} {r.__getattribute__(agg_col)}" for r in top.itertuples()]
-    bars = ax.bar(range(len(top)), top["accuracy"], color="#2E8B57")
-    for bar, value in zip(bars, top["accuracy"]):
-        ax.text(bar.get_x() + bar.get_width() / 2, value + 0.01, f"{value:.2f}", ha="center", fontsize=8)
-    ax.set_xticks(range(len(top)))
-    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
-    ax.set_ylim(0, min(1.15, max(1.0, float(top["accuracy"].max()) + 0.15)))
+
+    family_map = {
+        "hog": "traditional",
+        "gabor": "traditional",
+        "colorhistogram": "traditional",
+        "colorhistogramhs": "traditional",
+        "resnet50": "pretrained",
+        "mobilenetv2": "pretrained",
+        "efficientnetb1": "pretrained",
+        "resnet50_finetuned": "fine-tuned",
+        "mobilenetv2_finetuned": "fine-tuned",
+        "efficientnetb1_finetuned": "fine-tuned",
+    }
+    df["family"] = df["extractor"].map(family_map).fillna("other")
+
+    top15 = df.head(15).copy()
+    fig, ax = plt.subplots(figsize=(12, 6))
+    labels = [f"{r.extractor}\n{r.media}-{r.aggregation}-k{r.k}" for r in top15.itertuples()]
+    palette = {"fine-tuned": "#2E8B57", "pretrained": "#4A90D9", "traditional": "#C97A2B", "other": "#777777"}
+    bars = ax.bar(range(len(top15)), top15["accuracy"], color=[palette[f] for f in top15["family"]])
+    for i, bar in enumerate(bars):
+        ax.text(i, bar.get_height() + 0.01, f"{top15.iloc[i]['accuracy']:.2f}", ha="center", fontsize=8)
+    ax.set_xticks(range(len(top15)))
+    ax.set_xticklabels(labels, rotation=40, ha="right", fontsize=8)
     ax.set_ylabel("Accuracy")
-    ax.set_title("Top retrieval sweep configurations (K=7)")
+    ax.set_title("Top 15 retrieval configurations")
     ax.grid(axis="y", alpha=0.3)
-    path = ANALYTICS_DIR / "retrieval_top_configs.png"
-    fig.savefig(path, dpi=200, bbox_inches="tight")
-    plt.close(fig)
-    outputs.append(path)
+    _save(fig, "retrieval_top15_accuracy.png", outputs)
 
-    pivot_cols = df.columns.tolist()
-    extractor_col = next((c for c in pivot_cols if c in ('extractor', 'feature_extractor')), pivot_cols[0])
-    media_col = next((c for c in pivot_cols if c in ('media', 'media_strategy')), pivot_cols[2])
-    pivot = df.pivot_table(index=extractor_col, columns=media_col, values="accuracy", aggfunc="max")
-    fig, ax = plt.subplots(figsize=(14, 7))
-    sns.heatmap(pivot, annot=True, fmt=".2f", cmap="viridis", ax=ax)
-    ax.set_title("Best retrieval accuracy by extractor and media selection")
-    path = ANALYTICS_DIR / "retrieval_media_heatmap.png"
-    fig.savefig(path, dpi=200, bbox_inches="tight")
-    plt.close(fig)
-    outputs.append(path)
+    extractor_rows: list[dict[str, float | str]] = []
+    extractor_sources = [
+        RESULTS_DIR / "retrieval_batch1",
+        RESULTS_DIR / "retrieval_batch2",
+        RESULTS_DIR / "retrieval_batch3",
+    ]
+    extractor_setting = "5_freq_strength_E1_yolo"
+    for source_dir in extractor_sources:
+        for csv_path in sorted(source_dir.glob(f"*_{extractor_setting}/*.csv")):
+            run_df = pd.read_csv(csv_path)
+            if run_df.empty:
+                continue
+            extractor_name = str(run_df["feature_extractor"].iloc[0])
+            extractor_rows.append(
+                {
+                    "extractor": extractor_name,
+                    "accuracy": float(
+                        (run_df["predicted_species"] == run_df["ground_truth"]).mean()
+                    ),
+                    "family": family_map.get(extractor_name, "other"),
+                }
+            )
 
-    # Aggregation strategy score distribution chart (mean s0 vs mean min similarity)
-    if "mean_s0" in df.columns and "mean_min_similarity" in df.columns:
-        agg_col = next((c for c in df.columns if c in ('aggregation', 'agg')), None)
-        if agg_col:
-            agg_stats = df.groupby(agg_col).agg(
-                mean_s0=("mean_s0", "mean"),
-                mean_min_sim=("mean_min_similarity", "mean"),
-                mean_accuracy=("accuracy", "mean"),
-            ).reset_index()
+    extractor_stats = pd.DataFrame(extractor_rows)
+    if not extractor_stats.empty:
+        family_order = {"fine-tuned": 0, "pretrained": 1, "traditional": 2, "other": 3}
+        extractor_stats["family_order"] = extractor_stats["family"].map(family_order).fillna(9)
+        extractor_stats = extractor_stats.sort_values(
+            ["family_order", "accuracy"], ascending=[True, False]
+        )
+        fig, ax = plt.subplots(figsize=(11.5, 5.8))
+        x = range(len(extractor_stats))
+        bars = ax.bar(
+            x,
+            extractor_stats["accuracy"],
+            color=[palette[f] for f in extractor_stats["family"]],
+        )
+        for i, bar in enumerate(bars):
+            ax.text(
+                i,
+                bar.get_height() + 0.01,
+                f"{extractor_stats.iloc[i]['accuracy']:.2f}",
+                ha="center",
+                fontsize=8,
+            )
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(extractor_stats["extractor"].tolist(), rotation=35, ha="right")
+        ax.set_ylabel("Accuracy")
+        ax.set_ylim(0, 1.0)
+        ax.set_title("Extractor comparison: YOLO, E1, freq_strength, K=5")
+        ax.grid(axis="y", alpha=0.3)
+        _save(fig, "retrieval_extractor_family.png", outputs)
 
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    media_rows: list[dict[str, float | int | str]] = []
+    for csv_path in sorted(RESULTS_DIR.glob("retrieval_*/efficientnetb1_finetuned_*_E*_yolo/*.csv")):
+        run_df = pd.read_csv(csv_path)
+        if run_df.empty or "predicted_species" not in run_df.columns:
+            continue
+        match = re.match(
+            r"^(?P<extractor>.+?)_(?P<k>\d+)_(?P<aggregation>weighted|uni|relative|per_species_avg|max_score|perquery_avg|perquery_norm_avg|freq_strength)_(?P<media>E1|E2|E3_[A-Z0-9]+|E4_[A-Z0-9]+)_yolo$",
+            csv_path.stem,
+        )
+        if not match:
+            continue
+        extractor_name = match.group("extractor")
+        if extractor_name != "efficientnetb1_finetuned":
+            continue
+        k = int(match.group("k"))
+        aggregation = match.group("aggregation")
+        media = match.group("media")
+        media_rows.append(
+            {
+                "media": media,
+                "aggregation": aggregation,
+                "k": k,
+                "accuracy": float(
+                    (run_df["predicted_species"] == run_df["ground_truth"]).mean()
+                ),
+            }
+        )
 
-            x = range(len(agg_stats))
-            w = 0.35
-            bars1 = ax1.bar([i - w/2 for i in x], agg_stats["mean_s0"], w, color="#2E8B57", label="Mean S0 (top-1 confidence)")
-            bars2 = ax1.bar([i + w/2 for i in x], agg_stats["mean_min_sim"], w, color="#FF6B6B", label="Mean Min Similarity")
-            ax1.set_xticks(x)
-            ax1.set_xticklabels(agg_stats[agg_col], rotation=20, ha="right", fontsize=9)
-            ax1.set_ylabel("Score (0–1 range)")
-            ax1.set_title("Aggregation Strategy: Mean S0 Score vs Mean Min Similarity")
-            ax1.legend(fontsize=8)
-            ax1.grid(axis="y", alpha=0.3)
-            ax1.set_ylim(0, 1.0)
-            for bar, val in zip(bars1, agg_stats["mean_s0"]):
-                ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
-                         f"{val:.3f}", ha="center", fontsize=7, fontweight="bold")
-            for bar, val in zip(bars2, agg_stats["mean_min_sim"]):
-                ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
-                         f"{val:.3f}", ha="center", fontsize=7, fontweight="bold")
+    media_best = pd.DataFrame(media_rows)
+    if not media_best.empty:
+        media_best = media_best.sort_values(["media", "accuracy"], ascending=[True, False])
+        media_best = media_best.groupby("media", as_index=False).first()
 
-            bars3 = ax2.bar(x, agg_stats["mean_accuracy"], color="#4A90D9")
-            ax2.set_xticks(x)
-            ax2.set_xticklabels(agg_stats[agg_col], rotation=20, ha="right", fontsize=9)
-            ax2.set_ylabel("Mean Accuracy")
-            ax2.set_title("Aggregation Strategy: Mean Accuracy")
-            ax2.grid(axis="y", alpha=0.3)
-            for bar, val in zip(bars3, agg_stats["mean_accuracy"]):
-                ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
-                         f"{val:.3f}", ha="center", fontsize=8, fontweight="bold")
+        def media_group(media: str) -> str:
+            if media == "E1":
+                return "E1"
+            if media == "E2":
+                return "E2"
+            if media.startswith("E3_"):
+                return "E3"
+            if media.startswith("E4_"):
+                return "E4"
+            return "other"
 
-            fig.tight_layout()
-            path = ANALYTICS_DIR / "aggregation_score_comparison.png"
-            fig.savefig(path, dpi=200, bbox_inches="tight")
-            plt.close(fig)
-            outputs.append(path)
+        media_best["media_group"] = media_best["media"].map(media_group)
+        group_colors = {
+            "E1": "#2E8B57",
+            "E2": "#4A90D9",
+            "E3": "#C97A2B",
+            "E4": "#A855F7",
+            "other": "#777777",
+        }
+        media_best = media_best.sort_values("accuracy", ascending=True)
+        fig, ax = plt.subplots(figsize=(10.5, 7.2))
+        bars = ax.barh(
+            media_best["media"],
+            media_best["accuracy"],
+            color=[group_colors[g] for g in media_best["media_group"]],
+        )
+        for bar, (_, row) in zip(bars, media_best.iterrows()):
+            ax.text(
+                row["accuracy"] + 0.01,
+                bar.get_y() + bar.get_height() / 2,
+                f"{row['accuracy']:.2f} | {row['aggregation']} | K={int(row['k'])}",
+                va="center",
+                fontsize=7,
+            )
+        legend_handles = [
+            plt.matplotlib.patches.Patch(facecolor=group_colors[key], label=key)
+            for key in ["E1", "E2", "E3", "E4"]
+        ]
+        ax.legend(handles=legend_handles, title="Media family", fontsize=8)
+        ax.set_xlabel("Best retrieval accuracy")
+        ax.set_ylabel("Media strategy")
+        ax.set_xlim(0, 1.0)
+        ax.set_title("EfficientNetB1 fine-tuned: best raw result per media strategy")
+        ax.grid(axis="x", alpha=0.3)
+        _save(fig, "retrieval_heatmap_k_vs_media.png", outputs)
 
-            # Save aggregation stats CSV for report
-            agg_csv = ANALYTICS_DIR / "aggregation_score_stats.csv"
-            agg_stats.to_csv(agg_csv, index=False)
+    best_family = df[df["extractor"] == "efficientnetb1_finetuned"]
+    heatmap_agg_k = best_family.pivot_table(index="aggregation", columns="k", values="accuracy", aggfunc="max")
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.heatmap(heatmap_agg_k, annot=True, fmt=".2f", cmap="magma", ax=ax, cbar_kws={"shrink": 0.8})
+    ax.set_title("EfficientNetB1 fine-tuned: aggregation vs K")
+    _save(fig, "retrieval_heatmap_k_vs_agg.png", outputs)
+
+    grouped = best_family.groupby(["media", "k"]).agg(accuracy=("accuracy", "max")).reset_index()
+    heatmap_media_k = grouped.pivot(index="media", columns="k", values="accuracy")
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.heatmap(heatmap_media_k, annot=True, fmt=".2f", cmap="viridis", ax=ax, cbar_kws={"shrink": 0.8})
+    ax.set_title("EfficientNetB1 fine-tuned: media strategy vs K")
+    _save(fig, "retrieval_heatmap_agg_vs_media.png", outputs)
+
+    readability_rows: list[dict[str, float | str]] = []
+    retrieval_k7_dir = RESULTS_DIR / "retrieval_k7"
+    for csv_path in sorted(retrieval_k7_dir.glob("efficientnetb1_finetuned_7_*_E1_yolo/*.csv")):
+        run_df = pd.read_csv(csv_path)
+        if run_df.empty:
+            continue
+        scores = run_df["predicted_confidence"].astype(float)
+        readability_rows.append(
+            {
+                "aggregation": str(run_df["aggregation"].iloc[0]),
+                "mean_top1_score": float(scores.mean()),
+                "std_top1_score": float(scores.std()),
+                "min_top1_score": float(scores.min()),
+                "max_top1_score": float(scores.max()),
+            }
+        )
+
+    readability_df = pd.DataFrame(readability_rows)
+    if not readability_df.empty:
+        strategy_order = [
+            "weighted",
+            "uni",
+            "relative",
+            "per_species_avg",
+            "max_score",
+            "perquery_avg",
+            "perquery_norm_avg",
+            "freq_strength",
+        ]
+        label_map = {
+            "weighted": "weighted",
+            "uni": "uni",
+            "relative": "relative",
+            "per_species_avg": "per_species_avg",
+            "max_score": "max_score",
+            "perquery_avg": "perquery_avg",
+            "perquery_norm_avg": "perquery_norm_avg",
+            "freq_strength": "freq_strength",
+        }
+        readability_df["aggregation"] = pd.Categorical(
+            readability_df["aggregation"], categories=strategy_order, ordered=True
+        )
+        readability_df = readability_df.sort_values("aggregation")
+
+        x_labels = [label_map[str(v)] for v in readability_df["aggregation"]]
+        x_pos = np.arange(len(x_labels))
+
+        fig, ax = plt.subplots(figsize=(11.5, 5.2))
+        bars = ax.bar(
+            x_pos,
+            readability_df["mean_top1_score"],
+            color="#5B84B1",
+            width=0.62,
+            label="Mean $s_0$",
+        )
+        ax.errorbar(
+            x_pos,
+            readability_df["mean_top1_score"],
+            yerr=readability_df["std_top1_score"],
+            fmt="none",
+            ecolor="#2F3E46",
+            capsize=4,
+            linewidth=1.2,
+            label=r"Mean $\pm$ std",
+        )
+        ax.vlines(
+            x_pos,
+            readability_df["min_top1_score"],
+            readability_df["max_top1_score"],
+            colors="#E07A5F",
+            linewidth=2.0,
+            alpha=0.95,
+            label="Min--max range",
+        )
+        ax.scatter(
+            x_pos,
+            readability_df["min_top1_score"],
+            color="#E07A5F",
+            s=18,
+            zorder=3,
+        )
+        ax.scatter(
+            x_pos,
+            readability_df["max_top1_score"],
+            color="#E07A5F",
+            s=18,
+            zorder=3,
+        )
+        for bar, val in zip(bars, readability_df["mean_top1_score"]):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                val + 0.015,
+                f"{val:.2f}",
+                ha="center",
+                fontsize=8,
+            )
+        ax.set_ylabel("Top-ranked score ($s_0$)")
+        ax.set_xticks(x_pos, x_labels)
+        ax.set_ylim(0, 1.0)
+        ax.set_title("Aggregation score readability: EfficientNetB1 fine-tuned, YOLO, E1, K=7")
+        ax.grid(axis="y", alpha=0.3)
+        ax.legend(frameon=False, fontsize=8, loc="upper left")
+        plt.setp(ax.get_xticklabels(), rotation=20, ha="right")
+        _save(fig, "aggregation_score_readability.png", outputs)
 
     return outputs
 
@@ -266,7 +380,13 @@ def main() -> None:
     args = parser.parse_args()
     summary = RETRIEVAL_SWEEP_DIR / "accuracy_summary.csv"
     if not args.skip_sweep:
-        summary = run_retrieval_sweep(collection=args.collection)
+        summary = run_retrieval_sweep(
+            collection=args.collection,
+            extractors=["efficientnetb1_finetuned", "resnet50_finetuned", "mobilenetv2_finetuned", "efficientnetb1", "resnet50", "mobilenetv2", "hog", "gabor", "colorhistogram", "colorhistogramhs"],
+            media_values=["E1", "E2", "E3_CREA", "E3_CYA", "E3_DG18", "E3_MEA", "E3_YES"],
+            aggregations=["weighted", "uni", "relative", "freq_strength"],
+            ks=[3, 5, 7, 11, 13, 15],
+        )
     charts = build_retrieval_charts(summary)
     publish_figures(charts)
     print(json.dumps({"summary": str(summary), "charts": [str(p) for p in charts]}, indent=2))

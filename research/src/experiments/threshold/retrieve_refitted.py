@@ -19,7 +19,7 @@ from qdrant_client import QdrantClient
 
 import pandas as pd
 
-from src.config import DATASET_ROOT, QDRANT_API_KEY, QDRANT_URL, RESULTS_DIR, STRAIN_SPECIES_MAPPING_PATH
+from src.config import COLLECTION_NAME, DATASET_ROOT, QDRANT_API_KEY, QDRANT_URL, RESULTS_DIR, STRAIN_SPECIES_MAPPING_PATH
 from src.utils.qdrant_query import build_filter
 
 # Override to local Docker Qdrant when QDRANT_URL not set
@@ -30,7 +30,7 @@ if os.getenv("QDRANT_URL", None) == QDRANT_URL:
 if not os.getenv("QDRANT_URL"):
     _qdrant_url = "http://127.0.0.1:6333"
 
-COLLECTION = "qdrant-research"
+COLLECTION = f"{COLLECTION_NAME}_retrieval"
 EXTRACTOR_KEY = "resnet50"
 K = 11
 TOP_N = 5

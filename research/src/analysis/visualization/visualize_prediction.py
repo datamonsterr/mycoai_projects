@@ -46,12 +46,12 @@ def generate_distinct_color(
 
 def _get_thumbnail_size(k: int) -> Tuple[int, int]:
     if k >= 11:
-        return (96, 96)
+        return (72, 72)
     if k >= 9:
-        return (108, 108)
+        return (80, 80)
     if k >= 7:
-        return (124, 124)
-    return (150, 150)
+        return (92, 92)
+    return (108, 108)
 
 
 def _text_size(
@@ -108,48 +108,59 @@ def _draw_legend(
     text_color: Tuple[int, int, int],
     padding: int,
 ) -> int:
+    title = "Top Species Ranking"
+    title_width, title_height = _text_size(draw, title, text_font)
+    title_x = max(start_x, (canvas_width - title_width) // 2)
     draw.text(
-        (start_x, start_y),
-        "Top Species Ranking:",
+        (title_x, start_y),
+        title,
         fill=text_color,
         font=text_font,
     )
-    y_pos = start_y + _text_size(draw, "Ag", text_font)[1] + 8
-    box_size = 15
-    item_gap_x = 18
-    item_gap_y = 10
-    max_item_width = max(220, (canvas_width - 2 * padding) // 2)
-    item_x = start_x
-    item_y = y_pos
-    max_y = item_y
+    y_pos = start_y + title_height + 10
+    box_size = 14
+    item_gap_y = 8
+    item_padding_x = 12
+    item_padding_y = 8
+    max_text_width = max(240, canvas_width - 2 * padding - 48)
+    max_y = y_pos
 
     for i, res in enumerate(aggregated_results[:5]):
         specy = res["specy"]
         score = res["score"]
         color = generate_distinct_color(specy, ground_truth)
-        legend_text = f"{i + 1}. {specy} ({score:.2f})"
-        text_w, text_h = _text_size(draw, legend_text, small_font)
-        item_width = min(max_item_width, text_w + 30)
+        legend_text = f"{i + 1}. {specy} (s0={score:.2f})"
+        text_w, text_h = _text_size(draw, legend_text, text_font)
+        item_width = min(max_text_width, text_w + box_size + item_padding_x * 2 + 8)
+        item_x = (canvas_width - item_width) // 2
 
-        if item_x + item_width > canvas_width - padding:
-            item_x = start_x
-            item_y = max_y + item_gap_y
-
+        draw.rounded_rectangle(
+            [item_x, y_pos, item_x + item_width, y_pos + text_h + item_padding_y * 2],
+            radius=10,
+            outline=(180, 180, 180),
+            width=1,
+            fill=(248, 248, 248),
+        )
         draw.rectangle(
-            [item_x, item_y + 2, item_x + box_size, item_y + 2 + box_size],
+            [
+                item_x + item_padding_x,
+                y_pos + item_padding_y + 1,
+                item_x + item_padding_x + box_size,
+                y_pos + item_padding_y + 1 + box_size,
+            ],
             fill=color,
         )
         draw.text(
-            (item_x + box_size + 8, item_y),
+            (item_x + item_padding_x + box_size + 10, y_pos + item_padding_y - 1),
             legend_text,
             fill=text_color,
-            font=small_font,
+            font=text_font,
         )
 
-        item_x += item_width + item_gap_x
-        max_y = max(max_y, item_y + text_h)
+        max_y = y_pos + text_h + item_padding_y * 2
+        y_pos = max_y + item_gap_y
 
-    return max_y + 16
+    return max_y + 12
 
 
 def _draw_image_card(
@@ -157,13 +168,14 @@ def _draw_image_card(
     draw: ImageDraw.ImageDraw,
     image_path: str,
     position: Tuple[int, int],
+    card_width: int,
     thumbnail_size: Tuple[int, int],
     border_color: Tuple[int, int, int],
     border_width: int,
     lines: List[Tuple[str, ImageFont.ImageFont]],
     text_color: Tuple[int, int, int],
     line_spacing: int = 4,
-) -> None:
+) -> int:
     x_pos, y_pos = position
     img_width, img_height = thumbnail_size
 
@@ -191,9 +203,69 @@ def _draw_image_card(
     )
 
     text_y = y_pos + img_height + 6
+    text_width = max(card_width - 8, 40)
     for text, font in lines:
-        draw.text((x_pos, text_y), text, fill=text_color, font=font)
-        text_y += _text_size(draw, text, font)[1] + line_spacing
+        text_y = _draw_wrapped_text(
+            draw,
+            text,
+            (x_pos, text_y),
+            text_width,
+            font,
+            text_color,
+            line_spacing=line_spacing,
+        )
+
+    return text_y - y_pos
+
+
+def _measure_card_height(
+    draw: ImageDraw.ImageDraw,
+    card_width: int,
+    thumbnail_size: Tuple[int, int],
+    lines: List[Tuple[str, ImageFont.ImageFont]],
+    line_spacing: int = 4,
+) -> int:
+    _, img_height = thumbnail_size
+    text_width = max(card_width - 8, 40)
+    text_height = 0
+    for text, font in lines:
+        words = text.split()
+        current_line = ""
+        wrapped_lines = 0
+        for word in words:
+            candidate = word if not current_line else f"{current_line} {word}"
+            candidate_width, _ = _text_size(draw, candidate, font)
+            if candidate_width <= text_width or not current_line:
+                current_line = candidate
+                continue
+            wrapped_lines += 1
+            current_line = word
+        if current_line:
+            wrapped_lines += 1
+        line_height = _text_size(draw, "Ag", font)[1]
+        text_height += wrapped_lines * line_height + max(wrapped_lines - 1, 0) * line_spacing
+        text_height += line_spacing
+    return img_height + 6 + text_height
+
+
+def _normalize_explicit_path(path_str: str) -> Path:
+    path = Path(path_str)
+    if path.exists():
+        return path
+    if path.is_absolute():
+        parts = path.parts
+        dataset_markers = [
+            "Dataset",
+            "results",
+            "weights",
+        ]
+        for marker in dataset_markers:
+            if marker in parts:
+                idx = parts.index(marker)
+                candidate = WORKSPACE_ROOT.joinpath(*parts[idx:])
+                if candidate.exists():
+                    return candidate
+    return path
 
 
 def _resolve_image_path(
@@ -203,10 +275,10 @@ def _resolve_image_path(
 ) -> str:
     explicit_path = item.get("image_path") or item.get("query_image_path")
     if explicit_path:
-        path = Path(explicit_path)
-        if path.is_absolute():
-            return str(path)
-        return str(WORKSPACE_ROOT / path)
+        normalized_path = _normalize_explicit_path(str(explicit_path))
+        if normalized_path.is_absolute():
+            return str(normalized_path)
+        return str((WORKSPACE_ROOT / normalized_path).resolve())
 
     image_id = item.get(id_key) or item.get("id") or ""
     candidates = [
@@ -247,6 +319,11 @@ def visualize_prediction_by_environment(
     text_color: Tuple[int, int, int] = (0, 0, 0),
     bg_color: Tuple[int, int, int] = (255, 255, 255),
     border_width: int = 8,
+    show_header: bool = True,
+    show_legend: bool = True,
+    query_label: str = "Query",
+    neighbor_label_mode: str = "rank_species",
+    show_neighbor_strain: bool = True,
 ) -> None:
     """
     Create a visualization showing query images and their K nearest neighbors per environment.
@@ -273,20 +350,19 @@ def visualize_prediction_by_environment(
 
     resolved_thumbnail_size = thumbnail_size or _get_thumbnail_size(k)
     img_width, img_height = resolved_thumbnail_size
-    padding = 15
-    card_gap = 15
-    row_spacing = 24
+    padding = 24
+    card_gap = 12
+    row_spacing = 22
     env_label_gap = 34
-    text_height = 64
-    card_width = img_width + padding
-    columns = k + 1
-    canvas_width = padding + columns * card_width
+    text_block_width = 62
+    card_width = img_width + text_block_width
+    columns = max(2, min(4, k + 1))
+    canvas_width = padding * 2 + columns * card_width + (columns - 1) * card_gap
 
-    # Load fonts (try to load a nice font, fallback to default)
     try:
-        title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 24)
+        title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 18)
         text_font = ImageFont.truetype("DejaVuSans.ttf", 14)
-        small_font = ImageFont.truetype("DejaVuSans.ttf", 12)
+        small_font = ImageFont.truetype("DejaVuSans.ttf", 11)
     except IOError:
         title_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
@@ -301,99 +377,144 @@ def visualize_prediction_by_environment(
     measure_canvas = Image.new("RGB", (canvas_width, 200), bg_color)
     measure_draw = ImageDraw.Draw(measure_canvas)
 
-    header_y = 20
-    header_y = _draw_wrapped_text(
-        measure_draw,
-        title_text,
-        (padding, header_y),
-        canvas_width - 2 * padding,
-        title_font,
-        text_color,
-    )
-    header_y = _draw_wrapped_text(
-        measure_draw,
-        pred_text,
-        (padding, header_y + 4),
-        canvas_width - 2 * padding,
-        title_font,
-        (0, 128, 0) if is_correct else (255, 0, 0),
-    )
-    header_y = _draw_wrapped_text(
-        measure_draw,
-        info_text,
-        (padding, header_y + 4),
-        canvas_width - 2 * padding,
-        text_font,
-        text_color,
-    )
-    header_bottom = _draw_legend(
-        measure_draw,
-        aggregated_results,
-        ground_truth,
-        padding,
-        header_y + 8,
-        canvas_width,
-        text_font,
-        small_font,
-        text_color,
-        padding,
-    )
-
-    env_block_height = env_label_gap + img_height + text_height + card_gap + row_spacing
-    canvas_height = header_bottom + 16 + num_environments * env_block_height
-
-    canvas = Image.new("RGB", (canvas_width, canvas_height), bg_color)
-    draw = ImageDraw.Draw(canvas)
-
-    header_y = 20
-    header_y = _draw_wrapped_text(
-        draw,
-        title_text,
-        (padding, header_y),
-        canvas_width - 2 * padding,
-        title_font,
-        text_color,
-    )
-    header_y = _draw_wrapped_text(
-        draw,
-        pred_text,
-        (padding, header_y + 4),
-        canvas_width - 2 * padding,
-        title_font,
-        (0, 128, 0) if is_correct else (255, 0, 0),
-    )
-    header_y = _draw_wrapped_text(
-        draw,
-        info_text,
-        (padding, header_y + 4),
-        canvas_width - 2 * padding,
-        text_font,
-        text_color,
-    )
-    current_y = (
-        _draw_legend(
-            draw,
+    header_bottom = 12
+    if show_header:
+        header_y = 20
+        header_y = _draw_wrapped_text(
+            measure_draw,
+            title_text,
+            (padding, header_y),
+            canvas_width - 2 * padding,
+            title_font,
+            text_color,
+        )
+        header_y = _draw_wrapped_text(
+            measure_draw,
+            pred_text,
+            (padding, header_y + 4),
+            canvas_width - 2 * padding,
+            title_font,
+            (0, 128, 0) if is_correct else (255, 0, 0),
+        )
+        header_y = _draw_wrapped_text(
+            measure_draw,
+            info_text,
+            (padding, header_y + 4),
+            canvas_width - 2 * padding,
+            text_font,
+            text_color,
+        )
+        header_bottom = header_y + 8
+    if show_legend:
+        header_bottom = _draw_legend(
+            measure_draw,
             aggregated_results,
             ground_truth,
             padding,
-            header_y + 8,
+            header_bottom,
             canvas_width,
             text_font,
             small_font,
             text_color,
             padding,
         )
-        + 16
-    )
 
+    env_block_heights: List[int] = []
     for result in raw_results_sorted:
-        query_id = result["query_image_id"]
+        cards: List[Dict[str, Any]] = [
+            {
+                "lines": [(query_label, text_font)],
+            }
+        ]
+        for i, neighbor in enumerate(result["neighbors"][:k], start=1):
+            n_specy = neighbor.get("specy", "unknown")
+            n_score = neighbor.get("score", 0.0)
+            n_strain = neighbor.get("strain", "unknown")
+            neighbor_title = {
+                "rank_species": f"#{i} {n_specy}",
+                "species": n_specy,
+                "score_species": f"{n_specy}",
+            }.get(neighbor_label_mode, f"#{i} {n_specy}")
+            neighbor_lines: List[Tuple[str, ImageFont.ImageFont]] = [(neighbor_title, text_font)]
+            neighbor_lines.append((f"Score: {n_score:.4f}", small_font))
+            if show_neighbor_strain:
+                neighbor_lines.append((f"Strain: {n_strain}", small_font))
+            cards.append(
+                {
+                    "lines": neighbor_lines,
+                }
+            )
+
+        card_heights = [
+            _measure_card_height(measure_draw, card_width, resolved_thumbnail_size, card["lines"])
+            for card in cards
+        ]
+        rows = (len(cards) + columns - 1) // columns
+        row_heights = []
+        for row_index in range(rows):
+            start = row_index * columns
+            row_heights.append(max(card_heights[start : start + columns]))
+        env_block_heights.append(env_label_gap + sum(row_heights) + row_spacing * max(rows - 1, 0) + row_spacing)
+
+    canvas_height = header_bottom + 16 + sum(env_block_heights)
+
+    canvas = Image.new("RGB", (canvas_width, canvas_height), bg_color)
+    draw = ImageDraw.Draw(canvas)
+
+    current_y = 12
+    if show_header:
+        header_y = 20
+        header_y = _draw_wrapped_text(
+            draw,
+            title_text,
+            (padding, header_y),
+            canvas_width - 2 * padding,
+            title_font,
+            text_color,
+        )
+        header_y = _draw_wrapped_text(
+            draw,
+            pred_text,
+            (padding, header_y + 4),
+            canvas_width - 2 * padding,
+            title_font,
+            (0, 128, 0) if is_correct else (255, 0, 0),
+        )
+        header_y = _draw_wrapped_text(
+            draw,
+            info_text,
+            (padding, header_y + 4),
+            canvas_width - 2 * padding,
+            text_font,
+            text_color,
+        )
+        current_y = header_y + 8
+    if show_legend:
+        current_y = (
+            _draw_legend(
+                draw,
+                aggregated_results,
+                ground_truth,
+                padding,
+                current_y,
+                canvas_width,
+                text_font,
+                small_font,
+                text_color,
+                padding,
+            )
+            + 16
+        )
+
+    for block_index, result in enumerate(raw_results_sorted):
         environment = result.get("query_environment", "unknown")
         neighbors = result["neighbors"]
 
+        env_text = f"Environment: {environment}"
+        env_width, _ = _text_size(draw, env_text, title_font)
         draw.text(
-            (padding, current_y - 30),
-            f"Environment: {environment}",
+            ((canvas_width - env_width) // 2, current_y),
+            env_text,
             fill=text_color,
             font=title_font,
         )
@@ -406,7 +527,7 @@ def visualize_prediction_by_environment(
                     "query_image_id",
                 ),
                 "border_color": (0, 0, 0),
-                "lines": [("Query", text_font), (f"ID: {query_id}", small_font)],
+                "lines": [(query_label, text_font)],
             }
         ]
 
@@ -414,6 +535,15 @@ def visualize_prediction_by_environment(
             n_specy = neighbor.get("specy", "unknown")
             n_score = neighbor.get("score", 0.0)
             n_strain = neighbor.get("strain", "unknown")
+            neighbor_title = {
+                "rank_species": f"#{i} {n_specy}",
+                "species": n_specy,
+                "score_species": f"{n_specy}",
+            }.get(neighbor_label_mode, f"#{i} {n_specy}")
+            neighbor_lines: List[Tuple[str, ImageFont.ImageFont]] = [(neighbor_title, text_font)]
+            neighbor_lines.append((f"Score: {n_score:.4f}", small_font))
+            if show_neighbor_strain:
+                neighbor_lines.append((f"Strain: {n_strain}", small_font))
             cards.append(
                 {
                     "image_path": _resolve_image_path(
@@ -422,34 +552,46 @@ def visualize_prediction_by_environment(
                         "image_id",
                     ),
                     "border_color": generate_distinct_color(n_specy, ground_truth),
-                    "lines": [
-                        (f"#{i} {n_specy}", text_font),
-                        (f"Score: {n_score:.4f}", small_font),
-                        (f"Strain: {n_strain}", small_font),
-                    ],
+                    "lines": neighbor_lines,
                 }
             )
 
-        grid_y = current_y
-        for card_index, card in enumerate(cards):
-            row_index = card_index // columns
-            column_index = card_index % columns
-            x_pos = padding + column_index * card_width
-            y_pos = grid_y + row_index * (img_height + text_height + card_gap)
+        card_heights = [
+            _measure_card_height(draw, card_width, resolved_thumbnail_size, card["lines"])
+            for card in cards
+        ]
+        row_heights = []
+        total_rows = (len(cards) + columns - 1) // columns
+        for row_index in range(total_rows):
+            start = row_index * columns
+            row_heights.append(max(card_heights[start : start + columns]))
 
-            _draw_image_card(
-                canvas,
-                draw,
-                card["image_path"],
-                (x_pos, y_pos),
-                resolved_thumbnail_size,
-                card["border_color"],
-                border_width if card_index > 0 else 4,
-                card["lines"],
-                text_color,
-            )
+        y_cursor = current_y + env_label_gap
+        for row_index in range(total_rows):
+            row_height = row_heights[row_index]
+            start = row_index * columns
+            end = min(start + columns, len(cards))
+            cards_in_row = end - start
+            row_width = cards_in_row * card_width + max(cards_in_row - 1, 0) * card_gap
+            row_start_x = max(padding, (canvas_width - row_width) // 2)
+            for offset, card_index in enumerate(range(start, end)):
+                x_pos = row_start_x + offset * (card_width + card_gap)
+                card = cards[card_index]
+                _draw_image_card(
+                    canvas,
+                    draw,
+                    card["image_path"],
+                    (x_pos, y_cursor),
+                    card_width,
+                    resolved_thumbnail_size,
+                    card["border_color"],
+                    border_width if card_index > 0 else 4,
+                    card["lines"],
+                    text_color,
+                )
+            y_cursor += row_height + row_spacing
 
-        current_y += env_block_height
+        current_y += env_block_heights[block_index]
 
     # Save
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

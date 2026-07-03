@@ -23,6 +23,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from src.config import (
+    COLLECTION_NAME,
     DATASET_ROOT,
     RESULTS_DIR,
     SEGMENTED_IMAGE_DIR,
@@ -36,6 +37,8 @@ OLD_ENV_LABELS = {
     None: "E1",
     "all": "E2",
 }
+
+RETRIEVAL_COLLECTION_NAME = f"{COLLECTION_NAME}_retrieval"
 
 
 def normalize_environment_label(environment: Optional[str]) -> str:
@@ -1105,7 +1108,7 @@ def run_comprehensive_report(
     max_visualizations: int = 20,
     visualize_correct: bool = True,
     visualize_incorrect: bool = True,
-    collection_name: str = 'qdrant-research',
+    collection_name: str = RETRIEVAL_COLLECTION_NAME,
     output_root: Path | None = None,
 ) -> Path:
     """Run a multi-configuration retrieval benchmark and optional visualization."""
@@ -1304,7 +1307,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=ALL_K,
         help="K values (space-separated integers or ranges like 3-7). Use 'all' for [3,5,7,11,13,15]",
     )
-    comprehensive.add_argument("--collection-name", type=str, default="qdrant-research")
+    comprehensive.add_argument("--collection-name", type=str, default=RETRIEVAL_COLLECTION_NAME)
     comprehensive.add_argument("--output-root", type=Path, default=None)
     comprehensive.add_argument("--max_visualizations", type=int, default=20)
     comprehensive.add_argument(
@@ -1444,7 +1447,7 @@ def run(params: ExperimentParams) -> ExperimentResult:
             raise ValueError("resnet50 extractor unavailable")
         results, report_path = run_species_evaluation(
             client=client,
-            collection_name='qdrant-research',
+            collection_name=RETRIEVAL_COLLECTION_NAME,
             feature_extractor=extractor,
             output_dir=str(output_root / "artifacts"),
         )

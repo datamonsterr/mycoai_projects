@@ -1,18 +1,17 @@
 """
-Contour-based colony segmentation pipeline with per-step debug output.
+KMeans-style deterministic colony segmentation with per-step debug output.
 
 Usage:
     uv run python src/scripts/segment_contours_debug.py <image_path> [--out <output_dir>]
 
 Steps:
     1. Resize to 256×256
-    2. Circular crop mask (R=112, centred)
-    3. Gaussian blur to smooth before edge detection
-    4. Canny edge detection
+    2. Circular dish mask (R=112, centred)
+    3. Gaussian blur to smooth the dish region
+    4. Canny edge detection for colony boundary cues
     5. Morphological close (dilate + erode) to seal gaps
     6. Circularity filter: score contours by area × circularity, pick top-3
-    7. Colored colony fill overlay (one colour per selected colony)
-    8. Bounding boxes drawn from cv2.boundingRect per selected contour
+    7. Export the three final colony crops
 """
 
 import argparse
@@ -165,6 +164,20 @@ def select_colony_contours(
 # ---------------------------------------------------------------------------
 # Montage builder
 # ---------------------------------------------------------------------------
+def build_segment_strip(segment_paths: List[Path], out_path: Path, thumb_size: int = THUMB) -> np.ndarray:
+    thumbs = []
+    for path in segment_paths:
+        img = cv2.imread(str(path))
+        if img is None:
+            continue
+        thumbs.append(_thumb(img, thumb_size))
+    if not thumbs:
+        return np.zeros((thumb_size, thumb_size, 3), dtype=np.uint8)
+    while len(thumbs) < COLONY_COUNT:
+        thumbs.append(np.zeros_like(thumbs[0]))
+    return np.hstack(thumbs[:COLONY_COUNT])
+
+
 def build_montage(
     steps: List[Dict[str, Any]],
     meta: Dict[str, Any],
@@ -422,26 +435,11 @@ def run(image_path: str, out_dir: str) -> None:
     )
 
     # ------------------------------------------------------------------
-    # Step 7 – colored colony overlay (one colour per colony)
-    # ------------------------------------------------------------------
-    colony_vis = img.copy()
-    for idx, cnt in enumerate(selected):
-        colour = COLONY_COLOURS_BGR[idx % len(COLONY_COLOURS_BGR)]
-        cv2.drawContours(colony_vis, [cnt], -1, colour, thickness=cv2.FILLED)
-    _save(out / "07_colony_colours.jpg", colony_vis)
-    steps.append(
-        {
-            "label": "Colonies",
-            "caption": [f"{len(selected)} colonies"],
-            "img": colony_vis,
-        }
-    )
-
-    # ------------------------------------------------------------------
-    # Step 8 – bounding boxes from contour boundingRect
+    # Step 7 – final colony crops from selected contours
     # ------------------------------------------------------------------
     result = img.copy()
     bboxes = []
+    segment_paths: List[Path] = []
 
     for idx, cnt in enumerate(selected):
         x, y, w, h = cv2.boundingRect(cnt)
@@ -464,18 +462,24 @@ def run(image_path: str, out_dir: str) -> None:
             colour,
             1,
         )
+        crop = img[max(y, 0):min(y + h, img.shape[0]), max(x, 0):min(x + w, img.shape[1])]
+        segment_path = out / f"segment_{idx + 1}.jpg"
+        cv2.imwrite(str(segment_path), crop)
+        segment_paths.append(segment_path)
         print(
             f"  colony {idx}: bbox=({x},{y})→({x+w},{y+h})  area={area}  circ={circ:.3f}  OK"
         )
 
     meta["bboxes_kept"] = len(bboxes)
-    print(f"[8] {len(bboxes)} bounding boxes kept")
-    _save(out / "08_bboxes.jpg", result)
+    print(f"[7] {len(bboxes)} final colony crops exported")
+    _save(out / "07_bboxes.jpg", result)
+    segment_strip = build_segment_strip(segment_paths, out / "07_segments.jpg")
+    _save(out / "07_segments.jpg", segment_strip)
     steps.append(
         {
-            "label": "Bboxes",
-            "caption": [f"{len(bboxes)} kept"],
-            "img": result,
+            "label": "Final crops",
+            "caption": [f"{len(segment_paths)} segments"],
+            "img": segment_strip,
         }
     )
 

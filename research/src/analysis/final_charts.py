@@ -23,22 +23,29 @@ def copy_img(src_name, dst_name):
             shutil.copy2(src, out)
 
 # ── 1. Segmentation comparison ──────────────────────────────────────────────
-df = pd.read_csv("/home/dat/dev/mycoai_projects/results/segmentation_comparison/comparison.csv")
-df = df[df["accuracy"] > 0]
-media_order = ["E1", "E4_CREA", "E4_CYA", "E4_DG18", "E4_MEA", "E4_YES"]
-yolo_vals = [float(df[(df.segmentation=="yolo") & (df.media==m)]["accuracy"].iloc[0]) if len(df[(df.segmentation=="yolo") & (df.media==m)]) else 0 for m in media_order]
-kmeans_vals = [float(df[(df.segmentation=="kmeans") & (df.media==m)]["accuracy"].iloc[0]) if len(df[(df.segmentation=="kmeans") & (df.media==m)]) else 0 for m in media_order]
+yolo_csv = Path("/home/dat/dev/mycoai/results/retrieval_batch1/efficientnetb1_finetuned_5_freq_strength_E1_yolo/efficientnetb1_finetuned_5_freq_strength_E1_yolo.csv")
+kmeans_csv = Path("/home/dat/dev/mycoai/results/retrieval_report_charts_kmeans_k5_real/efficientnetb1_finetuned_5_freq_strength_E1_kmeans/efficientnetb1_finetuned_5_freq_strength_E1_kmeans.csv")
 
-fig, ax = plt.subplots(figsize=(12, 6))
-x = range(len(media_order)); w = 0.35
-b1 = ax.bar([i - w/2 for i in x], yolo_vals, w, label="YOLO", color="#2ecc71")
-b2 = ax.bar([i + w/2 for i in x], kmeans_vals, w, label="K-means", color="#3498db")
-for b, v in zip(b1, yolo_vals): ax.text(b.get_x()+b.get_width()/2, v+0.01, f"{v:.3f}", ha="center", fontsize=9)
-for b, v in zip(b2, kmeans_vals): ax.text(b.get_x()+b.get_width()/2, v+0.01, f"{v:.3f}", ha="center", fontsize=9)
-ax.set_xticks(x); ax.set_xticklabels(media_order, rotation=30, ha="right")
-ax.set_ylabel("Accuracy"); ax.set_title("YOLO vs K-means: Retrieval Accuracy (ResNet50 Finetuned)")
-ax.legend(); ax.set_ylim(0, 1.0); ax.grid(axis="y", alpha=0.3)
-save("segmentation_comparison.png", fig)
+yolo_df = pd.read_csv(yolo_csv)
+kmeans_df = pd.read_csv(kmeans_csv)
+yolo_acc = float((yolo_df["predicted_species"] == yolo_df["ground_truth"]).mean())
+kmeans_acc = float((kmeans_df["predicted_species"] == kmeans_df["ground_truth"]).mean())
+
+fig, ax = plt.subplots(figsize=(8, 2.6))
+labels = ["YOLO", "KMeans"]
+values = [yolo_acc, kmeans_acc]
+colors = ["#2ecc71", "#3498db"]
+y_pos = [0.65, 0.15]
+bars = ax.barh(y_pos, values, height=0.18, color=colors)
+for bar, value in zip(bars, values):
+    ax.text(value + 0.01, bar.get_y() + bar.get_height() / 2, f"{value:.3f}", va="center", fontsize=10, fontweight="bold")
+ax.set_yticks(y_pos)
+ax.set_yticklabels(labels)
+ax.set_xlim(0, 1.0)
+ax.set_xlabel("Strain-level retrieval accuracy")
+ax.set_title("Segmentation comparison under matched retrieval settings")
+ax.grid(axis="x", alpha=0.3)
+save("retrieval_yolo_vs_kmeans.png", fig)
 print("1/5 segmentation comparison done")
 
 # ── 2. Training curves ─────────────────────────────────────────────────────
@@ -84,5 +91,5 @@ print("5/5 confusion matrix copied")
 # ── Summary ─────────────────────────────────────────────────────────────────
 print("\n=== RESULTS SUMMARY ===")
 print(f"CV: {top6.iloc[0]['media_strategy']} {top6.iloc[0]['agg_strategy']} k{top6.iloc[0]['k']} = {top6.iloc[0]['mean_accuracy']:.3f}")
-print(f"Segmentation: YOLO={max(yolo_vals):.3f}, K-means={max(kmeans_vals):.3f} (identical)")
-print(f"Best retrieval: E4_DG18 freq_strength = {max(yolo_vals):.3f} for both")
+print(f"Segmentation: YOLO={yolo_acc:.3f}, KMeans={kmeans_acc:.3f}")
+print("Best retrieval chart uses EfficientNetB1 fine-tuned, E1, freq_strength, K=5")

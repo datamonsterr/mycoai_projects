@@ -36,6 +36,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import cv2  # noqa: E402
 
 from src.config import (  # noqa: E402
+    COLLECTION_NAME,
     INCOMING_METADATA_PATH,
     CURATED_METADATA_PATH,
     QDRANT_API_KEY,
@@ -79,7 +80,7 @@ OUTPUT_CSV = OUTPUT_DIR / "diverse_retrieval_results.csv"
 VIS_OUTPUT_DIR = OUTPUT_DIR / "diverse_retrieval_visualizations"
 JSON_OUTPUT_DIR = OUTPUT_DIR / "diverse_retrieval_json"
 
-COLLECTION = "qdrant-research"
+COLLECTION = f"{COLLECTION_NAME}_retrieval"
 EXTRACTOR_KEY = "resnet50_finetuned"
 K = 11
 TOP_N_SCORES = 5

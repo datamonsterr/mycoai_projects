@@ -2,7 +2,7 @@
 Retrieve threshold experiment: query Qdrant for threshold_retrieval_list.json entries.
 
 Uses HIGHEST ACCURACY settings from program.md:
-- Collection: myco_fungi_features_full_finetuned
+- Collection: myco_fungi_features_full_retrieval
 - Extractor: EfficientNetB1_finetuned
 - K: 11
 - Environment strategy: E1 (same growth medium)
@@ -28,6 +28,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import cv2  # noqa: E402
 
 from src.config import (  # noqa: E402
+    COLLECTION_NAME,
     QDRANT_API_KEY,
     QDRANT_URL,
     RESULTS_DIR,
@@ -52,7 +53,7 @@ except ImportError:
     print("ERROR: qdrant_client not installed. Run: uv sync")
     sys.exit(1)
 
-COLLECTION = "myco_fungi_features_full_finetuned"
+COLLECTION = f"{COLLECTION_NAME}_retrieval"
 EXTRACTOR_KEY = "efficientnetb1_finetuned"
 K = 11
 TOP_N = 5

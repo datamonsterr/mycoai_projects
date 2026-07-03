@@ -126,31 +126,39 @@ def plot_species_comparison(curated: dict, incoming: dict) -> Path:
 
 
 def plot_strains_per_species_distribution(curated_sp_strains: dict, incoming_sp_strains: dict) -> Path:
-    """Histogram: how many species have 1, 2, 3, ... strains."""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    """Compare species-level strain counts directly for curated and incoming sets."""
+    curated_items = sorted(curated_sp_strains.items(), key=lambda item: (-item[1], item[0]))
+    incoming_items = sorted(incoming_sp_strains.items(), key=lambda item: (-item[1], item[0]))[:15]
 
-    for ax, sp_strains, title, color in [
-        (axes[0], incoming_sp_strains, "Incoming (new_data) — 46 species", "#d62728"),
-        (axes[1], curated_sp_strains, "Curated (original) — 8 species", "#2ca02c"),
-    ]:
-        dist = Counter(sp_strains.values())
-        max_n = max(dist.keys()) if dist else 1
-        values = [dist.get(i, 0) for i in range(1, max_n + 1)]
-        x_pos = np.arange(1, max_n + 1)
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7), gridspec_kw={"width_ratios": [1.05, 1.35]})
 
-        bars = ax.bar(x_pos, values, width=0.6, color=color, edgecolor="white", linewidth=0.5)
-        ax.set_xticks(x_pos)
-        ax.set_xlabel("Strains per Species", fontsize=FONT_LABEL)
-        ax.set_ylabel("Number of Species", fontsize=FONT_LABEL)
-        ax.set_title(title, fontsize=FONT_LABEL, fontweight="bold")
-        ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    curated_labels = [label.replace("Penicillium ", "P. ") for label, _ in curated_items]
+    curated_values = [value for _, value in curated_items]
+    curated_y = np.arange(len(curated_items))
+    curated_bars = axes[0].barh(curated_y, curated_values, color="#2ca02c", edgecolor="white")
+    axes[0].set_yticks(curated_y)
+    axes[0].set_yticklabels(curated_labels, fontsize=10)
+    axes[0].invert_yaxis()
+    axes[0].set_xlabel("Number of strains", fontsize=FONT_LABEL)
+    axes[0].set_title("Curated dataset (all 8 species)", fontsize=FONT_LABEL, fontweight="bold")
+    axes[0].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    for bar, value in zip(curated_bars, curated_values):
+        axes[0].text(value + 0.05, bar.get_y() + bar.get_height() / 2, str(value), va="center", fontsize=FONT_TICK, fontweight="bold")
 
-        for bar, val in zip(bars, values):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(values) * 0.02,
-                    str(val), ha="center", fontsize=FONT_TICK, fontweight="bold")
+    incoming_labels = [label.replace("Penicillium ", "P. ") for label, _ in incoming_items]
+    incoming_values = [value for _, value in incoming_items]
+    incoming_y = np.arange(len(incoming_items))
+    incoming_bars = axes[1].barh(incoming_y, incoming_values, color="#d62728", edgecolor="white")
+    axes[1].set_yticks(incoming_y)
+    axes[1].set_yticklabels(incoming_labels, fontsize=9)
+    axes[1].invert_yaxis()
+    axes[1].set_xlabel("Number of strains", fontsize=FONT_LABEL)
+    axes[1].set_title("Incoming dataset (top 15 species by strain count)", fontsize=FONT_LABEL, fontweight="bold")
+    axes[1].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    for bar, value in zip(incoming_bars, incoming_values):
+        axes[1].text(value + 0.05, bar.get_y() + bar.get_height() / 2, str(value), va="center", fontsize=FONT_TICK, fontweight="bold")
 
-    fig.suptitle("Strains-per-Species Distribution", fontsize=FONT_TITLE, fontweight="bold")
+    fig.suptitle("Species-level strain coverage in curated and incoming datasets", fontsize=FONT_TITLE, fontweight="bold")
     fig.tight_layout()
     return _save_fig(fig, "eda_new_strains_per_species.png")
 

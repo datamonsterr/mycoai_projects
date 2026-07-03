@@ -31,7 +31,7 @@ from typing import Any, Dict, List, Optional
 import matplotlib
 import matplotlib.pyplot as plt
 
-from src.config import RESULTS_DIR
+from src.config import COLLECTION_NAME, RESULTS_DIR
 
 matplotlib.use("Agg")
 
@@ -53,13 +53,15 @@ AUTORESULTS_DIR.mkdir(parents=True, exist_ok=True)
 #   "params": default CLI params passed to the experiment
 # }
 
+RETRIEVAL_COLLECTION = f"{COLLECTION_NAME}_retrieval"
+
 EXPERIMENT_REGISTRY: Dict[str, Dict[str, Any]] = {
     "segmentation": {
         "module": "src.experiments.kmeans_segmentation",
         "description": "Colony segmentation: KMeans vs Contour methods",
         "default_params": {
             "k": 11,
-            "collection": "myco_fungi_features_full_finetuned",
+            "collection": RETRIEVAL_COLLECTION,
             "extractor": "efficientnetb1_finetuned",
             "strategy": "weighted",
             "environment": None,  # E1: same environment
@@ -76,7 +78,7 @@ EXPERIMENT_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "Feature extractor comparison: EfficientNetB1_finetuned k-fold accuracy",
         "default_params": {
             "k": 11,
-            "collection": "myco_fungi_features_full_finetuned",
+            "collection": RETRIEVAL_COLLECTION,
             "extractor": "efficientnetb1_finetuned",
             "strategy": "weighted",
             "environment": None,
@@ -560,7 +562,7 @@ def _run_experiment_fn(
         # Merge defaults with override params
         p = {**cfg["default_params"], **params}
         results = run_cross_validation(
-            collection_name=p.get("collection", "myco_fungi_features_full_finetuned"),
+            collection_name=p.get("collection", RETRIEVAL_COLLECTION),
             extractor_key=p.get("extractor", "efficientnetb1_finetuned"),
             k=p.get("k", 11),
             environment=p.get("environment"),
