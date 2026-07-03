@@ -36,7 +36,15 @@ RESULTS_DIR = PROJECT / "results"
 LATEX_FIGURES.mkdir(parents=True, exist_ok=True)
 REPORT_FIGURES.mkdir(parents=True, exist_ok=True)
 
-STYLE = {"font.family": "serif", "font.size": 8, "axes.titlesize": 9, "axes.labelsize": 8}
+STYLE = {
+    "font.family": "serif",
+    "font.size": 10,
+    "axes.titlesize": 12,
+    "axes.labelsize": 11,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "legend.fontsize": 10,
+}
 plt.rcParams.update(STYLE)
 
 # ── naming maps ──────────────────────────────────────────────────────────
@@ -414,7 +422,7 @@ def chart_seg_comparison(df: pd.DataFrame):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def chart_hyperparam_heatmaps(df: pd.DataFrame):
-    """Heatmaps for K×Media, K×Agg, Agg×Media (best extractors only)."""
+    """Chapter 2 retrieval comparison charts for media, K, and aggregation."""
     if df.empty:
         print("  No data for heatmaps")
         return
@@ -429,13 +437,12 @@ def chart_hyperparam_heatmaps(df: pd.DataFrame):
         print("  No best extractor data for heatmaps")
         return
 
-    # ── K × Media heatmap (mean across best extractors, all aggs) ──
-    _heatmap(
-        best_df, index_col="k", columns_col="env",
-        index_label="K", columns_label="Media Strategy",
-        title="K × Media Strategy (mean across best FT extractors, all aggs)",
-        filename="retrieval_heatmap_k_vs_media.png",
-    )
+    # Figure 2.23: best result within each media strategy for EfficientNetB1 FT + YOLO
+    media_df = yolo_df[
+        (yolo_df["extractor"] == "efficientnetb1_finetuned")
+        & (yolo_df["seg"] == "yolo")
+    ]
+    _media_strategy_bar(media_df)
 
     # ── K × Agg heatmap (mean across best extractors, all envs) ──
     _heatmap(
@@ -455,6 +462,54 @@ def chart_hyperparam_heatmaps(df: pd.DataFrame):
 
     # ── Hyperparameter stats table ──
     _hyperparam_stats_table(yolo_df)
+
+
+def _media_strategy_bar(df: pd.DataFrame):
+    """Best result by media strategy for EfficientNetB1 fine-tuned YOLO retrieval."""
+    if df.empty:
+        print("  No data for media strategy bar chart")
+        return
+
+    ranked = (
+        df.sort_values(["accuracy", "k"], ascending=[False, True])
+        .groupby("env", as_index=False)
+        .first()
+    )
+
+    media_order = ["E1", "E2", "E3_CREA", "E3_DG18", "E3_MEA", "E3_YES", "E3_CYA", "E3_CYA30", "E3_CYAS", "E3_OA"]
+    ranked["env"] = pd.Categorical(ranked["env"], categories=media_order, ordered=True)
+    ranked = ranked.sort_values(["env", "accuracy"], ascending=[True, False]).dropna(subset=["env"])
+    if ranked.empty:
+        print("  No ranked media strategy data")
+        return
+
+    labels = [ENV_FULL.get(env, env) for env in ranked["env"]]
+    values = ranked["accuracy"] * 100
+    colors = [YOLO_COLOR if env in {"E1", "E2"} else KMEANS_COLOR for env in ranked["env"]]
+
+    fig, ax = plt.subplots(figsize=(12, 6.8))
+    y = np.arange(len(ranked))
+    bars = ax.barh(y, values, color=colors, edgecolor="white", linewidth=0.8, height=0.7)
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=11)
+    ax.invert_yaxis()
+    ax.set_xlabel("Best Accuracy (%)", fontsize=11)
+    ax.set_title("Best Retrieval Result by Media Strategy — EfficientNetB1 FT + YOLO", fontsize=13)
+    ax.set_xlim(0, max(100, values.max() * 1.18))
+
+    for bar, row in zip(bars, ranked.itertuples(index=False)):
+        ax.text(
+            bar.get_width() + 0.8,
+            bar.get_y() + bar.get_height() / 2,
+            f"{row.accuracy*100:.1f}% | {AGG_FULL.get(row.agg, row.agg)} | K={int(row.k)}",
+            va="center",
+            fontsize=10,
+        )
+
+    ax.grid(axis="x", alpha=0.3)
+    fig.tight_layout()
+    _save("retrieval_heatmap_k_vs_media.png", fig)
+
 
 
 def _heatmap(df, index_col, columns_col, index_label, columns_label, title, filename):
@@ -483,15 +538,15 @@ def _heatmap(df, index_col, columns_col, index_label, columns_label, title, file
         col_labels = col_vals
 
     h, w = len(index_vals) * 0.6 + 1, len(col_vals) * 0.8 + 1
-    fig, ax = plt.subplots(figsize=(max(w, 8), max(h, 4)))
+    fig, ax = plt.subplots(figsize=(max(w, 9), max(h, 5)))
     im = ax.imshow(mat, cmap="YlOrRd", aspect="auto")
     ax.set_xticks(range(len(col_vals)))
-    ax.set_xticklabels(col_labels, fontsize=6, rotation=30, ha="right")
+    ax.set_xticklabels(col_labels, fontsize=10, rotation=30, ha="right")
     ax.set_yticks(range(len(index_vals)))
-    ax.set_yticklabels(index_labels, fontsize=7)
-    ax.set_title(title, fontsize=9)
-    ax.set_xlabel(columns_label)
-    ax.set_ylabel(index_label)
+    ax.set_yticklabels(index_labels, fontsize=10)
+    ax.set_title(title, fontsize=12)
+    ax.set_xlabel(columns_label, fontsize=11)
+    ax.set_ylabel(index_label, fontsize=11)
 
     for i in range(len(index_vals)):
         for j in range(len(col_vals)):

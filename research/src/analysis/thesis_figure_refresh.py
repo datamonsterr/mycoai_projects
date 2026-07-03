@@ -244,44 +244,56 @@ def build_oneline_augmentation() -> Path:
         x_offset += tile.width
     canvas.save(out)
     return out
-
-
-def copy_prediction_visual() -> Path:
-    src = ROOT / 'results' / 'cross_validation' / 'fold1_E1_freq_strength_k3' / 'visualizations' / 'pred_DTO 148-D1_set3.jpg'
-    out = FIG_ROOT / '06_retrieval' / 'prediction_visual_example.jpg'
-    out.parent.mkdir(parents=True, exist_ok=True)
-    Image.open(src).save(out)
-    return out
-
-
-def build_knn_prediction_visual() -> Path:
-    output = FIG_ROOT / '06_retrieval' / 'prediction_visual_example.jpg'
-    output.parent.mkdir(parents=True, exist_ok=True)
-    raw_dir = ROOT / 'results' / 'cross_validation' / 'fold1_E1_freq_strength_k3' / 'raw_results'
-    json_candidates = sorted(raw_dir.glob('*.json'))
-    if not json_candidates:
-        return copy_prediction_visual()
-
+def build_knn_prediction_visuals() -> list[Path]:
     import json
 
-    payload = json.loads(json_candidates[0].read_text())
-    if isinstance(payload, list):
-        prediction_result = payload[0]
-    else:
-        prediction_result = payload
+    result_path = ROOT / 'results' / 'retrieval_batch1' / 'efficientnetb1_finetuned_5_freq_strength_E1_yolo' / 'evaluation_results.json'
+    payload = json.loads(result_path.read_text())
+    results = payload['results']
 
-    visualize_prediction_by_environment(
-        prediction_result=prediction_result,
-        segmented_image_dir=str(ROOT / 'Dataset' / 'original_prepared'),
-        output_path=str(output),
-        k=5,
-        show_header=False,
-        show_legend=False,
-        query_label='Query',
-        neighbor_label_mode='species',
-        show_neighbor_strain=False,
-    )
-    return output
+    targets = [
+        ('DTO 148-D1', True, 'Penicillium polonicum', 'prediction_visual_example.jpg'),
+        ('DTO 469-I4', True, 'Penicillium freii', 'prediction_visual_correct_2.jpg'),
+        ('DTO 158-D1', False, 'Penicillium freii', 'prediction_visual_incorrect_1.jpg'),
+    ]
+
+    saved: list[Path] = []
+    for strain, correct, predicted_specy, filename in targets:
+        match = next(
+            (
+                result
+                for result in results
+                if result['strain'] == strain
+                and result['correct'] == correct
+                and result['predicted_specy'] == predicted_specy
+            ),
+            None,
+        )
+        if match is None:
+            raise ValueError(f'Missing prediction case for {strain} {predicted_specy} correct={correct}')
+
+        output = FIG_ROOT / '06_retrieval' / filename
+        output.parent.mkdir(parents=True, exist_ok=True)
+        visualize_prediction_by_environment(
+            prediction_result={
+                **match,
+                'feature_extractor': 'EfficientNetB1 finetuned',
+                'strategy': 'freq_strength',
+            },
+            segmented_image_dir=str(ROOT / 'Dataset' / 'original_prepared'),
+            output_path=str(output),
+            k=5,
+            thumbnail_size=(78, 78),
+            show_header=True,
+            show_legend=True,
+            query_label='Growth medium',
+            neighbor_label_mode='rank_species',
+            show_neighbor_strain=False,
+        )
+        saved.append(output)
+
+    return saved
+
 
 
 def main() -> None:
@@ -292,7 +304,7 @@ def main() -> None:
     build_kmeans_vs_yolo()
     build_compact_heatmap()
     build_oneline_augmentation()
-    build_knn_prediction_visual()
+    build_knn_prediction_visuals()
 
 
 if __name__ == '__main__':

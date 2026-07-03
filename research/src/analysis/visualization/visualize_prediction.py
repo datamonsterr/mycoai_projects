@@ -325,277 +325,242 @@ def visualize_prediction_by_environment(
     neighbor_label_mode: str = "rank_species",
     show_neighbor_strain: bool = True,
 ) -> None:
-    """
-    Create a visualization showing query images and their K nearest neighbors per environment.
-    """
-    # Extract metadata
+    """Create compact thesis-ready prediction visualization."""
     ground_truth = prediction_result["ground_truth"]
     predicted_specy = prediction_result["predicted_specy"]
     is_correct = prediction_result["correct"]
     confidence = prediction_result["predicted_confidence"]
     feature_extractor = prediction_result["feature_extractor"]
-    aggregation_strategy = prediction_result["strategy"].upper()
-    raw_results = prediction_result["raw_results"]
+    aggregation_strategy = prediction_result["strategy"]
+    raw_results_sorted = sorted(
+        prediction_result["raw_results"], key=lambda x: x.get("query_environment", "")
+    )
     aggregated_results = prediction_result.get("aggregated_results", [])
 
-    # Sort raw_results by environment
-    raw_results_sorted = sorted(
-        raw_results, key=lambda x: x.get("query_environment", "")
-    )
-
-    num_environments = len(raw_results_sorted)
-    if num_environments == 0:
+    if not raw_results_sorted:
         print("No raw results to visualize.")
         return
 
-    resolved_thumbnail_size = thumbnail_size or _get_thumbnail_size(k)
+    resolved_thumbnail_size = thumbnail_size or (78, 78)
     img_width, img_height = resolved_thumbnail_size
-    padding = 24
-    card_gap = 12
-    row_spacing = 22
-    env_label_gap = 34
-    text_block_width = 62
-    card_width = img_width + text_block_width
-    columns = max(2, min(4, k + 1))
-    canvas_width = padding * 2 + columns * card_width + (columns - 1) * card_gap
+    padding = 18
+    panel_gap_x = 18
+    panel_gap_y = 20
+    card_gap_x = 10
+    card_gap_y = 10
+    text_gap = 3
+    panel_cols = 2
+    card_cols = 3
+    line_spacing = 2
 
     try:
-        title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 18)
-        text_font = ImageFont.truetype("DejaVuSans.ttf", 14)
-        small_font = ImageFont.truetype("DejaVuSans.ttf", 11)
+        title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 15)
+        body_font = ImageFont.truetype("DejaVuSans.ttf", 15)
+        label_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 14)
+        small_font = ImageFont.truetype("DejaVuSans.ttf", 12)
+        rank_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 16)
+        rank_small_font = ImageFont.truetype("DejaVuSans.ttf", 13)
     except IOError:
         title_font = ImageFont.load_default()
-        text_font = ImageFont.load_default()
+        body_font = ImageFont.load_default()
+        label_font = ImageFont.load_default()
         small_font = ImageFont.load_default()
+        rank_font = ImageFont.load_default()
+        rank_small_font = ImageFont.load_default()
 
-    title_text = f"Strain: {prediction_result['strain']} | Ground Truth: {ground_truth}"
-    pred_text = (
-        f"Predicted: {predicted_specy} ({confidence:.2f}) | Correct: {is_correct}"
-    )
-    info_text = f"Extractor: {feature_extractor} | Strategy: {aggregation_strategy}"
+    def wrap_lines(draw_ctx: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> List[str]:
+        words = text.split()
+        if not words:
+            return [""]
+        lines: List[str] = []
+        current = words[0]
+        for word in words[1:]:
+            candidate = f"{current} {word}"
+            if _text_size(draw_ctx, candidate, font)[0] <= max_width:
+                current = candidate
+            else:
+                lines.append(current)
+                current = word
+        lines.append(current)
+        return lines
 
-    measure_canvas = Image.new("RGB", (canvas_width, 200), bg_color)
+    def draw_centered_lines(
+        draw_ctx: ImageDraw.ImageDraw,
+        lines: List[Tuple[str, ImageFont.ImageFont, Tuple[int, int, int]]],
+        x_pos: int,
+        y_pos: int,
+        width: int,
+    ) -> int:
+        cursor_y = y_pos
+        for text, font, color in lines:
+            wrapped = wrap_lines(draw_ctx, text, font, width)
+            line_height = _text_size(draw_ctx, "Ag", font)[1]
+            for line in wrapped:
+                line_width, _ = _text_size(draw_ctx, line, font)
+                draw_ctx.text((x_pos + (width - line_width) / 2, cursor_y), line, fill=color, font=font)
+                cursor_y += line_height + line_spacing
+            cursor_y += 1
+        return cursor_y
+
+    def measure_centered_lines(
+        draw_ctx: ImageDraw.ImageDraw,
+        lines: List[Tuple[str, ImageFont.ImageFont, Tuple[int, int, int]]],
+        width: int,
+    ) -> int:
+        total = 0
+        for text, font, _ in lines:
+            wrapped = wrap_lines(draw_ctx, text, font, width)
+            line_height = _text_size(draw_ctx, "Ag", font)[1]
+            total += len(wrapped) * (line_height + line_spacing) + 1
+        return total
+
+    measure_canvas = Image.new("RGB", (100, 100), bg_color)
     measure_draw = ImageDraw.Draw(measure_canvas)
 
-    header_bottom = 12
-    if show_header:
-        header_y = 20
-        header_y = _draw_wrapped_text(
-            measure_draw,
-            title_text,
-            (padding, header_y),
-            canvas_width - 2 * padding,
-            title_font,
-            text_color,
-        )
-        header_y = _draw_wrapped_text(
-            measure_draw,
-            pred_text,
-            (padding, header_y + 4),
-            canvas_width - 2 * padding,
-            title_font,
-            (0, 128, 0) if is_correct else (255, 0, 0),
-        )
-        header_y = _draw_wrapped_text(
-            measure_draw,
-            info_text,
-            (padding, header_y + 4),
-            canvas_width - 2 * padding,
-            text_font,
-            text_color,
-        )
-        header_bottom = header_y + 8
-    if show_legend:
-        header_bottom = _draw_legend(
-            measure_draw,
-            aggregated_results,
-            ground_truth,
-            padding,
-            header_bottom,
-            canvas_width,
-            text_font,
-            small_font,
-            text_color,
-            padding,
-        )
+    card_width = img_width + 6
+    text_width = card_width
+    card_inner_height = img_height + text_gap + measure_centered_lines(
+        measure_draw,
+        [("Sample", label_font, text_color), ("0.9999", small_font, text_color), ("DTO 123", small_font, text_color)],
+        text_width,
+    )
 
-    env_block_heights: List[int] = []
-    for result in raw_results_sorted:
-        cards: List[Dict[str, Any]] = [
-            {
-                "lines": [(query_label, text_font)],
-            }
+    panel_width = card_cols * card_width + (card_cols - 1) * card_gap_x + 14
+
+    def build_card_lines(result: Dict[str, Any], index: int, is_query: bool = False) -> List[Tuple[str, ImageFont.ImageFont, Tuple[int, int, int]]]:
+        if is_query:
+            medium_label = result.get("query_environment", query_label)
+            return [(medium_label, label_font, text_color)]
+
+        species = result.get("specy", "unknown")
+        score = result.get("score", 0.0)
+        strain = result.get("strain", "unknown")
+        title = {
+            "rank_species": f"#{index} {species}",
+            "species": species,
+            "score_species": species,
+        }.get(neighbor_label_mode, f"#{index} {species}")
+        lines: List[Tuple[str, ImageFont.ImageFont, Tuple[int, int, int]]] = [
+            (title, label_font, text_color),
+            (f"Score {score:.4f}", small_font, text_color),
         ]
-        for i, neighbor in enumerate(result["neighbors"][:k], start=1):
-            n_specy = neighbor.get("specy", "unknown")
-            n_score = neighbor.get("score", 0.0)
-            n_strain = neighbor.get("strain", "unknown")
-            neighbor_title = {
-                "rank_species": f"#{i} {n_specy}",
-                "species": n_specy,
-                "score_species": f"{n_specy}",
-            }.get(neighbor_label_mode, f"#{i} {n_specy}")
-            neighbor_lines: List[Tuple[str, ImageFont.ImageFont]] = [(neighbor_title, text_font)]
-            neighbor_lines.append((f"Score: {n_score:.4f}", small_font))
-            if show_neighbor_strain:
-                neighbor_lines.append((f"Strain: {n_strain}", small_font))
-            cards.append(
-                {
-                    "lines": neighbor_lines,
-                }
-            )
+        if show_neighbor_strain:
+            lines.append((strain, small_font, text_color))
+        return lines
 
-        card_heights = [
-            _measure_card_height(measure_draw, card_width, resolved_thumbnail_size, card["lines"])
-            for card in cards
-        ]
-        rows = (len(cards) + columns - 1) // columns
-        row_heights = []
-        for row_index in range(rows):
-            start = row_index * columns
-            row_heights.append(max(card_heights[start : start + columns]))
-        env_block_heights.append(env_label_gap + sum(row_heights) + row_spacing * max(rows - 1, 0) + row_spacing)
+    def measure_panel_height(result: Dict[str, Any]) -> int:
+        cards = [result] + result["neighbors"][:k]
+        rows = (len(cards) + card_cols - 1) // card_cols
+        return rows * card_inner_height + max(rows - 1, 0) * card_gap_y + 14
 
-    canvas_height = header_bottom + 16 + sum(env_block_heights)
+    panel_heights = [measure_panel_height(result) for result in raw_results_sorted]
+    row_heights: List[int] = []
+    for start in range(0, len(panel_heights), panel_cols):
+        row_heights.append(max(panel_heights[start : start + panel_cols]))
 
+    canvas_width = padding * 2 + panel_cols * panel_width + (panel_cols - 1) * panel_gap_x
+    header_estimate = 140 if show_header or show_legend else 20
+    canvas_height = padding * 2 + header_estimate + sum(row_heights) + max(len(row_heights) - 1, 0) * panel_gap_y
     canvas = Image.new("RGB", (canvas_width, canvas_height), bg_color)
     draw = ImageDraw.Draw(canvas)
 
-    current_y = 12
+    current_y = padding
+    status_color = (0, 128, 0) if is_correct else (200, 0, 0)
     if show_header:
-        header_y = 20
-        header_y = _draw_wrapped_text(
-            draw,
-            title_text,
-            (padding, header_y),
-            canvas_width - 2 * padding,
-            title_font,
-            text_color,
-        )
-        header_y = _draw_wrapped_text(
-            draw,
-            pred_text,
-            (padding, header_y + 4),
-            canvas_width - 2 * padding,
-            title_font,
-            (0, 128, 0) if is_correct else (255, 0, 0),
-        )
-        header_y = _draw_wrapped_text(
-            draw,
-            info_text,
-            (padding, header_y + 4),
-            canvas_width - 2 * padding,
-            text_font,
-            text_color,
-        )
-        current_y = header_y + 8
-    if show_legend:
-        current_y = (
-            _draw_legend(
-                draw,
-                aggregated_results,
-                ground_truth,
-                padding,
-                current_y,
-                canvas_width,
-                text_font,
-                small_font,
-                text_color,
-                padding,
-            )
-            + 16
-        )
-
-    for block_index, result in enumerate(raw_results_sorted):
-        environment = result.get("query_environment", "unknown")
-        neighbors = result["neighbors"]
-
-        env_text = f"Environment: {environment}"
-        env_width, _ = _text_size(draw, env_text, title_font)
-        draw.text(
-            ((canvas_width - env_width) // 2, current_y),
-            env_text,
-            fill=text_color,
-            font=title_font,
-        )
-
-        cards: List[Dict[str, Any]] = [
-            {
-                "image_path": _resolve_image_path(
-                    result,
-                    segmented_image_dir,
-                    "query_image_id",
-                ),
-                "border_color": (0, 0, 0),
-                "lines": [(query_label, text_font)],
-            }
+        header_lines = [
+            (f"Strain: {prediction_result['strain']}", title_font, text_color),
+            (f"Ground truth: {ground_truth}", body_font, text_color),
+            (f"Predicted: {predicted_specy} ({confidence:.2f})", body_font, status_color),
+            (f"Extractor: {feature_extractor} | Aggregation: {aggregation_strategy} | K={k}", small_font, text_color),
         ]
+        current_y = draw_centered_lines(draw, header_lines, padding, current_y, canvas_width - 2 * padding) + 6
 
-        for i, neighbor in enumerate(neighbors[:k], start=1):
-            n_specy = neighbor.get("specy", "unknown")
-            n_score = neighbor.get("score", 0.0)
-            n_strain = neighbor.get("strain", "unknown")
-            neighbor_title = {
-                "rank_species": f"#{i} {n_specy}",
-                "species": n_specy,
-                "score_species": f"{n_specy}",
-            }.get(neighbor_label_mode, f"#{i} {n_specy}")
-            neighbor_lines: List[Tuple[str, ImageFont.ImageFont]] = [(neighbor_title, text_font)]
-            neighbor_lines.append((f"Score: {n_score:.4f}", small_font))
-            if show_neighbor_strain:
-                neighbor_lines.append((f"Strain: {n_strain}", small_font))
-            cards.append(
+    if show_legend and aggregated_results:
+        ranking_title = "Species ranking"
+        title_width, title_height = _text_size(draw, ranking_title, rank_font)
+        draw.text(((canvas_width - title_width) / 2, current_y), ranking_title, fill=text_color, font=rank_font)
+        current_y += title_height + 8
+        for idx, res in enumerate(aggregated_results[:5], start=1):
+            specy = res["specy"]
+            score = res["score"]
+            color = generate_distinct_color(specy, ground_truth)
+            line = f"{idx}. {specy}  ({score:.3f})"
+            line_width, line_height = _text_size(draw, line, rank_small_font)
+            box_width = line_width + 42
+            box_height = line_height + 10
+            box_x = int((canvas_width - box_width) / 2)
+            draw.rounded_rectangle(
+                [box_x, current_y, box_x + box_width, current_y + box_height],
+                radius=8,
+                fill=(248, 248, 248),
+                outline=(190, 190, 190),
+                width=1,
+            )
+            draw.rectangle([box_x + 10, current_y + 8, box_x + 22, current_y + 20], fill=color)
+            draw.text((box_x + 28, current_y + 5), line, fill=text_color, font=rank_small_font)
+            current_y += box_height + 6
+        current_y += 6
+
+    panel_top = current_y
+    row_index = 0
+    for start in range(0, len(raw_results_sorted), panel_cols):
+        row_results = raw_results_sorted[start : start + panel_cols]
+        row_height = row_heights[row_index]
+        total_width = len(row_results) * panel_width + max(len(row_results) - 1, 0) * panel_gap_x
+        row_x = int((canvas_width - total_width) / 2)
+
+        for panel_offset, result in enumerate(row_results):
+            panel_x = row_x + panel_offset * (panel_width + panel_gap_x)
+            panel_y = panel_top
+            cards = [
                 {
-                    "image_path": _resolve_image_path(
-                        neighbor,
-                        segmented_image_dir,
-                        "image_id",
-                    ),
-                    "border_color": generate_distinct_color(n_specy, ground_truth),
-                    "lines": neighbor_lines,
+                    "image_path": _resolve_image_path(result, segmented_image_dir, "query_image_id"),
+                    "border_color": (60, 60, 60),
+                    "lines": build_card_lines(result, 0, is_query=True),
+                    "border": 3,
                 }
-            )
-
-        card_heights = [
-            _measure_card_height(draw, card_width, resolved_thumbnail_size, card["lines"])
-            for card in cards
-        ]
-        row_heights = []
-        total_rows = (len(cards) + columns - 1) // columns
-        for row_index in range(total_rows):
-            start = row_index * columns
-            row_heights.append(max(card_heights[start : start + columns]))
-
-        y_cursor = current_y + env_label_gap
-        for row_index in range(total_rows):
-            row_height = row_heights[row_index]
-            start = row_index * columns
-            end = min(start + columns, len(cards))
-            cards_in_row = end - start
-            row_width = cards_in_row * card_width + max(cards_in_row - 1, 0) * card_gap
-            row_start_x = max(padding, (canvas_width - row_width) // 2)
-            for offset, card_index in enumerate(range(start, end)):
-                x_pos = row_start_x + offset * (card_width + card_gap)
-                card = cards[card_index]
-                _draw_image_card(
-                    canvas,
-                    draw,
-                    card["image_path"],
-                    (x_pos, y_cursor),
-                    card_width,
-                    resolved_thumbnail_size,
-                    card["border_color"],
-                    border_width if card_index > 0 else 4,
-                    card["lines"],
-                    text_color,
+            ]
+            for idx, neighbor in enumerate(result["neighbors"][:k], start=1):
+                cards.append(
+                    {
+                        "image_path": _resolve_image_path(neighbor, segmented_image_dir, "image_id"),
+                        "border_color": generate_distinct_color(neighbor.get("specy", "unknown"), ground_truth),
+                        "lines": build_card_lines(neighbor, idx),
+                        "border": border_width,
+                    }
                 )
-            y_cursor += row_height + row_spacing
 
-        current_y += env_block_heights[block_index]
+            for card_index, card in enumerate(cards):
+                card_row = card_index // card_cols
+                card_col = card_index % card_cols
+                x_pos = panel_x + 7 + card_col * (card_width + card_gap_x)
+                y_pos = panel_y + 7 + card_row * (card_inner_height + card_gap_y)
 
-    # Save
+                image_path = card["image_path"]
+                if os.path.exists(image_path):
+                    try:
+                        image = Image.open(image_path).convert("RGB").resize(resolved_thumbnail_size)
+                        canvas.paste(image, (x_pos, y_pos))
+                    except Exception as exc:
+                        print(f"  [viz] ERROR {image_path}: {exc}")
+                        draw.rectangle([x_pos, y_pos, x_pos + img_width, y_pos + img_height], outline=(160, 160, 160), width=2)
+                else:
+                    print(f"  [viz] MISSING {image_path}")
+                    draw.rectangle([x_pos, y_pos, x_pos + img_width, y_pos + img_height], outline=(160, 160, 160), width=2)
+
+                draw.rectangle(
+                    [x_pos, y_pos, x_pos + img_width, y_pos + img_height],
+                    outline=card["border_color"],
+                    width=card["border"],
+                )
+                draw_centered_lines(draw, card["lines"], x_pos - 3, y_pos + img_height + text_gap, text_width)
+
+        panel_top += row_height + panel_gap_y
+        row_index += 1
+
+    cropped = canvas.crop((0, 0, canvas_width, panel_top - panel_gap_y + padding))
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    canvas.save(output_path)
+    cropped.save(output_path)
     print(f"Saved visualization to {output_path}")
 
 
