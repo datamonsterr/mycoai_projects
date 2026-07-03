@@ -38,12 +38,12 @@ REPORT_FIGURES.mkdir(parents=True, exist_ok=True)
 
 STYLE = {
     "font.family": "serif",
-    "font.size": 12,
-    "axes.titlesize": 14,
-    "axes.labelsize": 13,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
-    "legend.fontsize": 12,
+    "font.size": 13,
+    "axes.titlesize": 16,
+    "axes.labelsize": 15,
+    "xtick.labelsize": 14,
+    "ytick.labelsize": 14,
+    "legend.fontsize": 14,
 }
 plt.rcParams.update(STYLE)
 
@@ -487,23 +487,23 @@ def _media_strategy_bar(df: pd.DataFrame):
     values = ranked["accuracy"] * 100
     colors = [YOLO_COLOR if env in {"E1", "E2"} else KMEANS_COLOR for env in ranked["env"]]
 
-    fig, ax = plt.subplots(figsize=(13.5, 7.2))
+    fig, ax = plt.subplots(figsize=(14.5, 7.8))
     y = np.arange(len(ranked))
-    bars = ax.barh(y, values, color=colors, edgecolor="white", linewidth=0.8, height=0.45)
+    bars = ax.barh(y, values, color=colors, edgecolor="white", linewidth=0.8, height=0.40)
     ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=13)
+    ax.set_yticklabels(labels, fontsize=15)
     ax.invert_yaxis()
-    ax.set_xlabel("Best Accuracy (%)", fontsize=13)
-    ax.set_title("Best Retrieval Result by Media Strategy — EfficientNetB1 FT + YOLO", fontsize=15)
-    ax.set_xlim(0, max(100, values.max() * 1.22))
+    ax.set_xlabel("Best Accuracy (%)", fontsize=15)
+    ax.set_title("Best Retrieval Result by Media Strategy — EfficientNetB1 FT + YOLO", fontsize=17)
+    ax.set_xlim(0, max(100, values.max() * 1.26))
 
     for bar, row in zip(bars, ranked.itertuples(index=False)):
         ax.text(
-            bar.get_width() + 0.8,
+            bar.get_width() + 1.0,
             bar.get_y() + bar.get_height() / 2,
             f"{row.accuracy*100:.1f}% | {AGG_FULL.get(row.agg, row.agg)} | K={int(row.k)}",
             va="center",
-            fontsize=12,
+            fontsize=13,
         )
 
     ax.grid(axis="x", alpha=0.3)

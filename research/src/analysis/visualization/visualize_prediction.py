@@ -442,8 +442,8 @@ def visualize_prediction_by_environment(
         top_block_height = max(top_block_height, measure_text_lines(measure_draw, header_items, header_width))
 
     if show_legend and aggregated_results:
-        ranking_items = [(f"{idx}. {res['specy']}  {res['score']:.3f}", score_font, text_color) for idx, res in enumerate(aggregated_results[:5], start=1)]
-        top_block_height = max(top_block_height, measure_text_lines(measure_draw, ranking_items, ranking_width - 28) + 10)
+        ranking_items = [(f"{res['score']:.3f} - {res['specy']}", score_font, text_color) for res in aggregated_results[:5]]
+        top_block_height = max(top_block_height, measure_text_lines(measure_draw, ranking_items, ranking_width))
 
     rows_height = len(raw_results_sorted) * sample_card_height + max(len(raw_results_sorted) - 1, 0) * row_gap
     canvas_height = padding * 2 + (top_block_height + top_block_gap if top_block_height else 0) + rows_height
@@ -464,24 +464,18 @@ def visualize_prediction_by_environment(
 
     if show_legend and aggregated_results:
         ranking_x = padding + header_width + middle_gap
-        draw.rounded_rectangle(
-            [ranking_x, current_y, ranking_x + ranking_width, current_y + top_block_height],
-            radius=10,
-            outline=(190, 190, 190),
-            width=1,
-            fill=(248, 248, 248),
-        )
-        ranking_y = current_y + 10
-        for idx, res in enumerate(aggregated_results[:5], start=1):
-            color = generate_distinct_color(res["specy"], ground_truth)
-            draw.rectangle([ranking_x + 10, ranking_y + 5, ranking_x + 22, ranking_y + 17], fill=color)
+        ranking_y = current_y
+        line_height = _text_size(draw, "Ag", score_font)[1]
+        for res in aggregated_results[:5]:
+            line = f"{res['score']:.3f} - {res['specy']}"
+            line_width, _ = _text_size(draw, line, score_font)
             draw.text(
-                (ranking_x + 30, ranking_y),
-                f"{idx}. {res['specy']}  {res['score']:.3f}",
+                (ranking_x + ranking_width - line_width, ranking_y),
+                line,
                 fill=text_color,
                 font=score_font,
             )
-            ranking_y += _text_size(draw, "Ag", score_font)[1] + 10
+            ranking_y += line_height + 10
 
     current_y += top_block_height + (top_block_gap if top_block_height else 0)
 
