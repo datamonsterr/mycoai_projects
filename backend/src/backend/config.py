@@ -43,7 +43,7 @@ class QdrantSettings(BaseSettings):
     port: int = 6333
     grpc_port: int = 6334
     collection_name: str = "myco_fungi_features_full_finetuned"
-    default_vector_name: str = "EfficientNetB1_finetuned"
+    default_vector_name: str = "efficientnetb1_finetuned"
     prefer_grpc: bool = False
     timeout_seconds: int = 30
     batch_timeout_seconds: int = 300
