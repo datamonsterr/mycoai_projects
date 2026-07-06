@@ -117,6 +117,10 @@ run = "bash -lc 'MYCOAI_GDRIVE_REMOTE=${MYCOAI_GDRIVE_REMOTE:-mydrive:mycoai-dat
 description = "Sync target to Google Drive"
 run = "bash -lc 'MYCOAI_GDRIVE_REMOTE=${MYCOAI_GDRIVE_REMOTE:-mydrive:mycoai-data}; SCOPE=${MISE_TASK_SCOPE:?usage: MISE_TASK_SCOPE=<folder> mise run data-sync-up}; mise x -- rclone sync \"$SCOPE\" \"$MYCOAI_GDRIVE_REMOTE/$SCOPE\" --progress --skip-links'"
 
+[tasks.weights-sync-essential]
+description = "Sync fold0 EfficientNetB1_finetuned + YOLO best weights from Google Drive (non-destructive rclone copy)"
+run = "bash -lc 'RCLONE=$(command -v rclone || echo $HOME/.local/share/mise/installs/rclone/1.74.3/rclone-v1.74.3-linux-amd64/rclone); REMOTE=${MYCOAI_GDRIVE_REMOTE:-mydrive:mycoai-data}; DEST=research/weights; mkdir -p \"$DEST/folds\" \"$DEST/segmentation\"; \"$RCLONE\" copy --progress --skip-links \"$REMOTE/weights/folds/fold0_EfficientNetB1_finetuned.pth\" \"$DEST/folds/\" && \"$RCLONE\" copy --progress --skip-links \"$REMOTE/weights/segmentation/yolo26_seg_best.pt\" \"$DEST/segmentation/\" && ls -lh \"$DEST/folds/fold0_EfficientNetB1_finetuned.pth\" \"$DEST/segmentation/yolo26_seg_best.pt\"'"
+
 [tasks.install-spec-kit]
 description = "Install the Specify CLI"
 run = "uv tool install --force specify-cli --from git+https://github.com/github/spec-kit.git@v0.6.1"

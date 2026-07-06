@@ -14,6 +14,7 @@ Vector dimensions produced:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -40,7 +41,12 @@ VECTOR_DIMS: dict[str, int] = {
 
 # ---- Deep Learning feature extraction (lazy-loaded) ----
 
-_WEIGHTS_DIR = Path("/app/weights") if Path("/app/weights").exists() else Path(__file__).resolve().parent.parent.parent.parent.parent / "research" / "weights"
+_MONOREPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+_WEIGHTS_DIR = (
+    Path("/app/weights")
+    if Path("/app/weights").exists()
+    else _MONOREPO_ROOT / "research" / "weights"
+)
 _IMAGENET_MEAN = (0.485, 0.456, 0.406)
 _IMAGENET_STD = (0.229, 0.224, 0.225)
 _DL_INPUT_SIZE = 224
@@ -81,6 +87,20 @@ def _preprocess_dl(img_rgb: np.ndarray):
     return t.unsqueeze(0)
 
 
+def _resolve_finetuned_weights(name: str) -> Path | None:
+    """Search for finetuned weights across known locations (yolo/kmeans/folds)."""
+    candidates = [
+        _WEIGHTS_DIR / "yolo_finetuned" / f"{name}_finetuned.pth",
+        _WEIGHTS_DIR / "kmeans_finetuned" / f"{name}_finetuned.pth",
+        _WEIGHTS_DIR / f"{name}_finetuned.pth",
+        _WEIGHTS_DIR / "folds" / f"fold0_{name}_finetuned.pth",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+
 def _load_efficientnetb1_finetuned():
     global _effnet_model
     if _effnet_model is not None:
@@ -92,8 +112,8 @@ def _load_efficientnetb1_finetuned():
     from torchvision.models import efficientnet_b1
 
     model = efficientnet_b1(weights=None)
-    weights_path = _WEIGHTS_DIR / "EfficientNetB1_finetuned.pth"
-    if weights_path.exists():
+    weights_path = _resolve_finetuned_weights("EfficientNetB1")
+    if weights_path is not None:
         try:
             checkpoint = torch.load(weights_path, map_location="cpu")
             if isinstance(checkpoint, dict):
@@ -105,10 +125,13 @@ def _load_efficientnetb1_finetuned():
                 k: v for k, v in state_dict.items() if not k.startswith("classifier.")
             }
             model.load_state_dict(filtered, strict=False)
-            logger.info("Loaded EfficientNetB1_finetuned weights")
+            logger.info("Loaded EfficientNetB1_finetuned weights from %s", weights_path)
         except Exception as exc:
             logger.warning("Failed to load EfficientNetB1_finetuned weights: %s", exc)
             return None
+    else:
+        logger.warning("No EfficientNetB1_finetuned weights found in %s", _WEIGHTS_DIR)
+        return None
     model.classifier = nn.Identity()
     model.eval()
     _effnet_model = model
@@ -126,8 +149,8 @@ def _load_resnet50_finetuned():
     from torchvision.models import resnet50
 
     model = resnet50(weights=None)
-    weights_path = _WEIGHTS_DIR / "ResNet50_finetuned.pth"
-    if weights_path.exists():
+    weights_path = _resolve_finetuned_weights("ResNet50")
+    if weights_path is not None:
         try:
             checkpoint = torch.load(weights_path, map_location="cpu")
             if isinstance(checkpoint, dict):
@@ -137,10 +160,13 @@ def _load_resnet50_finetuned():
             state_dict = {k.removeprefix("module."): v for k, v in state_dict.items()}
             filtered = {k: v for k, v in state_dict.items() if not k.startswith("fc.")}
             model.load_state_dict(filtered, strict=False)
-            logger.info("Loaded ResNet50_finetuned weights")
+            logger.info("Loaded ResNet50_finetuned weights from %s", weights_path)
         except Exception as exc:
             logger.warning("Failed to load ResNet50_finetuned weights: %s", exc)
             return None
+    else:
+        logger.warning("No ResNet50_finetuned weights found in %s", _WEIGHTS_DIR)
+        return None
     model.fc = nn.Identity()
     model.eval()
     _resnet_model = model
@@ -158,8 +184,8 @@ def _load_mobilenetv2_finetuned():
     from torchvision.models import mobilenet_v2
 
     model = mobilenet_v2(weights=None)
-    weights_path = _WEIGHTS_DIR / "MobileNetV2_finetuned.pth"
-    if weights_path.exists():
+    weights_path = _resolve_finetuned_weights("MobileNetV2")
+    if weights_path is not None:
         try:
             checkpoint = torch.load(weights_path, map_location="cpu")
             if isinstance(checkpoint, dict):
@@ -171,10 +197,13 @@ def _load_mobilenetv2_finetuned():
                 k: v for k, v in state_dict.items() if not k.startswith("classifier.")
             }
             model.load_state_dict(filtered, strict=False)
-            logger.info("Loaded MobileNetV2_finetuned weights")
+            logger.info("Loaded MobileNetV2_finetuned weights from %s", weights_path)
         except Exception as exc:
             logger.warning("Failed to load MobileNetV2_finetuned weights: %s", exc)
             return None
+    else:
+        logger.warning("No MobileNetV2_finetuned weights found in %s", _WEIGHTS_DIR)
+        return None
     model.classifier = nn.Identity()
     model.eval()
     _mobilenet_model = model
@@ -301,11 +330,32 @@ async def index_segment_to_qdrant(
     if crop_bytes is None:
         return {"error": f"Crop image not found for segment {segment.id}"}
 
-    vectors = extract_features_from_bytes(crop_bytes)
+    vectors = await asyncio.to_thread(extract_features_from_bytes, crop_bytes)
     if not vectors:
         return {"error": "Feature extraction returned empty vectors"}
 
     qdrant_svc = QdrantClientService()
+    # Filter to vectors supported by the collection schema
+    try:
+        collection_info = await asyncio.to_thread(
+            qdrant_svc._client.get_collection, collection_name=collection_name
+        )
+        supported = set(collection_info.config.params.vectors.keys())
+        vectors = {k: v for k, v in vectors.items() if k in supported}
+        if not vectors:
+            return {
+                "error": (
+                    f"None of the extracted vectors are supported by collection "
+                    f"'{collection_name}'. Supported: {sorted(supported)}"
+                )
+            }
+    except Exception as exc:
+        logger.warning(
+            "Could not resolve supported vectors for %s: %s; using all extracted",
+            collection_name,
+            exc,
+        )
+
     point_id = uuid4().int & ((1 << 63) - 1)
 
     payload: dict = {

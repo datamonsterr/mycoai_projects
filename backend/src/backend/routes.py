@@ -11,6 +11,7 @@ POST /api/v1/images/batch-zip    − upload ZIP batch (extract + segment + db)
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import shutil
@@ -184,7 +185,8 @@ def create_image_router(
             while chunk := await image.read(1024 * 1024):
                 handle.write(chunk)
         try:
-            record = pipeline.segment_upload(
+            record = await asyncio.to_thread(
+                pipeline.segment_upload,
                 temp_path,
                 strain=strain,
                 media=media,
@@ -200,6 +202,14 @@ def create_image_router(
         strain_obj = await _ensure_strain(db, strain, species_obj.id)
         image_obj = await _create_image(db, record, strain_obj, species_obj, media_obj)
 
+        # Re-fetch image with eagerly-loaded segments (lazy access triggers IO in sync ctx).
+        result = await db.execute(
+            select(Image)
+            .options(selectinload(Image.segments))
+            .where(Image.id == image_obj.id)
+        )
+        image_obj = result.scalar_one()
+
         # Index segments to Qdrant with feature vectors
         for seg in image_obj.segments:
             try:
@@ -214,6 +224,9 @@ def create_image_router(
                 )
             except Exception as exc:
                 logger.warning("Qdrant index failed for segment %s: %s", seg.id, exc)
+
+        # Persist segment updates (qdrant_point_id, qdrant_index_state) to DB
+        await db.commit()
 
         record.image_id = str(image_obj.id)
         record.source_url = f"/api/v1/images/{record.image_id}/source"
@@ -993,28 +1006,40 @@ async def _create_image(
     strain_obj: Strain,
     species_obj: Species,
     media_obj: Media,
+    upload_root: Path | None = None,
 ) -> Image:
+    from .config import get_storage_settings
+
+    root = upload_root or Path(get_storage_settings().upload_root)
+    if not root.is_absolute():
+        root = (Path.cwd() / root).resolve()
+
+    source_path = record.source_path
+    if not source_path.is_absolute():
+        source_path = (root / source_path).resolve()
+    prepared_path = (root / record.artifact_dir / "prepared.jpg").resolve()
+    pipeline_path = (
+        root / record.artifact_dir / f"pipeline_{record.segmentation_method}.jpg"
+    ).resolve()
+
     img = Image(
         strain_id=strain_obj.id,
         species_id=species_obj.id,
         media_id=media_obj.id,
-        file_path=str(record.source_path),
-        prepared_path=str(record.artifact_dir / "prepared.jpg"),
-        pipeline_path=str(
-            record.artifact_dir / f"pipeline_{record.segmentation_method}.jpg"
-        ),
+        file_path=str(source_path),
+        prepared_path=str(prepared_path),
+        pipeline_path=str(pipeline_path),
         data_update_status="current",
     )
     db.add(img)
     await db.flush()
 
     for seg in record.segments:
+        crop_path = (root / record.artifact_dir / "segments" / f"segment_{seg.segment_index}.jpg").resolve()
         segment = Segment(
             image_id=img.id,
             segment_index=seg.segment_index,
-            crop_path=str(
-                record.artifact_dir / "segments" / f"segment_{seg.segment_index}.jpg"
-            ),
+            crop_path=str(crop_path),
             bbox_x=seg.bbox.x,
             bbox_y=seg.bbox.y,
             bbox_w=seg.bbox.w,
