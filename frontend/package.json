@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test e2e/srs-flows.spec.ts"
+    "test:e2e": "playwright test e2e/api.spec.ts e2e/auth.spec.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
