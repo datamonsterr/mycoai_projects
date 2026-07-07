@@ -126,7 +126,9 @@ def run(params: ExperimentParams) -> ExperimentResult:
             strategy_name = best_key[:30]
         else:
             f1 = float(all_results) if isinstance(all_results, (int, float)) else 0.0
-            strategy_name = params.description[:30] if params.description else "threshold"
+            strategy_name = (
+                params.description[:30] if params.description else "threshold"
+            )
         artifact_paths: list = []
     except Exception as exc:
         error_log = log_dir / "run.log"

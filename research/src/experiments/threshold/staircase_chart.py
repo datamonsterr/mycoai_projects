@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -42,11 +43,13 @@ def main() -> None:
                 f1 = float(row["f1"])
                 if f1 < 0.0 or f1 > 1.0:
                     continue
-                rows.append({
-                    "formula": row["formula"],
-                    "algorithm": row["algorithm"],
-                    "f1": f1,
-                })
+                rows.append(
+                    {
+                        "formula": row["formula"],
+                        "algorithm": row["algorithm"],
+                        "f1": f1,
+                    }
+                )
             except (ValueError, KeyError):
                 continue
 

@@ -168,9 +168,9 @@ def main():
     env_counts = get_available_environments(client, collection_name)
 
     # Overall environment statistics
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("OVERALL ENVIRONMENT DISTRIBUTION")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"\nTotal unique environments: {len(env_counts)}")
     print(f"\n{'Environment':<30} {'Sample Count':<15} {'Percentage'}")
     print("-" * 80)
@@ -185,9 +185,9 @@ def main():
     print(f"{'Total':<30} {total_samples:<15} 100.00%")
 
     # Environments by strain
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("ENVIRONMENTS BY STRAIN")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print("\nFetching strain-environment data...")
     strain_env_counts = get_environments_by_strain(client, collection_name)
 
@@ -203,9 +203,9 @@ def main():
         print(f"{env:<30} {env_strain_counts[env]}")
 
     # Show detailed breakdown for each strain
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("DETAILED STRAIN-ENVIRONMENT BREAKDOWN")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     for strain in sorted(strain_env_counts.keys()):
         env_dict = strain_env_counts[strain]
@@ -217,9 +217,9 @@ def main():
             print(f"  {env:<28} {count:>5} samples")
 
     # Environments by species
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("ENVIRONMENTS BY SPECIES")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print("\nFetching species-environment data...")
     species_env_counts = get_environments_by_species(client, collection_name)
 
@@ -235,9 +235,9 @@ def main():
         print(f"{env:<30} {env_species_counts[env]}")
 
     # Show detailed breakdown for each species
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("DETAILED SPECIES-ENVIRONMENT BREAKDOWN")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     for species in sorted(species_env_counts.keys()):
         env_dict = species_env_counts[species]
@@ -249,9 +249,9 @@ def main():
             print(f"  {env:<28} {count:>5} samples")
 
     # Summary statistics
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("SUMMARY STATISTICS")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"\nTotal environments: {len(env_counts)}")
     print(f"Total strains: {len(strain_env_counts)}")
     print(f"Total species: {len(species_env_counts)}")

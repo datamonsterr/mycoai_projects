@@ -2,6 +2,7 @@
 Pipeline: run kmeans + YOLO segmentation on images from YOLO dataset.
 Each leaf folder: source.jpg, prepared.jpg, bbox_kmeans.jpg, pipeline_kmeans.jpg, bbox_yolo.jpg
 """
+
 from __future__ import annotations
 
 import json
@@ -35,7 +36,7 @@ def parse_image_name(filename: str) -> dict[str, str]:
     angle = "unknown"
     for i, part in enumerate(parts):
         if part.startswith("DTO") and i + 1 < len(parts):
-            strain = f"{part}_{parts[i+1]}"
+            strain = f"{part}_{parts[i + 1]}"
             break
         elif part.startswith("DTO"):
             strain = part
@@ -64,7 +65,9 @@ def _compute_iou(box1: dict, box2: dict) -> float:
     return inter / (area1 + area2 - inter)
 
 
-def _filter_non_overlapping(bboxes: list[dict], iou_thresh: float = 0.25, max_boxes: int = 3) -> list[dict]:
+def _filter_non_overlapping(
+    bboxes: list[dict], iou_thresh: float = 0.25, max_boxes: int = 3
+) -> list[dict]:
     if not bboxes:
         return []
     kept: list[dict] = []
@@ -81,13 +84,24 @@ def run_pipeline(
     output_root: Path,
     limit: int | None = None,
 ) -> dict:
-    image_files = sorted(image_source.rglob("*.jpg"))[:limit] if limit else sorted(image_source.rglob("*.jpg"))
+    image_files = (
+        sorted(image_source.rglob("*.jpg"))[:limit]
+        if limit
+        else sorted(image_source.rglob("*.jpg"))
+    )
     print(f"Found {len(image_files)} images")
 
     output_root.mkdir(parents=True, exist_ok=True)
-    results = {"total": len(image_files), "kmeans_ok": 0, "yolo_ok": 0, "failed": 0, "items": []}
+    results = {
+        "total": len(image_files),
+        "kmeans_ok": 0,
+        "yolo_ok": 0,
+        "failed": 0,
+        "items": [],
+    }
 
     from ultralytics import YOLO
+
     yolo_weights = WEIGHTS_DIR / "segmentation" / "yolo26_seg_best.pt"
     if not yolo_weights.exists():
         print(f"ERROR: YOLO weights not found at {yolo_weights}")
@@ -132,12 +146,16 @@ def run_pipeline(
                     pipeline_path = leaf_dir / f"pipeline_kmeans{FILE_EXTENSION}"
                     h, w = prepared_image.shape[:2]
                     src_resized = cv2.resize(src, (w, h), interpolation=cv2.INTER_AREA)
-                    pipeline_img = np.hstack([src_resized, prepared_image, bbox_kmeans_img])
+                    pipeline_img = np.hstack(
+                        [src_resized, prepared_image, bbox_kmeans_img]
+                    )
                     cv2.imwrite(str(pipeline_path), pipeline_img)
                 results["kmeans_ok"] += 1
 
             # YOLO segmentation
-            yolo_results = model(prepared_image, verbose=False, conf=0.15, imgsz=256, end2end=False)
+            yolo_results = model(
+                prepared_image, verbose=False, conf=0.15, imgsz=256, end2end=False
+            )
             bboxes_yolo = []
             if yolo_results and yolo_results[0].boxes is not None:
                 boxes = yolo_results[0].boxes.xyxy
@@ -146,10 +164,14 @@ def run_pipeline(
                     scored = []
                     for conf_val, box_coords in zip(confs.tolist(), boxes.tolist()):
                         x1, y1, x2, y2 = map(int, box_coords)
-                        scored.append((conf_val, {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}))
+                        scored.append(
+                            (conf_val, {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2})
+                        )
                     scored.sort(key=lambda x: -x[0])
                     all_bboxes = [b for _, b in scored]
-                    bboxes_yolo = _filter_non_overlapping(all_bboxes, iou_thresh=0.25, max_boxes=3)
+                    bboxes_yolo = _filter_non_overlapping(
+                        all_bboxes, iou_thresh=0.25, max_boxes=3
+                    )
 
             if bboxes_yolo:
                 bbox_yolo_path = leaf_dir / f"bbox_yolo{FILE_EXTENSION}"
@@ -157,11 +179,13 @@ def run_pipeline(
                 cv2.imwrite(str(bbox_yolo_path), bbox_yolo_img)
                 results["yolo_ok"] += 1
 
-            results["items"].append({
-                "leaf_dir": str(leaf_dir.relative_to(output_root)),
-                "kmeans_bboxes": len(bboxes_kmeans) if bboxes_kmeans else 0,
-                "yolo_bboxes": len(bboxes_yolo) if "bboxes_yolo" in dir() else 0,
-            })
+            results["items"].append(
+                {
+                    "leaf_dir": str(leaf_dir.relative_to(output_root)),
+                    "kmeans_bboxes": len(bboxes_kmeans) if bboxes_kmeans else 0,
+                    "yolo_bboxes": len(bboxes_yolo) if "bboxes_yolo" in dir() else 0,
+                }
+            )
 
             if (idx + 1) % 50 == 0:
                 print(f"  Processed {idx + 1}/{len(image_files)}")
@@ -172,13 +196,16 @@ def run_pipeline(
 
     metrics_path = output_root / "pipeline_metrics.json"
     metrics_path.write_text(json.dumps(results, indent=2))
-    print(f"\nPipeline complete: {results['kmeans_ok']} kmeans, {results['yolo_ok']} yolo, {results['failed']} failed")
+    print(
+        f"\nPipeline complete: {results['kmeans_ok']} kmeans, {results['yolo_ok']} yolo, {results['failed']} failed"
+    )
     print(f"Metrics: {metrics_path}")
     return results
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--image-source", default="/tmp/opencode/yolo_data/train")
     parser.add_argument("--output-root", default=None)
@@ -186,6 +213,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     image_source = Path(args.image_source)
-    output_root = Path(args.output_root) if args.output_root else WORKSPACE_ROOT / "Dataset" / "segmented_output"
+    output_root = (
+        Path(args.output_root)
+        if args.output_root
+        else WORKSPACE_ROOT / "Dataset" / "segmented_output"
+    )
 
     run_pipeline(image_source, output_root, limit=args.limit)

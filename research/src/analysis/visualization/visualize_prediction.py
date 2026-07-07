@@ -243,7 +243,9 @@ def _measure_card_height(
         if current_line:
             wrapped_lines += 1
         line_height = _text_size(draw, "Ag", font)[1]
-        text_height += wrapped_lines * line_height + max(wrapped_lines - 1, 0) * line_spacing
+        text_height += (
+            wrapped_lines * line_height + max(wrapped_lines - 1, 0) * line_spacing
+        )
         text_height += line_spacing
     return img_height + 6 + text_height
 
@@ -293,10 +295,38 @@ def _resolve_image_path(
     if len(parts) >= 5:
         segment_name = parts[4].split("_seg", 1)[0]
         prepared_candidates = [
-            DATASET_ROOT / "original_prepared" / parts[0] / parts[1] / parts[2] / parts[3] / "segments_yolo" / f"{segment_name}.jpg",
-            DATASET_ROOT / "prepared" / parts[0] / parts[1] / parts[2] / parts[3] / "segments_yolo" / f"{segment_name}.jpg",
-            DATASET_ROOT / "full_prepared" / parts[0] / parts[1] / parts[2] / parts[3] / "segments_kmeans" / f"{segment_name}.jpg",
-            DATASET_ROOT / "full_prepared" / parts[0] / parts[1] / parts[2] / parts[3] / "segments_yolo" / f"{segment_name}.jpg",
+            DATASET_ROOT
+            / "original_prepared"
+            / parts[0]
+            / parts[1]
+            / parts[2]
+            / parts[3]
+            / "segments_yolo"
+            / f"{segment_name}.jpg",
+            DATASET_ROOT
+            / "prepared"
+            / parts[0]
+            / parts[1]
+            / parts[2]
+            / parts[3]
+            / "segments_yolo"
+            / f"{segment_name}.jpg",
+            DATASET_ROOT
+            / "full_prepared"
+            / parts[0]
+            / parts[1]
+            / parts[2]
+            / parts[3]
+            / "segments_kmeans"
+            / f"{segment_name}.jpg",
+            DATASET_ROOT
+            / "full_prepared"
+            / parts[0]
+            / parts[1]
+            / parts[2]
+            / parts[3]
+            / "segments_yolo"
+            / f"{segment_name}.jpg",
         ]
         for candidate in prepared_candidates:
             if candidate.exists():
@@ -369,7 +399,10 @@ def visualize_prediction_by_environment(
         score_font = ImageFont.load_default()
 
     def wrap_lines(
-        draw_ctx: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int
+        draw_ctx: ImageDraw.ImageDraw,
+        text: str,
+        font: ImageFont.ImageFont,
+        max_width: int,
     ) -> List[str]:
         words = text.split()
         if not words:
@@ -415,7 +448,9 @@ def visualize_prediction_by_environment(
             total += len(wrapped) * (line_height + line_spacing) + 2
         return total
 
-    def build_neighbor_lines(neighbor: Dict[str, Any], index: int) -> List[Tuple[str, ImageFont.ImageFont, Tuple[int, int, int]]]:
+    def build_neighbor_lines(
+        neighbor: Dict[str, Any], index: int
+    ) -> List[Tuple[str, ImageFont.ImageFont, Tuple[int, int, int]]]:
         score = neighbor.get("score", 0.0)
         return [
             (f"{score:.2f}", label_font, text_color),
@@ -423,10 +458,14 @@ def visualize_prediction_by_environment(
 
     measure_canvas = Image.new("RGB", (100, 100), bg_color)
     measure_draw = ImageDraw.Draw(measure_canvas)
-    sample_card_height = img_height + text_gap + measure_text_lines(
-        measure_draw,
-        [("0.99", label_font, text_color)],
-        card_width,
+    sample_card_height = (
+        img_height
+        + text_gap
+        + measure_text_lines(
+            measure_draw,
+            [("0.99", label_font, text_color)],
+            card_width,
+        )
     )
 
     info_width = content_width
@@ -437,20 +476,37 @@ def visualize_prediction_by_environment(
             (
                 f"{res['score']:.3f} - {res['specy']}",
                 score_font,
-                generate_distinct_color(res['specy'], ground_truth),
+                generate_distinct_color(res["specy"], ground_truth),
             )
             for res in aggregated_results[:5]
         ]
-        ranking_width = max(_text_size(measure_draw, text, font)[0] for text, font, _ in ranking_items)
+        ranking_width = max(
+            _text_size(measure_draw, text, font)[0] for text, font, _ in ranking_items
+        )
 
     if ranking_width:
         max_info_width = max(220, content_width - header_gap - ranking_width)
-        info_width = min(max_info_width, max(_text_size(measure_draw, text, font)[0] for text, font, _ in [
-            (f"Strain: {prediction_result['strain']}", title_font, text_color),
-            (f"GT: {ground_truth}", body_font, text_color),
-            (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, text_color),
-            (f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}", small_font, text_color),
-        ]) + 8)
+        info_width = min(
+            max_info_width,
+            max(
+                _text_size(measure_draw, text, font)[0]
+                for text, font, _ in [
+                    (f"Strain: {prediction_result['strain']}", title_font, text_color),
+                    (f"GT: {ground_truth}", body_font, text_color),
+                    (
+                        f"Pred: {predicted_specy} ({confidence:.2f})",
+                        body_font,
+                        text_color,
+                    ),
+                    (
+                        f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}",
+                        small_font,
+                        text_color,
+                    ),
+                ]
+            )
+            + 8,
+        )
         ranking_width = max(0, content_width - header_gap - info_width)
 
     top_block_height = 0
@@ -458,17 +514,37 @@ def visualize_prediction_by_environment(
         header_items = [
             (f"Strain: {prediction_result['strain']}", title_font, text_color),
             (f"GT: {ground_truth}", body_font, text_color),
-            (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
-            (f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}", small_font, text_color),
+            (
+                f"Pred: {predicted_specy} ({confidence:.2f})",
+                body_font,
+                (0, 128, 0) if is_correct else (200, 0, 0),
+            ),
+            (
+                f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}",
+                small_font,
+                text_color,
+            ),
         ]
-        top_block_height = max(top_block_height, measure_text_lines(measure_draw, header_items, info_width))
+        top_block_height = max(
+            top_block_height, measure_text_lines(measure_draw, header_items, info_width)
+        )
 
     if ranking_items:
-        top_block_height = max(top_block_height, measure_text_lines(measure_draw, ranking_items, ranking_width))
+        top_block_height = max(
+            top_block_height,
+            measure_text_lines(measure_draw, ranking_items, ranking_width),
+        )
 
     canvas_width = padding * 2 + content_width
-    rows_height = len(raw_results_sorted) * sample_card_height + max(len(raw_results_sorted) - 1, 0) * row_gap
-    canvas_height = padding * 2 + (top_block_height + top_block_gap if top_block_height else 0) + rows_height
+    rows_height = (
+        len(raw_results_sorted) * sample_card_height
+        + max(len(raw_results_sorted) - 1, 0) * row_gap
+    )
+    canvas_height = (
+        padding * 2
+        + (top_block_height + top_block_gap if top_block_height else 0)
+        + rows_height
+    )
     canvas = Image.new("RGB", (canvas_width, canvas_height), bg_color)
     draw = ImageDraw.Draw(canvas)
 
@@ -479,8 +555,16 @@ def visualize_prediction_by_environment(
         header_items = [
             (f"Strain: {prediction_result['strain']}", title_font, text_color),
             (f"GT: {ground_truth}", body_font, text_color),
-            (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
-            (f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}", small_font, text_color),
+            (
+                f"Pred: {predicted_specy} ({confidence:.2f})",
+                body_font,
+                (0, 128, 0) if is_correct else (200, 0, 0),
+            ),
+            (
+                f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}",
+                small_font,
+                text_color,
+            ),
         ]
         draw_text_lines(draw, header_items, cards_x, current_y, info_width)
 
@@ -497,17 +581,29 @@ def visualize_prediction_by_environment(
     for result in raw_results_sorted:
         row_cards = [
             {
-                "image_path": _resolve_image_path(result, segmented_image_dir, "query_image_id"),
+                "image_path": _resolve_image_path(
+                    result, segmented_image_dir, "query_image_id"
+                ),
                 "border_color": (70, 70, 70),
                 "border": 3,
-                "lines": [(f"{result.get('query_environment', query_label)} | E1", label_font, text_color)],
+                "lines": [
+                    (
+                        f"{result.get('query_environment', query_label)} | E1",
+                        label_font,
+                        text_color,
+                    )
+                ],
             }
         ]
         for idx, neighbor in enumerate(result["neighbors"][:k], start=1):
             row_cards.append(
                 {
-                    "image_path": _resolve_image_path(neighbor, segmented_image_dir, "image_id"),
-                    "border_color": generate_distinct_color(neighbor.get("specy", "unknown"), ground_truth),
+                    "image_path": _resolve_image_path(
+                        neighbor, segmented_image_dir, "image_id"
+                    ),
+                    "border_color": generate_distinct_color(
+                        neighbor.get("specy", "unknown"), ground_truth
+                    ),
                     "border": border_width,
                     "lines": build_neighbor_lines(neighbor, idx),
                 }
@@ -519,21 +615,35 @@ def visualize_prediction_by_environment(
             image_path = card["image_path"]
             if os.path.exists(image_path):
                 try:
-                    image = Image.open(image_path).convert("RGB").resize(resolved_thumbnail_size)
+                    image = (
+                        Image.open(image_path)
+                        .convert("RGB")
+                        .resize(resolved_thumbnail_size)
+                    )
                     canvas.paste(image, (x_pos, y_pos))
                 except Exception as exc:
                     print(f"  [viz] ERROR {image_path}: {exc}")
-                    draw.rectangle([x_pos, y_pos, x_pos + img_width, y_pos + img_height], outline=(160, 160, 160), width=2)
+                    draw.rectangle(
+                        [x_pos, y_pos, x_pos + img_width, y_pos + img_height],
+                        outline=(160, 160, 160),
+                        width=2,
+                    )
             else:
                 print(f"  [viz] MISSING {image_path}")
-                draw.rectangle([x_pos, y_pos, x_pos + img_width, y_pos + img_height], outline=(160, 160, 160), width=2)
+                draw.rectangle(
+                    [x_pos, y_pos, x_pos + img_width, y_pos + img_height],
+                    outline=(160, 160, 160),
+                    width=2,
+                )
 
             draw.rectangle(
                 [x_pos, y_pos, x_pos + img_width, y_pos + img_height],
                 outline=card["border_color"],
                 width=card["border"],
             )
-            draw_text_lines(draw, card["lines"], x_pos, y_pos + img_height + text_gap, card_width)
+            draw_text_lines(
+                draw, card["lines"], x_pos, y_pos + img_height + text_gap, card_width
+            )
 
         current_y += sample_card_height + row_gap
 

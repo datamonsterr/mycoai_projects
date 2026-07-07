@@ -35,7 +35,6 @@ from src.prepare.checks import check_dataset_root, check_metadata_exists
 # ---------------------------------------------------------------------------
 
 
-
 def check_qdrant() -> tuple[bool, str]:
     try:
         from qdrant_client import QdrantClient
@@ -70,9 +69,7 @@ def check_experiment_requirements(experiment: str) -> List[tuple[bool, str]]:
         from src.config import WEIGHTS_DIR
 
         yolo_weights = WEIGHTS_DIR / "segmentation" / "yolo26_seg_best.pt"
-        results.append(
-            (yolo_weights.exists(), f"YOLO weights: {yolo_weights}")
-        )
+        results.append((yolo_weights.exists(), f"YOLO weights: {yolo_weights}"))
 
     if experiment in ("feature-extractor", "segmentation"):
         # Needs strain mapping
@@ -96,9 +93,9 @@ def check_experiment_requirements(experiment: str) -> List[tuple[bool, str]]:
 
 def run_all_checks(experiment: str) -> bool:
     """Run all checks and print results. Returns True if all pass."""
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"Prerequisite checks for: {experiment}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     checks = check_experiment_requirements(experiment)
     all_passed = True
@@ -138,9 +135,9 @@ def run_prepare(
             )
             sys.exit(1)
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"Running experiment: {experiment}")
-    print(f"{'='*50}\n")
+    print(f"{'=' * 50}\n")
 
     # Build run.py command
     run_cmd = [

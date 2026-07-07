@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -68,7 +69,14 @@ def build_cv_comparison_chart() -> pd.DataFrame:
     colors = ["#2ecc71" if "finetuned" in x else "#3498db" for x in df["extractor"]]
     bars = ax.bar(range(len(df)), df["accuracy"], color=colors)
     for i, (bar, acc, std) in enumerate(zip(bars, df["accuracy"], df["std"])):
-        ax.text(i, bar.get_height() + 0.01, f"{acc:.1%}\n±{std:.2f}", ha="center", va="bottom", fontsize=9)
+        ax.text(
+            i,
+            bar.get_height() + 0.01,
+            f"{acc:.1%}\n±{std:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
     ax.set_xticks(range(len(df)))
     ax.set_xticklabels(labels, rotation=30, ha="right")
     ax.set_ylim(0, 1.0)
@@ -93,8 +101,22 @@ def build_threshold_charts() -> tuple[pd.DataFrame, pd.DataFrame]:
     )
 
     fig, ax = plt.subplots(figsize=(9, 5))
-    sns.histplot(known["s0_score"].astype(float), color="#2ecc71", label="Known", kde=True, stat="density", ax=ax)
-    sns.histplot(unknown["s0_score"].astype(float), color="#e74c3c", label="Unknown", kde=True, stat="density", ax=ax)
+    sns.histplot(
+        known["s0_score"].astype(float),
+        color="#2ecc71",
+        label="Known",
+        kde=True,
+        stat="density",
+        ax=ax,
+    )
+    sns.histplot(
+        unknown["s0_score"].astype(float),
+        color="#e74c3c",
+        label="Unknown",
+        kde=True,
+        stat="density",
+        ax=ax,
+    )
     ax.set_title("Threshold retrieval score distribution (s0)")
     ax.set_xlabel("Top-1 aggregated score")
     ax.legend()
@@ -109,11 +131,21 @@ def build_threshold_charts() -> tuple[pd.DataFrame, pd.DataFrame]:
     fig, ax = plt.subplots(figsize=(10, 5))
     bars = ax.bar(per_species["correct_species"], per_species["mean"], color="#9b59b6")
     for bar, cnt, good in zip(bars, per_species["count"], per_species["sum"]):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02, f"{good}/{cnt}", ha="center", fontsize=9)
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.02,
+            f"{good}/{cnt}",
+            ha="center",
+            fontsize=9,
+        )
     ax.set_ylim(0, 1.15)
     ax.set_ylabel("Normalized known accuracy")
     ax.set_title("Known-species threshold retrieval accuracy")
-    ax.set_xticklabels([x.replace("Penicillium ", "P. ") for x in per_species["correct_species"]], rotation=25, ha="right")
+    ax.set_xticklabels(
+        [x.replace("Penicillium ", "P. ") for x in per_species["correct_species"]],
+        rotation=25,
+        ha="right",
+    )
     dual_save(fig, "threshold_known_species_accuracy.png")
 
     all_exp = pd.read_csv(THRESHOLD_LOG / "all_experiments.csv")
@@ -133,7 +165,9 @@ def build_threshold_charts() -> tuple[pd.DataFrame, pd.DataFrame]:
     return per_species, top
 
 
-def write_latex_tables(cv_df: pd.DataFrame, threshold_species: pd.DataFrame, threshold_top: pd.DataFrame) -> None:
+def write_latex_tables(
+    cv_df: pd.DataFrame, threshold_species: pd.DataFrame, threshold_top: pd.DataFrame
+) -> None:
     if not cv_df.empty:
         top6 = cv_df.head(6).copy()
         lines = [
@@ -149,9 +183,18 @@ def write_latex_tables(cv_df: pd.DataFrame, threshold_species: pd.DataFrame, thr
         for r in top6.itertuples():
             extractor = str(r.extractor).replace("_", "\\_")
             agg = str(r.agg).replace("_", "\\_")
-            lines.append(rf"{extractor} & {agg} & {r.k} & {r.accuracy:.3f} & {r.std:.3f} \\")
+            lines.append(
+                rf"{extractor} & {agg} & {r.k} & {r.accuracy:.3f} & {r.std:.3f} \\"
+            )
         lines += ["\\bottomrule", "\\end{tabular}", "\\end{table}", ""]
-        (ROOT / "docs" / "graduation_report" / "latex" / "figures" / "table_cv_best_configs.tex").write_text("\n".join(lines))
+        (
+            ROOT
+            / "docs"
+            / "graduation_report"
+            / "latex"
+            / "figures"
+            / "table_cv_best_configs.tex"
+        ).write_text("\n".join(lines))
 
     if not threshold_species.empty:
         lines = [
@@ -166,9 +209,18 @@ def write_latex_tables(cv_df: pd.DataFrame, threshold_species: pd.DataFrame, thr
         ]
         for r in threshold_species.itertuples():
             species = str(r.correct_species).replace("Penicillium ", "P. ")
-            lines.append(rf"{species} & {int(r.sum)} & {int(r.count)} & {float(r.mean):.3f} \\")
+            lines.append(
+                rf"{species} & {int(r.sum)} & {int(r.count)} & {float(r.mean):.3f} \\"
+            )
         lines += ["\\bottomrule", "\\end{tabular}", "\\end{table}", ""]
-        (ROOT / "docs" / "graduation_report" / "latex" / "figures" / "table_threshold_known_species.tex").write_text("\n".join(lines))
+        (
+            ROOT
+            / "docs"
+            / "graduation_report"
+            / "latex"
+            / "figures"
+            / "table_threshold_known_species.tex"
+        ).write_text("\n".join(lines))
 
     if not threshold_top.empty:
         best = threshold_top.iloc[0]
@@ -187,14 +239,29 @@ def write_latex_tables(cv_df: pd.DataFrame, threshold_species: pd.DataFrame, thr
             "\\end{table}",
             "",
         ]
-        (ROOT / "docs" / "graduation_report" / "latex" / "figures" / "table_threshold_best.tex").write_text("\n".join(lines))
+        (
+            ROOT
+            / "docs"
+            / "graduation_report"
+            / "latex"
+            / "figures"
+            / "table_threshold_best.tex"
+        ).write_text("\n".join(lines))
 
 
 def main() -> None:
     ensure_dirs()
     cv_df = build_cv_comparison_chart()
-    dual_copy(EXP_DIR / "efficientnetb1_E1_freq_strength_k7" / "confusion_matrix.png", "confusion_matrix_base_best.png")
-    dual_copy(EXP_DIR / "efficientnetb1_finetuned_E1_freq_strength_k7" / "confusion_matrix.png", "confusion_matrix_finetuned_best.png")
+    dual_copy(
+        EXP_DIR / "efficientnetb1_E1_freq_strength_k7" / "confusion_matrix.png",
+        "confusion_matrix_base_best.png",
+    )
+    dual_copy(
+        EXP_DIR
+        / "efficientnetb1_finetuned_E1_freq_strength_k7"
+        / "confusion_matrix.png",
+        "confusion_matrix_finetuned_best.png",
+    )
     threshold_species, threshold_top = build_threshold_charts()
     write_latex_tables(cv_df, threshold_species, threshold_top)
 

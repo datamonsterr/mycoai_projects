@@ -41,12 +41,17 @@ def main() -> None:
         print(f"Experiment failure: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    print(json.dumps({
-        "f1_score": result.f1_score,
-        "strategy_name": result.strategy_name,
-        "artifact_paths": result.artifact_paths,
-        "run_id": result.run_id,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "f1_score": result.f1_score,
+                "strategy_name": result.strategy_name,
+                "artifact_paths": result.artifact_paths,
+                "run_id": result.run_id,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

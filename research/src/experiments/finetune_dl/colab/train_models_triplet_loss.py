@@ -161,7 +161,7 @@ def train_triplet_model(
     epochs_no_improve = 0
 
     for epoch in range(num_epochs):
-        print(f"Epoch {epoch+1}/{num_epochs}")
+        print(f"Epoch {epoch + 1}/{num_epochs}")
         print("-" * 10)
 
         for phase in ["train", "val"]:

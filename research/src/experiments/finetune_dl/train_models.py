@@ -87,7 +87,7 @@ def train_model(
     epochs_no_improve = 0
 
     for epoch in range(num_epochs):
-        print(f"Epoch {epoch+1}/{num_epochs}")
+        print(f"Epoch {epoch + 1}/{num_epochs}")
         print("-" * 10)
 
         # Each epoch has a training and validation phase
@@ -237,7 +237,9 @@ def main():
         "train": transforms.Compose(
             [
                 transforms.Resize((HEIGHT, WIDTH)),
-                transforms.RandomResizedCrop((HEIGHT, WIDTH), scale=(0.75, 1.0), ratio=(0.9, 1.1)),
+                transforms.RandomResizedCrop(
+                    (HEIGHT, WIDTH), scale=(0.75, 1.0), ratio=(0.9, 1.1)
+                ),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(10),
                 transforms.ColorJitter(brightness=0.2, contrast=0.2),

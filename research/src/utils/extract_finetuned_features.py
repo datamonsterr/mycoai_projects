@@ -60,8 +60,7 @@ def extract_finetuned_features(  # noqa: C901
         sys.exit(1)
 
     print(
-        "Initializing EfficientNetB1 with fine-tuned weights: "
-        f"{efficientnet_weights}"
+        f"Initializing EfficientNetB1 with fine-tuned weights: {efficientnet_weights}"
     )
     extractor_name = "EfficientNetB1_finetuned"
     extractor = EfficientNetB1Extractor(weights_path=str(efficientnet_weights))

@@ -109,13 +109,12 @@ def write_fold_summary_csv(
     with target.open("w", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-                fieldnames=[
-                    "fold_id",
-                    "species_name",
-                    "test_strain_id",
-                    "round_robin_species",
-                ],
-
+            fieldnames=[
+                "fold_id",
+                "species_name",
+                "test_strain_id",
+                "round_robin_species",
+            ],
         )
         writer.writeheader()
         writer.writerows(rows)

@@ -164,7 +164,9 @@ def select_colony_contours(
 # ---------------------------------------------------------------------------
 # Montage builder
 # ---------------------------------------------------------------------------
-def build_segment_strip(segment_paths: List[Path], out_path: Path, thumb_size: int = THUMB) -> np.ndarray:
+def build_segment_strip(
+    segment_paths: List[Path], out_path: Path, thumb_size: int = THUMB
+) -> np.ndarray:
     thumbs = []
     for path in segment_paths:
         img = cv2.imread(str(path))
@@ -462,12 +464,14 @@ def run(image_path: str, out_dir: str) -> None:
             colour,
             1,
         )
-        crop = img[max(y, 0):min(y + h, img.shape[0]), max(x, 0):min(x + w, img.shape[1])]
+        crop = img[
+            max(y, 0) : min(y + h, img.shape[0]), max(x, 0) : min(x + w, img.shape[1])
+        ]
         segment_path = out / f"segment_{idx + 1}.jpg"
         cv2.imwrite(str(segment_path), crop)
         segment_paths.append(segment_path)
         print(
-            f"  colony {idx}: bbox=({x},{y})→({x+w},{y+h})  area={area}  circ={circ:.3f}  OK"
+            f"  colony {idx}: bbox=({x},{y})→({x + w},{y + h})  area={area}  circ={circ:.3f}  OK"
         )
 
     meta["bboxes_kept"] = len(bboxes)
@@ -530,11 +534,19 @@ def run_experiment(params: ExperimentParams) -> ExperimentResult:
     """Uniform experiment contract wrapper for kmeans_segmentation."""
     import json as _json_autolab
     from pathlib import Path as _Path_autolab
+
     output_root = _Path_autolab(params.output_root)
     output_root.mkdir(parents=True, exist_ok=True)
     strategy = params.description[:30] if params.description else "kmeans_segmentation"
-    result_data = {"f1_score": 0.0, "strategy_name": strategy, "artifact_paths": [], "run_id": params.run_id}
-    (output_root / "results.json").write_text(_json_autolab.dumps(result_data, indent=2))
+    result_data = {
+        "f1_score": 0.0,
+        "strategy_name": strategy,
+        "artifact_paths": [],
+        "run_id": params.run_id,
+    }
+    (output_root / "results.json").write_text(
+        _json_autolab.dumps(result_data, indent=2)
+    )
     return ExperimentResult(
         f1_score=0.0,
         strategy_name=strategy,

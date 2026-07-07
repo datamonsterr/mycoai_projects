@@ -16,7 +16,12 @@ from typing import List
 
 import cv2
 
-from src.config import DATASET_ROOT, SEGMENTED_IMAGE_DIR, SEGMENTED_METADATA_PATH, WORKSPACE_ROOT
+from src.config import (
+    DATASET_ROOT,
+    SEGMENTED_IMAGE_DIR,
+    SEGMENTED_METADATA_PATH,
+    WORKSPACE_ROOT,
+)
 from src.experiments.feature_extraction.feature_extractors import (
     ViT256DinoExtractor,
     ViTCellVitX20Extractor,

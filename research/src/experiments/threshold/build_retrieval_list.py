@@ -7,7 +7,6 @@ its metadata for classification (known test strains vs unknown diverse species).
 
 import csv
 import json
-import os
 from pathlib import Path
 from collections import Counter
 
@@ -92,15 +91,11 @@ def _collect_test_strain_entries(test_strains: list[dict]) -> list[dict]:
 
                 seg_files = _find_segment_images(angle_dir)
                 if not seg_files:
-                    issues.append(
-                        f"NO segments in {ts['strain']}/{env}/{angle}"
-                    )
+                    issues.append(f"NO segments in {ts['strain']}/{env}/{angle}")
                     continue
 
                 for i, seg_path in enumerate(seg_files[:MAX_SEGMENTS_PER_SAMPLE], 1):
-                    sample_id = (
-                        f"{ts['strain_lower']}_{env}_{angle}_seg{i}"
-                    )
+                    sample_id = f"{ts['strain_lower']}_{env}_{angle}_seg{i}"
                     entries.append(
                         {
                             "sample_id": sample_id,

@@ -64,9 +64,7 @@ def parse_image_filename(
 
     # Strategy 1: "MEDIA ANGLE" pattern (space-separated)
     # e.g., "scabrosum T491 MEA rev" → species=scabrosum, strain=T491, media=MEA, angle=rev
-    m_angle = re.search(
-        r"(cya|mea|yes|dg18|crea|oa|m40y)\s+(ob|rev)\b", lower
-    )
+    m_angle = re.search(r"(cya|mea|yes|dg18|crea|oa|m40y)\s+(ob|rev)\b", lower)
     if m_angle:
         media = MEDIA_PATTERNS[m_angle.group(1)]
         angle = m_angle.group(2)
@@ -92,8 +90,12 @@ def parse_image_filename(
             if m_final:
                 media = MEDIA_PATTERNS[m_final.group(1)]
                 angle = ANGLE_O if m_final.group(2) == "o" else ANGLE_R
-                rest = " ".join(words[: words.index(word.split()[0] if len(words) > 1 else word)])
-                species_from_name, strain_from_name = _parse_species_strain(lower.replace(word, "").strip())
+                rest = " ".join(
+                    words[: words.index(word.split()[0] if len(words) > 1 else word)]
+                )
+                species_from_name, strain_from_name = _parse_species_strain(
+                    lower.replace(word, "").strip()
+                )
                 break
 
     # Fallback: use folder context
@@ -213,7 +215,10 @@ def run_parser_tests() -> bool:
     for filename, exp_species, exp_strain, exp_media, exp_angle in _TEST_CASES:
         result = parse_image_filename(filename)
         ok = True
-        if exp_species is not None and result.species_name.lower() != exp_species.lower():
+        if (
+            exp_species is not None
+            and result.species_name.lower() != exp_species.lower()
+        ):
             ok = False
         if exp_strain is not None and result.strain_code.lower() != exp_strain.lower():
             ok = False

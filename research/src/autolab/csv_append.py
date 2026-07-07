@@ -16,7 +16,9 @@ from pathlib import Path
 from typing import Any, Sequence
 
 
-def append_row(csv_path: str | Path, row: Sequence[Any], header: Sequence[str] | None = None) -> None:
+def append_row(
+    csv_path: str | Path, row: Sequence[Any], header: Sequence[str] | None = None
+) -> None:
     """Append one row to a CSV file with exclusive file lock.
 
     Args:
@@ -60,11 +62,14 @@ def append_staircase_row(
     """
     if results_dir is None:
         from src.config import RESULTS_DIR
+
         results_dir = RESULTS_DIR
 
     csv_path = Path(results_dir) / "autoresearch" / f"{experiment}.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
 
     with open(csv_path, "a+", newline="") as fd:
         fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
@@ -76,8 +81,18 @@ def append_staircase_row(
             fd.seek(0, os.SEEK_END)
             writer = csv.writer(fd)
             if not rows:
-                writer.writerow(["experiment_index", "f1_score", "strategy_name", "run_id", "timestamp"])
-            writer.writerow([experiment_index, f1_score, strategy_name, run_id, timestamp])
+                writer.writerow(
+                    [
+                        "experiment_index",
+                        "f1_score",
+                        "strategy_name",
+                        "run_id",
+                        "timestamp",
+                    ]
+                )
+            writer.writerow(
+                [experiment_index, f1_score, strategy_name, run_id, timestamp]
+            )
             fd.flush()
             os.fsync(fd.fileno())
         finally:

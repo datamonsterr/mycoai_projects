@@ -50,9 +50,7 @@ def load_results(
         for row in reader:
             rows.append(row)
             labels.append(int(row.get("is_known", 0)))
-            row_scores = [
-                float(row.get(f"s{i}_score", "") or 0.0) for i in range(5)
-            ]
+            row_scores = [float(row.get(f"s{i}_score", "") or 0.0) for i in range(5)]
             scores_mat.append(row_scores)
 
     labels_arr = np.array(labels, dtype=float)

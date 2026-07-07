@@ -306,7 +306,7 @@ def pretrain_simclr(
         epoch_loss = 0.0
         num_batches = 0
 
-        pbar = tqdm(dataloader, desc=f"Pretrain Epoch {epoch+1}/{num_epochs}")
+        pbar = tqdm(dataloader, desc=f"Pretrain Epoch {epoch + 1}/{num_epochs}")
         for [x_i, x_j] in pbar:
             # Concatenate augmented views
             x_i = x_i.to(device)
@@ -333,7 +333,7 @@ def pretrain_simclr(
 
         avg_loss = epoch_loss / num_batches
         history["loss"].append(avg_loss)
-        print(f"Epoch {epoch+1}/{num_epochs} - Loss: {avg_loss:.4f}")
+        print(f"Epoch {epoch + 1}/{num_epochs} - Loss: {avg_loss:.4f}")
 
     return history
 
@@ -356,7 +356,7 @@ def finetune_supervised(
     epochs_no_improve = 0
 
     for epoch in range(num_epochs):
-        print(f"Finetune Epoch {epoch+1}/{num_epochs}")
+        print(f"Finetune Epoch {epoch + 1}/{num_epochs}")
         print("-" * 10)
 
         for phase in ["train", "val"]:
@@ -682,7 +682,9 @@ def main():  # noqa: C901
 
     # Create supervised datasets
     finetune_datasets = {
-        "train": SupervisedDataset(train_paths, train_labels, finetune_transforms["train"]),  # type: ignore[arg-type]
+        "train": SupervisedDataset(
+            train_paths, train_labels, finetune_transforms["train"]
+        ),  # type: ignore[arg-type]
         "val": SupervisedDataset(val_paths, val_labels, finetune_transforms["val"]),  # type: ignore[arg-type]
     }
 

@@ -191,7 +191,9 @@ class BackendClient:
         raise RuntimeError(f"{ctx} ({resp.status_code}): {detail}")
 
     def ensure_species(self, name: str) -> dict:
-        items = self._check(self.session.get(f"{self.base_url}/species?limit=200"), "list species")
+        items = self._check(
+            self.session.get(f"{self.base_url}/species?limit=200"), "list species"
+        )
         for s in items.get("items", []):
             if s["name"].lower() == name.lower():
                 return s
@@ -203,7 +205,9 @@ class BackendClient:
     def ensure_media(self, name: str) -> dict:
         if name.lower() == "unknown":
             return {"id": "00000000-0000-0000-0000-000000000000", "name": "unknown"}
-        items = self._check(self.session.get(f"{self.base_url}/media?limit=200"), "list media")
+        items = self._check(
+            self.session.get(f"{self.base_url}/media?limit=200"), "list media"
+        )
         for m in items.get("items", []):
             if m["name"].lower() == name.lower():
                 return m
@@ -212,7 +216,9 @@ class BackendClient:
             f"create media '{name}'",
         )
 
-    def upload_image(self, source_path: Path, strain: str, media: str, species: str) -> dict:
+    def upload_image(
+        self, source_path: Path, strain: str, media: str, species: str
+    ) -> dict:
         with open(source_path, "rb") as f:
             resp = self.session.post(
                 f"{self.base_url}/images",
@@ -250,7 +256,9 @@ class DtoImporter:
         self.stats.start_time = time.time()
 
         # Step 1: Register species
-        logger.info("=== Step 1: Registering %d species ===", len(self.manifest.species))
+        logger.info(
+            "=== Step 1: Registering %d species ===", len(self.manifest.species)
+        )
         species_map: dict[str, dict] = {}
         for name in sorted(self.manifest.species):
             try:
@@ -295,7 +303,10 @@ class DtoImporter:
                     rate = (i + 1) / elapsed if elapsed > 0 else 0
                     logger.info(
                         "  progress: %d/%d images (%.1f img/s, %d segments)",
-                        i + 1, len(self.manifest.images), rate, total_segments,
+                        i + 1,
+                        len(self.manifest.images),
+                        rate,
+                        total_segments,
                     )
             except Exception as e:
                 self.stats.images_failed += 1
@@ -323,30 +334,29 @@ class DtoImporter:
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(description="Import DTO original dataset into backend")
-    parser.add_argument(
-        "--source", default="/home/dat/dev/mycoai_projects/Dataset/original",
-        help="Path to Dataset/original/"
+    parser = argparse.ArgumentParser(
+        description="Import DTO original dataset into backend"
     )
     parser.add_argument(
-        "--api-url", default="http://localhost:8000/api/v1",
-        help="Backend API base URL"
+        "--source",
+        default="/home/dat/dev/mycoai_projects/Dataset/original",
+        help="Path to Dataset/original/",
     )
     parser.add_argument(
-        "--email", default="owner@test.dev",
-        help="Data owner email"
+        "--api-url", default="http://localhost:8000/api/v1", help="Backend API base URL"
+    )
+    parser.add_argument("--email", default="owner@test.dev", help="Data owner email")
+    parser.add_argument("--password", default="password123", help="Data owner password")
+    parser.add_argument(
+        "--scan-only",
+        action="store_true",
+        help="Only scan and print manifest, don't import",
     )
     parser.add_argument(
-        "--password", default="password123",
-        help="Data owner password"
-    )
-    parser.add_argument(
-        "--scan-only", action="store_true",
-        help="Only scan and print manifest, don't import"
-    )
-    parser.add_argument(
-        "--limit", type=int, default=0,
-        help="Limit number of images to import (0 = all)"
+        "--limit",
+        type=int,
+        default=0,
+        help="Limit number of images to import (0 = all)",
     )
     args = parser.parse_args()
 

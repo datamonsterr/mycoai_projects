@@ -241,7 +241,7 @@ def train_model(
     epochs_no_improve = 0
 
     for epoch in range(num_epochs):
-        print(f"Epoch {epoch+1}/{num_epochs}")
+        print(f"Epoch {epoch + 1}/{num_epochs}")
         print("-" * 10)
 
         # Each epoch has a training and validation phase
@@ -498,7 +498,7 @@ def main():  # noqa: C901
     models_to_train = ["ResNet50", "MobileNetV2", "EfficientNetB1"]
 
     for model_name in models_to_train:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Training {model_name}...")
         print("=" * 60)
 

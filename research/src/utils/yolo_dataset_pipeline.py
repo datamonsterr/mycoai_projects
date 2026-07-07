@@ -247,6 +247,10 @@ def materialize_strain_holdout_dataset(
     return {
         "output_root": str(output_root),
         "summary_path": str(summary_path),
-        "train_count": int((summary_df["assigned_split"] == "train").sum()) if not summary_df.empty else 0,
-        "test_count": int((summary_df["assigned_split"] == "test").sum()) if not summary_df.empty else 0,
+        "train_count": int((summary_df["assigned_split"] == "train").sum())
+        if not summary_df.empty
+        else 0,
+        "test_count": int((summary_df["assigned_split"] == "test").sum())
+        if not summary_df.empty
+        else 0,
     }

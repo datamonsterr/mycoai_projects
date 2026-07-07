@@ -26,7 +26,11 @@ def run_yolo_cross_validation(
     metrics_csv = write_metrics_csv(folds)
     fold_datasets: list[str] = []
     for fold_idx, fold in enumerate(folds):
-        fold_root = DATASET_ROOT / "manual_labeled_data_roboflow_species_cv" / f"fold_{fold_idx}"
+        fold_root = (
+            DATASET_ROOT
+            / "manual_labeled_data_roboflow_species_cv"
+            / f"fold_{fold_idx}"
+        )
         materialize_strain_holdout_dataset(source_dataset, fold, fold_root)
         fold_datasets.append(str(fold_root))
     return {
@@ -80,11 +84,21 @@ def run(params: ExperimentParams) -> ExperimentResult:
     """Uniform experiment contract wrapper. Scoped to params.output_root."""
     import json as _json_autolab
     from pathlib import Path as _Path_autolab
+
     output_root = _Path_autolab(params.output_root)
     output_root.mkdir(parents=True, exist_ok=True)
-    strategy = params.description[:30] if params.description else "yolo_cross_validation"
-    result_data = {"f1_score": 0.0, "strategy_name": strategy, "artifact_paths": [], "run_id": params.run_id}
-    (output_root / "results.json").write_text(_json_autolab.dumps(result_data, indent=2))
+    strategy = (
+        params.description[:30] if params.description else "yolo_cross_validation"
+    )
+    result_data = {
+        "f1_score": 0.0,
+        "strategy_name": strategy,
+        "artifact_paths": [],
+        "run_id": params.run_id,
+    }
+    (output_root / "results.json").write_text(
+        _json_autolab.dumps(result_data, indent=2)
+    )
     return ExperimentResult(
         f1_score=0.0,
         strategy_name=strategy,

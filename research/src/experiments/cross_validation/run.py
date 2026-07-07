@@ -284,9 +284,13 @@ def run_cross_validation(
     with tqdm(total=total, desc="CV runs", unit="run", dynamic_ncols=True) as pbar:
         for fold_idx, fold_strains in enumerate(folds):
             # ---- build extractor for this fold ----
-            if use_fold_specific_assets and extractor_key in {"efficientnetb1_finetuned", "resnet50_finetuned"}:
+            if use_fold_specific_assets and extractor_key in {
+                "efficientnetb1_finetuned",
+                "resnet50_finetuned",
+            }:
                 fold_weight_path = (
-                    Path(weights_dir) / f"fold{fold_idx}_{'EfficientNetB1' if 'efficientnet' in extractor_key else 'ResNet50'}_finetuned.pth"
+                    Path(weights_dir)
+                    / f"fold{fold_idx}_{'EfficientNetB1' if 'efficientnet' in extractor_key else 'ResNet50'}_finetuned.pth"
                 )
                 if not fold_weight_path.exists():
                     raise FileNotFoundError(
@@ -484,11 +488,19 @@ def run(params: ExperimentParams) -> ExperimentResult:
     """Uniform experiment contract wrapper. Scoped to params.output_root."""
     import json as _json_autolab
     from pathlib import Path as _Path_autolab
+
     output_root = _Path_autolab(params.output_root)
     output_root.mkdir(parents=True, exist_ok=True)
     strategy = params.description[:30] if params.description else "cross_validation"
-    result_data = {"f1_score": 0.0, "strategy_name": strategy, "artifact_paths": [], "run_id": params.run_id}
-    (output_root / "results.json").write_text(_json_autolab.dumps(result_data, indent=2))
+    result_data = {
+        "f1_score": 0.0,
+        "strategy_name": strategy,
+        "artifact_paths": [],
+        "run_id": params.run_id,
+    }
+    (output_root / "results.json").write_text(
+        _json_autolab.dumps(result_data, indent=2)
+    )
     return ExperimentResult(
         f1_score=0.0,
         strategy_name=strategy,

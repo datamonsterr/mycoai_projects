@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 import matplotlib
+
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
@@ -35,7 +36,9 @@ from src.config import (
     WORKSPACE_ROOT,
 )
 
-OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent.parent / "report" / "eda_new_data"
+OUTPUT_DIR = (
+    Path(__file__).resolve().parent.parent.parent.parent / "report" / "eda_new_data"
+)
 IMAGES_OUT = OUTPUT_DIR / "images"
 REPORT_FIGURES = Path("/home/dat/dev/mycoai/graduation_report/content/figures")
 SEED = 42
@@ -73,7 +76,8 @@ def _compute_stats(metadata: list[dict]) -> dict:
         "n_species": len(species),
         "n_strains": len(strains),
         "n_envs": len(envs),
-        "avg_strains_per_species": sum(sp_strain_counts.values()) / max(1, len(sp_strain_counts)),
+        "avg_strains_per_species": sum(sp_strain_counts.values())
+        / max(1, len(sp_strain_counts)),
         "avg_images_per_species": len(metadata) / max(1, len(species)),
     }
 
@@ -104,61 +108,129 @@ def plot_species_comparison(curated: dict, incoming: dict) -> Path:
     width = 0.35
 
     for i, ax in enumerate(axes):
-        bars1 = ax.bar(x[i] - width / 2, curated_vals[i], width, label="Curated (original)", color="#2ca02c")
-        bars2 = ax.bar(x[i] + width / 2, incoming_vals[i], width, label="Incoming (new_data)", color="#d62728")
+        bars1 = ax.bar(
+            x[i] - width / 2,
+            curated_vals[i],
+            width,
+            label="Curated (original)",
+            color="#2ca02c",
+        )
+        bars2 = ax.bar(
+            x[i] + width / 2,
+            incoming_vals[i],
+            width,
+            label="Incoming (new_data)",
+            color="#d62728",
+        )
         ax.set_ylabel(labels[i])
         ax.set_xticks([x[i]])
         ax.set_xticklabels([labels[i]])
 
         for bar, val in zip(bars1, [curated_vals[i]]):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(curated_vals[i], incoming_vals[i]) * 0.01,
-                    f"{val:.1f}", ha="center", va="bottom", fontsize=FONT_TICK, fontweight="bold")
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + max(curated_vals[i], incoming_vals[i]) * 0.01,
+                f"{val:.1f}",
+                ha="center",
+                va="bottom",
+                fontsize=FONT_TICK,
+                fontweight="bold",
+            )
         for bar, val in zip(bars2, [incoming_vals[i]]):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(curated_vals[i], incoming_vals[i]) * 0.01,
-                    f"{val:.1f}", ha="center", va="bottom", fontsize=FONT_TICK, fontweight="bold")
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + max(curated_vals[i], incoming_vals[i]) * 0.01,
+                f"{val:.1f}",
+                ha="center",
+                va="bottom",
+                fontsize=FONT_TICK,
+                fontweight="bold",
+            )
 
         if i == 0:
             ax.legend(fontsize=9)
 
-    fig.suptitle("Curated vs Incoming Dataset Comparison", fontsize=FONT_TITLE, fontweight="bold")
+    fig.suptitle(
+        "Curated vs Incoming Dataset Comparison", fontsize=FONT_TITLE, fontweight="bold"
+    )
     fig.tight_layout()
     return _save_fig(fig, "eda_new_comparison_overview.png")
 
 
-def plot_strains_per_species_distribution(curated_sp_strains: dict, incoming_sp_strains: dict) -> Path:
+def plot_strains_per_species_distribution(
+    curated_sp_strains: dict, incoming_sp_strains: dict
+) -> Path:
     """Compare species-level strain counts directly for curated and incoming sets."""
-    curated_items = sorted(curated_sp_strains.items(), key=lambda item: (-item[1], item[0]))
-    incoming_items = sorted(incoming_sp_strains.items(), key=lambda item: (-item[1], item[0]))[:15]
+    curated_items = sorted(
+        curated_sp_strains.items(), key=lambda item: (-item[1], item[0])
+    )
+    incoming_items = sorted(
+        incoming_sp_strains.items(), key=lambda item: (-item[1], item[0])
+    )[:15]
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7), gridspec_kw={"width_ratios": [1.05, 1.35]})
+    fig, axes = plt.subplots(
+        1, 2, figsize=(16, 7), gridspec_kw={"width_ratios": [1.05, 1.35]}
+    )
 
-    curated_labels = [label.replace("Penicillium ", "P. ") for label, _ in curated_items]
+    curated_labels = [
+        label.replace("Penicillium ", "P. ") for label, _ in curated_items
+    ]
     curated_values = [value for _, value in curated_items]
     curated_y = np.arange(len(curated_items))
-    curated_bars = axes[0].barh(curated_y, curated_values, color="#2ca02c", edgecolor="white")
+    curated_bars = axes[0].barh(
+        curated_y, curated_values, color="#2ca02c", edgecolor="white"
+    )
     axes[0].set_yticks(curated_y)
     axes[0].set_yticklabels(curated_labels, fontsize=10)
     axes[0].invert_yaxis()
     axes[0].set_xlabel("Number of strains", fontsize=FONT_LABEL)
-    axes[0].set_title("Curated dataset (all 8 species)", fontsize=FONT_LABEL, fontweight="bold")
+    axes[0].set_title(
+        "Curated dataset (all 8 species)", fontsize=FONT_LABEL, fontweight="bold"
+    )
     axes[0].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     for bar, value in zip(curated_bars, curated_values):
-        axes[0].text(value + 0.05, bar.get_y() + bar.get_height() / 2, str(value), va="center", fontsize=FONT_TICK, fontweight="bold")
+        axes[0].text(
+            value + 0.05,
+            bar.get_y() + bar.get_height() / 2,
+            str(value),
+            va="center",
+            fontsize=FONT_TICK,
+            fontweight="bold",
+        )
 
-    incoming_labels = [label.replace("Penicillium ", "P. ") for label, _ in incoming_items]
+    incoming_labels = [
+        label.replace("Penicillium ", "P. ") for label, _ in incoming_items
+    ]
     incoming_values = [value for _, value in incoming_items]
     incoming_y = np.arange(len(incoming_items))
-    incoming_bars = axes[1].barh(incoming_y, incoming_values, color="#d62728", edgecolor="white")
+    incoming_bars = axes[1].barh(
+        incoming_y, incoming_values, color="#d62728", edgecolor="white"
+    )
     axes[1].set_yticks(incoming_y)
     axes[1].set_yticklabels(incoming_labels, fontsize=9)
     axes[1].invert_yaxis()
     axes[1].set_xlabel("Number of strains", fontsize=FONT_LABEL)
-    axes[1].set_title("Incoming dataset (top 15 species by strain count)", fontsize=FONT_LABEL, fontweight="bold")
+    axes[1].set_title(
+        "Incoming dataset (top 15 species by strain count)",
+        fontsize=FONT_LABEL,
+        fontweight="bold",
+    )
     axes[1].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     for bar, value in zip(incoming_bars, incoming_values):
-        axes[1].text(value + 0.05, bar.get_y() + bar.get_height() / 2, str(value), va="center", fontsize=FONT_TICK, fontweight="bold")
+        axes[1].text(
+            value + 0.05,
+            bar.get_y() + bar.get_height() / 2,
+            str(value),
+            va="center",
+            fontsize=FONT_TICK,
+            fontweight="bold",
+        )
 
-    fig.suptitle("Species-level strain coverage in curated and incoming datasets", fontsize=FONT_TITLE, fontweight="bold")
+    fig.suptitle(
+        "Species-level strain coverage in curated and incoming datasets",
+        fontsize=FONT_TITLE,
+        fontweight="bold",
+    )
     fig.tight_layout()
     return _save_fig(fig, "eda_new_strains_per_species.png")
 
@@ -176,12 +248,21 @@ def plot_incoming_species_top(incoming: dict) -> Path:
     ax.set_yticklabels(labels, fontsize=9)
     ax.invert_yaxis()
     ax.set_xlabel("Image Count", fontsize=FONT_LABEL)
-    ax.set_title("Top 20 Species by Image Count — Incoming (new_data)", fontsize=FONT_TITLE, fontweight="bold")
+    ax.set_title(
+        "Top 20 Species by Image Count — Incoming (new_data)",
+        fontsize=FONT_TITLE,
+        fontweight="bold",
+    )
     ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
     for bar, val in zip(bars, values):
-        ax.text(bar.get_width() + max(values) * 0.01, bar.get_y() + bar.get_height() / 2,
-                str(val), va="center", fontsize=9)
+        ax.text(
+            bar.get_width() + max(values) * 0.01,
+            bar.get_y() + bar.get_height() / 2,
+            str(val),
+            va="center",
+            fontsize=9,
+        )
 
     fig.tight_layout()
     return _save_fig(fig, "eda_new_incoming_species_top20.png")
@@ -199,12 +280,22 @@ def plot_incoming_environments(incoming: dict) -> Path:
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, fontsize=FONT_TICK)
     ax.set_ylabel("Image Count", fontsize=FONT_LABEL)
-    ax.set_title("Environment Distribution — Incoming (new_data)", fontsize=FONT_TITLE, fontweight="bold")
+    ax.set_title(
+        "Environment Distribution — Incoming (new_data)",
+        fontsize=FONT_TITLE,
+        fontweight="bold",
+    )
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
     for bar, val in zip(bars, values):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(values) * 0.01,
-                str(val), ha="center", fontsize=FONT_TICK, fontweight="bold")
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + max(values) * 0.01,
+            str(val),
+            ha="center",
+            fontsize=FONT_TICK,
+            fontweight="bold",
+        )
 
     fig.tight_layout()
     return _save_fig(fig, "eda_new_incoming_environments.png")
@@ -225,7 +316,9 @@ def plot_sample_image_grid(incoming_meta: list[dict]) -> Optional[Path]:
             for spath in seg_paths:
                 resolved = WORKSPACE_ROOT / spath
                 if resolved.exists():
-                    env_groups[info["environment"]].append((resolved, sp, info["strain"]))
+                    env_groups[info["environment"]].append(
+                        (resolved, sp, info["strain"])
+                    )
 
     envs = sorted(env_groups.keys())
     envs = [e for e in envs if e not in ("UNKNOWN", "OA")][:5]
@@ -256,10 +349,15 @@ def plot_sample_image_grid(incoming_meta: list[dict]) -> Optional[Path]:
             ax.set_xticks([])
             ax.set_yticks([])
 
-        axes[row, 0].set_ylabel(env, fontsize=FONT_LABEL, fontweight="bold", rotation=0, labelpad=40)
+        axes[row, 0].set_ylabel(
+            env, fontsize=FONT_LABEL, fontweight="bold", rotation=0, labelpad=40
+        )
 
-    fig.suptitle("Sample Segmented Colonies — Incoming (new_data) by Environment",
-                 fontsize=FONT_TITLE, fontweight="bold")
+    fig.suptitle(
+        "Sample Segmented Colonies — Incoming (new_data) by Environment",
+        fontsize=FONT_TITLE,
+        fontweight="bold",
+    )
     fig.tight_layout()
     return _save_fig(fig, "eda_new_sample_images.png")
 
@@ -297,8 +395,11 @@ def plot_yolo_bbox_demo() -> Optional[Path]:
     for j in range(len(selected), len(axes)):
         axes[j].axis("off")
 
-    fig.suptitle("YOLO26 Fine-tuned Bounding Boxes on new_data_prepared Images",
-                 fontsize=FONT_TITLE, fontweight="bold")
+    fig.suptitle(
+        "YOLO26 Fine-tuned Bounding Boxes on new_data_prepared Images",
+        fontsize=FONT_TITLE,
+        fontweight="bold",
+    )
     fig.tight_layout()
     return _save_fig(fig, "eda_new_yolo_bbox_demo.png")
 
@@ -310,25 +411,51 @@ def plot_species_diversity_radar(curated: dict, incoming: dict) -> Path:
 
     col_labels = ["Metric", "Curated (original)", "Incoming (new_data)", "Ratio"]
     rows = [
-        ["Species", str(curated["n_species"]), str(incoming["n_species"]),
-         f"{incoming['n_species'] / max(1, curated['n_species']):.1f}x"],
-        ["Strains", str(curated["n_strains"]), str(incoming["n_strains"]),
-         f"{incoming['n_strains'] / max(1, curated['n_strains']):.1f}x"],
-        ["Images", str(curated["total_images"]), str(incoming["total_images"]),
-         f"{incoming['total_images'] / max(1, curated['total_images']):.2f}x"],
-        ["Avg Strains/Species", f"{curated['avg_strains_per_species']:.1f}",
-         f"{incoming['avg_strains_per_species']:.1f}",
-         f"{curated['avg_strains_per_species'] / max(0.1, incoming['avg_strains_per_species']):.1f}x"],
-        ["Avg Images/Species", f"{curated['avg_images_per_species']:.1f}",
-         f"{incoming['avg_images_per_species']:.1f}",
-         f"{curated['avg_images_per_species'] / max(0.1, incoming['avg_images_per_species']):.1f}x"],
-        ["1-Strain Species", str(sum(1 for v in curated["sp_strains"].values() if v == 1)),
-         str(sum(1 for v in incoming["sp_strains"].values() if v == 1)),
-         ""],
+        [
+            "Species",
+            str(curated["n_species"]),
+            str(incoming["n_species"]),
+            f"{incoming['n_species'] / max(1, curated['n_species']):.1f}x",
+        ],
+        [
+            "Strains",
+            str(curated["n_strains"]),
+            str(incoming["n_strains"]),
+            f"{incoming['n_strains'] / max(1, curated['n_strains']):.1f}x",
+        ],
+        [
+            "Images",
+            str(curated["total_images"]),
+            str(incoming["total_images"]),
+            f"{incoming['total_images'] / max(1, curated['total_images']):.2f}x",
+        ],
+        [
+            "Avg Strains/Species",
+            f"{curated['avg_strains_per_species']:.1f}",
+            f"{incoming['avg_strains_per_species']:.1f}",
+            f"{curated['avg_strains_per_species'] / max(0.1, incoming['avg_strains_per_species']):.1f}x",
+        ],
+        [
+            "Avg Images/Species",
+            f"{curated['avg_images_per_species']:.1f}",
+            f"{incoming['avg_images_per_species']:.1f}",
+            f"{curated['avg_images_per_species'] / max(0.1, incoming['avg_images_per_species']):.1f}x",
+        ],
+        [
+            "1-Strain Species",
+            str(sum(1 for v in curated["sp_strains"].values() if v == 1)),
+            str(sum(1 for v in incoming["sp_strains"].values() if v == 1)),
+            "",
+        ],
     ]
 
-    table = ax.table(cellText=rows, colLabels=col_labels, cellLoc="center", loc="center",
-                     colColours=["#e8e8e8"] * 4)
+    table = ax.table(
+        cellText=rows,
+        colLabels=col_labels,
+        cellLoc="center",
+        loc="center",
+        colColours=["#e8e8e8"] * 4,
+    )
 
     table.auto_set_font_size(False)
     table.set_fontsize(11)
@@ -348,8 +475,12 @@ def plot_species_diversity_radar(curated: dict, incoming: dict) -> Path:
         elif col == 3:
             cell.set_facecolor("#fff8e1")
 
-    ax.set_title("Key Dataset Diversity Metrics: Curated vs Incoming",
-                 fontsize=FONT_TITLE, fontweight="bold", pad=20)
+    ax.set_title(
+        "Key Dataset Diversity Metrics: Curated vs Incoming",
+        fontsize=FONT_TITLE,
+        fontweight="bold",
+        pad=20,
+    )
     fig.tight_layout()
     return _save_fig(fig, "eda_new_diversity_table.png")
 
@@ -369,13 +500,19 @@ def main() -> None:
     curated_stats = _compute_stats(curated_meta)
     incoming_stats = _compute_stats(incoming_meta)
 
-    print(f"\nCurated: {curated_stats['n_species']} species, {curated_stats['n_strains']} strains, "
-          f"{curated_stats['avg_strains_per_species']:.1f} avg strains/species")
-    print(f"Incoming: {incoming_stats['n_species']} species, {incoming_stats['n_strains']} strains, "
-          f"{incoming_stats['avg_strains_per_species']:.1f} avg strains/species")
+    print(
+        f"\nCurated: {curated_stats['n_species']} species, {curated_stats['n_strains']} strains, "
+        f"{curated_stats['avg_strains_per_species']:.1f} avg strains/species"
+    )
+    print(
+        f"Incoming: {incoming_stats['n_species']} species, {incoming_stats['n_strains']} strains, "
+        f"{incoming_stats['avg_strains_per_species']:.1f} avg strains/species"
+    )
 
-    print(f"\nIncoming 1-strain species: "
-          f"{sum(1 for v in incoming_stats['sp_strains'].values() if v == 1)} / {incoming_stats['n_species']}")
+    print(
+        f"\nIncoming 1-strain species: "
+        f"{sum(1 for v in incoming_stats['sp_strains'].values() if v == 1)} / {incoming_stats['n_species']}"
+    )
 
     print("\nGenerating charts...")
 

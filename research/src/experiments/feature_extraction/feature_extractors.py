@@ -25,7 +25,9 @@ from src.config import WEIGHTS_DIR
 
 
 def _finetuned_weights_root() -> Path:
-    segment_method = os.getenv("MYCOAI_FINETUNED_SEGMENT_METHOD", "yolo").strip().lower() or "yolo"
+    segment_method = (
+        os.getenv("MYCOAI_FINETUNED_SEGMENT_METHOD", "yolo").strip().lower() or "yolo"
+    )
     return WEIGHTS_DIR / f"{segment_method}_finetuned"
 
 
@@ -46,13 +48,14 @@ def l2_normalize(features: np.ndarray) -> np.ndarray:
 
 
 def _unwrap_state_dict(checkpoint: Any) -> dict[str, Any]:
-    state_dict = checkpoint.get("state_dict", checkpoint) if isinstance(checkpoint, dict) else checkpoint
+    state_dict = (
+        checkpoint.get("state_dict", checkpoint)
+        if isinstance(checkpoint, dict)
+        else checkpoint
+    )
     if not isinstance(state_dict, dict):
         raise TypeError(f"Unsupported checkpoint payload: {type(state_dict)!r}")
-    return {
-        key.removeprefix("module."): value
-        for key, value in state_dict.items()
-    }
+    return {key.removeprefix("module."): value for key, value in state_dict.items()}
 
 
 class FeatureExtractor(ABC):
@@ -344,10 +347,14 @@ class ResNet50Extractor(BaseDeepLearningExtractor):
             try:
                 checkpoint = torch.load(weights_path, map_location=self.device)
                 state_dict = _unwrap_state_dict(checkpoint)
-                filtered = {k: v for k, v in state_dict.items() if not k.startswith("fc.")}
+                filtered = {
+                    k: v for k, v in state_dict.items() if not k.startswith("fc.")
+                }
                 missing, unexpected = model.load_state_dict(filtered, strict=False)
                 loaded_count = len(filtered) - len(unexpected)
-                print(f"✓ Fine-tuned ResNet50 weights loaded successfully ({loaded_count} backbone keys)")
+                print(
+                    f"✓ Fine-tuned ResNet50 weights loaded successfully ({loaded_count} backbone keys)"
+                )
             except Exception as e:
                 print(f"Warning: Failed to load fine-tuned weights: {e}")
                 print("Using ImageNet weights instead")
@@ -380,7 +387,11 @@ class MobileNetV2Extractor(BaseDeepLearningExtractor):
             try:
                 checkpoint = torch.load(weights_path, map_location=self.device)
                 state_dict = _unwrap_state_dict(checkpoint)
-                filtered = {k: v for k, v in state_dict.items() if not k.startswith("classifier.")}
+                filtered = {
+                    k: v
+                    for k, v in state_dict.items()
+                    if not k.startswith("classifier.")
+                }
                 missing, unexpected = model.load_state_dict(filtered, strict=False)
                 loaded_count = len(filtered) - len(unexpected)
                 print(f"✓ Fine-tuned weights loaded ({loaded_count} backbone keys)")
@@ -429,10 +440,16 @@ class EfficientNetB1Extractor(BaseDeepLearningExtractor):
             try:
                 checkpoint = torch.load(weights_path, map_location=self.device)
                 state_dict = _unwrap_state_dict(checkpoint)
-                filtered = {k: v for k, v in state_dict.items() if not k.startswith("classifier.")}
+                filtered = {
+                    k: v
+                    for k, v in state_dict.items()
+                    if not k.startswith("classifier.")
+                }
                 missing, unexpected = model.load_state_dict(filtered, strict=False)
                 loaded_count = len(filtered) - len(unexpected)
-                print(f"✓ Fine-tuned EfficientNetB1 weights loaded successfully ({loaded_count} backbone keys)")
+                print(
+                    f"✓ Fine-tuned EfficientNetB1 weights loaded successfully ({loaded_count} backbone keys)"
+                )
             except Exception as e:
                 print(f"Warning: Failed to load weights: {e}")
                 print("Using ImageNet pretrained weights instead")
@@ -566,7 +583,9 @@ class ResNet50FinetunedExtractor(ResNet50Extractor):
         self,
         weights_path: Optional[str] = None,
     ):
-        super().__init__(weights_path=weights_path or str(self._resolve_default_weights_path()))
+        super().__init__(
+            weights_path=weights_path or str(self._resolve_default_weights_path())
+        )
         self.name = "resnet50_finetuned"
 
 
@@ -580,7 +599,9 @@ class MobileNetV2FinetunedExtractor(MobileNetV2Extractor):
         self,
         weights_path: Optional[str] = None,
     ):
-        super().__init__(weights_path=weights_path or str(self._resolve_default_weights_path()))
+        super().__init__(
+            weights_path=weights_path or str(self._resolve_default_weights_path())
+        )
         self.name = "mobilenetv2_finetuned"
 
 
@@ -594,7 +615,9 @@ class EfficientNetB1FinetunedExtractor(EfficientNetB1Extractor):
         self,
         weights_path: Optional[str] = None,
     ):
-        super().__init__(weights_path=weights_path or str(self._resolve_default_weights_path()))
+        super().__init__(
+            weights_path=weights_path or str(self._resolve_default_weights_path())
+        )
         self.name = "efficientnetb1_finetuned"
 
 

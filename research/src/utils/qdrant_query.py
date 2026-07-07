@@ -151,7 +151,8 @@ def find_nearest_neighbors_by_id(
             "environment": result.payload.get("environment"),
             "angle": result.payload.get("angle"),
             "specy": result.payload.get("specy") or result.payload.get("species"),
-            "parent_id": result.payload.get("parent_id") or result.payload.get("parent_item_id"),
+            "parent_id": result.payload.get("parent_id")
+            or result.payload.get("parent_item_id"),
             "segment_index": result.payload.get("segment_index"),
             "bbox": result.payload.get("bbox"),
             "image_path": result.payload.get("segment_path"),
@@ -211,7 +212,8 @@ def find_nearest_neighbors_by_image(
             "environment": result.payload.get("environment"),
             "angle": result.payload.get("angle"),
             "specy": result.payload.get("specy") or result.payload.get("species"),
-            "parent_id": result.payload.get("parent_id") or result.payload.get("parent_item_id"),
+            "parent_id": result.payload.get("parent_id")
+            or result.payload.get("parent_item_id"),
             "segment_index": result.payload.get("segment_index"),
             "bbox": result.payload.get("bbox"),
             "image_path": result.payload.get("segment_path"),

@@ -47,11 +47,12 @@ def _load_strain_species_mapping() -> dict[str, str]:
     if not STRAIN_SPECIES_MAPPING_PATH.exists():
         return {}
     import csv
+
     mapping: dict[str, str] = {}
-    with open(STRAIN_SPECIES_MAPPING_PATH, newline='') as f:
+    with open(STRAIN_SPECIES_MAPPING_PATH, newline="") as f:
         for row in csv.DictReader(f):
-            strain = _normalize_strain_name(row.get('Strain', ''))
-            species = row.get('Species', '').strip()
+            strain = _normalize_strain_name(row.get("Strain", ""))
+            species = row.get("Species", "").strip()
             if strain and species:
                 mapping[strain] = species
     return mapping
@@ -126,7 +127,9 @@ def upload_features_to_qdrant(
     items = _load_all_items()
     id_lookup = _build_id_lookup(items)
     strain_species_mapping = _load_strain_species_mapping()
-    print(f"Loaded {len(items)} items from consolidated metadata ({len(id_lookup)} segment lookups)")
+    print(
+        f"Loaded {len(items)} items from consolidated metadata ({len(id_lookup)} segment lookups)"
+    )
 
     if not features_data:
         print("No data to upload!")
@@ -149,7 +152,9 @@ def upload_features_to_qdrant(
         meta = id_lookup.get(segment_id) or _metadata_from_feature_record(record)
 
         if meta is None:
-            print(f"Warning: No metadata found for segment_id {segment_id}, skipping...")
+            print(
+                f"Warning: No metadata found for segment_id {segment_id}, skipping..."
+            )
             skipped_count += 1
             continue
 
@@ -171,11 +176,15 @@ def upload_features_to_qdrant(
 
         strain = inst.get("strain", "unknown")
         normalized_strain = _normalize_strain_name(strain)
-        canonical_species = strain_species_mapping.get(normalized_strain, inst.get("species", "unknown"))
+        canonical_species = strain_species_mapping.get(
+            normalized_strain, inst.get("species", "unknown")
+        )
         payload = {
             "image_id": segment_id,
             "feature_types": list(vectors.keys()),
-            "parent_item_id": segment_id.rsplit("_seg", 1)[0] if "_seg" in segment_id else segment_id,
+            "parent_item_id": segment_id.rsplit("_seg", 1)[0]
+            if "_seg" in segment_id
+            else segment_id,
             "segment_index": seg_idx,
             "bbox": bbox,
             "species": canonical_species,

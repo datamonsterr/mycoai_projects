@@ -67,7 +67,9 @@ def _load_all_items(metadata_paths: dict[str, Path]) -> list[dict[str, Any]]:
     return all_items
 
 
-def _item_from_prepared_segment(segment_path: Path, dataset_root: Path) -> dict[str, Any] | None:
+def _item_from_prepared_segment(
+    segment_path: Path, dataset_root: Path
+) -> dict[str, Any] | None:
     try:
         parts = segment_path.relative_to(dataset_root).parts
     except ValueError:
@@ -112,7 +114,9 @@ def _load_prepared_segment_items(
     items: list[dict[str, Any]] = []
     if not dataset_root.exists():
         return items
-    for segment_path in sorted(dataset_root.glob(f"*/*/*/*/{segment_dir}/segment_*.jpg")):
+    for segment_path in sorted(
+        dataset_root.glob(f"*/*/*/*/{segment_dir}/segment_*.jpg")
+    ):
         item = _item_from_prepared_segment(segment_path, dataset_root)
         if item is not None:
             items.append(item)
@@ -134,11 +138,15 @@ def generate_features(
             items = json.load(f)
     else:
         if image_dir is not None:
-            items = _load_prepared_segment_items(image_dir, segment_method=segment_method)
+            items = _load_prepared_segment_items(
+                image_dir, segment_method=segment_method
+            )
         else:
             items = _load_all_items(COLLECTION_METADATA_PATHS)
             if not items:
-                items = _load_prepared_segment_items(ORIGINAL_PREPARED_DATASET_DIR, segment_method=segment_method)
+                items = _load_prepared_segment_items(
+                    ORIGINAL_PREPARED_DATASET_DIR, segment_method=segment_method
+                )
 
     if not items:
         print("No segment items found in metadata or original_prepared.")
@@ -206,11 +214,15 @@ def generate_features(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate feature JSON for configured extractors")
+    parser = argparse.ArgumentParser(
+        description="Generate feature JSON for configured extractors"
+    )
     parser.add_argument("--metadata-path", type=Path, default=None)
     parser.add_argument("--output-path", type=Path, default=FEATURES_JSON_PATH)
     parser.add_argument("--image-dir", type=Path, default=None)
-    parser.add_argument("--segment-method", type=str, default="yolo", choices=["yolo", "kmeans"])
+    parser.add_argument(
+        "--segment-method", type=str, default="yolo", choices=["yolo", "kmeans"]
+    )
     parser.add_argument("--extractors", nargs="+", default=None)
     args = parser.parse_args()
 

@@ -18,9 +18,17 @@ from PIL import Image
 from sklearn.preprocessing import LabelEncoder
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
-from torchvision.models import EfficientNet_B1_Weights, MobileNet_V2_Weights, ResNet50_Weights
+from torchvision.models import (
+    EfficientNet_B1_Weights,
+    MobileNet_V2_Weights,
+    ResNet50_Weights,
+)
 
-from src.config import ORIGINAL_PREPARED_DATASET_DIR, STRAIN_SPECIES_MAPPING_PATH, WEIGHTS_DIR
+from src.config import (
+    ORIGINAL_PREPARED_DATASET_DIR,
+    STRAIN_SPECIES_MAPPING_PATH,
+    WEIGHTS_DIR,
+)
 from src.experiments.finetune_dl.train_yolo_crops import export_backbone_weights
 from torchvision.models import efficientnet_b1, mobilenet_v2, resnet50
 
@@ -35,18 +43,24 @@ def set_reproducible_seed(seed: int = 42) -> None:
 
 
 class SegmentClassificationDataset(Dataset):
-    def __init__(self, paths: List[Path], labels: List[int], image_size: int, augment: bool) -> None:
+    def __init__(
+        self, paths: List[Path], labels: List[int], image_size: int, augment: bool
+    ) -> None:
         self.paths = [str(path) for path in paths]
         self.labels = labels
         normalize = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ops = [transforms.Resize((image_size, image_size))]
         if augment:
-            ops.extend([
-                transforms.RandomResizedCrop((image_size, image_size), scale=(0.75, 1.0), ratio=(0.9, 1.1)),
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomRotation(10),
-                transforms.ColorJitter(brightness=0.2, contrast=0.2),
-            ])
+            ops.extend(
+                [
+                    transforms.RandomResizedCrop(
+                        (image_size, image_size), scale=(0.75, 1.0), ratio=(0.9, 1.1)
+                    ),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomRotation(10),
+                    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+                ]
+            )
         ops.extend([transforms.ToTensor(), normalize])
         self.transform = transforms.Compose(ops)
 
@@ -67,12 +81,16 @@ def build_finetune_model(model_name: str, num_classes: int) -> nn.Module:
     if model_name == "MobileNetV2":
         model = mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
         num_features = model.classifier[1].in_features
-        model.classifier[1] = nn.Sequential(nn.Dropout(0.3), nn.Linear(num_features, num_classes))
+        model.classifier[1] = nn.Sequential(
+            nn.Dropout(0.3), nn.Linear(num_features, num_classes)
+        )
         return model
     if model_name == "EfficientNetB1":
         model = efficientnet_b1(weights=EfficientNet_B1_Weights.DEFAULT)
         num_features = model.classifier[1].in_features
-        model.classifier[1] = nn.Sequential(nn.Dropout(0.3), nn.Linear(num_features, num_classes))
+        model.classifier[1] = nn.Sequential(
+            nn.Dropout(0.3), nn.Linear(num_features, num_classes)
+        )
         return model
     raise ValueError(f"Unsupported model: {model_name}")
 
@@ -97,7 +115,9 @@ def _species_from_slug(species_slug: str) -> str:
     return normalize_species_name(species_slug.replace("-", " "))
 
 
-def collect_segment_paths(dataset_root: Path, segment_method: str) -> Dict[str, List[Path]]:
+def collect_segment_paths(
+    dataset_root: Path, segment_method: str
+) -> Dict[str, List[Path]]:
     segment_dir = f"segments_{segment_method}"
     strain_segments: Dict[str, List[Path]] = {}
     pattern = f"*/*/*/*/{segment_dir}/segment_*.jpg"
@@ -159,17 +179,19 @@ def build_dataloaders(
     test_strains, csv_mapping = load_split_mapping(mapping_path)
     path_map = collect_segment_paths(dataset_root, segment_method)
     dir_mapping = strain_to_species_from_original_prepared(dataset_root)
-    missing_in_dataset = sorted(strain for strain in csv_mapping if strain not in dir_mapping)
-    missing_in_segments = sorted(strain for strain in csv_mapping if strain not in path_map)
+    missing_in_dataset = sorted(
+        strain for strain in csv_mapping if strain not in dir_mapping
+    )
+    missing_in_segments = sorted(
+        strain for strain in csv_mapping if strain not in path_map
+    )
     if missing_in_dataset:
         raise ValueError(
-            "CSV strains missing from Dataset/original_prepared: "
-            f"{missing_in_dataset}"
+            f"CSV strains missing from Dataset/original_prepared: {missing_in_dataset}"
         )
     if missing_in_segments:
         raise ValueError(
-            "CSV strains missing from prepared segments: "
-            f"{missing_in_segments}"
+            f"CSV strains missing from prepared segments: {missing_in_segments}"
         )
     strain_to_species = {**dir_mapping, **csv_mapping}
 
@@ -206,8 +228,12 @@ def build_dataloaders(
         image_size=image_size,
         augment=False,
     )
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=1)
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=2
+    )
+    val_loader = DataLoader(
+        val_dataset, batch_size=batch_size, shuffle=False, num_workers=1
+    )
     counts = {
         "train_count": len(train_paths),
         "val_count": len(val_paths),
@@ -230,7 +256,11 @@ def train_model(
     patience: int,
 ) -> dict[str, object]:
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW([param for param in model.parameters() if param.requires_grad], lr=learning_rate, weight_decay=1e-4)
+    optimizer = optim.AdamW(
+        [param for param in model.parameters() if param.requires_grad],
+        lr=learning_rate,
+        weight_decay=1e-4,
+    )
     history: dict[str, list[float]] = {
         "train_loss": [],
         "train_accuracy": [],
@@ -363,10 +393,20 @@ def run_strain_holdout_finetuning(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Fine-tune backbone on original_prepared strain holdout segments")
-    parser.add_argument("--dataset-root", type=Path, default=ORIGINAL_PREPARED_DATASET_DIR)
-    parser.add_argument("--mapping-path", type=Path, default=STRAIN_SPECIES_MAPPING_PATH)
-    parser.add_argument("--model-name", choices=["ResNet50", "MobileNetV2", "EfficientNetB1"], default="ResNet50")
+    parser = argparse.ArgumentParser(
+        description="Fine-tune backbone on original_prepared strain holdout segments"
+    )
+    parser.add_argument(
+        "--dataset-root", type=Path, default=ORIGINAL_PREPARED_DATASET_DIR
+    )
+    parser.add_argument(
+        "--mapping-path", type=Path, default=STRAIN_SPECIES_MAPPING_PATH
+    )
+    parser.add_argument(
+        "--model-name",
+        choices=["ResNet50", "MobileNetV2", "EfficientNetB1"],
+        default="ResNet50",
+    )
     parser.add_argument("--segment-method", choices=["yolo", "kmeans"], default="yolo")
     parser.add_argument("--epochs", type=int, default=12)
     parser.add_argument("--batch-size", type=int, default=16)

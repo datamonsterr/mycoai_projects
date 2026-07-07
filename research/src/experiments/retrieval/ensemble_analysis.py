@@ -1277,7 +1277,9 @@ def evaluate_ensemble(
         print(f"  {fe}: {w:.4f}")
 
     # Create lookup for predictions by (strain, test_set_index)
-    predictions_by_key: DefaultDict[tuple[str, int], Dict[str, PredictionResult]] = defaultdict(dict)
+    predictions_by_key: DefaultDict[tuple[str, int], Dict[str, PredictionResult]] = (
+        defaultdict(dict)
+    )
 
     for fe, results in results_dict.items():
         for pred in results.predictions:
@@ -1445,7 +1447,10 @@ def regenerate_prediction_with_details(
     """
     from qdrant_client import QdrantClient
 
-    from src.experiments.retrieval.run import get_extractor_by_name, predict_segment_group
+    from src.experiments.retrieval.run import (
+        get_extractor_by_name,
+        predict_segment_group,
+    )
 
     # Single collection with multiple named vectors
     COLLECTION_NAME = "myco_fungi_features_full"
@@ -1461,7 +1466,9 @@ def regenerate_prediction_with_details(
         "ResNet50": "resnet50",
         "EfficientNetV2B0": "efficientnetv2b0",
     }
-    extractor = get_extractor_by_name(extractor_aliases.get(feature_extractor, feature_extractor))
+    extractor = get_extractor_by_name(
+        extractor_aliases.get(feature_extractor, feature_extractor)
+    )
     if extractor is None:
         raise ValueError(f"Unknown feature extractor: {feature_extractor}")
 

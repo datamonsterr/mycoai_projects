@@ -130,6 +130,14 @@ def test_prepare_dataset_writes_canonical_tree(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr("src.prepare.dataset.STRAIN_SPECIES_MAPPING_PATH", mapping_path)
     monkeypatch.setattr("src.prepare.dataset.PREPARED_DATASET_DIR", prepared_root)
     monkeypatch.setattr(
+        "src.prepare.dataset.PREPARED_ITEMS_METADATA_PATH",
+        dataset_root / "prepared_items_metadata.json",
+    )
+    monkeypatch.setattr(
+        "src.prepare.dataset.PREPARED_SEGMENTS_METADATA_PATH",
+        dataset_root / "prepared_segments_metadata.json",
+    )
+    monkeypatch.setattr(
         "src.prepare.dataset.COLLECTION_METADATA_PATHS",
         {"curated": curated_meta, "incoming": incoming_meta},
     )
@@ -195,6 +203,14 @@ def test_prepare_dataset_with_letter_range_incoming(tmp_path: Path, monkeypatch)
     )
     monkeypatch.setattr("src.prepare.dataset.STRAIN_SPECIES_MAPPING_PATH", mapping_path)
     monkeypatch.setattr("src.prepare.dataset.PREPARED_DATASET_DIR", prepared_root)
+    monkeypatch.setattr(
+        "src.prepare.dataset.PREPARED_ITEMS_METADATA_PATH",
+        dataset_root / "prepared_items_metadata.json",
+    )
+    monkeypatch.setattr(
+        "src.prepare.dataset.PREPARED_SEGMENTS_METADATA_PATH",
+        dataset_root / "prepared_segments_metadata.json",
+    )
     monkeypatch.setattr(
         "src.prepare.dataset.COLLECTION_METADATA_PATHS",
         {"curated": curated_meta, "incoming": incoming_meta},
@@ -392,6 +408,14 @@ def test_prepare_dataset_keeps_duplicate_capture_artifacts_separate(tmp_path: Pa
     )
     monkeypatch.setattr("src.prepare.dataset.STRAIN_SPECIES_MAPPING_PATH", mapping_path)
     monkeypatch.setattr("src.prepare.dataset.PREPARED_DATASET_DIR", prepared_root)
+    monkeypatch.setattr(
+        "src.prepare.dataset.PREPARED_ITEMS_METADATA_PATH",
+        dataset_root / "prepared_items_metadata.json",
+    )
+    monkeypatch.setattr(
+        "src.prepare.dataset.PREPARED_SEGMENTS_METADATA_PATH",
+        dataset_root / "prepared_segments_metadata.json",
+    )
     monkeypatch.setattr(
         "src.prepare.dataset.COLLECTION_METADATA_PATHS",
         {"curated": curated_meta, "incoming": incoming_meta},

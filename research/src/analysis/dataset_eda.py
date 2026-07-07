@@ -73,7 +73,6 @@ def build_dataset_collection_summary(collection_key: str) -> DatasetCollectionSu
     )
 
 
-
 def build_dataset_eda_report(
     source_collections: list[str] | None = None,
 ) -> DatasetEdaReport:
@@ -98,7 +97,6 @@ def build_dataset_eda_report(
         total_strains=len(strains),
         total_environments=len(environments),
     )
-
 
 
 def render_text_report(report: DatasetEdaReport) -> str:
@@ -127,9 +125,10 @@ def render_text_report(report: DatasetEdaReport) -> str:
     return "\n".join(lines)
 
 
-
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Analyze canonical source dataset collections")
+    parser = argparse.ArgumentParser(
+        description="Analyze canonical source dataset collections"
+    )
     parser.add_argument(
         "--source-collection",
         action="append",

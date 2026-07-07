@@ -197,6 +197,7 @@ class BackendClient:
     @staticmethod
     def _create_session():
         import requests
+
         return requests.Session()
 
     def login(self, email: str, password: str) -> str:
@@ -330,7 +331,9 @@ class ApiImporter:
         self.stats.start_time = time.time()
 
         # Step 1: Register species
-        logger.info("=== Step 1: Registering %d species ===", len(self.manifest.species))
+        logger.info(
+            "=== Step 1: Registering %d species ===", len(self.manifest.species)
+        )
         for name in sorted(self.manifest.species):
             try:
                 self.client.ensure_species(name)
@@ -373,7 +376,10 @@ class ApiImporter:
                     rate = (i + 1) / elapsed if elapsed > 0 else 0
                     logger.info(
                         "  progress: %d/%d images (%.1f img/s, %d segments)",
-                        i + 1, len(self.manifest.images), rate, total_segments,
+                        i + 1,
+                        len(self.manifest.images),
+                        rate,
+                        total_segments,
                     )
             except Exception as e:
                 self.stats.images_failed += 1
@@ -400,7 +406,9 @@ class ApiImporter:
 # ---------------------------------------------------------------------------
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Import DTO original dataset into MycoAI backend (PostgreSQL + Qdrant)"
+        description=(
+            "Import DTO original dataset into MycoAI backend (PostgreSQL + Qdrant)"
+        )
     )
     parser.add_argument(
         "--source",
@@ -445,7 +453,8 @@ def main() -> None:
         help="Segmentation method",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable debug logging",
     )

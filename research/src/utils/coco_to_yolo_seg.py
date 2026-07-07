@@ -14,7 +14,9 @@ def _normalize_polygon(coords: list[float], width: int, height: int) -> list[flo
     return norm
 
 
-def convert_coco_split_to_yolo_seg(source_dir: Path, target_dir: Path) -> dict[str, Any]:
+def convert_coco_split_to_yolo_seg(
+    source_dir: Path, target_dir: Path
+) -> dict[str, Any]:
     annotations_path = source_dir / "_annotations.coco.json"
     if not annotations_path.exists():
         raise FileNotFoundError(f"Missing COCO annotations: {annotations_path}")
@@ -44,12 +46,18 @@ def convert_coco_split_to_yolo_seg(source_dir: Path, target_dir: Path) -> dict[s
             if ann.get("iscrowd"):
                 continue
             segmentation = ann.get("segmentation") or []
-            polygons = segmentation if segmentation and isinstance(segmentation[0], list) else [segmentation]
+            polygons = (
+                segmentation
+                if segmentation and isinstance(segmentation[0], list)
+                else [segmentation]
+            )
             for polygon in polygons:
                 if not polygon or len(polygon) < 6:
                     continue
                 normalized = _normalize_polygon(polygon, width, height)
-                label_lines.append("0 " + " ".join(f"{value:.6f}" for value in normalized))
+                label_lines.append(
+                    "0 " + " ".join(f"{value:.6f}" for value in normalized)
+                )
 
         (labels_dir / f"{Path(image['file_name']).stem}.txt").write_text(
             "\n".join(label_lines) + ("\n" if label_lines else "")
@@ -63,12 +71,20 @@ def convert_coco_split_to_yolo_seg(source_dir: Path, target_dir: Path) -> dict[s
     }
 
 
-def build_yolo_seg_dataset_from_coco_export(source_root: Path, output_root: Path) -> dict[str, Any]:
+def build_yolo_seg_dataset_from_coco_export(
+    source_root: Path, output_root: Path
+) -> dict[str, Any]:
     summary: dict[str, Any] = {"splits": {}}
-    for source_name, target_name in [("train", "train"), ("valid", "val"), ("test", "test")]:
+    for source_name, target_name in [
+        ("train", "train"),
+        ("valid", "val"),
+        ("test", "test"),
+    ]:
         source_dir = source_root / source_name
         target_dir = output_root / target_name
-        summary["splits"][target_name] = convert_coco_split_to_yolo_seg(source_dir, target_dir)
+        summary["splits"][target_name] = convert_coco_split_to_yolo_seg(
+            source_dir, target_dir
+        )
 
     yaml_text = "\n".join(
         [

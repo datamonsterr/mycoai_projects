@@ -79,7 +79,11 @@ def collect_segments() -> Dict[str, List[Path]]:
             continue
         strain_slug = parts[1]
         sp = strain_slug.split("-")
-        strain = f"{sp[0].upper()} {sp[1]}-{sp[2].upper()}" if len(sp) == 3 else strain_slug.upper()
+        strain = (
+            f"{sp[0].upper()} {sp[1]}-{sp[2].upper()}"
+            if len(sp) == 3
+            else strain_slug.upper()
+        )
         strain_segments.setdefault(strain, []).append(seg_path)
     return strain_segments
 
@@ -94,7 +98,11 @@ def strain_to_species_from_original_prepared() -> Dict[str, str]:
             if not strain_dir.is_dir():
                 continue
             parts = strain_dir.name.split("-")
-            strain = f"{parts[0].upper()} {parts[1]}-{parts[2].upper()}" if len(parts) == 3 else strain_dir.name.upper()
+            strain = (
+                f"{parts[0].upper()} {parts[1]}-{parts[2].upper()}"
+                if len(parts) == 3
+                else strain_dir.name.upper()
+            )
             mapping[strain] = species
     return mapping
 
@@ -127,29 +135,45 @@ def build_dataloaders(
     le.fit(all_labels)
 
     data_transforms = {
-        "train": transforms.Compose([
-            transforms.Resize((HEIGHT, WIDTH)),
-            transforms.RandomResizedCrop((HEIGHT, WIDTH), scale=(0.75, 1.0), ratio=(0.9, 1.1)),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(10),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ]),
-        "val": transforms.Compose([
-            transforms.Resize((HEIGHT, WIDTH)),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ]),
+        "train": transforms.Compose(
+            [
+                transforms.Resize((HEIGHT, WIDTH)),
+                transforms.RandomResizedCrop(
+                    (HEIGHT, WIDTH), scale=(0.75, 1.0), ratio=(0.9, 1.1)
+                ),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(10),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]
+        ),
+        "val": transforms.Compose(
+            [
+                transforms.Resize((HEIGHT, WIDTH)),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]
+        ),
     }
 
-    train_ds = SegmentDataset(train_paths, le.transform(train_labels_raw), data_transforms["train"])
-    val_ds = SegmentDataset(val_paths, le.transform(val_labels_raw), data_transforms["val"])
+    train_ds = SegmentDataset(
+        train_paths, le.transform(train_labels_raw), data_transforms["train"]
+    )
+    val_ds = SegmentDataset(
+        val_paths, le.transform(val_labels_raw), data_transforms["val"]
+    )
 
-    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=2, pin_memory=True)
-    val_dl = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=1, pin_memory=True)
+    train_dl = DataLoader(
+        train_ds, batch_size=batch_size, shuffle=True, num_workers=2, pin_memory=True
+    )
+    val_dl = DataLoader(
+        val_ds, batch_size=batch_size, shuffle=False, num_workers=1, pin_memory=True
+    )
 
-    print(f"  Train: {len(train_paths)} segments, Val: {len(val_paths)} segments, Classes: {len(le.classes_)}")
+    print(
+        f"  Train: {len(train_paths)} segments, Val: {len(val_paths)} segments, Classes: {len(le.classes_)}"
+    )
     return train_dl, val_dl, le
 
 
@@ -160,7 +184,9 @@ def build_model(model_name: str, num_classes: int, device: torch.device) -> nn.M
     if model_name == "EfficientNetB1":
         model = efficientnet_b1(weights=EfficientNet_B1_Weights.DEFAULT)
         num_ftrs = model.classifier[1].in_features
-        model.classifier[1] = nn.Sequential(nn.Dropout(0.3), nn.Linear(num_ftrs, num_classes))
+        model.classifier[1] = nn.Sequential(
+            nn.Dropout(0.3), nn.Linear(num_ftrs, num_classes)
+        )
         return model.to(device)
     if model_name == "ResNet50":
         model = resnet50(weights=ResNet50_Weights.DEFAULT)
@@ -183,8 +209,16 @@ def save_backbone_weights(model: nn.Module, model_name: str, save_path: Path):
 
 
 def train_one_fold(
-    model, train_dl, val_dl, criterion, optimizer, device,
-    num_epochs: int, patience: int, model_name: str, save_path: Path,
+    model,
+    train_dl,
+    val_dl,
+    criterion,
+    optimizer,
+    device,
+    num_epochs: int,
+    patience: int,
+    model_name: str,
+    save_path: Path,
 ) -> Dict[str, List[float]]:
     history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
     best_acc = 0.0
@@ -212,10 +246,16 @@ def train_one_fold(
 
             epoch_loss = running_loss / total
             epoch_acc = running_correct / total
-            history[f"{'train' if phase == 'train' else 'val'}_loss"].append(round(epoch_loss, 6))
-            history[f"{'train' if phase == 'train' else 'val'}_acc"].append(round(epoch_acc, 6))
+            history[f"{'train' if phase == 'train' else 'val'}_loss"].append(
+                round(epoch_loss, 6)
+            )
+            history[f"{'train' if phase == 'train' else 'val'}_acc"].append(
+                round(epoch_acc, 6)
+            )
 
-            print(f"  Epoch {epoch+1:3d} {phase:5s} | loss={epoch_loss:.4f}  acc={epoch_acc:.4f}")
+            print(
+                f"  Epoch {epoch + 1:3d} {phase:5s} | loss={epoch_loss:.4f}  acc={epoch_acc:.4f}"
+            )
 
             if phase == "val":
                 if epoch_acc > best_acc:
@@ -227,7 +267,7 @@ def train_one_fold(
                     no_improve += 1
 
         if no_improve >= patience:
-            print(f"  Early stopping at epoch {epoch+1}")
+            print(f"  Early stopping at epoch {epoch + 1}")
             break
 
     model.load_state_dict(best_state)
@@ -238,8 +278,12 @@ def train_one_fold(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train fold-specific YOLO-segment backbones on Vast.ai")
-    parser.add_argument("--model-name", choices=["ResNet50", "EfficientNetB1"], default="EfficientNetB1")
+    parser = argparse.ArgumentParser(
+        description="Train fold-specific YOLO-segment backbones on Vast.ai"
+    )
+    parser.add_argument(
+        "--model-name", choices=["ResNet50", "EfficientNetB1"], default="EfficientNetB1"
+    )
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -251,10 +295,12 @@ def main():
 
     print(f"Strains with segments: {len(strain_segments)}")
     for strain, paths in sorted(strain_segments.items()):
-        print(f"  {strain}: {len(paths)} segments -> {strain_to_species.get(strain, '???')}")
+        print(
+            f"  {strain}: {len(paths)} segments -> {strain_to_species.get(strain, '???')}"
+        )
 
     for fold_idx in range(1, N_FOLDS + 1):
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Fold {fold_idx}")
         test_strains = folds_df[folds_df["fold"] == fold_idx]["strain"].tolist()
         print(f"  Test strains: {test_strains}")
@@ -269,8 +315,16 @@ def main():
 
         save_path = WEIGHTS / f"fold{fold_idx - 1}_{args.model_name}_finetuned.pth"
         history = train_one_fold(
-            model, train_dl, val_dl, criterion, optimizer, device,
-            NUM_EPOCHS, PATIENCE, args.model_name, save_path,
+            model,
+            train_dl,
+            val_dl,
+            criterion,
+            optimizer,
+            device,
+            NUM_EPOCHS,
+            PATIENCE,
+            args.model_name,
+            save_path,
         )
 
         history_path = WEIGHTS / f"fold{fold_idx - 1}_{args.model_name}_history.json"

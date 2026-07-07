@@ -452,19 +452,24 @@ def _predict_segment_group(
         ResNet50Extractor,
         ResNet50FinetunedExtractor,
     )
-    from src.utils.qdrant_query import find_nearest_neighbors_by_id, find_nearest_neighbors_by_image
+    from src.utils.qdrant_query import (
+        find_nearest_neighbors_by_id,
+        find_nearest_neighbors_by_image,
+    )
 
     extractor_map = {
-        'efficientnetb1_finetuned': EfficientNetB1FinetunedExtractor,
-        'efficientnetb1': EfficientNetB1Extractor,
-        'resnet50_finetuned': ResNet50FinetunedExtractor,
-        'resnet50': ResNet50Extractor,
-        'mobilenetv2_finetuned': MobileNetV2FinetunedExtractor,
-        'mobilenetv2': MobileNetV2Extractor,
+        "efficientnetb1_finetuned": EfficientNetB1FinetunedExtractor,
+        "efficientnetb1": EfficientNetB1Extractor,
+        "resnet50_finetuned": ResNet50FinetunedExtractor,
+        "resnet50": ResNet50Extractor,
+        "mobilenetv2_finetuned": MobileNetV2FinetunedExtractor,
+        "mobilenetv2": MobileNetV2Extractor,
     }
     extractor_cls = extractor_map.get(extractor_name.lower())
     if extractor_cls is None:
-        raise ValueError(f"Unknown extractor for fresh-query evaluation: {extractor_name}")
+        raise ValueError(
+            f"Unknown extractor for fresh-query evaluation: {extractor_name}"
+        )
     feature_extractor = extractor_cls()
 
     ground_truth = strain_to_specy.get(strain, "unknown")
@@ -588,7 +593,9 @@ def _run_fold(
     for species, strain in fold_strains.items():
         try:
             manifest = _load_fold_manifest(fold_idx, strain)
-            query_group = _build_query_group_from_manifest(manifest.get("query_image_ids", []), prepared_segments)
+            query_group = _build_query_group_from_manifest(
+                manifest.get("query_image_ids", []), prepared_segments
+            )
             test_sets = [query_group] if query_group else []
         except FileNotFoundError:
             test_sets = _collect_testset(
@@ -722,6 +729,7 @@ def save_cv_results(
 
 if __name__ == "__main__":
     import sys
+
     if "--save-folds" in sys.argv:
         save_folds_csv()
     else:

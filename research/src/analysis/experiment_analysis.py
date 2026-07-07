@@ -84,6 +84,7 @@ def draw_confusion_matrix(
     figsize: Tuple[int, int] = (14, 10),
 ) -> str:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import seaborn as sns
@@ -110,7 +111,10 @@ def draw_confusion_matrix(
     )
     ax.set_xlabel("Predicted", fontsize=12)
     ax.set_ylabel("True", fontsize=12)
-    display_title = title or f"Confusion Matrix — {accuracy:.1f}% ({correct_count}/{len(predictions)} predictions)"
+    display_title = (
+        title
+        or f"Confusion Matrix — {accuracy:.1f}% ({correct_count}/{len(predictions)} predictions)"
+    )
     ax.set_title(display_title, fontsize=14, fontweight="bold")
     plt.xticks(rotation=45, ha="right", fontsize=9)
     plt.yticks(rotation=0, fontsize=9)
@@ -132,6 +136,7 @@ def draw_per_species_accuracy(
     title: str = "",
 ) -> str:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -155,8 +160,12 @@ def draw_per_species_accuracy(
         )
 
     ax.set_xticks(range(len(species_list)))
-    ax.set_xticklabels([s.replace("Penicillium ", "P. ") for s in species_list],
-                       rotation=45, ha="right", fontsize=10)
+    ax.set_xticklabels(
+        [s.replace("Penicillium ", "P. ") for s in species_list],
+        rotation=45,
+        ha="right",
+        fontsize=10,
+    )
     ax.set_ylabel("Accuracy", fontsize=12)
     ax.set_ylim(0, 1.15)
     ax.axhline(y=0.5, color="gray", linestyle="--", alpha=0.3)
@@ -176,6 +185,7 @@ def draw_per_fold_accuracy(
     title: str = "",
 ) -> str:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -183,16 +193,36 @@ def draw_per_fold_accuracy(
     accuracies = [per_fold[f] for f in folds]
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(folds, accuracies, "o-", color="#3498db", linewidth=2, markersize=10,
-            markerfacecolor="white", markeredgewidth=2)
+    ax.plot(
+        folds,
+        accuracies,
+        "o-",
+        color="#3498db",
+        linewidth=2,
+        markersize=10,
+        markerfacecolor="white",
+        markeredgewidth=2,
+    )
 
     for f, a in zip(folds, accuracies):
-        ax.annotate(f"{a:.1%}", (f, a), textcoords="offset points",
-                    xytext=(0, 12), ha="center", fontsize=10, fontweight="bold")
+        ax.annotate(
+            f"{a:.1%}",
+            (f, a),
+            textcoords="offset points",
+            xytext=(0, 12),
+            ha="center",
+            fontsize=10,
+            fontweight="bold",
+        )
 
     mean_acc = np.mean(accuracies)
-    ax.axhline(y=mean_acc, color="#e74c3c", linestyle="--", alpha=0.5,
-               label=f"Mean: {mean_acc:.1%}")
+    ax.axhline(
+        y=mean_acc,
+        color="#e74c3c",
+        linestyle="--",
+        alpha=0.5,
+        label=f"Mean: {mean_acc:.1%}",
+    )
 
     ax.set_xticks(folds)
     ax.set_xlabel("Fold", fontsize=12)
@@ -240,26 +270,45 @@ def compute_experiment_analytics(
     for fid, grp in exp_df.groupby("fold"):
         analytics.per_fold[int(fid)] = float(grp["correct"].mean())
 
-    all_species = sorted(set(exp_df["ground_truth"].unique()) | set(exp_df["predicted_specy"].unique()))
+    all_species = sorted(
+        set(exp_df["ground_truth"].unique()) | set(exp_df["predicted_specy"].unique())
+    )
 
     for sp in sorted(exp_df["species"].unique()):
         sp_rows = exp_df[exp_df["species"] == sp]
         tp = int(sp_rows["correct"].sum())
         total = len(sp_rows)
-        fp = int(((exp_df["predicted_specy"] == sp) & (exp_df["ground_truth"] != sp)).sum())
-        fn = int(((exp_df["ground_truth"] == sp) & (exp_df["predicted_specy"] != sp)).sum())
+        fp = int(
+            ((exp_df["predicted_specy"] == sp) & (exp_df["ground_truth"] != sp)).sum()
+        )
+        fn = int(
+            ((exp_df["ground_truth"] == sp) & (exp_df["predicted_specy"] != sp)).sum()
+        )
 
         accuracy = tp / total if total > 0 else 0.0
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+        f1 = (
+            2 * precision * recall / (precision + recall)
+            if (precision + recall) > 0
+            else 0.0
+        )
 
-        analytics.per_species.append(PerSpeciesMetrics(
-            species=sp, total=total, correct=tp,
-            accuracy=accuracy, precision=precision, recall=recall, f1=f1,
-        ))
+        analytics.per_species.append(
+            PerSpeciesMetrics(
+                species=sp,
+                total=total,
+                correct=tp,
+                accuracy=accuracy,
+                precision=precision,
+                recall=recall,
+                f1=f1,
+            )
+        )
 
-    confusion: Dict[str, Dict[str, int]] = {sp: {s: 0 for s in all_species} for sp in all_species}
+    confusion: Dict[str, Dict[str, int]] = {
+        sp: {s: 0 for s in all_species} for sp in all_species
+    }
     for _, row in exp_df.iterrows():
         gt = row["ground_truth"]
         pred = row["predicted_specy"]
@@ -314,7 +363,8 @@ def build_experiment_results_folder(
         for vis_file in sorted(source_vis_dir.glob("pred_*.jpg")):
             strain_name = vis_file.stem.replace("pred_", "")
             is_correct = any(
-                p["correct"] for p in predictions
+                p["correct"]
+                for p in predictions
                 if p["strain"] == strain_name.split("_set")[0]
                 and f"set{p['test_set_index']}" == strain_name.split("_set")[-1]
                 if "_set" in strain_name
@@ -402,13 +452,15 @@ def build_all_results(
     configs: set[Tuple[str, str, str, int, str]] = set()
     for _, row in df.iterrows():
         media_col = row.get("media_strategy", row.get("env_strategy", ""))
-        configs.add((
-            row["extractor"],
-            media_col,
-            row["agg_strategy"],
-            int(row["k"]),
-            row.get("collection", ""),
-        ))
+        configs.add(
+            (
+                row["extractor"],
+                media_col,
+                row["agg_strategy"],
+                int(row["k"]),
+                row.get("collection", ""),
+            )
+        )
 
     results: List[Path] = []
     for extractor, media, agg, k, coll in sorted(configs):
@@ -439,7 +491,10 @@ def build_all_results(
                     vis_dir = vis_candidate
 
         exp_dir = build_experiment_results_folder(
-            df, config, output_root, source_vis_dir=vis_dir,
+            df,
+            config,
+            output_root,
+            source_vis_dir=vis_dir,
         )
         results.append(exp_dir)
         print(f"  -> {exp_dir}", flush=True)
@@ -456,7 +511,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build structured experiment results")
     parser.add_argument("--csv", required=True, help="Path to CV results CSV")
     parser.add_argument("--output", default=None, help="Output root directory")
-    parser.add_argument("--vis-root", default=None, help="Root for finding visualization sources")
+    parser.add_argument(
+        "--vis-root", default=None, help="Root for finding visualization sources"
+    )
     args = parser.parse_args()
 
     csv_path = Path(args.csv)

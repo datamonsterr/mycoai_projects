@@ -72,7 +72,9 @@ def main() -> None:
     print("Generating fold-specific strain mapping files...")
     generated = generate_fold_mapping_files()
     manifests = write_fold_manifests()
-    print(f"Done. Generated {len(generated)} mapping files and {len(manifests)} manifests.")
+    print(
+        f"Done. Generated {len(generated)} mapping files and {len(manifests)} manifests."
+    )
 
 
 if __name__ == "__main__":

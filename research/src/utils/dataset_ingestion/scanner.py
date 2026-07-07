@@ -26,9 +26,18 @@ except ImportError:
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".jpe", ".tif", ".tiff", ".bmp", ".webp"}
 SKIP_FILES = {"thumbs.db", "desktop.ini", ".ds_store"}
 ALPHA_GROUP_PATTERNS = {
-    "A - C", "D - L", "M - R", "S - Z",
-    "A-C", "D-L", "M-R", "S-Z",
-    "A_-_C", "D_-_L", "M_-_R", "S_-_Z",
+    "A - C",
+    "D - L",
+    "M - R",
+    "S - Z",
+    "A-C",
+    "D-L",
+    "M-R",
+    "S-Z",
+    "A_-_C",
+    "D_-_L",
+    "M_-_R",
+    "S_-_Z",
 }
 
 
@@ -117,7 +126,9 @@ def scan_dataset(root: str | Path) -> DatasetManifest:
             if grandparent and _is_alpha_group(grandparent):
                 # Structure 1: alpha/species/strain/file
                 species_from_folder = parent_name
-                strain_from_folder = parts[-1].rsplit(".", 1)[0] if len(parts) == 3 else None
+                strain_from_folder = (
+                    parts[-1].rsplit(".", 1)[0] if len(parts) == 3 else None
+                )
             elif len(parts) >= 3:
                 # Structure 2: species/strain/(maybe substrain)/file
                 species_from_folder = parts[-3]
@@ -138,9 +149,7 @@ def scan_dataset(root: str | Path) -> DatasetManifest:
         parent_name = filepath.parent.name if filepath.parent != root else ""
         if "Penicillium" in parent_name or " - " in parent_name:
             # e.g., "DTO 478-C6 Penicillium viridicatum"
-            m = __import__("re").match(
-                r"(.+?)\s+(Penicillium\s+\w+)", parent_name
-            )
+            m = __import__("re").match(r"(.+?)\s+(Penicillium\s+\w+)", parent_name)
             if m:
                 strain_from_folder = m.group(1).strip()
                 species_from_folder = m.group(2).strip()
@@ -171,7 +180,11 @@ def scan_dataset(root: str | Path) -> DatasetManifest:
 if __name__ == "__main__":
     import sys
 
-    root = sys.argv[1] if len(sys.argv) > 1 else "/home/dat/dev/mycoai_projects/Dataset/new_data"
+    root = (
+        sys.argv[1]
+        if len(sys.argv) > 1
+        else "/home/dat/dev/mycoai_projects/Dataset/new_data"
+    )
     output = sys.argv[2] if len(sys.argv) > 2 else "/tmp/opencode/dataset_manifest.json"
 
     manifest = scan_dataset(root)

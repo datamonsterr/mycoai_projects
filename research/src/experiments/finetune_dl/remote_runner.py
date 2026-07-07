@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence
 
 PYTHON_BIN = os.getenv("MYCOAI_REMOTE_PYTHON", sys.executable)
 
@@ -19,7 +19,9 @@ SEGMENT_METHODS = ["yolo", "kmeans"]
 
 def run(cmd: Sequence[str], env: Optional[Dict[str, str]] = None) -> str:
     full_env = {**os.environ, **(env or {})}
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT, env=full_env)
+    result = subprocess.run(
+        cmd, capture_output=True, text=True, cwd=PROJECT, env=full_env
+    )
     if result.returncode != 0:
         print(f"FAIL: {cmd}\n{result.stderr}", file=sys.stderr)
         return ""
@@ -41,28 +43,40 @@ def train_all() -> Dict[str, dict]:
             key = f"{method}/{model}"
             print(f"Training {key} ...")
             cmd = [
-                PYTHON_BIN, "-m", "src.experiments.finetune_dl.train_strain_holdout",
-                "--model-name", model,
-                "--segment-method", method,
-                "--epochs", "12",
-                "--batch-size", "16",
+                PYTHON_BIN,
+                "-m",
+                "src.experiments.finetune_dl.train_strain_holdout",
+                "--model-name",
+                model,
+                "--segment-method",
+                method,
+                "--epochs",
+                "12",
+                "--batch-size",
+                "16",
             ]
             if model == MODELS[0]:
                 cmd.append("--clear-existing")
             out = run(cmd)
             if out:
                 summaries[key] = json.loads(out)
-            print(f"  best_val_acc={summaries.get(key, {}).get('best_val_accuracy', 'N/A')}")
+            print(
+                f"  best_val_acc={summaries.get(key, {}).get('best_val_accuracy', 'N/A')}"
+            )
     return summaries
 
 
 def extract_features(method: str, output_path: Path) -> None:
     print(f"Extracting features for {method} ...")
-    run([
-        PYTHON_BIN, "-c",
-        f"from src.experiments.feature_extraction.generate_features import generate_features; "
-        f"generate_features(output_path='{output_path}', segment_method='{method}')",
-    ], env={"MYCOAI_FINETUNED_SEGMENT_METHOD": method})
+    run(
+        [
+            PYTHON_BIN,
+            "-c",
+            f"from src.experiments.feature_extraction.generate_features import generate_features; "
+            f"generate_features(output_path='{output_path}', segment_method='{method}')",
+        ],
+        env={"MYCOAI_FINETUNED_SEGMENT_METHOD": method},
+    )
 
 
 def feature_extraction_all() -> None:
@@ -75,27 +89,50 @@ def benchmark_retrieval() -> Dict[str, dict]:
     results: Dict[str, dict] = {}
     for method in SEGMENT_METHODS:
         env = {"MYCOAI_FINETUNED_SEGMENT_METHOD": method}
-        extractors = [f"efficientnetb1_finetuned", f"resnet50_finetuned", f"mobilenetv2_finetuned",
-                      "efficientnetb1", "resnet50", "mobilenetv2", "hog", "gabor",
-                      "colorhistogram", "colorhistogramhs"]
+        extractors = [
+            "efficientnetb1_finetuned",
+            "resnet50_finetuned",
+            "mobilenetv2_finetuned",
+            "efficientnetb1",
+            "resnet50",
+            "mobilenetv2",
+            "hog",
+            "gabor",
+            "colorhistogram",
+            "colorhistogramhs",
+        ]
         base = RESULTS_ROOT / f"retrieval_k7_{method}"
         for strategy in ["weighted", "freq_strength"]:
             key = f"{method}/{strategy}"
             print(f"Benchmarking {key} ...")
-            run([
-                PYTHON_BIN, "-m", "src.experiments.retrieval.run", "comprehensive",
-                "--identifier", str(base),
-                "--extractors", *extractors,
-                "--env_strategies", "E1", "E2",
-                "--agg_strategies", strategy,
-                "--k", "7",
-                "--max_visualizations", "0",
-            ], env=env)
+            run(
+                [
+                    PYTHON_BIN,
+                    "-m",
+                    "src.experiments.retrieval.run",
+                    "comprehensive",
+                    "--identifier",
+                    str(base),
+                    "--extractors",
+                    *extractors,
+                    "--env_strategies",
+                    "E1",
+                    "E2",
+                    "--agg_strategies",
+                    strategy,
+                    "--k",
+                    "7",
+                    "--max_visualizations",
+                    "0",
+                ],
+                env=env,
+            )
             # Scan for per-extractor CSV files
             accuracies: Dict[str, float] = {}
             for csv_path in sorted(base.glob(f"*_{strategy}_E1/evaluation.csv")):
                 try:
                     import pandas as pd
+
                     df = pd.read_csv(csv_path)
                     if not df.empty and "correct" in df.columns:
                         acc = df["correct"].mean()
@@ -135,7 +172,10 @@ def collect_artifacts(run_dir: Path) -> None:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <train|extract|benchmark|all> [run-dir]", file=sys.stderr)
+        print(
+            f"Usage: {sys.argv[0]} <train|extract|benchmark|all> [run-dir]",
+            file=sys.stderr,
+        )
         sys.exit(1)
     command = sys.argv[1]
     run_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else RESULTS_ROOT / "remote_run"

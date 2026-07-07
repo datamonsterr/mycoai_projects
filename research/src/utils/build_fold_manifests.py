@@ -24,11 +24,18 @@ def _load_segment_rows(segments_metadata_path: Path) -> list[dict[str, Any]]:
     for item in payload:
         data = item.get("data", item)
         strain = data.get("strain") or item.get("strain")
-        species = data.get("specy") or data.get("species") or item.get("specy") or item.get("species")
+        species = (
+            data.get("specy")
+            or data.get("species")
+            or item.get("specy")
+            or item.get("species")
+        )
         environment = data.get("environment") or item.get("environment") or "unknown"
         image_id = item.get("id") or item.get("image_id")
         segment_path = item.get("segment_path") or data.get("segment_path")
-        parent_id = item.get("parent_id") or data.get("parent_id") or item.get("parent_item_id")
+        parent_id = (
+            item.get("parent_id") or data.get("parent_id") or item.get("parent_item_id")
+        )
         if not strain or not species or not image_id:
             continue
         rows.append(
@@ -54,7 +61,9 @@ def build_fold_manifest_rows(
 
     mapping_df = pd.read_csv(source_csv)
     if "Strain" not in mapping_df.columns or "Species" not in mapping_df.columns:
-        raise ValueError("Source mapping CSV must contain 'Strain' and 'Species' columns.")
+        raise ValueError(
+            "Source mapping CSV must contain 'Strain' and 'Species' columns."
+        )
 
     folds = generate_cv_folds(csv_path=source_csv, n_folds=n_folds)
     segment_rows = _load_segment_rows(segments_metadata_path)
@@ -102,7 +111,10 @@ def write_fold_manifests(
 
     written: list[Path] = []
     for row in rows:
-        target = output_dir / f"fold_{row['fold']}_{row['test_strain'].replace(' ', '_')}.json"
+        target = (
+            output_dir
+            / f"fold_{row['fold']}_{row['test_strain'].replace(' ', '_')}.json"
+        )
         target.write_text(json.dumps(row, indent=2))
         written.append(target)
 
@@ -118,7 +130,9 @@ def write_fold_manifests(
         }
         for row in rows
     ]
-    pd.DataFrame(summary_rows).to_csv(output_dir / "fold_manifest_summary.csv", index=False)
+    pd.DataFrame(summary_rows).to_csv(
+        output_dir / "fold_manifest_summary.csv", index=False
+    )
     return written
 
 

@@ -15,7 +15,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from pathlib import Path
 
 sys.path.insert(0, ".")
 
@@ -28,7 +27,7 @@ async def main(limit: int = 0) -> dict:
 
     from backend.config import get_storage_settings
     from backend.database import async_session as session_factory
-    from backend.models import Image, Segment, Species, Strain, Media
+    from backend.models import Image, Segment
     from backend.services.feature_extraction import index_segment_to_qdrant
     from backend.services.storage import create_storage
 

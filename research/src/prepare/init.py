@@ -27,9 +27,7 @@ def run_prepare_init(
     limit: int | None = None,
 ) -> None:
     resolved_collections = resolve_source_collection_names(source_collections)
-    request_paths = [
-        SOURCE_COLLECTIONS[key]["path"] for key in resolved_collections
-    ]
+    request_paths = [SOURCE_COLLECTIONS[key]["path"] for key in resolved_collections]
     ok, msg = check_dataset_root(request_paths)
     print(msg)
     if not ok:

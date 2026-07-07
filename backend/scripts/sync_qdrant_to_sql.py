@@ -8,7 +8,8 @@ data path.
 
 Usage:
     uv run python scripts/sync_qdrant_to_sql.py
-    uv run python scripts/sync_qdrant_to_sql.py --collection myco_fungi_features_full_finetuned
+    uv run python scripts/sync_qdrant_to_sql.py --collection \
+        myco_fungi_features_full_finetuned
     uv run python scripts/sync_qdrant_to_sql.py --scan-only   # dry run
 
 Requires: backend + Qdrant running

@@ -80,7 +80,8 @@ class BackendAPIClient:
     def list_species(self, is_archived: bool = False) -> list[dict]:
         self._ensure_auth()
         resp = self.session.get(
-            f"{self.base_url}/species", params={"is_archived": str(is_archived).lower(), "limit": 200}
+            f"{self.base_url}/species",
+            params={"is_archived": str(is_archived).lower(), "limit": 200},
         )
         resp.raise_for_status()
         return resp.json()["items"]
@@ -112,7 +113,8 @@ class BackendAPIClient:
     def list_media(self, is_archived: bool = False) -> list[dict]:
         self._ensure_auth()
         resp = self.session.get(
-            f"{self.base_url}/media", params={"is_archived": str(is_archived).lower(), "limit": 200}
+            f"{self.base_url}/media",
+            params={"is_archived": str(is_archived).lower(), "limit": 200},
         )
         resp.raise_for_status()
         return resp.json()["items"]
@@ -144,9 +146,7 @@ class BackendAPIClient:
         resp.raise_for_status()
         return resp.json()["items"]
 
-    def get_strain_by_name_and_species(
-        self, name: str, species_id: str
-    ) -> dict | None:
+    def get_strain_by_name_and_species(self, name: str, species_id: str) -> dict | None:
         items = self.list_strains(species_id=species_id)
         for item in items:
             if item["name"].lower() == name.lower():
@@ -227,9 +227,7 @@ class DatasetIngester:
                 if (i + 1) % 50 == 0:
                     print(f"  uploaded {i + 1}/{len(manifest.images)} images...")
             except Exception as e:
-                self.result.errors.append(
-                    f"image '{entry.source_path}': {e}"
-                )
+                self.result.errors.append(f"image '{entry.source_path}': {e}")
 
         print(
             f"\nIngest complete: "
@@ -251,16 +249,16 @@ class DatasetIngester:
 if __name__ == "__main__":
     import sys
 
-    manifest_path = sys.argv[1] if len(sys.argv) > 1 else "/tmp/opencode/dataset_manifest.json"
+    manifest_path = (
+        sys.argv[1] if len(sys.argv) > 1 else "/tmp/opencode/dataset_manifest.json"
+    )
     api_url = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:8000/api/v1"
 
     manifest_data = json.loads(Path(manifest_path).read_text())
     manifest = DatasetManifest(
         species=set(manifest_data["species"]),
         media=set(manifest_data["media"]),
-        images=[
-            ImageEntry(**img) for img in manifest_data["images"]
-        ],
+        images=[ImageEntry(**img) for img in manifest_data["images"]],
     )
 
     client = BackendAPIClient(base_url=api_url)

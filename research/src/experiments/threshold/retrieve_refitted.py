@@ -19,11 +19,19 @@ from qdrant_client import QdrantClient
 
 import pandas as pd
 
-from src.config import COLLECTION_NAME, DATASET_ROOT, QDRANT_API_KEY, QDRANT_URL, RESULTS_DIR, STRAIN_SPECIES_MAPPING_PATH
+from src.config import (
+    COLLECTION_NAME,
+    DATASET_ROOT,
+    QDRANT_API_KEY,
+    QDRANT_URL,
+    RESULTS_DIR,
+    STRAIN_SPECIES_MAPPING_PATH,
+)
 from src.utils.qdrant_query import build_filter
 
 # Override to local Docker Qdrant when QDRANT_URL not set
 import os
+
 _qdrant_url = QDRANT_URL
 if os.getenv("QDRANT_URL", None) == QDRANT_URL:
     _qdrant_url = QDRANT_URL
@@ -40,7 +48,15 @@ FOLDS_DIR = DATASET_ROOT / "folds"
 PREPARED_SEGMENTS_PATH = DATASET_ROOT / "prepared_segments_metadata.json"
 
 CSV_FIELDS = (
-    ["sample_id", "strain", "test_set_index", "species_label", "is_known", "environment", "angle"]
+    [
+        "sample_id",
+        "strain",
+        "test_set_index",
+        "species_label",
+        "is_known",
+        "environment",
+        "angle",
+    ]
     + [f"s{i}_score" for i in range(TOP_N)]
     + [f"s{i}_species" for i in range(TOP_N)]
     + ["predicted_species", "correct_species", "image_path"]
@@ -49,7 +65,9 @@ CSV_FIELDS = (
 
 def _load_payload() -> tuple[dict[str, Any], dict[str, Any]]:
     if not PREPARED_SEGMENTS_PATH.exists():
-        raise FileNotFoundError(f"Prepared segments metadata not found: {PREPARED_SEGMENTS_PATH}")
+        raise FileNotFoundError(
+            f"Prepared segments metadata not found: {PREPARED_SEGMENTS_PATH}"
+        )
     rows = json.loads(PREPARED_SEGMENTS_PATH.read_text())
     lookup: dict[str, dict[str, Any]] = {r["id"]: r for r in rows if r.get("id")}
     by_strain: dict[str, list[dict[str, Any]]] = {}
@@ -82,32 +100,40 @@ def _build_test_sets(
             if not Path(image_path).exists():
                 continue
             env = data.get("environment", "unknown")
-            group.append({
-                "image_id": row["id"],
-                "image_path": image_path,
-                "environment": env,
-                "angle": data.get("angle", "unknown"),
-            })
+            group.append(
+                {
+                    "image_id": row["id"],
+                    "image_path": image_path,
+                    "environment": env,
+                    "angle": data.get("angle", "unknown"),
+                }
+            )
             if env not in environments:
                 environments.append(env)
         if group:
             # Keep original test_set_index flow: one group per strain = 0
-            result.append({
-                "strain": strain,
-                "species_label": rows[0].get("data", {}).get("species") or rows[0].get("data", {}).get("specy") or "unknown",
-                "is_known": 1,
-                "environment": ",".join(sorted(set(environments))),
-                "angle": ",".join(sorted({d.get("angle", "unknown") for d in group})),
-                "sample_id": f"{strain}__set0",
-                "test_set_index": 0,
-                "group": group,
-            })
+            result.append(
+                {
+                    "strain": strain,
+                    "species_label": rows[0].get("data", {}).get("species")
+                    or rows[0].get("data", {}).get("specy")
+                    or "unknown",
+                    "is_known": 1,
+                    "environment": ",".join(sorted(set(environments))),
+                    "angle": ",".join(
+                        sorted({d.get("angle", "unknown") for d in group})
+                    ),
+                    "sample_id": f"{strain}__set0",
+                    "test_set_index": 0,
+                    "group": group,
+                }
+            )
     return result
 
 
 def _is_species_known(species_label: str, known_species: set[str]) -> bool:
     """Check if a species label matches a known database species.
-    
+
     Normalises by stripping 'Penicillium ' prefix from both sides
     and comparing case-insensitively.
     """
@@ -115,11 +141,11 @@ def _is_species_known(species_label: str, known_species: set[str]) -> bool:
         return False
     label_norm = species_label.strip()
     if label_norm.lower().startswith("penicillium "):
-        label_norm = label_norm[len("penicillium "):]
+        label_norm = label_norm[len("penicillium ") :]
     for ks in known_species:
         ks_norm = ks.strip()
         if ks_norm.lower().startswith("penicillium "):
-            ks_norm = ks_norm[len("penicillium "):]
+            ks_norm = ks_norm[len("penicillium ") :]
         if label_norm.lower() == ks_norm.lower():
             return True
     return False
@@ -148,26 +174,32 @@ def _build_unknown_test_sets(
             if not Path(image_path).exists():
                 continue
             env = data.get("environment", "unknown")
-            group.append({
-                "image_id": row["id"],
-                "image_path": image_path,
-                "environment": env,
-                "angle": data.get("angle", "unknown"),
-            })
+            group.append(
+                {
+                    "image_id": row["id"],
+                    "image_path": image_path,
+                    "environment": env,
+                    "angle": data.get("angle", "unknown"),
+                }
+            )
             if env not in environments:
                 environments.append(env)
         if group:
             is_known = 1 if _is_species_known(species_label, known_species) else 0
-            result.append({
-                "strain": strain,
-                "species_label": species_label,
-                "is_known": is_known,
-                "environment": ",".join(sorted(set(environments))),
-                "angle": ",".join(sorted({d.get("angle", "unknown") for d in group})),
-                "sample_id": f"{strain}__set0",
-                "test_set_index": 0,
-                "group": group,
-            })
+            result.append(
+                {
+                    "strain": strain,
+                    "species_label": species_label,
+                    "is_known": is_known,
+                    "environment": ",".join(sorted(set(environments))),
+                    "angle": ",".join(
+                        sorted({d.get("angle", "unknown") for d in group})
+                    ),
+                    "sample_id": f"{strain}__set0",
+                    "test_set_index": 0,
+                    "group": group,
+                }
+            )
     return result
 
 
@@ -181,6 +213,7 @@ def _get_held_out_strains(fold: int = 0) -> set[str]:
 
 def _extract_features_once(image_path: str) -> list[float] | None:
     from src.experiments.feature_extraction.feature_extractors import ResNet50Extractor
+
     _extractor = ResNet50Extractor()
     try:
         img = cv2.imread(image_path)
@@ -218,12 +251,15 @@ def _query_qdrant_for_set(
             )
             for point in response.points:
                 payload = point.payload or {}
-                all_neighbors.append({
-                    "specy": payload.get("specy") or payload.get("species", "unknown"),
-                    "score": point.score,
-                    "strain": payload.get("strain", ""),
-                    "environment": payload.get("environment", ""),
-                })
+                all_neighbors.append(
+                    {
+                        "specy": payload.get("specy")
+                        or payload.get("species", "unknown"),
+                        "score": point.score,
+                        "strain": payload.get("strain", ""),
+                        "environment": payload.get("environment", ""),
+                    }
+                )
         except Exception:
             continue
 
@@ -287,7 +323,7 @@ def main() -> None:
     print(f"Unknown test sets: {len(unknown_sets)}")
     all_sets = known_sets + unknown_sets
     if args.limit:
-        all_sets = all_sets[:args.limit]
+        all_sets = all_sets[: args.limit]
     print(f"Total sets to retrieve: {len(all_sets)}")
 
     client = QdrantClient(url=_qdrant_url, api_key=QDRANT_API_KEY or None, timeout=120)

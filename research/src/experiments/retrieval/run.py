@@ -30,7 +30,10 @@ from src.config import (
     STRAIN_SPECIES_MAPPING_PATH,
 )
 from src.experiments.feature_extraction.feature_extractors import FeatureExtractor
-from src.utils.qdrant_query import find_nearest_neighbors_by_id, find_nearest_neighbors_by_image
+from src.utils.qdrant_query import (
+    find_nearest_neighbors_by_id,
+    find_nearest_neighbors_by_image,
+)
 
 
 OLD_ENV_LABELS = {
@@ -60,11 +63,15 @@ def normalize_segmentation_label(collection_name: str, identifier: str = "") -> 
     return "yolo"
 
 
-def summarize_rank_scores(aggregated_results: Sequence[Dict[str, Any]], top_n: int = 5) -> Dict[str, Any]:
+def summarize_rank_scores(
+    aggregated_results: Sequence[Dict[str, Any]], top_n: int = 5
+) -> Dict[str, Any]:
     summary: Dict[str, Any] = {}
     for index in range(top_n):
         entry = aggregated_results[index] if index < len(aggregated_results) else None
-        summary[f"s{index}_species"] = entry.get("specy", "unknown") if entry else "unknown"
+        summary[f"s{index}_species"] = (
+            entry.get("specy", "unknown") if entry else "unknown"
+        )
         summary[f"s{index}_score"] = float(entry.get("score", 0.0)) if entry else 0.0
     return summary
 
@@ -159,7 +166,8 @@ def get_all_images_for_strain(
                     "environment": payload.get("environment"),
                     "angle": payload.get("angle"),
                     "specy": payload.get("specy") or payload.get("species"),
-                    "parent_id": payload.get("parent_id") or payload.get("parent_item_id"),
+                    "parent_id": payload.get("parent_id")
+                    or payload.get("parent_item_id"),
                     "segment_index": payload.get("segment_index"),
                     "bbox": payload.get("bbox"),
                     "image_path": payload.get("segment_path"),
@@ -261,7 +269,9 @@ def collect_testsets_from_images(
                     "ob": ["ob", "obverse"],
                     "rev": ["rev", "reverse"],
                 }
-                for angle_var in angle_variations.get(preferred_angle, [preferred_angle]):
+                for angle_var in angle_variations.get(
+                    preferred_angle, [preferred_angle]
+                ):
                     candidates = segment_images[segment_idx].get(angle_var, [])
                     if candidates:
                         img_selected = candidates[0]
@@ -280,11 +290,19 @@ def collect_testsets_from_images(
 
             test_set.append(img_selected)
 
-        if not skip_config and test_set and len(test_set) == len(env_segment_angle_images):
+        if (
+            not skip_config
+            and test_set
+            and len(test_set) == len(env_segment_angle_images)
+        ):
             test_sets.append(test_set)
 
-    available_segments = sorted(env_segment_angle_images[env].keys()) if env_segment_angle_images else []
-    print(f"  [collect] available_segments={available_segments}, built_test_sets={len(test_sets)}")
+    available_segments = (
+        sorted(env_segment_angle_images[env].keys()) if env_segment_angle_images else []
+    )
+    print(
+        f"  [collect] available_segments={available_segments}, built_test_sets={len(test_sets)}"
+    )
     return test_sets
 
 
@@ -437,7 +455,11 @@ def aggregate_predictions(
             final_score = accum / num_queries if num_queries > 0 else 0.0
 
         elif strategy == "freq_strength":
-            freq = len(queries_with_species.get(specy, set())) / num_queries if num_queries > 0 else 0.0
+            freq = (
+                len(queries_with_species.get(specy, set())) / num_queries
+                if num_queries > 0
+                else 0.0
+            )
             strength = total_score / count if count > 0 else 0.0
             final_score = freq * strength
 
@@ -593,7 +615,8 @@ def draw_confusion_matrix(
 ) -> None:
     """Render and save confusion matrix for species predictions."""
     import matplotlib
-    matplotlib.use('Agg')
+
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import seaborn as sns
     from sklearn.metrics import confusion_matrix
@@ -995,10 +1018,14 @@ def run_species_evaluation(
         env_strategy = environment if environment else "E1"
 
         prepared_segments = load_prepared_segments_metadata()
-        manifest_matches = sorted((DATASET_ROOT / "folds").glob(f"fold_*_{strain.replace(' ', '_')}.json"))
+        manifest_matches = sorted(
+            (DATASET_ROOT / "folds").glob(f"fold_*_{strain.replace(' ', '_')}.json")
+        )
         if manifest_matches and prepared_segments:
             manifest = json.loads(manifest_matches[0].read_text())
-            query_group = build_query_group_from_manifest(manifest.get("query_image_ids", []), prepared_segments)
+            query_group = build_query_group_from_manifest(
+                manifest.get("query_image_ids", []), prepared_segments
+            )
             test_sets = collect_testsets_from_images(query_group) if query_group else []
         else:
             test_sets = collect_testset(
@@ -1015,13 +1042,19 @@ def run_species_evaluation(
         print(f"  Found {len(test_sets)} test sets for {strain}")
         for i, test_group in enumerate(test_sets):
             ids = [img.get("image_id", "?") for img in test_group]
-            segments = sorted(set(
-                re.search(r"segment_(\d+)", img_id).group(1) if re.search(r"segment_(\d+)", img_id) else "?"
-                for img_id in ids
-            ))
+            segments = sorted(
+                set(
+                    re.search(r"segment_(\d+)", img_id).group(1)
+                    if re.search(r"segment_(\d+)", img_id)
+                    else "?"
+                    for img_id in ids
+                )
+            )
             angles = sorted(set(img.get("angle", "?") for img in test_group))
             envs = sorted(set(img.get("environment", "?") for img in test_group))
-            print(f"    test_set_{i}: {len(ids)} images, segments={segments}, angles={angles}, envs={envs}")
+            print(
+                f"    test_set_{i}: {len(ids)} images, segments={segments}, angles={angles}, envs={envs}"
+            )
             res = predict_segment_group(
                 client=client,
                 collection_name=collection_name,
@@ -1136,8 +1169,12 @@ def run_comprehensive_report(
 
         for env_strat in env_strategies:
             for agg_strat in agg_strategies:
-                segmentation_label = normalize_segmentation_label(collection_name, identifier)
-                subfolder_name = f"{ext_name}_{k}_{agg_strat}_{env_strat}_{segmentation_label}"
+                segmentation_label = normalize_segmentation_label(
+                    collection_name, identifier
+                )
+                subfolder_name = (
+                    f"{ext_name}_{k}_{agg_strat}_{env_strat}_{segmentation_label}"
+                )
                 output_dir = base_output_dir / subfolder_name
                 output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1184,7 +1221,6 @@ def run_comprehensive_report(
 
 
 def run_ensemble_analysis() -> None:
-
     """Execute ensemble analysis workflow from retrieval experiment."""
     from src.experiments.retrieval import ensemble_analysis
 
@@ -1230,14 +1266,35 @@ ALL_EXTRACTORS = [
 ]
 
 ALL_ENVS = [
-    "E1", "E2",
-    "E3_CREA", "E3_CYA", "E3_CYA30", "E3_CYAS", "E3_DG18", "E3_MEA", "E3_OA", "E3_YES",
-    "E4_CREA", "E4_CYA", "E4_CYA30", "E4_CYAS", "E4_DG18", "E4_MEA", "E4_OA", "E4_YES",
+    "E1",
+    "E2",
+    "E3_CREA",
+    "E3_CYA",
+    "E3_CYA30",
+    "E3_CYAS",
+    "E3_DG18",
+    "E3_MEA",
+    "E3_OA",
+    "E3_YES",
+    "E4_CREA",
+    "E4_CYA",
+    "E4_CYA30",
+    "E4_CYAS",
+    "E4_DG18",
+    "E4_MEA",
+    "E4_OA",
+    "E4_YES",
 ]
 
 ALL_AGGS = [
-    "weighted", "uni", "relative", "per_species_avg",
-    "max_score", "perquery_avg", "perquery_norm_avg", "freq_strength",
+    "weighted",
+    "uni",
+    "relative",
+    "per_species_avg",
+    "max_score",
+    "perquery_avg",
+    "perquery_norm_avg",
+    "freq_strength",
 ]
 
 ALL_K = [3, 5, 7, 11, 13, 15]
@@ -1307,7 +1364,9 @@ def _build_parser() -> argparse.ArgumentParser:
         default=ALL_K,
         help="K values (space-separated integers or ranges like 3-7). Use 'all' for [3,5,7,11,13,15]",
     )
-    comprehensive.add_argument("--collection-name", type=str, default=RETRIEVAL_COLLECTION_NAME)
+    comprehensive.add_argument(
+        "--collection-name", type=str, default=RETRIEVAL_COLLECTION_NAME
+    )
     comprehensive.add_argument("--output-root", type=Path, default=None)
     comprehensive.add_argument("--max_visualizations", type=int, default=20)
     comprehensive.add_argument(
@@ -1350,7 +1409,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         print(f"Envs     : {envs}")
         print(f"Aggs     : {aggs}")
         print(f"K values : {k_values}")
-        print(f"Total configs: {len(extractors) * len(envs) * len(aggs) * len(k_values)}")
+        print(
+            f"Total configs: {len(extractors) * len(envs) * len(aggs) * len(k_values)}"
+        )
 
         base_root = args.output_root
         for k_val in k_values:

@@ -2,10 +2,11 @@
 Visualize threshold experiment predictions with PIL.
 Categorizes each prediction and saves annotated query images.
 """
+
+# ruff: noqa: E402
 from __future__ import annotations
 
 import json
-import os
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -43,7 +44,7 @@ def _strip_penicillium(label: str) -> str:
     clean = label.strip().lower()
     for prefix in ("penicillium ",):
         if clean.startswith(prefix):
-            return clean[len(prefix):]
+            return clean[len(prefix) :]
     return clean
 
 
@@ -66,8 +67,6 @@ def _categorize(row, known_species: Set[str]) -> Optional[str]:
     is_known = int(row["is_known"])
     true_label = str(row["species_label"])
     predicted = str(row["predicted_species"])
-    confidence = float(row["predicted_confidence"])
-
     if is_known == 1:
         true_stripped = _strip_penicillium(true_label)
         pred_stripped = _strip_penicillium(predicted)
@@ -129,8 +128,16 @@ def visualize_one(row, category: str, known_species: Set[str], idx: int) -> None
     lines = [
         (f"Status: {status_names[category]}", font_title, color),
         (f"Sample: {sample_id} | Env: {env}", font_body, (0, 0, 0)),
-        (f"True: {true_label} | Predicted: {predicted} (conf: {confidence:.3f})", font_body, (0, 0, 0)),
-        (f"Strain: {strain} | Known: {'yes' if is_known else 'no'}", font_small, (100, 100, 100)),
+        (
+            f"True: {true_label} | Predicted: {predicted} (conf: {confidence:.3f})",
+            font_body,
+            (0, 0, 0),
+        ),
+        (
+            f"Strain: {strain} | Known: {'yes' if is_known else 'no'}",
+            font_small,
+            (100, 100, 100),
+        ),
     ]
 
     for text, font, fill_color in lines:
@@ -148,13 +155,22 @@ def visualize_one(row, category: str, known_species: Set[str], idx: int) -> None
     s3 = float(row.get("s3_score", 0) or 0)
     s4 = float(row.get("s4_score", 0) or 0)
 
-    top5 = [(s0_species, s0), (s1_species, s1), (s2_species, s2), (s3_species, s3), (s4_species, s4)]
+    top5 = [
+        (s0_species, s0),
+        (s1_species, s1),
+        (s2_species, s2),
+        (s3_species, s3),
+        (s4_species, s4),
+    ]
     top5_str = " | ".join(f"{sp}({sc:.3f})" for sp, sc in top5 if sp)
     draw.text((10, y), f"Top-5: {top5_str}", fill=(80, 80, 80), font=font_small)
 
     out_dir = OUTPUT_DIR / category
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{idx:03d}_{strain.replace(' ', '_').replace('/', '_')}_{sample_id[:60]}.jpg"
+    out_path = (
+        out_dir
+        / f"{idx:03d}_{strain.replace(' ', '_').replace('/', '_')}_{sample_id[:60]}.jpg"
+    )
     canvas.save(str(out_path), quality=85)
 
 
@@ -172,7 +188,12 @@ def main() -> None:
             categories[cat].append(row)
 
     print("\nCategory counts (before limit):")
-    for cat in ["known_correct", "known_incorrect", "unknown_as_known", "unknown_correct"]:
+    for cat in [
+        "known_correct",
+        "known_incorrect",
+        "unknown_as_known",
+        "unknown_correct",
+    ]:
         print(f"  {cat}: {len(categories[cat])}")
 
     for cat in categories:

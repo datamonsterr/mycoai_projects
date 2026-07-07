@@ -13,11 +13,15 @@ from src.prepare.dataset import required_source_roots
 
 def check_dataset_root(paths: list[Path] | None = None) -> Tuple[bool, str]:
     candidate_paths = paths if paths is not None else required_source_roots()
-    missing_paths = [candidate for candidate in candidate_paths if not candidate.exists()]
+    missing_paths = [
+        candidate for candidate in candidate_paths if not candidate.exists()
+    ]
     if missing_paths:
         missing = ", ".join(str(candidate) for candidate in missing_paths)
         return False, f"Dataset source roots do not exist: {missing}"
-    empty_paths = [candidate for candidate in candidate_paths if not any(candidate.iterdir())]
+    empty_paths = [
+        candidate for candidate in candidate_paths if not any(candidate.iterdir())
+    ]
     if empty_paths:
         empty = ", ".join(str(candidate) for candidate in empty_paths)
         return False, f"Dataset source roots are empty: {empty}"
