@@ -7,10 +7,10 @@ import { AGENTS_MD_CONTENT } from '@/lib/template'
 
 describe('template AGENTS_MD_CONTENT', () => {
   it('contains required sections', () => {
-    expect(AGENTS_MD_CONTENT).toContain('# MycoAI Batch Data Structure')
+    expect(AGENTS_MD_CONTENT).toContain('# MycoAI Index New Data')
     expect(AGENTS_MD_CONTENT).toContain('Directory Structure')
-    expect(AGENTS_MD_CONTENT).toContain('Naming Conventions')
-    expect(AGENTS_MD_CONTENT).toContain('Instructions')
+    expect(AGENTS_MD_CONTENT).toContain('metadata.json')
+    expect(AGENTS_MD_CONTENT).toContain('Local Agent Task')
     expect(AGENTS_MD_CONTENT).toContain('images/')
     expect(AGENTS_MD_CONTENT).toContain('T379')
     expect(AGENTS_MD_CONTENT).toContain('T362')
@@ -54,10 +54,9 @@ describe('template ZIP structure (unit)', () => {
 
     const root = zip.folder('mycoai_batch')!
     root.file('AGENTS.md', AGENTS_MD_CONTENT)
-    const scripts = root.folder('scripts')!
-    scripts.file('rename_images.sh', '#!/usr/bin/env bash\necho test')
+    root.file('metadata.json', '{"strains":{}}')
     const images = root.folder('images')!
-    images.file('.gitkeep', '')
+    images.folder('T379')!.file('T379_MEA.jpg.example', '')
 
     const blob = await zip.generateAsync({ type: 'blob' })
     expect(blob).toBeInstanceOf(Blob)

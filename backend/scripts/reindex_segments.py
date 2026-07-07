@@ -26,12 +26,15 @@ async def main(limit: int = 0) -> dict:
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
-    from backend.config import get_storage_settings
-    from backend.database import async_session as session_factory
+    from backend.config import get_settings, get_storage_settings
+    from backend.database import _get_sessionmaker
+    session_factory = _get_sessionmaker()
+
     from backend.models import Image, Segment, Species, Strain, Media
     from backend.services.feature_extraction import index_segment_to_qdrant
     from backend.services.storage import create_storage
 
+    settings = get_settings()
     storage = create_storage(get_storage_settings())
 
     stats = {"total": 0, "indexed": 0, "skipped": 0, "failed": 0, "already_done": 0}
@@ -73,6 +76,8 @@ async def main(limit: int = 0) -> dict:
             media_name = img.media.name if img.media else "unknown"
 
             try:
+                if seg.crop_path.startswith("/app/Dataset/uploads/"):
+                    seg.crop_path = str(settings.upload_root / seg.crop_path.removeprefix("/app/Dataset/uploads/"))
                 result = await index_segment_to_qdrant(
                     db,
                     seg,

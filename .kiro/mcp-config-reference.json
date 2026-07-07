@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "markitdown": {
+      "command": "uvx",
+      "args": ["--from", "markitdown-mcp", "markitdown-mcp"],
+      "env": {},
+      "disabled": false
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"],
+      "env": {},
+      "disabled": false
+    },
+    "codebase-memory": {
+      "command": "npx",
+      "args": ["-y", "codebase-memory-mcp"],
+      "env": {},
+      "disabled": false
+    }
+  }
+}

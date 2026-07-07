@@ -148,6 +148,9 @@ def run_aggregation(
     )
 
 
+retrieve = retrieve_by_point_id
+
+
 RESEARCH_DEFAULTS = {
     "extractor": "EfficientNetB1_finetuned",
     "media_strategy": "same_media",

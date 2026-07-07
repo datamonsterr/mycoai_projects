@@ -48,8 +48,46 @@ export function batchUpload(): Promise<{ job_id: string; status: string }> {
   return api.post<{ job_id: string; status: string }>('/images/batch')
 }
 
+export type ProgressCount = {
+  completed: number
+  total: number
+  percent: number
+}
+
+export type BatchImageStatus = {
+  filename: string
+  strain: string
+  media: string
+  species: string
+  status: string
+  image_id?: string | null
+  segments: number
+  error?: string | null
+  source_url?: string | null
+}
+
+export type BatchStrainStatus = {
+  strain: string
+  confirmed: boolean
+  upload: ProgressCount
+  segmentation: ProgressCount
+  feature_extraction: ProgressCount
+}
+
+export type BatchProgress = {
+  batch_id: string
+  status: string
+  batch_name: string
+  upload: ProgressCount
+  segmentation: ProgressCount
+  feature_extraction: ProgressCount
+  strains: BatchStrainStatus[]
+  images: BatchImageStatus[]
+}
+
 export type BatchZipResult = {
   status: string
+  batch_id: string
   batch_name: string
   total: number
   successful: number
@@ -62,8 +100,10 @@ export type BatchZipResult = {
     segments: number
     filename: string
     source_url: string
+    status?: string
   }>
   errors: Array<{ file: string; error: string }>
+  progress: BatchProgress
 }
 
 export function uploadBatchZip(
@@ -76,6 +116,14 @@ export function uploadBatchZip(
   if (options?.defaultSpecies) formData.append('default_species', options.defaultSpecies)
   if (options?.method) formData.append('method', options.method)
   return api.post<BatchZipResult>('/images/batch-zip', formData)
+}
+
+export function getBatchProgress(batchId: string): Promise<BatchProgress> {
+  return api.get<BatchProgress>(`/images/batches/${batchId}/progress`)
+}
+
+export function confirmBatchStrain(batchId: string, strain: string): Promise<BatchProgress> {
+  return api.post<BatchProgress>(`/images/batches/${batchId}/strains/${encodeURIComponent(strain)}/confirm`, {})
 }
 
 export function getImage(imageId: string): Promise<ImageDetail> {

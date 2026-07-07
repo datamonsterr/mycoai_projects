@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Run Tests After Task Completion",
+      "trigger": "PostTaskExec",
+      "description": "Runs relevant tests after a spec task is completed to verify the change",
+      "action": {
+        "type": "command",
+        "command": "cd /home/dat/dev/mycoai && if [ -d backend ]; then uv --directory backend run pytest --tb=short -q 2>&1 | tail -30; fi",
+        "timeout": 120
+      }
+    }
+  ]
+}

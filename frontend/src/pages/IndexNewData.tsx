@@ -5,13 +5,15 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { sampleStrains } from '@/lib/sample-assets'
-import { downloadTemplateZip } from '@/lib/template'
+import { AGENTS_MD_CONTENT, downloadTemplateZip } from '@/lib/template'
 import { useSpeciesList, useMediaList, useCreateSpecies } from '@/hooks/use-taxonomy'
 import { useToast } from '@/hooks/use-toast'
-import { uploadBatchZip, listSegments, autoSegment, type BatchZipResult } from '@/services/images'
+import { uploadBatchZip, listSegments, autoSegment, confirmBatchStrain, type BatchProgress, type BatchZipResult } from '@/services/images'
 import type { SegmentDetail } from '@/services/types'
-import { ArrowRight, ChevronRight, Download, Images, Plus, Trash2, Check, X, FileArchive, Loader2 } from 'lucide-react'
+import { ArrowRight, ChevronRight, Download, Images, Plus, Trash2, Check, X, FileArchive, Loader2, FileText } from 'lucide-react'
 
 type Step = 'upload' | 'segment' | 'review' | 'done'
 
@@ -282,10 +284,14 @@ export default function IndexNewDataPage() {
   const [activeStrain, setActiveStrain] = useState(0)
   const [creatingSpecies, setCreatingSpecies] = useState<{ strainIdx: number; name: string; description: string } | null>(null)
   const [batchResult, setBatchResult] = useState<BatchZipResult | null>(null)
+  const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null)
+  const [confirmedStrains, setConfirmedStrains] = useState<Set<string>>(new Set())
   const [isUploading, setIsUploading] = useState(false)
   const [loadingSegments, setLoadingSegments] = useState(false)
   const [autoSegmenting, setAutoSegmenting] = useState(false)
   const [segmentsByImage, setSegmentsByImage] = useState<Record<string, SegmentDetail[]>>({})
+  const [uploadMode, setUploadMode] = useState<'batch' | 'single'>('batch')
+  const [agentsOpen, setAgentsOpen] = useState(false)
 
   const { data: speciesData } = useSpeciesList()
   const { data: mediaData } = useMediaList()
@@ -296,6 +302,8 @@ export default function IndexNewDataPage() {
 
   const current = strains[activeStrain]
   const totalImages = strains.reduce((sum, s) => sum + s.images.length, 0)
+  const segmentedImages = strains.reduce((sum, s) => sum + s.images.filter((img) => img.segments.length > 0 || img.yoloBboxes.length > 0).length, 0)
+  const confirmedCount = confirmedStrains.size
   const defaultSpeciesId = speciesList.length > 0 ? speciesList[0].id : ''
 
   const addStrain = () => {
@@ -381,6 +389,7 @@ export default function IndexNewDataPage() {
     try {
       const result = await uploadBatchZip(file)
       setBatchResult(result)
+      setBatchProgress(result.progress)
 
       const indexed: IndexStrain[] = []
       const strainMap = new Map<string, IndexStrain>()
@@ -423,37 +432,36 @@ export default function IndexNewDataPage() {
   const runAutoSegment = async () => {
     setAutoSegmenting(true)
     let successCount = 0
+    const nextSegmentsByImage: Record<string, SegmentDetail[]> = {}
     try {
       for (const strain of strains) {
         for (const img of strain.images) {
           if (!img.imageId) continue
           try {
             const result = await autoSegment(img.imageId, 'yolo')
-            setSegmentsByImage((prev) => ({
-              ...prev,
-              [img.imageId]: result.segments.map((s) => ({
-                id: s.segment_id,
-                image_id: img.imageId,
-                segment_index: s.segment_index,
-                crop_path: s.crop_url,
-                bbox_x: s.bbox.x,
-                bbox_y: s.bbox.y,
-                bbox_w: s.bbox.w,
-                bbox_h: s.bbox.h,
-                segmentation_method: result.segmentation_method,
-              })),
+            nextSegmentsByImage[img.imageId] = result.segments.map((s) => ({
+              id: s.segment_id,
+              image_id: img.imageId,
+              segment_index: s.segment_index,
+              crop_path: s.crop_url,
+              bbox_x: s.bbox.x,
+              bbox_y: s.bbox.y,
+              bbox_w: s.bbox.w,
+              bbox_h: s.bbox.h,
+              segmentation_method: result.segmentation_method,
             }))
             successCount++
           } catch {
-            /* skip failed */
+            continue
           }
         }
       }
 
+      setSegmentsByImage((prev) => ({ ...prev, ...nextSegmentsByImage }))
       setStrains((prev) => prev.map((s) => ({
         ...s,
         images: s.images.map((img) => {
-          const segs = segmentsByImage[img.imageId]
+          const segs = nextSegmentsByImage[img.imageId] ?? segmentsByImage[img.imageId]
           if (!segs) return img
           return {
             ...img,
@@ -553,8 +561,25 @@ export default function IndexNewDataPage() {
   }
 
   const goToSegment = async () => {
-    setStep('segment')
+    await runAutoSegment()
     await loadSegmentsForAll()
+  }
+
+  const confirmActiveStrain = async () => {
+    if (!current) return
+    const strainName = current.strain || `Strain ${activeStrain + 1}`
+    if (batchProgress?.batch_id) {
+      try {
+        setBatchProgress(await confirmBatchStrain(batchProgress.batch_id, strainName))
+      } catch (err) {
+        toast.apiError(err, 'Failed to confirm strain')
+        return
+      }
+    }
+    setConfirmedStrains((prev) => new Set(prev).add(strainName))
+    const next = strains.findIndex((s, idx) => idx > activeStrain && !confirmedStrains.has(s.strain || `Strain ${idx + 1}`))
+    if (next >= 0) setActiveStrain(next)
+    else setStep('review')
   }
 
   return (
@@ -573,21 +598,30 @@ export default function IndexNewDataPage() {
       </div>
 
       {step === 'upload' && (
-        <div className="space-y-4">
-          {/* --- Batch ZIP Upload Section --- */}
+        <Tabs defaultValue="batch" className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <TabsList>
+              <TabsTrigger value="batch" active={uploadMode === 'batch'} onClick={() => setUploadMode('batch')}>Batch ZIP</TabsTrigger>
+              <TabsTrigger value="single" active={uploadMode === 'single'} onClick={() => setUploadMode('single')}>Single strain</TabsTrigger>
+            </TabsList>
+            <div className="text-xs text-muted-foreground">{strains.length} strain(s) · {totalImages} image(s)</div>
+          </div>
+
+          <TabsContent value="batch" activeValue={uploadMode} className="mt-0 space-y-3">
           <Card>
-            <CardHeader className="p-4 pb-3">
-              <CardTitle className="font-heading text-base">Batch Upload (ZIP)</CardTitle>
-              <CardDescription>
-                Download the template, organize your images by strain, re-zip, and upload.
-              </CardDescription>
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="font-heading text-base">Batch upload for indexing</CardTitle>
+              <CardDescription>Prepare a ZIP locally, then upload it here. This flow is for data owners indexing new data.</CardDescription>
             </CardHeader>
             <CardContent className="p-4 pt-0 space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => downloadTemplateZip()}>
-                  <Download className="h-4 w-4" /> Download Template (ZIP)
-                </Button>
-              </div>
+              <ol className="grid gap-2 text-xs text-muted-foreground md:grid-cols-3">
+                <li className="rounded-md border border-border p-3"><b className="text-foreground">1. Download template</b><br />Includes <Button variant="ghost" size="sm" className="h-auto p-0 text-primary underline" onClick={() => setAgentsOpen(true)}>AGENTS.md</Button> and metadata.json examples.</li>
+                <li className="rounded-md border border-border p-3"><b className="text-foreground">2. Run local agent</b><br />Ask your coding agent to follow AGENTS.md, map strain folders in metadata.json, then zip the folder.</li>
+                <li className="rounded-md border border-border p-3"><b className="text-foreground">3. Upload ZIP</b><br />MycoAI imports images, species metadata, segments, then indexes into Qdrant.</li>
+              </ol>
+              <Button variant="outline" size="sm" onClick={() => downloadTemplateZip()}>
+                <Download className="h-4 w-4" /> Download template ZIP
+              </Button>
 
               <label
                 className={`flex h-40 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
@@ -618,6 +652,7 @@ export default function IndexNewDataPage() {
                   <div className="flex flex-col items-center gap-2">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     <span className="text-sm text-muted-foreground">Processing batch...</span>
+                    {batchProgress && <span className="text-xs text-muted-foreground">Uploaded {batchProgress.upload.completed}/{batchProgress.upload.total} ({batchProgress.upload.percent}%)</span>}
                   </div>
                 ) : (
                   <>
@@ -637,6 +672,11 @@ export default function IndexNewDataPage() {
                     <span className="text-xs text-muted-foreground">
                       {batchResult.total} total images processed
                     </span>
+                    {batchProgress && (
+                      <span className="text-xs text-muted-foreground">
+                        Upload {batchProgress.upload.completed}/{batchProgress.upload.total} ({batchProgress.upload.percent}%) · Segmentation {batchProgress.segmentation.completed}/{batchProgress.segmentation.total} ({batchProgress.segmentation.percent}%) · Feature extraction {batchProgress.feature_extraction.completed}/{batchProgress.feature_extraction.total} ({batchProgress.feature_extraction.percent}%)
+                      </span>
+                    )}
                   </div>
                   {batchResult.results.length > 0 && (
                     <div className="max-h-48 overflow-auto text-xs">
@@ -652,7 +692,7 @@ export default function IndexNewDataPage() {
                         </thead>
                         <tbody>
                           {batchResult.results.map((r, i) => (
-                            <tr key={i} className="border-t border-border">
+                            <tr key={i} className={`border-t border-border ${r.status === 'uploaded' ? 'opacity-50' : 'opacity-100'}`}>
                               <td className="py-1 pr-2">{r.strain}</td>
                               <td className="py-1 pr-2">{r.species}</td>
                               <td className="py-1 pr-2">{r.media}</td>
@@ -680,12 +720,12 @@ export default function IndexNewDataPage() {
               )}
             </CardContent>
           </Card>
+          </TabsContent>
 
-          {/* --- Manual Entry / Strain Management --- */}
+          <TabsContent value="single" activeValue={uploadMode} className="mt-0 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={loadSample}><Download className="h-4 w-4" /> Load Sample Data</Button>
-            <Button variant="outline" size="sm" onClick={addStrain}><Plus className="h-4 w-4" /> Add Strain</Button>
-            <div className="ml-auto text-xs text-muted-foreground">{strains.length} strain(s) · {totalImages} image(s)</div>
+            <Button variant="outline" size="sm" onClick={loadSample}><Images className="h-4 w-4" /> Load sample strains</Button>
+            <Button variant="outline" size="sm" onClick={addStrain}><Plus className="h-4 w-4" /> Add strain</Button>
           </div>
 
           {strains.length > 0 && (
@@ -726,14 +766,7 @@ export default function IndexNewDataPage() {
                     Species metadata is required for indexing. Species is assigned before segmentation.
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => addImage(activeStrain)}><Plus className="h-4 w-4" /> Add Image</Button>
-                    <Button variant="default" size="sm" onClick={runAutoSegment} disabled={autoSegmenting || current.images.length === 0}>
-                      {autoSegmenting ? (
-                        <><Loader2 className="h-4 w-4 animate-spin" /> Segmenting...</>
-                      ) : (
-                        <><Images className="h-4 w-4" /> Auto Segment</>
-                      )}
-                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => addImage(activeStrain)}><Plus className="h-4 w-4" /> Add image</Button>
                     <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeStrain(activeStrain)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
@@ -785,7 +818,8 @@ export default function IndexNewDataPage() {
               </CardContent>
             </Card>
           )}
-        </div>
+          </TabsContent>
+        </Tabs>
       )}
 
       {step === 'segment' && (
@@ -815,7 +849,7 @@ export default function IndexNewDataPage() {
             <CardHeader className="p-4">
               <CardTitle className="font-heading">Segmentation Review</CardTitle>
               <CardDescription>
-                {current ? `${current.strain} · ${current.images.length} images · K-means segmentation` : 'No strain selected'}
+                {current ? `${current.strain} · ${current.images.length} images · Segmentation ${segmentedImages}/${totalImages} (${totalImages ? Math.round((segmentedImages / totalImages) * 100) : 100}%)` : 'No strain selected'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 p-4 pt-0">
@@ -922,6 +956,19 @@ export default function IndexNewDataPage() {
         </Card>
       )}
 
+      <Dialog open={agentsOpen} onClose={() => setAgentsOpen(false)} className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><FileText className="h-4 w-4" /> AGENTS.md</DialogTitle>
+          <DialogDescription>Instructions included in the template ZIP for your local agent.</DialogDescription>
+        </DialogHeader>
+        <DialogContent>
+          <pre className="max-h-[60vh] overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap">{AGENTS_MD_CONTENT}</pre>
+        </DialogContent>
+        <DialogFooter>
+          <Button size="sm" onClick={() => setAgentsOpen(false)}>Close</Button>
+        </DialogFooter>
+      </Dialog>
+
       <div className="flex justify-between">
         <Button
           variant="outline"
@@ -937,12 +984,12 @@ export default function IndexNewDataPage() {
         <Button
           onClick={() => {
             if (step === 'upload') goToSegment()
-            else if (step === 'segment') setStep('review')
+            else if (step === 'segment') confirmActiveStrain()
             else if (step === 'review') setStep('done')
           }}
-          disabled={step === 'done' || (step === 'segment' && loadingSegments)}
+          disabled={step === 'done' || autoSegmenting || loadingSegments || (step === 'upload' && totalImages === 0)}
         >
-          {step === 'upload' ? 'Segment All' : step === 'segment' ? 'Review & Confirm' : step === 'review' ? 'Index into Qdrant' : 'Done'} <ArrowRight className="h-4 w-4" />
+          {autoSegmenting ? `Segmenting ${segmentedImages}/${totalImages}` : step === 'upload' ? 'Segment Uploaded' : step === 'segment' ? `Confirm strain ${confirmedCount}/${strains.length}` : step === 'review' ? `Index into Qdrant ${batchProgress?.feature_extraction.completed ?? confirmedCount}/${batchProgress?.feature_extraction.total ?? strains.length}` : 'Done'} <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
     </div>

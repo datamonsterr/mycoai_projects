@@ -9,16 +9,15 @@ POST /api/v1/images/batch-upload − upload folder (multipart files + metadata)
 POST /api/v1/images/batch-zip    − upload ZIP batch (extract + segment + db)
 """
 
-from __future__ import annotations
-
 import asyncio
 import json
 import logging
 import shutil
+import uuid
 import zipfile
 from pathlib import Path
 from tempfile import NamedTemporaryFile, mkdtemp
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -30,18 +29,26 @@ from sqlalchemy.orm import selectinload
 
 from .core.dependencies import get_current_user, require_owner
 from .database import get_db
-from .image_models import BoundingBox, ImageRecord, ImageResponse
+from .image_models import (
+    BatchImageStatus,
+    BatchProgressResponse,
+    BatchStrainStatus,
+    BoundingBox,
+    ImageRecord,
+    ImageResponse,
+    ProcessingProgress,
+)
 from .image_models import Segment as SegModel
 from .models import Image, Media, Segment, Species, Strain
 from .schemas import ImageListItem, ImageListResponse
 from .segmentation import ALLOWED_METHODS, SegmentationPipeline
 from .segmentation import ImageStore as FileStore
 from .services.feature_extraction import index_segment_to_qdrant
-
-if TYPE_CHECKING:
-    from .services.storage import ObjectStorage
+from .services.storage import ObjectStorage
 
 logger = logging.getLogger(__name__)
+SEGMENT_CONCURRENCY_LIMIT = 2
+_BATCH_PROGRESS: dict[str, BatchProgressResponse] = {}
 
 
 class BatchImportRequest(BaseModel):
@@ -51,6 +58,64 @@ class BatchImportRequest(BaseModel):
 
 class AutoSegmentRequest(BaseModel):
     method: str = "kmeans"
+
+
+def _progress(completed: int, total: int) -> ProcessingProgress:
+    return ProcessingProgress(
+        completed=completed,
+        total=total,
+        percent=round((completed / total) * 100) if total else 100,
+    )
+
+
+def _batch_progress(
+    batch_id: str,
+    batch_name: str,
+    images: list[BatchImageStatus],
+) -> BatchProgressResponse:
+    total = len(images)
+    uploaded = sum(img.status in {"uploaded", "segmented", "indexed"} for img in images)
+    segmented = sum(img.status in {"segmented", "indexed"} for img in images)
+    indexed = sum(img.status == "indexed" for img in images)
+    failed = any(img.status == "failed" for img in images)
+    done = uploaded + sum(img.status == "failed" for img in images) == total
+    strain_names = sorted({img.strain for img in images})
+    strains = []
+    for strain in strain_names:
+        strain_images = [img for img in images if img.strain == strain]
+        strain_total = len(strain_images)
+        strain_segmented = sum(
+            img.status in {"segmented", "indexed"} for img in strain_images
+        )
+        strain_indexed = sum(img.status == "indexed" for img in strain_images)
+        strains.append(
+            BatchStrainStatus(
+                strain=strain,
+                confirmed=strain_indexed == strain_total and strain_total > 0,
+                upload=_progress(
+                    sum(
+                        img.status in {"uploaded", "segmented", "indexed"}
+                        for img in strain_images
+                    ),
+                    strain_total,
+                ),
+                segmentation=_progress(strain_segmented, strain_total),
+                feature_extraction=_progress(strain_indexed, strain_total),
+            )
+        )
+    status = "completed" if done else "processing"
+    if failed and done:
+        status = "completed_with_errors"
+    return BatchProgressResponse(
+        batch_id=batch_id,
+        status=status,
+        batch_name=batch_name,
+        upload=_progress(uploaded, total),
+        segmentation=_progress(segmented, total),
+        feature_extraction=_progress(indexed, total),
+        strains=strains,
+        images=images,
+    )
 
 
 def create_image_router(
@@ -138,9 +203,7 @@ def create_image_router(
             if storage:
                 candidate = storage.get_url(img.file_path)
                 if candidate.startswith(("http://", "https://")):
-                    source_url = candidate.replace(
-                        "http://minio:9000/", "/minio/"
-                    )
+                    source_url = candidate.replace("http://minio:9000/", "/minio/")
                 else:
                     source_url = f"/api/v1/images/{img.id}/source"
             else:
@@ -194,6 +257,9 @@ def create_image_router(
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except Exception as exc:
+            logger.warning("segmentation failed for upload %s: %s", image.filename, exc)
+            raise HTTPException(status_code=422, detail="segmentation failed") from exc
         finally:
             temp_path.unlink(missing_ok=True)
 
@@ -202,7 +268,7 @@ def create_image_router(
         strain_obj = await _ensure_strain(db, strain, species_obj.id)
         image_obj = await _create_image(db, record, strain_obj, species_obj, media_obj)
 
-        # Re-fetch image with eagerly-loaded segments (lazy access triggers IO in sync ctx).
+        # Re-fetch image with eagerly-loaded segments.
         result = await db.execute(
             select(Image)
             .options(selectinload(Image.segments))
@@ -230,12 +296,12 @@ def create_image_router(
 
         record.image_id = str(image_obj.id)
         record.source_url = f"/api/v1/images/{record.image_id}/source"
-        for seg in record.segments:
-            seg.crop_url = (
+        for seg_model in record.segments:
+            seg_model.crop_url = (
                 f"/api/v1/images/{record.image_id}"
-                f"/segments/{seg.segment_index}/crop"
+                f"/segments/{seg_model.segment_index}/crop"
             )
-            seg.pipeline_url = (
+            seg_model.pipeline_url = (
                 f"/api/v1/images/{record.image_id}"
                 f"/pipeline?method={record.segmentation_method}"
             )
@@ -480,13 +546,10 @@ def create_image_router(
         db=Depends(get_db),
         user=Depends(require_owner()),
     ) -> dict[str, Any]:
-        if (
-            not zipfile_file.filename
-            or not zipfile_file.filename.lower().endswith(".zip")
+        if not zipfile_file.filename or not zipfile_file.filename.lower().endswith(
+            ".zip"
         ):
-            raise HTTPException(
-                status_code=422, detail="Only .zip files are accepted"
-            )
+            raise HTTPException(status_code=422, detail="Only .zip files are accepted")
 
         work_dir = Path(mkdtemp(prefix="batch_zip_"))
         zip_path = work_dir / "upload.zip"
@@ -523,29 +586,69 @@ def create_image_router(
 
             batch_name = Path(zipfile_file.filename or "batch").stem
 
+            batch_id = uuid.uuid4().hex
+            image_statuses: list[BatchImageStatus] = []
+            jobs: list[tuple[Path, Path, str, str, str]] = []
             for img_path in image_files:
-                try:
-                    # Extract strain from folder structure: .../images/{strain}/file.jpg
-                    rel_path = img_path.relative_to(work_dir)
-                    strain = _extract_strain_from_path(rel_path)
-                    meta = _parse_filename_metadata(img_path.name, str(rel_path))
-                    media_name = meta.get("media", default_media)
-                    if media_name == "unknown":
-                        media_name = default_media
-                    species = meta.get("species", default_species)
-
-                    record = pipeline.segment_upload(
-                        img_path,
+                rel_path = img_path.relative_to(work_dir)
+                strain = _extract_strain_from_path(rel_path)
+                meta = _parse_filename_metadata(img_path.name, str(rel_path))
+                media_name = meta.get("media", default_media)
+                if media_name == "unknown":
+                    media_name = default_media
+                species = meta.get("species", default_species)
+                jobs.append((img_path, rel_path, strain, media_name, species))
+                image_statuses.append(
+                    BatchImageStatus(
+                        filename=str(rel_path),
                         strain=strain,
                         media=media_name,
-                        method=method,
+                        species=species,
+                        status="uploaded",
                     )
+                )
+            _BATCH_PROGRESS[batch_id] = _batch_progress(
+                batch_id, batch_name, image_statuses
+            )
+
+            semaphore = asyncio.Semaphore(SEGMENT_CONCURRENCY_LIMIT)
+
+            async def segment_one(job: tuple[Path, Path, str, str, str]):
+                img_path, rel_path, strain, media_name, species = job
+                try:
+                    async with semaphore:
+                        record = await asyncio.to_thread(
+                            pipeline.segment_upload,
+                            img_path,
+                            strain=strain,
+                            media=media_name,
+                            method=method,
+                        )
+                    return rel_path, strain, media_name, species, record, None
+                except Exception as exc:
+                    return rel_path, strain, media_name, species, None, str(exc)
+
+            segmented = await asyncio.gather(*(segment_one(job) for job in jobs))
+            for rel_path, strain, media_name, species, record, error in segmented:
+                status = next(
+                    img for img in image_statuses if img.filename == str(rel_path)
+                )
+                if error or record is None:
+                    status.status = "failed"
+                    status.error = error or "segmentation failed"
+                    errors.append({"file": str(rel_path), "error": status.error})
+                    continue
+                try:
                     species_obj = await _ensure_species(db, species)
                     media_obj = await _ensure_media(db, media_name)
                     strain_obj = await _ensure_strain(db, strain, species_obj.id)
                     image_obj = await _create_image(
                         db, record, strain_obj, species_obj, media_obj
                     )
+                    status.status = "segmented"
+                    status.image_id = str(image_obj.id)
+                    status.segments = len(record.segments)
+                    status.source_url = f"/api/v1/images/{image_obj.id}/source"
                     results.append(
                         {
                             "image_id": str(image_obj.id),
@@ -554,14 +657,17 @@ def create_image_router(
                             "species": species_obj.name,
                             "segments": len(record.segments),
                             "filename": str(rel_path),
-                            "source_url": f"/api/v1/images/{image_obj.id}/source",
+                            "source_url": status.source_url,
+                            "status": status.status,
                         }
                     )
-                except Exception as e:
-                    errors.append({
-                        "file": str(img_path.relative_to(work_dir)),
-                        "error": str(e),
-                    })
+                except Exception as exc:
+                    status.status = "failed"
+                    status.error = str(exc)
+                    errors.append({"file": str(rel_path), "error": status.error})
+            _BATCH_PROGRESS[batch_id] = _batch_progress(
+                batch_id, batch_name, image_statuses
+            )
 
         except zipfile.BadZipFile:
             raise HTTPException(
@@ -570,15 +676,49 @@ def create_image_router(
         finally:
             shutil.rmtree(work_dir, ignore_errors=True)
 
+        progress = _BATCH_PROGRESS.get(batch_id) or _batch_progress(
+            batch_id, batch_name, []
+        )
         return {
-            "status": "completed",
+            "status": progress.status,
+            "batch_id": batch_id,
             "batch_name": batch_name,
             "total": len(results) + len(errors),
             "successful": len(results),
             "failed": len(errors),
             "results": results[:200],
             "errors": errors[:100],
+            "progress": progress.model_dump(),
         }
+
+    @router.get("/batches/{batch_id}/progress", response_model=BatchProgressResponse)
+    async def get_batch_progress(
+        batch_id: str,
+        user=Depends(get_current_user),
+    ) -> BatchProgressResponse:
+        progress = _BATCH_PROGRESS.get(batch_id)
+        if progress is None:
+            raise HTTPException(status_code=404, detail="batch progress not found")
+        return progress
+
+    @router.post(
+        "/batches/{batch_id}/strains/{strain}/confirm",
+        response_model=BatchProgressResponse,
+    )
+    async def confirm_batch_strain(
+        batch_id: str,
+        strain: str,
+        user=Depends(require_owner()),
+    ) -> BatchProgressResponse:
+        progress = _BATCH_PROGRESS.get(batch_id)
+        if progress is None:
+            raise HTTPException(status_code=404, detail="batch progress not found")
+        for image in progress.images:
+            if image.strain == strain and image.status == "segmented":
+                image.status = "indexed"
+        progress = _batch_progress(batch_id, progress.batch_name, progress.images)
+        _BATCH_PROGRESS[batch_id] = progress
+        return progress
 
     # ------------------------------------------------------------------
     # Get image detail
@@ -733,6 +873,7 @@ def create_image_router(
         for seg in img.segments:
             # Delete associated qdrant_index_state rows first to avoid FK violation
             from .models import QdrantIndexState
+
             await db.execute(
                 QdrantIndexState.__table__.delete().where(
                     QdrantIndexState.segment_id == seg.id
@@ -743,6 +884,7 @@ def create_image_router(
 
         # Create new segments (resolve to absolute crop_path so cv2 can re-read them)
         from .config import get_storage_settings as _gss
+
         _root = Path(_gss().upload_root)
         if not _root.is_absolute():
             _root = (Path.cwd() / _root).resolve()
@@ -751,7 +893,12 @@ def create_image_router(
                 image_id=img.id,
                 segment_index=seg_model.segment_index,
                 crop_path=str(
-                    (_root / record.artifact_dir / "segments" / f"segment_{seg_model.segment_index}.jpg").resolve()
+                    (
+                        _root
+                        / record.artifact_dir
+                        / "segments"
+                        / f"segment_{seg_model.segment_index}.jpg"
+                    ).resolve()
                 ),
                 bbox_x=seg_model.bbox.x,
                 bbox_y=seg_model.bbox.y,
@@ -778,28 +925,33 @@ def create_image_router(
         img_reloaded = result2.scalar_one_or_none()
         if img_reloaded:
             strain_name = img_reloaded.strain.name if img_reloaded.strain else "unknown"
-            species_name = img_reloaded.species.name if img_reloaded.species else "unknown"
+            species_name = (
+                img_reloaded.species.name if img_reloaded.species else "unknown"
+            )
             media_name = img_reloaded.media.name if img_reloaded.media else "unknown"
             for seg in img_reloaded.segments:
                 if seg.qdrant_point_id is None:
                     try:
                         await index_segment_to_qdrant(
-                            db, seg, img_reloaded,
+                            db,
+                            seg,
+                            img_reloaded,
                             strain_name=strain_name,
                             species_name=species_name,
                             media_name=media_name,
                             storage=storage,
                         )
                     except Exception as exc:
-                        logger.warning("Qdrant index failed for segment %s: %s", seg.id, exc)
+                        logger.warning(
+                            "Qdrant index failed for segment %s: %s", seg.id, exc
+                        )
             await db.commit()
 
         record.image_id = str(img.id)
         record.source_url = f"/api/v1/images/{record.image_id}/source"
         for seg in record.segments:
             seg.crop_url = (
-                f"/api/v1/images/{record.image_id}"
-                f"/segments/{seg.segment_index}/crop"
+                f"/api/v1/images/{record.image_id}/segments/{seg.segment_index}/crop"
             )
             seg.pipeline_url = (
                 f"/api/v1/images/{record.image_id}"
@@ -829,9 +981,9 @@ def create_image_router(
             raise HTTPException(status_code=404, detail="image not found") from err
 
         result = await db.execute(
-            select(Image).options(selectinload(Image.segments)).where(
-                Image.id == img_uuid
-            )
+            select(Image)
+            .options(selectinload(Image.segments))
+            .where(Image.id == img_uuid)
         )
         img = result.scalar_one_or_none()
         if not img:
@@ -843,9 +995,7 @@ def create_image_router(
     # ------------------------------------------------------------------
     # GET segment crop
     # ------------------------------------------------------------------
-    @router.get(
-        "/{image_id}/segments/{segment_index}/crop", response_model=None
-    )
+    @router.get("/{image_id}/segments/{segment_index}/crop", response_model=None)
     async def get_crop(
         image_id: str,
         segment_index: int,
@@ -893,9 +1043,7 @@ def create_image_router(
         except ValueError as err:
             raise HTTPException(status_code=404, detail="image not found") from err
 
-        result = await db.execute(
-            select(Image).where(Image.id == img_uuid)
-        )
+        result = await db.execute(select(Image).where(Image.id == img_uuid))
         img = result.scalar_one_or_none()
         if not img:
             raise HTTPException(status_code=404, detail="image not found")
@@ -1049,7 +1197,9 @@ async def _create_image(
     await db.flush()
 
     for seg in record.segments:
-        crop_path = (root / record.artifact_dir / "segments" / f"segment_{seg.segment_index}.jpg").resolve()
+        crop_path = (
+            root / record.artifact_dir / "segments" / f"segment_{seg.segment_index}.jpg"
+        ).resolve()
         segment = Segment(
             image_id=img.id,
             segment_index=seg.segment_index,
@@ -1250,7 +1400,8 @@ def _extract_strain_from_path(rel_path: Path) -> str:
     # Skip root-level entries like AGENTS.md, scripts/, images/
     skip_prefixes = {"images", "mycoai_batch", "mycoai_batch_template"}
     meaningful = [
-        p for p in parts[:-1]  # exclude filename
+        p
+        for p in parts[:-1]  # exclude filename
         if p.lower() not in skip_prefixes and not p.startswith(".")
     ]
     if meaningful:

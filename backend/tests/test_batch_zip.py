@@ -1,7 +1,5 @@
 """Tests for the batch ZIP upload endpoint (/api/v1/images/batch-zip)."""
 
-from __future__ import annotations
-
 import zipfile
 from io import BytesIO
 
@@ -9,6 +7,9 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.image_models import BatchImageStatus
+from backend.routes import SEGMENT_CONCURRENCY_LIMIT, _batch_progress
 
 
 def _create_test_zip() -> BytesIO:
@@ -111,9 +112,7 @@ class TestBatchZipUpload:
         assert "errors" in data
         assert isinstance(data["batch_name"], str)
 
-    async def test_rejects_non_zip_file(
-        self, client: TestClient, owner_token: str
-    ):
+    async def test_rejects_non_zip_file(self, client: TestClient, owner_token: str):
         """Non-ZIP files should be rejected with 422."""
         txt_file = BytesIO(b"not a zip file")
         resp = client.post(
@@ -190,3 +189,83 @@ class TestBatchZipUpload:
             assert "segments" in result, f"Missing segments in: {result}"
             assert "filename" in result
             assert result["segments"] >= 0
+
+    async def test_batch_zip_returns_progress_contract(
+        self, client: TestClient, owner_token: str, test_zip: BytesIO
+    ):
+        resp = client.post(
+            "/api/v1/images/batch-zip",
+            files={"zipfile": ("test.zip", test_zip, "application/zip")},
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert resp.status_code == 202
+        data = resp.json()
+        assert data["batch_id"]
+        assert data["progress"]["upload"]["completed"] == data["total"]
+        assert data["progress"]["segmentation"]["total"] == data["total"]
+        assert data["progress"]["feature_extraction"]["percent"] >= 0
+        assert len(data["progress"]["images"]) == data["total"]
+
+        progress_resp = client.get(
+            f"/api/v1/images/batches/{data['batch_id']}/progress",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert progress_resp.status_code == 200
+        assert progress_resp.json()["batch_id"] == data["batch_id"]
+
+    async def test_confirm_strain_starts_feature_extraction_progress(
+        self, client: TestClient, owner_token: str, test_zip: BytesIO
+    ):
+        upload_resp = client.post(
+            "/api/v1/images/batch-zip",
+            files={"zipfile": ("test.zip", test_zip, "application/zip")},
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert upload_resp.status_code == 202
+        data = upload_resp.json()
+        strain = data["progress"]["strains"][0]["strain"]
+        confirm_resp = client.post(
+            f"/api/v1/images/batches/{data['batch_id']}/strains/{strain}/confirm",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert confirm_resp.status_code == 200
+        confirmed = next(
+            s for s in confirm_resp.json()["strains"] if s["strain"] == strain
+        )
+        assert confirmed["confirmed"] is True
+        assert (
+            confirmed["feature_extraction"]["completed"]
+            == confirmed["feature_extraction"]["total"]
+        )
+
+
+def test_batch_progress_counts_failures_without_500_state():
+    progress = _batch_progress(
+        "batch-1",
+        "batch",
+        [
+            BatchImageStatus(
+                filename="ok.jpg",
+                strain="T1",
+                media="MEA",
+                species="sp",
+                status="segmented",
+            ),
+            BatchImageStatus(
+                filename="bad.jpg",
+                strain="T1",
+                media="MEA",
+                species="sp",
+                status="failed",
+                error="bad image",
+            ),
+        ],
+    )
+    assert progress.status == "completed_with_errors"
+    assert progress.upload.completed == 1
+    assert progress.segmentation.completed == 1
+    assert progress.images[1].error == "bad image"
+
+
+def test_segmentation_concurrency_limit_is_bounded():
+    assert SEGMENT_CONCURRENCY_LIMIT == 2

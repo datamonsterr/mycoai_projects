@@ -54,7 +54,7 @@
     "autoresearch": {
       "description": "Autoresearch loop agent for fungal classification experiments",
       "mode": "primary",
-      "model": "9router/MiniBrain",
+      "model": "9router/BigBrain",
       "temperature": 0.1,
       "steps": 20
     },
@@ -68,7 +68,7 @@
     "planner": {
       "description": "Experiment queue coordinator: reads paper-ideas.md, deduplicates, assigns run_ids and branches, updates results.tsv, returns worker assignments to Autolab",
       "mode": "subagent",
-      "model": "9router/MidBrain",
+      "model": "9router/BigBrain",
       "temperature": 0.1,
       "steps": 20
     },
@@ -89,7 +89,7 @@
     "prepare": {
       "description": "Scaffolds new experiment folders with program.md, prepare.py, run_accuracy.py",
       "mode": "subagent",
-      "model": "9router/MidBrain",
+      "model": "9router/BigBrain",
       "temperature": 0.1,
       "steps": 10
     },
@@ -110,14 +110,14 @@
     "manual-browser-tester": {
       "description": "Performs manual browser or API validation and records definition-of-done evidence",
       "mode": "subagent",
-      "model": "9router/MidBrain",
+      "model": "9router/BigBrain",
       "temperature": 0.1,
       "steps": 16
     },
     "e2e-writer": {
       "description": "Authors or updates end-to-end tests for scientist-facing user journeys",
       "mode": "subagent",
-      "model": "9router/MidBrain",
+      "model": "9router/BigBrain",
       "temperature": 0.1,
       "steps": 20
     },
@@ -131,7 +131,7 @@
     "write-report": {
       "description": "Writes or updates research experiment reports and compiles them with linked image assets",
       "mode": "subagent",
-      "model": "9router/MidBrain",
+      "model": "9router/BigBrain",
       "temperature": 0.1,
       "steps": 18
     },

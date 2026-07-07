@@ -42,3 +42,40 @@ class SegmentPatch(BaseModel):
 class SegmentPatchRequest(BaseModel):
     segments: list[SegmentPatch] = Field(default_factory=list)
     deleted_segments: list[int] = Field(default_factory=list)
+
+
+class ProcessingProgress(BaseModel):
+    completed: int = Field(ge=0)
+    total: int = Field(ge=0)
+    percent: int = Field(ge=0, le=100)
+
+
+class BatchImageStatus(BaseModel):
+    filename: str
+    strain: str
+    media: str
+    species: str
+    status: str
+    image_id: str | None = None
+    segments: int = 0
+    error: str | None = None
+    source_url: str | None = None
+
+
+class BatchStrainStatus(BaseModel):
+    strain: str
+    confirmed: bool = False
+    upload: ProcessingProgress
+    segmentation: ProcessingProgress
+    feature_extraction: ProcessingProgress
+
+
+class BatchProgressResponse(BaseModel):
+    batch_id: str
+    status: str
+    batch_name: str
+    upload: ProcessingProgress
+    segmentation: ProcessingProgress
+    feature_extraction: ProcessingProgress
+    strains: list[BatchStrainStatus]
+    images: list[BatchImageStatus]

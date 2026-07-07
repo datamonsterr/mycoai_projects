@@ -557,18 +557,64 @@ export default function RetrievePage() {
 
   const title = isBatch ? 'Batch Strains' : 'Single Strain'
 
-  const loadSampleSingle = () => {
+  const loadSampleSingle = async () => {
+    setUploading(true)
     const sample = typedSampleStrains[0]
     setIsBatch(false)
-    setStrains([{ strain: sample.strain, images: sample.images.map(fromSampleImage) }])
+    
+    const uploadedImages: StrainImage[] = []
+    for (const img of sample.images) {
+      try {
+        const response = await fetch(img.original)
+        const blob = await response.blob()
+        const file = new File([blob], img.fileName, { type: blob.type })
+        const res = await uploadImage(file, sample.strain, img.media)
+        
+        uploadedImages.push({
+          ...img,
+          id: res.image_id,
+          original: res.source_url,
+        })
+      } catch (err) {
+        console.error(`Failed to upload ${img.fileName}:`, err)
+      }
+    }
+    
+    setStrains([{ strain: sample.strain, images: uploadedImages }])
     setActiveStrain(0)
+    setUploading(false)
   }
 
-  const loadSampleBatch = () => {
+  const loadSampleBatch = async () => {
+    setUploading(true)
     setIsBatch(true)
-    setStrains(typedSampleStrains.map((sample) => ({ strain: sample.strain, images: sample.images.map(fromSampleImage) })))
+    
+    const uploadedStrains: StrainDraft[] = []
+    for (const sample of typedSampleStrains) {
+      const uploadedImages: StrainImage[] = []
+      for (const img of sample.images) {
+        try {
+          const response = await fetch(img.original)
+          const blob = await response.blob()
+          const file = new File([blob], img.fileName, { type: blob.type })
+          const res = await uploadImage(file, sample.strain, img.media)
+          
+          uploadedImages.push({
+            ...img,
+            id: res.image_id,
+            original: res.source_url,
+          })
+        } catch (err) {
+          console.error(`Failed to upload ${img.fileName}:`, err)
+        }
+      }
+      uploadedStrains.push({ strain: sample.strain, images: uploadedImages })
+    }
+    
+    setStrains(uploadedStrains)
     setActiveStrain(0)
     setDetailStrain(0)
+    setUploading(false)
   }
 
   const addStrain = () => {

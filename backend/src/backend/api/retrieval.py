@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -23,7 +23,7 @@ from ..schemas import (
     RetrievalResultsResponse,
 )
 from ..services.stores import utcnow
-from ..services.threshold import compute_confidence, is_known_confidence
+from ..services.threshold import is_known_confidence
 
 router = APIRouter()
 
@@ -35,34 +35,24 @@ def _parse_uuid(value: str, resource: str = "Resource") -> uuid.UUID:
         raise NotFoundError(f"{resource} '{value}' not found") from err
 
 
-async def _strain_to_species_map(
-    db_neighbors: list[dict[str, str]], db: AsyncSession
-) -> dict[str, str]:
-    from ..models import Species, Strain
-
-    strain_names = {n.get("strain") for n in db_neighbors if n.get("strain")}
-    if not strain_names:
-        return {}
-
-    result = await db.execute(
-        select(Strain.name, Species.name)
-        .join(Species, Strain.species_id == Species.id)
-        .where(Strain.name.in_(strain_names))
-    )
-    strain_to_species: dict[str, str] = {row[0]: row[1] for row in result.all()}
-    return {s: strain_to_species.get(s, s) for s in strain_names}
-
-
-async def _resolve_species_name(db: AsyncSession, strain_name: str) -> str:
+async def _build_strain_map(db: AsyncSession) -> dict[str, str]:
+    """Bulk-load all strain→species in one query."""
     from ..models import Species, Strain
 
     result = await db.execute(
-        select(Species.name)
-        .join(Strain, Strain.species_id == Species.id)
-        .where(Strain.name == strain_name)
+        select(Strain.name, Species.name).join(Species, Strain.species_id == Species.id)
     )
-    row = result.scalar_one_or_none()
-    return row if row else strain_name
+    return {row[0]: row[1] for row in result.all()}
+
+
+def _resolve_species_fast(neighbor: object, strain_map: dict[str, str]) -> str:
+    specy = getattr(neighbor, "specy", None)
+    if specy and specy != "unknown":
+        return specy
+    strain = getattr(neighbor, "strain", None)
+    if not strain:
+        return "unknown"
+    return strain_map.get(strain, strain)
 
 
 def _get_filter_spec(image: Image, media_strategy: str) -> FilterSpec:
@@ -87,7 +77,11 @@ async def start_query(
         (
             await db.execute(
                 select(Image)
-                .options(selectinload(Image.media), selectinload(Image.segments), selectinload(Image.strain))
+                .options(
+                    selectinload(Image.media),
+                    selectinload(Image.segments),
+                    selectinload(Image.strain),
+                )
                 .where(Image.id.in_(image_uuids))
             )
         )
@@ -95,7 +89,11 @@ async def start_query(
         .all()
     )
     images_by_id = {image.id: image for image in image_rows}
-    missing_ids = [image_id for image_id, image_uuid in zip(image_ids, image_uuids, strict=False) if image_uuid not in images_by_id]
+    missing_ids = [
+        image_id
+        for image_id, image_uuid in zip(image_ids, image_uuids, strict=False)
+        if image_uuid not in images_by_id
+    ]
     if missing_ids:
         raise NotFoundError(f"Image {missing_ids[0]} not found")
 
@@ -111,7 +109,9 @@ async def start_query(
 
     primary_image = query_images[0][0]
     primary_image_id = str(primary_image.id)
-    primary_strain_name = primary_image.strain.name if primary_image.strain else "unknown"
+    primary_strain_name = (
+        primary_image.strain.name if primary_image.strain else "unknown"
+    )
 
     job = RetrievalJob(
         user_id=user.id,
@@ -123,7 +123,9 @@ async def start_query(
             "k": data.k,
             "aggregation": data.aggregation,
             "media_strategy": data.media_strategy,
-            "research_verified_default": "freq_strength+same_media+EfficientNetB1_finetuned",
+            "research_verified_default": (
+                "freq_strength+same_media+EfficientNetB1_finetuned"
+            ),
             "segment_count": total_segments,
             "query_image_count": len(query_images),
         },
@@ -134,9 +136,10 @@ async def start_query(
     try:
         qdrant = get_qdrant_client()
         collection = get_collection_name()
+        strain_map = await _build_strain_map(db)
         all_neighbors: list[NeighborResult] = []
         raw_results: list[dict[str, object]] = []
-        queried_images: list[dict[str, object]] = []
+        queried_images: list[dict[str, Any]] = []
 
         for image, segments in query_images:
             filter_spec = _get_filter_spec(image, data.media_strategy)
@@ -162,9 +165,7 @@ async def start_query(
                             collection_name=collection,
                         )
                         for neighbor in result.neighbors:
-                            species = await _resolve_species_name(
-                                db, neighbor.strain or "unknown"
-                            )
+                            species = _resolve_species_fast(neighbor, strain_map)
                             seg_neighbors.append(
                                 {
                                     "specy": species,
@@ -182,12 +183,12 @@ async def start_query(
 
                 if not seg_neighbors:
                     seg_neighbors = await _query_by_crop_image(
-                        db, seg, qdrant, collection, filter_spec, data.k
+                        seg, qdrant, collection, filter_spec, data.k, strain_map
                     )
                     for n in seg_neighbors:
                         neighbor = NeighborResult(
-                            image_id=n.get("image_id"),
-                            score=float(n.get("score", 0.0)),
+                            image_id=cast(str | None, n.get("image_id")),
+                            score=float(cast(float, n.get("score", 0.0))),
                             strain=str(n.get("strain", "")),
                             media=str(n.get("media", "")),
                             specy=str(n.get("specy", "")),
@@ -197,7 +198,9 @@ async def start_query(
                         image_neighbors.append(neighbor)
 
                 if seg_neighbors:
-                    raw_results.append({"neighbors": seg_neighbors, "query_image_id": str(image.id)})
+                    raw_results.append(
+                        {"neighbors": seg_neighbors, "query_image_id": str(image.id)}
+                    )
 
             queried_images.append(
                 {
@@ -219,11 +222,6 @@ async def start_query(
                 "status": "completed",
                 "estimated_seconds": 0,
             }
-
-        strain_map = await _strain_to_species_map(
-            [{"strain": n.strain} for n in all_neighbors],
-            db,
-        )
 
         aggregation_result = aggregate_predictions(
             raw_results,
@@ -282,16 +280,16 @@ async def start_query(
             ][:5]
 
             neighbors_list = []
-            for n in rank_neighbors:
-                species = _resolve_species_sync(n, strain_map)
+            for rank_neighbor in rank_neighbors:
+                species = _resolve_species_sync(rank_neighbor, strain_map)
                 neighbors_list.append(
                     RetrievalNeighbor(
-                        neighbor_image_id=n.image_id,
-                        neighbor_strain=n.strain or "unknown",
+                        neighbor_image_id=rank_neighbor.image_id,
+                        neighbor_strain=rank_neighbor.strain or "unknown",
                         neighbor_species=species,
-                        similarity=round(n.score, 4),
-                        media=n.media or "unknown",
-                        segment_index=n.segment_index or 0,
+                        similarity=round(rank_neighbor.score, 4),
+                        media=rank_neighbor.media or "unknown",
+                        segment_index=rank_neighbor.segment_index or 0,
                     )
                 )
 
@@ -325,12 +323,12 @@ async def start_query(
 
 
 async def _query_by_crop_image(
-    db: AsyncSession,
     seg: Segment,
     qdrant,
     collection: str,
     filter_spec: FilterSpec,
     k: int,
+    strain_map: dict[str, str],
 ) -> list[dict[str, object]]:
     from pathlib import Path
 
@@ -342,21 +340,21 @@ async def _query_by_crop_image(
 
     crop_path = Path(seg.crop_path)
 
-    # Try to read crop bytes from MinIO storage first
-    from ..services.feature_extraction import extract_features_from_bytes
-
     vectors: dict[str, list[float]] = {}
     if not crop_path.exists():
         # Try MinIO storage via the existing storage service
         try:
-            from ..services.storage import create_storage, ObjectStorage
             from ..config import get_storage_settings
+            from ..services.storage import create_storage
 
             stg = create_storage(get_storage_settings())
             if hasattr(stg, "get_bytes"):
                 # Build the MinIO key: {artifact_dir}/segments/segment_{index}.jpg
                 artifact_dir = crop_path.parent
-                key = f"{artifact_dir.parent.name}/{artifact_dir.name}/segments/{crop_path.name}"
+                key = (
+                    f"{artifact_dir.parent.name}/{artifact_dir.name}/segments/"
+                    f"{crop_path.name}"
+                )
                 img_bytes = stg.get_bytes(key)
                 if img_bytes is None:
                     # Try alternate key format
@@ -398,7 +396,7 @@ async def _query_by_crop_image(
 
     neighbors: list[dict[str, object]] = []
     for neighbor in result.neighbors:
-        species = await _resolve_species_name(db, neighbor.strain or "unknown")
+        species = _resolve_species_fast(neighbor, strain_map)
         neighbors.append(
             {
                 "specy": species,
@@ -413,10 +411,7 @@ async def _query_by_crop_image(
 
 
 def _resolve_species_sync(neighbor: NeighborResult, strain_map: dict[str, str]) -> str:
-    specy = neighbor.specy
-    if not specy or specy == "unknown":
-        specy = strain_map.get(neighbor.strain or "", "unknown")
-    return specy or "unknown"
+    return _resolve_species_fast(neighbor, strain_map)
 
 
 @router.get("/jobs/{job_id}", response_model=RetrievalJobResponse)

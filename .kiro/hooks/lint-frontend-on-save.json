@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Lint Frontend on Save",
+      "trigger": "PostFileSave",
+      "description": "Runs ESLint on frontend TypeScript/React files when saved",
+      "matcher": "\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "cd /home/dat/dev/mycoai && pnpm --dir mycoai_retrieval_frontend lint 2>&1 | tail -20",
+        "timeout": 30
+      }
+    }
+  ]
+}

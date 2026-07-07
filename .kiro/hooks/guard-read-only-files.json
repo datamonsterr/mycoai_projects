@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Guard READ-ONLY Files",
+      "trigger": "PreToolUse",
+      "description": "Prevents writing to files marked with # READ-ONLY at the top",
+      "matcher": "fs_write|str_replace",
+      "action": {
+        "type": "agent",
+        "prompt": "Before writing to any Python file, check if it begins with \"# READ-ONLY\". If it does, do NOT proceed with the edit. Explain to the user that the file is marked as immutable and suggest alternatives (regenerating from source, creating a new file, or asking the user for explicit override)."
+      }
+    }
+  ]
+}

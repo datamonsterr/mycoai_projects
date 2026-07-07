@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Lint Backend on Save",
+      "trigger": "PostFileSave",
+      "description": "Runs ruff check on Python backend files when saved",
+      "matcher": "backend/.*\\.py$",
+      "action": {
+        "type": "command",
+        "command": "cd /home/dat/dev/mycoai && uv --directory backend run ruff check --quiet 2>&1 | tail -20",
+        "timeout": 30
+      }
+    }
+  ]
+}

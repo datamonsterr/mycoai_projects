@@ -78,56 +78,48 @@ export function downloadAgentsMd() {
 }
 
 
-export const AGENTS_MD_CONTENT = `# MycoAI Batch Data Structure
+export const AGENTS_MD_CONTENT = `# MycoAI Index New Data — Batch Instructions
 
-## Overview
-Organize your fungal plate images into strain-named folders under an "images/"
-directory. Each strain folder contains one or more images of that strain grown on
-specific media.
+## Goal
+Prepare a ZIP for a data owner to add new indexed training data. This is not for the Retrieve Species user flow.
 
 ## Directory Structure
 \`\`\`
 mycoai_batch/
-├── AGENTS.md          # This file
-├── scripts/           # Helper scripts (if any)
-│   └── rename_images.sh
+├── AGENTS.md
+├── metadata.json
 └── images/
     ├── T379/
     │   ├── T379_MEA.jpg
-    │   ├── T379_CYA.jpg
-    │   └── T379_YES.jpg
-    ├── T362/
-    │   ├── T362_MEA.jpg
-    │   └── T362_CREA.jpg
-    └── ...
+    │   └── T379_CYA.jpg
+    └── T362/
+        ├── T362_MEA.jpg
+        └── T362_DG18.jpg
 \`\`\`
 
-## Naming Conventions
-- **Strain folder**: Use the strain identifier (e.g., T379, DTO-148-C8)
-- **Image filename**: Include strain and media in the filename for best
-  auto-detection. Supported patterns:
-  - \`{strain}_{media}.jpg\` (e.g., T379_MEA.jpg)
-  - \`{strain} {media} ob.jpg\` (e.g., T379 MEA ob.jpg)
-  - \`{strain} {media} rev.jpg\` (e.g., T379 CYA rev.jpg)
-  - DTO format: \`DTO 148-C8 CYAob_edited.jpg\`
+## metadata.json
+Map each strain folder to species and optional notes:
+\`\`\`json
+{
+  "strains": {
+    "T379": { "species": "thymicola", "media": ["MEA", "CYA"], "notes": "example" },
+    "T362": { "species": "sclerotigenum", "media": ["MEA", "DG18"] }
+  }
+}
+\`\`\`
+
+## Local Agent Task
+1. Normalize raw plate images into \`images/{strain}/\` folders.
+2. Fill \`metadata.json\` so every strain folder has a species mapping.
+3. Rename files to include media when known, e.g. \`T379_MEA.jpg\`.
+4. Keep only .jpg, .jpeg, or .png files.
+5. Zip the \`mycoai_batch/\` folder and upload it on Index New Data.
 
 ## Supported Media
 MEA, CYA, YES, DG18, CREA, OA, M40Y
 
-## Instructions
-1. Download this template (ZIP file)
-2. Unzip it to a working directory
-3. Create a subfolder for each strain under \`images/\`
-4. Place plate images in the correct strain folder
-5. Re-zip the entire folder
-6. Upload the ZIP via the "Upload Batch" section on the Index New Data page
-7. The system will auto-segment and identify species
-
-## Notes
-- Species names matching existing database entries will be auto-linked
-- Images are automatically segmented using K-means clustering
-- Segments are indexed into Qdrant for visual similarity search
-- Accepted formats: .jpg, .jpeg, .png
+## Upload Result
+MycoAI reads metadata, uploads images, auto-segments plates, then indexes segments into Qdrant.
 `
 
 const RENAME_SCRIPT = `#!/usr/bin/env bash
@@ -169,46 +161,29 @@ export async function downloadTemplateZip(): Promise<void> {
   const scripts = root.folder('scripts')!
   scripts.file('rename_images.sh', RENAME_SCRIPT)
 
-  // Example: species → strain → images structure
+  root.file('metadata.json', JSON.stringify({
+    strains: {
+      T379: { species: 'thymicola', media: ['MEA', 'CYA'], notes: 'example strain' },
+      T362: { species: 'sclerotigenum', media: ['MEA', 'DG18'] },
+    },
+  }, null, 2))
+
   const images = root.folder('images')!
-
-  // thymicola / T379
-  const thymicola = images.folder('thymicola')!
-  thymicola.file('README.md', `# thymicola
-Example species folder. Move your strain folders here.
-
-Expected structure:
-  images/thymicola/T379/T379_MEA.jpg
-  images/thymicola/T379/T379_CYA.jpg
-`)
-  const t379 = thymicola.folder('T379')!
+  const t379 = images.folder('T379')!
   t379.file('T379_MEA.jpg.example', '')
   t379.file('T379_CYA.jpg.example', '')
-  t379.file('T379_YES.jpg.example', '')
 
-  // sclerotigenum / T362
-  const sclerotigenum = images.folder('sclerotigenum')!
-  sclerotigenum.file('README.md', `# sclerotigenum
-Example species folder. Move your strain folders here.
-`)
-  const t362 = sclerotigenum.folder('T362')!
+  const t362 = images.folder('T362')!
   t362.file('T362_MEA.jpg.example', '')
-  t362.file('T362_CREA.jpg.example', '')
   t362.file('T362_DG18.jpg.example', '')
 
-  // Root-level README for the images/ folder
   images.file('README.md', `# Images folder
 
 Organize your data as:
-  images/{species_name}/{strain_name}/{strain}_{media}.jpg
+  images/{strain_name}/{strain}_{media}.jpg
 
-Example:
-  images/thymicola/T379/T379_MEA.jpg
-  images/sclerotigenum/T362/T362_CYA.jpg
-
-The species folder name is used to auto-link to existing species in the database.
-The strain folder name is used as the strain identifier.
-Media and species can also be parsed from the image filename.`)
+Species and extra strain information belong in ../metadata.json.
+Accepted image formats: .jpg, .jpeg, .png.`)
 
   const blob = await zip.generateAsync({ type: 'blob' })
   const url = URL.createObjectURL(blob)
