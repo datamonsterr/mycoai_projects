@@ -16,7 +16,7 @@ research-best formula is explicitly promoted into application behavior.
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 # Top formulas from expanded threshold analysis (sorted by f1_grid F1)
 # Source: research/results/threshold/all_experiments.csv
@@ -27,6 +27,7 @@ def _register(name: str) -> Callable:
     def decorator(fn):
         FORMULAS[name] = fn
         return fn
+
     return decorator
 
 
@@ -159,7 +160,7 @@ def is_known_confidence(
     scores: list[float],
     formula: str = "gnorm_0_2",
     threshold: float | None = None,
-) -> dict[str, float | bool]:
+) -> dict[str, float | bool | str]:
     """Compute formula-based confidence and classify as known/unknown.
 
     Returns dict with:

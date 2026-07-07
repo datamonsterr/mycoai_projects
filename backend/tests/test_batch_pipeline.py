@@ -23,7 +23,9 @@ from backend.tasks.batch import run as batch_run
 pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.integration,
-    pytest.mark.skip(reason="Requires PostgreSQL + Qdrant — run with integration_postgres marker"),
+    pytest.mark.skip(
+        reason="Requires PostgreSQL + Qdrant — run with integration_postgres marker"
+    ),
 ]
 
 
@@ -133,9 +135,7 @@ class TestBatchPipeline:
             )
             await db_session.commit()
 
-        species_result = await db_session.execute(
-            select(Image).limit(5)
-        )
+        species_result = await db_session.execute(select(Image).limit(5))
         images = species_result.scalars().all()
         assert len(images) > 0
 

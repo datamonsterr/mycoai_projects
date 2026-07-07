@@ -117,7 +117,10 @@ async def run(
                 result.errors.append(
                     {
                         "file": str(img_path),
-                        "error": f"Rejected: species name '{meta.get('species')}' is an artifact filename",
+                        "error": (
+                            "Rejected: species name "
+                            f"'{meta.get('species')}' is an artifact filename"
+                        ),
                     }
                 )
                 logger.warning(

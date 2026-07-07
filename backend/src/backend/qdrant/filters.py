@@ -26,12 +26,12 @@ def build_filter(filter_spec: FilterSpec | None) -> Filter | None:
     if filter_spec is None:
         return None
 
-    must: list[FieldCondition] = []
+    must: list[FieldCondition | Filter] = []
     must_not: list[FieldCondition] = []
 
     if filter_spec.media is not None:
         # OR across media/environment so legacy research-seeded points still match.
-        must.append(Filter(should=_media_condition(filter_spec.media)))
+        must.append(Filter(should=cast(Any, _media_condition(filter_spec.media))))
 
     if filter_spec.exclude_media is not None:
         for cond in _media_condition(filter_spec.exclude_media):
@@ -91,11 +91,8 @@ def build_filter(filter_spec: FilterSpec | None) -> Filter | None:
 
     # must list may contain nested Filters (for OR media); flatten at top level.
     flat_must: list[Any] = []
-    for cond in must:
-        if isinstance(cond, Filter):
-            flat_must.append(cond)
-        else:
-            flat_must.append(cond)
+    for must_condition in must:
+        flat_must.append(must_condition)
 
     return Filter(
         must=cast(Any, flat_must) if flat_must else None,

@@ -111,9 +111,7 @@ class TestBatchZipUpload:
         assert "errors" in data
         assert isinstance(data["batch_name"], str)
 
-    async def test_rejects_non_zip_file(
-        self, client: TestClient, owner_token: str
-    ):
+    async def test_rejects_non_zip_file(self, client: TestClient, owner_token: str):
         """Non-ZIP files should be rejected with 422."""
         txt_file = BytesIO(b"not a zip file")
         resp = client.post(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -23,7 +23,7 @@ from ..schemas import (
     RetrievalResultsResponse,
 )
 from ..services.stores import utcnow
-from ..services.threshold import compute_confidence, is_known_confidence
+from ..services.threshold import is_known_confidence
 
 router = APIRouter()
 
@@ -40,7 +40,7 @@ async def _strain_to_species_map(
 ) -> dict[str, str]:
     from ..models import Species, Strain
 
-    strain_names = {n.get("strain") for n in db_neighbors if n.get("strain")}
+    strain_names = {strain for n in db_neighbors if (strain := n.get("strain"))}
     if not strain_names:
         return {}
 
@@ -49,7 +49,9 @@ async def _strain_to_species_map(
         .join(Species, Strain.species_id == Species.id)
         .where(Strain.name.in_(strain_names))
     )
-    strain_to_species: dict[str, str] = {row[0]: row[1] for row in result.all()}
+    strain_to_species: dict[str, str] = {
+        str(row[0]): str(row[1]) for row in result.all()
+    }
     return {s: strain_to_species.get(s, s) for s in strain_names}
 
 
@@ -87,7 +89,11 @@ async def start_query(
         (
             await db.execute(
                 select(Image)
-                .options(selectinload(Image.media), selectinload(Image.segments), selectinload(Image.strain))
+                .options(
+                    selectinload(Image.media),
+                    selectinload(Image.segments),
+                    selectinload(Image.strain),
+                )
                 .where(Image.id.in_(image_uuids))
             )
         )
@@ -95,7 +101,11 @@ async def start_query(
         .all()
     )
     images_by_id = {image.id: image for image in image_rows}
-    missing_ids = [image_id for image_id, image_uuid in zip(image_ids, image_uuids, strict=False) if image_uuid not in images_by_id]
+    missing_ids = [
+        image_id
+        for image_id, image_uuid in zip(image_ids, image_uuids, strict=False)
+        if image_uuid not in images_by_id
+    ]
     if missing_ids:
         raise NotFoundError(f"Image {missing_ids[0]} not found")
 
@@ -111,7 +121,9 @@ async def start_query(
 
     primary_image = query_images[0][0]
     primary_image_id = str(primary_image.id)
-    primary_strain_name = primary_image.strain.name if primary_image.strain else "unknown"
+    primary_strain_name = (
+        primary_image.strain.name if primary_image.strain else "unknown"
+    )
 
     job = RetrievalJob(
         user_id=user.id,
@@ -123,7 +135,9 @@ async def start_query(
             "k": data.k,
             "aggregation": data.aggregation,
             "media_strategy": data.media_strategy,
-            "research_verified_default": "freq_strength+same_media+EfficientNetB1_finetuned",
+            "research_verified_default": (
+                "freq_strength+same_media+EfficientNetB1_finetuned"
+            ),
             "segment_count": total_segments,
             "query_image_count": len(query_images),
         },
@@ -135,15 +149,14 @@ async def start_query(
         qdrant = get_qdrant_client()
         collection = get_collection_name()
         all_neighbors: list[NeighborResult] = []
-        raw_results: list[dict[str, object]] = []
-        queried_images: list[dict[str, object]] = []
+        raw_results: list[dict[str, Any]] = []
+        queried_images: list[dict[str, Any]] = []
 
         for image, segments in query_images:
             filter_spec = _get_filter_spec(image, data.media_strategy)
             image_neighbors: list[NeighborResult] = []
             image_segment_urls = [
-                _segment_crop_url(image.id, seg.segment_index)
-                for seg in segments[:3]
+                _segment_crop_url(image.id, seg.segment_index) for seg in segments[:3]
             ]
 
             for seg in segments:
@@ -184,20 +197,24 @@ async def start_query(
                     seg_neighbors = await _query_by_crop_image(
                         db, seg, qdrant, collection, filter_spec, data.k
                     )
-                    for n in seg_neighbors:
+                    for raw_neighbor in seg_neighbors:
+                        image_id = raw_neighbor.get("image_id")
+                        score = raw_neighbor.get("score", 0.0)
                         neighbor = NeighborResult(
-                            image_id=n.get("image_id"),
-                            score=float(n.get("score", 0.0)),
-                            strain=str(n.get("strain", "")),
-                            media=str(n.get("media", "")),
-                            specy=str(n.get("specy", "")),
-                            extractor=str(n.get("extractor", "")),
+                            image_id=str(image_id) if image_id is not None else None,
+                            score=float(cast(float | int | str, score)),
+                            strain=str(raw_neighbor.get("strain", "")),
+                            media=str(raw_neighbor.get("media", "")),
+                            specy=str(raw_neighbor.get("specy", "")),
+                            extractor=str(raw_neighbor.get("extractor", "")),
                         )
                         all_neighbors.append(neighbor)
                         image_neighbors.append(neighbor)
 
                 if seg_neighbors:
-                    raw_results.append({"neighbors": seg_neighbors, "query_image_id": str(image.id)})
+                    raw_results.append(
+                        {"neighbors": seg_neighbors, "query_image_id": str(image.id)}
+                    )
 
             queried_images.append(
                 {
@@ -221,7 +238,7 @@ async def start_query(
             }
 
         strain_map = await _strain_to_species_map(
-            [{"strain": n.strain} for n in all_neighbors],
+            [{"strain": n.strain or ""} for n in all_neighbors],
             db,
         )
 
@@ -343,20 +360,22 @@ async def _query_by_crop_image(
     crop_path = Path(seg.crop_path)
 
     # Try to read crop bytes from MinIO storage first
-    from ..services.feature_extraction import extract_features_from_bytes
 
     vectors: dict[str, list[float]] = {}
     if not crop_path.exists():
         # Try MinIO storage via the existing storage service
         try:
-            from ..services.storage import create_storage, ObjectStorage
             from ..config import get_storage_settings
+            from ..services.storage import create_storage
 
             stg = create_storage(get_storage_settings())
             if hasattr(stg, "get_bytes"):
                 # Build the MinIO key: {artifact_dir}/segments/segment_{index}.jpg
                 artifact_dir = crop_path.parent
-                key = f"{artifact_dir.parent.name}/{artifact_dir.name}/segments/{crop_path.name}"
+                key = (
+                    f"{artifact_dir.parent.name}/{artifact_dir.name}/segments/"
+                    f"{crop_path.name}"
+                )
                 img_bytes = stg.get_bytes(key)
                 if img_bytes is None:
                     # Try alternate key format

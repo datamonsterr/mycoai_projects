@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import uuid
 
 import pytest
@@ -22,8 +23,6 @@ from backend.models import (
 )
 
 pytestmark = [pytest.mark.integration, pytest.mark.integration_postgres]
-
-import os
 
 POSTGRES_URL = os.getenv(
     "MYCOAI_TEST_DB_URL",

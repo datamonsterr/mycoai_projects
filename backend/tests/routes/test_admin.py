@@ -104,9 +104,7 @@ def test_dataowner_can_access_admin_users(
     )
 
 
-def test_invite_user(
-    client: TestClient, owner_headers: dict[str, str]
-) -> None:
+def test_invite_user(client: TestClient, owner_headers: dict[str, str]) -> None:
     """Bug 008: Invite user endpoint should work."""
     resp = client.post(
         "/api/v1/admin/users/invite",

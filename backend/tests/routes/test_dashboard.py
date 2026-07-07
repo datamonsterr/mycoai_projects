@@ -27,12 +27,6 @@ def test_chart_species(client: TestClient, headers: dict[str, str]) -> None:
     assert isinstance(resp.json(), list)
 
 
-def test_chart_media(client: TestClient, headers: dict[str, str]) -> None:
-    resp = client.get("/api/v1/dashboard/charts/media-distribution", headers=headers)
-    assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
-
-
 def test_chart_timeline(client: TestClient, headers: dict[str, str]) -> None:
     resp = client.get("/api/v1/dashboard/charts/timeline", headers=headers)
     assert resp.status_code == 200

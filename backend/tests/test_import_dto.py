@@ -134,7 +134,7 @@ class TestMetadataParser:
         assert result["angle"] == "unknown"
 
     def test_folder_fallback_two_levels(self):
-        """Fallback: species/strain/file.jpg → species from filename if metadata present."""
+        """Fallback: species/strain/file.jpg uses filename species metadata."""
         result = _parse_filename_metadata(
             "DTO 148-C8 CYAo.jpg",
             rel_path="Penicillium commune/DTO 148-C8/DTO 148-C8 CYAo.jpg",

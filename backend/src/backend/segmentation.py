@@ -174,7 +174,9 @@ class SegmentationPipeline:
 
             return ImageRecord(
                 image_id=image_id,
-                source_path=(Path(prefix) / "source.jpg" if self._use_storage else stored_source),
+                source_path=(
+                    Path(prefix) / "source.jpg" if self._use_storage else stored_source
+                ),
                 artifact_dir=(Path(prefix) if self._use_storage else artifact_dir),
                 source_url=f"/api/v1/images/{image_id}/source",
                 segments=segments,
@@ -315,8 +317,11 @@ class SegmentationPipeline:
         side = min(h, w)
         working_size = min(max(side, 512), 1024)
 
-        small = cv.resize(img, (working_size, working_size),
-                          interpolation=cv.INTER_AREA if side >= working_size else cv.INTER_LINEAR)
+        small = cv.resize(
+            img,
+            (working_size, working_size),
+            interpolation=cv.INTER_AREA if side >= working_size else cv.INTER_LINEAR,
+        )
 
         # Median blur to flatten texture
         median_k = SegmentationPipeline._odd_kernel(working_size * 0.03, 15, 99)
@@ -338,7 +343,9 @@ class SegmentationPipeline:
         flat[~mask_bool.reshape(-1)] = np.array([1000.0] * 3, dtype=np.float32)
 
         n_clusters = 3
-        labels = KMeans(n_clusters=n_clusters, random_state=0, n_init=10).fit_predict(flat)
+        labels = KMeans(n_clusters=n_clusters, random_state=0, n_init=10).fit_predict(
+            flat
+        )
         label_image = labels.reshape(small.shape[:2]).astype(np.int32)
 
         # Smart foreground label selection
@@ -390,7 +397,7 @@ class SegmentationPipeline:
         if out_path and results:
             vis = small.copy()
             thickness = max(2, int(working_size * 0.005))
-            for i, bb in enumerate(bboxes):
+            for bb in bboxes:
                 cv.rectangle(
                     vis,
                     (bb["xmin"], bb["ymin"]),
@@ -460,7 +467,7 @@ class SegmentationPipeline:
         h, w = img.shape[:2]
         from ultralytics.engine.results import Results as YOLOResults
 
-        results: YOLOResults = model(img, verbose=False)  # type: ignore[call-overload]
+        results: YOLOResults = model(img, verbose=False)  # type: ignore[operator]
         if results[0].masks is None or results[0].boxes is None:
             return SegmentationPipeline._kmeans_bboxes(img, out_path)
 
@@ -480,10 +487,12 @@ class SegmentationPipeline:
             y2c = min(h, int(y2))
             if x2c <= x1c or y2c <= y1c:
                 continue
-            scored_bboxes.append((
-                conf * (x2c - x1c) * (y2c - y1c),
-                BoundingBox(x=x1c, y=y1c, w=x2c - x1c, h=y2c - y1c),
-            ))
+            scored_bboxes.append(
+                (
+                    conf * (x2c - x1c) * (y2c - y1c),
+                    BoundingBox(x=x1c, y=y1c, w=x2c - x1c, h=y2c - y1c),
+                )
+            )
 
         scored_bboxes.sort(key=lambda sb: sb[0], reverse=True)
         results_bboxes = [bb for _, bb in scored_bboxes[:3]]
@@ -566,9 +575,7 @@ class SegmentationPipeline:
         )
 
     @staticmethod
-    def _get_bbox(
-        labels: np.ndarray, points: np.ndarray
-    ) -> list[dict[str, int]]:
+    def _get_bbox(labels: np.ndarray, points: np.ndarray) -> list[dict[str, int]]:
         cluster_count = int(labels.max()) + 1 if labels.size else 0
         clusters: list[list[np.ndarray]] = [[] for _ in range(cluster_count)]
         for i, lbl in enumerate(labels):
@@ -578,12 +585,14 @@ class SegmentationPipeline:
             if not cluster:
                 continue
             cp = np.array(cluster, dtype=np.int32)
-            bboxes.append({
-                "xmin": int(np.min(cp[:, 1])),
-                "ymin": int(np.min(cp[:, 0])),
-                "xmax": int(np.max(cp[:, 1])),
-                "ymax": int(np.max(cp[:, 0])),
-            })
+            bboxes.append(
+                {
+                    "xmin": int(np.min(cp[:, 1])),
+                    "ymin": int(np.min(cp[:, 0])),
+                    "xmax": int(np.max(cp[:, 1])),
+                    "ymax": int(np.max(cp[:, 0])),
+                }
+            )
         return bboxes
 
     @staticmethod
@@ -605,7 +614,9 @@ class SegmentationPipeline:
         c1_mean = float(v_ch[k2labels == 1].mean())
         bright = 0 if c0_mean >= c1_mean else 1
         bright_mask = (k2labels == bright).reshape(roi.shape[:2]).astype(np.uint8) * 255
-        contours, _ = cv.findContours(bright_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv.findContours(
+            bright_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE
+        )
         if not contours:
             return None
         best = max(contours, key=cv.contourArea)
@@ -635,9 +646,13 @@ class SegmentationPipeline:
             k_sz = SegmentationPipeline._odd_kernel(size * 0.05, 3, 45)
             kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (k_sz, k_sz))
             eroded = cv.morphologyEx(roi, cv.MORPH_ERODE, kernel)
-            contours, _ = cv.findContours(eroded, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+            contours, _ = cv.findContours(
+                eroded, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE
+            )
             if not contours:
-                contours, _ = cv.findContours(roi, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+                contours, _ = cv.findContours(
+                    roi, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE
+                )
             if not contours:
                 refined.append(bbox)
                 continue
@@ -660,17 +675,21 @@ class SegmentationPipeline:
             best_fill = cv.contourArea(best_c) / float(max(1, bcw * bch))
             fit_score = 1.0 - min(abs(best_fill - 0.785), 1.0)
             if fit_score < 0.3 and hsv_image is not None and original_bgr is not None:
-                shrunk = SegmentationPipeline._local_k2_shrink(bbox, hsv_image, original_bgr)
+                shrunk = SegmentationPipeline._local_k2_shrink(
+                    bbox, hsv_image, original_bgr
+                )
                 if shrunk is not None:
                     refined.append(shrunk)
                     continue
             pad = (k_sz // 2) + int(size * 0.02)
-            refined.append({
-                "xmin": max(0, x1 + bcx - pad),
-                "ymin": max(0, y1 + bcy - pad),
-                "xmax": min(mask.shape[1], x1 + bcx + bcw + pad),
-                "ymax": min(mask.shape[0], y1 + bcy + bch + pad),
-            })
+            refined.append(
+                {
+                    "xmin": max(0, x1 + bcx - pad),
+                    "ymin": max(0, y1 + bcy - pad),
+                    "xmax": min(mask.shape[1], x1 + bcx + bcw + pad),
+                    "ymax": min(mask.shape[0], y1 + bcy + bch + pad),
+                }
+            )
         refined.sort(key=lambda bb: (bb["ymin"], bb["xmin"]))
         return refined
 

@@ -62,7 +62,7 @@ def _check_torch() -> bool:
     if _torch_available is None:
         try:
             import torch  # noqa: F401
-            import torchvision  # noqa: F401
+            import torchvision  # type: ignore[import-untyped]  # noqa: F401
 
             _torch_available = True
         except ImportError:
@@ -109,7 +109,7 @@ def _load_efficientnetb1_finetuned():
         return None
     import torch
     import torch.nn as nn
-    from torchvision.models import efficientnet_b1
+    from torchvision.models import efficientnet_b1  # type: ignore[import-untyped]
 
     model = efficientnet_b1(weights=None)
     weights_path = _resolve_finetuned_weights("EfficientNetB1")
@@ -340,7 +340,12 @@ async def index_segment_to_qdrant(
         collection_info = await asyncio.to_thread(
             qdrant_svc._client.get_collection, collection_name=collection_name
         )
-        supported = set(collection_info.config.params.vectors.keys())
+        collection_vectors = collection_info.config.params.vectors
+        supported = (
+            set(collection_vectors.keys())
+            if isinstance(collection_vectors, dict)
+            else set()
+        )
         vectors = {k: v for k, v in vectors.items() if k in supported}
         if not vectors:
             return {

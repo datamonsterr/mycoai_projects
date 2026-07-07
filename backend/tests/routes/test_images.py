@@ -133,7 +133,10 @@ def test_batch_folder_upload_single_image(
                 ("files", ("mycoai_new_species/StrainA/img_01.png", f, "image/png")),
             ],
             data={
-                "metadata": '{"batch_name": "test_batch", "strains": {"StrainA": {"species": "Penicillium", "media": "MEA"}}}',
+                "metadata": (
+                    '{"batch_name": "test_batch", "strains": '
+                    '{"StrainA": {"species": "Penicillium", "media": "MEA"}}}'
+                ),
                 "default_media": "MEA",
             },
             headers=headers,
@@ -292,7 +295,11 @@ def test_list_images_presigned_url_with_s3_storage(
     # Register + login on the S3-backed app
     client.post(
         "/api/v1/auth/register",
-        json={"email": "s3test@mycoai.dev", "password": "s3testpass", "name": "S3Tester"},
+        json={
+            "email": "s3test@mycoai.dev",
+            "password": "s3testpass",
+            "name": "S3Tester",
+        },
     )
     login_resp = client.post(
         "/api/v1/auth/login",
@@ -326,7 +333,12 @@ def test_list_images_presigned_url_with_s3_storage(
     data = list_resp.json()
     # Find our image (may be mixed with local-storage images from other fixtures)
     matches = [item for item in data["items"] if item["id"] == image_id]
-    assert len(matches) == 1, f"Expected 1 match for {image_id}, got {len(matches)}. Items: {[(i['id'][:8], i.get('source_url','')) for i in data['items']]}"
+    item_refs = [(i["id"][:8], i.get("source_url", "")) for i in data["items"]]
+    assert len(matches) == 1, (
+        f"Expected 1 match for {image_id}, got {len(matches)}. Items: {item_refs}"
+    )
     item = matches[0]
-    assert item["source_url"].startswith("/minio/"), f"Got source_url: {item['source_url']}"
+    assert item["source_url"].startswith("/minio/"), (
+        f"Got source_url: {item['source_url']}"
+    )
     assert "/source.jpg" in item["source_url"]

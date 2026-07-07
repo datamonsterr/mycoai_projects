@@ -24,7 +24,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -138,9 +138,7 @@ def create_image_router(
             if storage:
                 candidate = storage.get_url(img.file_path)
                 if candidate.startswith(("http://", "https://")):
-                    source_url = candidate.replace(
-                        "http://minio:9000/", "/minio/"
-                    )
+                    source_url = candidate.replace("http://minio:9000/", "/minio/")
                 else:
                     source_url = f"/api/v1/images/{img.id}/source"
             else:
@@ -202,7 +200,8 @@ def create_image_router(
         strain_obj = await _ensure_strain(db, strain, species_obj.id)
         image_obj = await _create_image(db, record, strain_obj, species_obj, media_obj)
 
-        # Re-fetch image with eagerly-loaded segments (lazy access triggers IO in sync ctx).
+        # Re-fetch image with eagerly-loaded segments.
+        # Lazy access triggers IO in sync ctx.
         result = await db.execute(
             select(Image)
             .options(selectinload(Image.segments))
@@ -230,12 +229,12 @@ def create_image_router(
 
         record.image_id = str(image_obj.id)
         record.source_url = f"/api/v1/images/{record.image_id}/source"
-        for seg in record.segments:
-            seg.crop_url = (
-                f"/api/v1/images/{record.image_id}"
-                f"/segments/{seg.segment_index}/crop"
+        for record_segment in record.segments:
+            record_segment.crop_url = (
+                f"/api/v1/images/{record.image_id}/segments/"
+                f"{record_segment.segment_index}/crop"
             )
-            seg.pipeline_url = (
+            record_segment.pipeline_url = (
                 f"/api/v1/images/{record.image_id}"
                 f"/pipeline?method={record.segmentation_method}"
             )
@@ -480,13 +479,10 @@ def create_image_router(
         db=Depends(get_db),
         user=Depends(require_owner()),
     ) -> dict[str, Any]:
-        if (
-            not zipfile_file.filename
-            or not zipfile_file.filename.lower().endswith(".zip")
+        if not zipfile_file.filename or not zipfile_file.filename.lower().endswith(
+            ".zip"
         ):
-            raise HTTPException(
-                status_code=422, detail="Only .zip files are accepted"
-            )
+            raise HTTPException(status_code=422, detail="Only .zip files are accepted")
 
         work_dir = Path(mkdtemp(prefix="batch_zip_"))
         zip_path = work_dir / "upload.zip"
@@ -558,10 +554,12 @@ def create_image_router(
                         }
                     )
                 except Exception as e:
-                    errors.append({
-                        "file": str(img_path.relative_to(work_dir)),
-                        "error": str(e),
-                    })
+                    errors.append(
+                        {
+                            "file": str(img_path.relative_to(work_dir)),
+                            "error": str(e),
+                        }
+                    )
 
         except zipfile.BadZipFile:
             raise HTTPException(
@@ -733,16 +731,16 @@ def create_image_router(
         for seg in img.segments:
             # Delete associated qdrant_index_state rows first to avoid FK violation
             from .models import QdrantIndexState
+
             await db.execute(
-                QdrantIndexState.__table__.delete().where(
-                    QdrantIndexState.segment_id == seg.id
-                )
+                delete(QdrantIndexState).where(QdrantIndexState.segment_id == seg.id)
             )
             await db.delete(seg)
         await db.flush()
 
         # Create new segments (resolve to absolute crop_path so cv2 can re-read them)
         from .config import get_storage_settings as _gss
+
         _root = Path(_gss().upload_root)
         if not _root.is_absolute():
             _root = (Path.cwd() / _root).resolve()
@@ -751,7 +749,12 @@ def create_image_router(
                 image_id=img.id,
                 segment_index=seg_model.segment_index,
                 crop_path=str(
-                    (_root / record.artifact_dir / "segments" / f"segment_{seg_model.segment_index}.jpg").resolve()
+                    (
+                        _root
+                        / record.artifact_dir
+                        / "segments"
+                        / f"segment_{seg_model.segment_index}.jpg"
+                    ).resolve()
                 ),
                 bbox_x=seg_model.bbox.x,
                 bbox_y=seg_model.bbox.y,
@@ -778,28 +781,33 @@ def create_image_router(
         img_reloaded = result2.scalar_one_or_none()
         if img_reloaded:
             strain_name = img_reloaded.strain.name if img_reloaded.strain else "unknown"
-            species_name = img_reloaded.species.name if img_reloaded.species else "unknown"
+            species_name = (
+                img_reloaded.species.name if img_reloaded.species else "unknown"
+            )
             media_name = img_reloaded.media.name if img_reloaded.media else "unknown"
             for seg in img_reloaded.segments:
                 if seg.qdrant_point_id is None:
                     try:
                         await index_segment_to_qdrant(
-                            db, seg, img_reloaded,
+                            db,
+                            seg,
+                            img_reloaded,
                             strain_name=strain_name,
                             species_name=species_name,
                             media_name=media_name,
                             storage=storage,
                         )
                     except Exception as exc:
-                        logger.warning("Qdrant index failed for segment %s: %s", seg.id, exc)
+                        logger.warning(
+                            "Qdrant index failed for segment %s: %s", seg.id, exc
+                        )
             await db.commit()
 
         record.image_id = str(img.id)
         record.source_url = f"/api/v1/images/{record.image_id}/source"
         for seg in record.segments:
             seg.crop_url = (
-                f"/api/v1/images/{record.image_id}"
-                f"/segments/{seg.segment_index}/crop"
+                f"/api/v1/images/{record.image_id}/segments/{seg.segment_index}/crop"
             )
             seg.pipeline_url = (
                 f"/api/v1/images/{record.image_id}"
@@ -829,9 +837,9 @@ def create_image_router(
             raise HTTPException(status_code=404, detail="image not found") from err
 
         result = await db.execute(
-            select(Image).options(selectinload(Image.segments)).where(
-                Image.id == img_uuid
-            )
+            select(Image)
+            .options(selectinload(Image.segments))
+            .where(Image.id == img_uuid)
         )
         img = result.scalar_one_or_none()
         if not img:
@@ -843,9 +851,7 @@ def create_image_router(
     # ------------------------------------------------------------------
     # GET segment crop
     # ------------------------------------------------------------------
-    @router.get(
-        "/{image_id}/segments/{segment_index}/crop", response_model=None
-    )
+    @router.get("/{image_id}/segments/{segment_index}/crop", response_model=None)
     async def get_crop(
         image_id: str,
         segment_index: int,
@@ -893,9 +899,7 @@ def create_image_router(
         except ValueError as err:
             raise HTTPException(status_code=404, detail="image not found") from err
 
-        result = await db.execute(
-            select(Image).where(Image.id == img_uuid)
-        )
+        result = await db.execute(select(Image).where(Image.id == img_uuid))
         img = result.scalar_one_or_none()
         if not img:
             raise HTTPException(status_code=404, detail="image not found")
@@ -1049,7 +1053,9 @@ async def _create_image(
     await db.flush()
 
     for seg in record.segments:
-        crop_path = (root / record.artifact_dir / "segments" / f"segment_{seg.segment_index}.jpg").resolve()
+        crop_path = (
+            root / record.artifact_dir / "segments" / f"segment_{seg.segment_index}.jpg"
+        ).resolve()
         segment = Segment(
             image_id=img.id,
             segment_index=seg.segment_index,
@@ -1250,7 +1256,8 @@ def _extract_strain_from_path(rel_path: Path) -> str:
     # Skip root-level entries like AGENTS.md, scripts/, images/
     skip_prefixes = {"images", "mycoai_batch", "mycoai_batch_template"}
     meaningful = [
-        p for p in parts[:-1]  # exclude filename
+        p
+        for p in parts[:-1]  # exclude filename
         if p.lower() not in skip_prefixes and not p.startswith(".")
     ]
     if meaningful:
