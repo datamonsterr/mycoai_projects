@@ -23,12 +23,8 @@ class FeedbackRepository:
             source="retrieval_result",
             feedback_type=data.feedback_type,
             query_strain=data.query_strain,
-            result_id=(
-                uuid.UUID(data.retrieval_result_id)
-                if data.retrieval_result_id
-                else None
-            ),
-            image_id=uuid.UUID(data.image_id) if data.image_id else None,
+            result_id=data.retrieval_result_id,
+            image_id=data.image_id,
             predicted_species=data.predicted_species,
             suggested_species=data.suggested_species or "",
             description=data.description,
@@ -119,7 +115,7 @@ class FeedbackRepository:
                 )
                 await system_state.increment_counter(db, "images_added")
 
-        await db.flush()
+        await db.commit()
         return feedback
 
     @staticmethod
@@ -129,10 +125,17 @@ class FeedbackRepository:
         data: FeedbackUpdate,
         reviewer_id: uuid.UUID,
     ) -> int:
+        feedbacks = list(
+            (
+                await db.execute(select(Feedback).where(Feedback.id.in_(feedback_ids)))
+            )
+            .scalars()
+            .all()
+        )
         now = datetime.now(UTC)
         stmt = (
             update(Feedback)
-            .where(Feedback.id.in_(feedback_ids))
+            .where(Feedback.id.in_([feedback.id for feedback in feedbacks]))
             .values(
                 status=data.status,
                 reviewer_id=reviewer_id,
@@ -140,18 +143,10 @@ class FeedbackRepository:
                 reviewed_at=now,
             )
         )
-        await db.execute(stmt)
+        if feedbacks:
+            await db.execute(stmt)
 
         if data.status == "accepted":
-            feedbacks = (
-                (
-                    await db.execute(
-                        select(Feedback).where(Feedback.id.in_(feedback_ids))
-                    )
-                )
-                .scalars()
-                .all()
-            )
             reindex_image_ids = [
                 f.image_id
                 for f in feedbacks
@@ -179,4 +174,4 @@ class FeedbackRepository:
                 )
 
         await db.commit()
-        return len(feedback_ids)
+        return len(feedbacks)

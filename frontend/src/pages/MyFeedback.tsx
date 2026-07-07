@@ -24,7 +24,9 @@ export default function MyFeedbackPage() {
         <TabsList>
           <TabsTrigger value="all" active={tab === 'all'} onClick={() => setTab('all')}>All</TabsTrigger>
           <TabsTrigger value="pending" active={tab === 'pending'} onClick={() => setTab('pending')}>Pending</TabsTrigger>
-          <TabsTrigger value="resolved" active={tab === 'resolved'} onClick={() => setTab('resolved')}>Resolved</TabsTrigger>
+          <TabsTrigger value="accepted" active={tab === 'accepted'} onClick={() => setTab('accepted')}>Accepted</TabsTrigger>
+          <TabsTrigger value="rejected" active={tab === 'rejected'} onClick={() => setTab('rejected')}>Rejected</TabsTrigger>
+          <TabsTrigger value="deferred" active={tab === 'deferred'} onClick={() => setTab('deferred')}>Deferred</TabsTrigger>
         </TabsList>
 
         <TabsContent value={tab} activeValue={tab}>
