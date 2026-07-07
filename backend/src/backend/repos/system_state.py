@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,11 +44,13 @@ async def increment_counter(
     if field not in COUNTER_FIELDS:
         raise ValueError(f"Unknown counter field: {field}")
     row = await _ensure_counter(db)
-    current = int(row.value.get(field, 0))  # type: ignore[call-overload]
-    row.value[field] = current + amount
+    value = dict(row.value)
+    current = int(cast(int, value.get(field, 0)))
+    value[field] = current + amount
+    row.value = value
     row.updated_at = datetime.datetime.now(datetime.UTC)
     await db.flush()
-    return dict(row.value)
+    return value
 
 
 async def reset_counter(db: AsyncSession) -> dict[str, Any]:
