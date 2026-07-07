@@ -717,8 +717,9 @@ def create_image_router(
         media_name = img.media.name if img.media else "unknown"
 
         try:
-            # Run segmentation
-            record = pipeline.segment_upload(
+            # Run segmentation (CPU-bound cv2/sklearn in thread)
+            record = await asyncio.to_thread(
+                pipeline.segment_upload,
                 source_path,
                 strain=strain_name,
                 media=media_name,
@@ -730,18 +731,27 @@ def create_image_router(
 
         # Delete old segments (unique constraint on image_id+segment_index)
         for seg in img.segments:
+            # Delete associated qdrant_index_state rows first to avoid FK violation
+            from .models import QdrantIndexState
+            await db.execute(
+                QdrantIndexState.__table__.delete().where(
+                    QdrantIndexState.segment_id == seg.id
+                )
+            )
             await db.delete(seg)
         await db.flush()
 
-        # Create new segments
+        # Create new segments (resolve to absolute crop_path so cv2 can re-read them)
+        from .config import get_storage_settings as _gss
+        _root = Path(_gss().upload_root)
+        if not _root.is_absolute():
+            _root = (Path.cwd() / _root).resolve()
         for seg_model in record.segments:
             segment = Segment(
                 image_id=img.id,
                 segment_index=seg_model.segment_index,
                 crop_path=str(
-                    record.artifact_dir
-                    / "segments"
-                    / f"segment_{seg_model.segment_index}.jpg"
+                    (_root / record.artifact_dir / "segments" / f"segment_{seg_model.segment_index}.jpg").resolve()
                 ),
                 bbox_x=seg_model.bbox.x,
                 bbox_y=seg_model.bbox.y,
@@ -754,11 +764,15 @@ def create_image_router(
         img.data_update_status = "updated_requires_reindex"
         await db.commit()
 
-        # Reload image with segments for indexing
-        await db.refresh(img)
+        # Reload image with freshly committed segments (avoid lazy-load + stale IDs)
         result2 = await db.execute(
             select(Image)
-            .options(selectinload(Image.segments), selectinload(Image.strain), selectinload(Image.species), selectinload(Image.media))
+            .options(
+                selectinload(Image.segments),
+                selectinload(Image.strain),
+                selectinload(Image.species),
+                selectinload(Image.media),
+            )
             .where(Image.id == img.id)
         )
         img_reloaded = result2.scalar_one_or_none()

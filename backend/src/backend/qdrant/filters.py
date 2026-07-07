@@ -8,9 +8,18 @@ from .models import FilterSpec
 
 _FIELD_STRAIN = "strain"
 _FIELD_MEDIA = "media"
+_FIELD_ENVIRONMENT = "environment"  # legacy/research schema uses this key
 _FIELD_ANGLE = "angle"
 _FIELD_SPECY = "specy"
 _FIELD_PARENT_ID = "parent_item_id"
+
+
+def _media_condition(value: str) -> list[FieldCondition]:
+    """Match against either the new 'media' key or the legacy 'environment' key."""
+    return [
+        FieldCondition(key=_FIELD_MEDIA, match=MatchValue(value=value)),
+        FieldCondition(key=_FIELD_ENVIRONMENT, match=MatchValue(value=value)),
+    ]
 
 
 def build_filter(filter_spec: FilterSpec | None) -> Filter | None:
@@ -21,20 +30,12 @@ def build_filter(filter_spec: FilterSpec | None) -> Filter | None:
     must_not: list[FieldCondition] = []
 
     if filter_spec.media is not None:
-        must.append(
-            FieldCondition(
-                key=_FIELD_MEDIA,
-                match=MatchValue(value=filter_spec.media),
-            )
-        )
+        # OR across media/environment so legacy research-seeded points still match.
+        must.append(Filter(should=_media_condition(filter_spec.media)))
 
     if filter_spec.exclude_media is not None:
-        must_not.append(
-            FieldCondition(
-                key=_FIELD_MEDIA,
-                match=MatchValue(value=filter_spec.exclude_media),
-            )
-        )
+        for cond in _media_condition(filter_spec.exclude_media):
+            must_not.append(cond)
 
     if filter_spec.exclude_strain is not None:
         must_not.append(
@@ -88,7 +89,15 @@ def build_filter(filter_spec: FilterSpec | None) -> Filter | None:
     if not must and not must_not:
         return None
 
+    # must list may contain nested Filters (for OR media); flatten at top level.
+    flat_must: list[Any] = []
+    for cond in must:
+        if isinstance(cond, Filter):
+            flat_must.append(cond)
+        else:
+            flat_must.append(cond)
+
     return Filter(
-        must=cast(Any, must) if must else None,
+        must=cast(Any, flat_must) if flat_must else None,
         must_not=cast(Any, must_not) if must_not else None,
     )
