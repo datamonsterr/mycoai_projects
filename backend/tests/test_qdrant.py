@@ -6,7 +6,7 @@ from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
-from qdrant_client.models import FieldCondition, MatchValue, ScoredPoint
+from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 
 from backend.qdrant.aggregation import aggregate_predictions
 from backend.qdrant.collections import (
@@ -50,20 +50,20 @@ def test_build_filter_media() -> None:
     must = _must(result)
     assert len(must) == 1
     cond = must[0]
-    assert isinstance(cond, FieldCondition)
-    assert cond.key == "media"
-    assert cond.match == MatchValue(value="MEA")
+    assert isinstance(cond, Filter)
+    assert cond.should is not None
+    keys = [c.key for c in cond.should if isinstance(c, FieldCondition)]
+    assert keys == ["media", "environment"]
 
 
 def test_build_filter_exclude_media() -> None:
     result = build_filter(FilterSpec(exclude_media="PDA"))
     assert result is not None
     must_not = _must_not(result)
-    assert len(must_not) == 1
-    cond = must_not[0]
-    assert isinstance(cond, FieldCondition)
-    assert cond.key == "media"
-    assert cond.match == MatchValue(value="PDA")
+    assert len(must_not) == 2
+    keys = [cond.key for cond in must_not]
+    assert keys == ["media", "environment"]
+    assert all(cond.match == MatchValue(value="PDA") for cond in must_not)
 
 
 def test_build_filter_strain_and_angle() -> None:
@@ -209,7 +209,9 @@ def test_filter_spec_roundtrip() -> None:
     qdrant_filter = build_filter(spec)
     assert qdrant_filter is not None
     must = _must(qdrant_filter)
-    env_cond = [c for c in must if c.key == "media"][0]
+    media_filter = next(c for c in must if isinstance(c, Filter))
+    assert media_filter.should is not None
+    env_cond = [c for c in media_filter.should if c.key == "media"][0]
     assert env_cond.match is not None
     assert env_cond.match.value == "MEA"
 

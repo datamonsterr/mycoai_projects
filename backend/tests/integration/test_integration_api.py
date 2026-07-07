@@ -100,7 +100,7 @@ async def test_api_register_login_refresh_flow(
     access_token = data["access_token"]
     refresh_token = data["refresh_token"]
 
-    from core.security import decode_access_token
+    from backend.core.security import decode_access_token
 
     payload = decode_access_token(access_token)
     user_id = payload["sub"]

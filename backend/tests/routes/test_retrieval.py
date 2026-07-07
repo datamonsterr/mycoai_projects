@@ -96,7 +96,9 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
         strain=SimpleNamespace(name="DTO 148-F1"),
         segments=[],
     )
-    segment = SimpleNamespace(qdrant_point_id=uuid.uuid4(), is_archived=False, segment_index=0)
+    segment = SimpleNamespace(
+        qdrant_point_id=uuid.uuid4(), is_archived=False, segment_index=0
+    )
     image.segments = [segment]
 
     class FakeExecuteResult:
@@ -126,6 +128,7 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
             side_effect=[
                 FakeExecuteResult([image]),
                 FakeExecuteResult(scalar_value="Penicillium chrysogenum"),
+                FakeExecuteResult([("DTO 148-F1", "Penicillium chrysogenum")]),
             ]
         ),
         add=fake_add,
@@ -146,7 +149,9 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
 
     assert response["status"] == "completed"
     assert created_results
-    saved_neighbor = created_results[0].neighbors[0]
+    saved_neighbor = next(
+        neighbor for result in created_results for neighbor in result.neighbors
+    )
     assert saved_neighbor.neighbor_image_id == "neighbor-image-1"
     _, kwargs = patched_query.call_args
     assert kwargs["filter_spec"].media == "CYA"

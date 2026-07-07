@@ -348,10 +348,13 @@ def test_feedback_submit_requires_auth(client: TestClient) -> None:
     assert resp.status_code == 401
 
 
-def test_feedback_inbox_accessible_by_any_user(
-    client: TestClient, user_headers: dict[str, str]
+def test_feedback_inbox_requires_owner(
+    client: TestClient, user_headers: dict[str, str], owner_headers: dict[str, str]
 ) -> None:
     resp = client.get("/api/v1/feedback/inbox", headers=user_headers)
+    assert resp.status_code == 403
+
+    resp = client.get("/api/v1/feedback/inbox", headers=owner_headers)
     assert resp.status_code == 200
 
 

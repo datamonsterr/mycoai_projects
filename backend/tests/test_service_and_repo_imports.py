@@ -11,7 +11,7 @@ class TestServiceImports:
         )
 
     def test_import_services_retrieval(self) -> None:
-        from backend.services.retrieval import retrieve  # noqa: F401
+        from backend.services.retrieval import retrieve_by_point_id  # noqa: F401
 
     def test_import_services_segmentation(self) -> None:
         from backend.services.segmentation import (  # noqa: F401
