@@ -1,3 +1,6 @@
 [submodule "graduation_report"]
 	path = graduation_report
 	url = git@github.com:datamonsterr/graduation_report.git
+[submodule "graduation_slides"]
+	path = graduation_slides
+	url = https://github.com/datamonsterr/graduation_slides.git
