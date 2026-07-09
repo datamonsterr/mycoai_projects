@@ -154,9 +154,7 @@ class TestBatchPipeline:
             )
             await db_session.commit()
 
-        species_result = await db_session.execute(
-            select(Image).limit(5)
-        )
+        species_result = await db_session.execute(select(Image).limit(5))
         images = species_result.scalars().all()
         assert len(images) > 0
 

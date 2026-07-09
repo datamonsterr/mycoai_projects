@@ -126,9 +126,7 @@ class FeedbackRepository:
         reviewer_id: uuid.UUID,
     ) -> int:
         feedbacks = list(
-            (
-                await db.execute(select(Feedback).where(Feedback.id.in_(feedback_ids)))
-            )
+            (await db.execute(select(Feedback).where(Feedback.id.in_(feedback_ids))))
             .scalars()
             .all()
         )

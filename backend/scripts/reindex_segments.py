@@ -27,6 +27,7 @@ async def main(limit: int = 0) -> dict:
 
     from backend.config import get_settings, get_storage_settings
     from backend.database import _get_sessionmaker
+
     session_factory = _get_sessionmaker()
 
     from backend.models import Image, Segment

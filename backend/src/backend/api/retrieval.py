@@ -231,8 +231,7 @@ async def start_query(
             filter_spec = _get_filter_spec(image, data.media_strategy)
             image_neighbors: list[NeighborResult] = []
             image_segment_urls = [
-                _segment_crop_url(image.id, seg.segment_index)
-                for seg in segments[:3]
+                _segment_crop_url(image.id, seg.segment_index) for seg in segments[:3]
             ]
 
             for seg in segments:
@@ -489,7 +488,7 @@ async def _query_by_crop_image(
             filter_spec=filter_spec,
             collection_name=collection,
         )
-    except (ValueError, RuntimeError):
+    except Exception:
         return []
 
     neighbors: list[dict[str, object]] = []

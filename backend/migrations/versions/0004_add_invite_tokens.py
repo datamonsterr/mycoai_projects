@@ -23,9 +23,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("email", sa.String(length=255), nullable=False),
-        sa.Column(
-            "token_hash", sa.String(length=255), unique=True, nullable=False
-        ),
+        sa.Column("token_hash", sa.String(length=255), unique=True, nullable=False),
         sa.Column(
             "is_used",
             sa.Boolean(),

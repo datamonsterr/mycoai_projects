@@ -29,6 +29,7 @@ async def fixture_live_tables(
     raw_engine = engine  # type: ignore[assignment]
     conn: AsyncConnection
     async with raw_engine.connect() as conn:  # type: ignore[union-attr]
+
         def sync_inspect(sync_conn: object) -> set[str]:
             insp = inspect(sync_conn)
             return set(insp.get_table_names())
@@ -37,6 +38,7 @@ async def fixture_live_tables(
 
 
 # ── Core assertions ──────────────────────────────────────────────────────────
+
 
 def test_invite_tokens_in_model_metadata(model_tables: set[str]) -> None:
     """invite_tokens must be declared as a model table."""

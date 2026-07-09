@@ -27,6 +27,7 @@ def _register(name: str) -> Callable:
     def decorator(fn):
         FORMULAS[name] = fn
         return fn
+
     return decorator
 
 
