@@ -1590,6 +1590,23 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
     species = "unknown"
     strain = "unknown"
 
+    structured = re.match(
+        r"^(dto\s+\d+[\-a-z0-9]+|cbs\s+[\d_/]+|ibt\s+\d+|nrrl\s+\d+|t\d+)[_\s-]+(cya30|cyas|cya|mea|yes|dg18|crea|oa|m40y)[_\s-]+(ob|rev)(?:[_\s-].*)?$",
+        lower,
+        re.IGNORECASE,
+    )
+    if structured:
+        strain = structured.group(1).upper()
+        raw_media = structured.group(2).upper()
+        media = "CYA" if raw_media in ("CYA30", "CYAS") else raw_media
+        angle = structured.group(3).lower()
+        return {
+            "species": "unknown",
+            "strain": strain,
+            "media": media,
+            "angle": angle,
+        }
+
     rest = lower
 
     # Strategy 1: "MEDIA[or]" suffix pattern (CYAo, MEAr, YESob, etc.)
@@ -1605,11 +1622,12 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
     else:
         # Strategy 2: "MEDIA ANGLE" separated by space/underscore/hyphen
         m_angle = re.search(
-            r"(?:^|[\s_-])(cya|mea|yes|dg18|crea|oa|m40y)[\s_-]+(ob|rev)\b",
+            r"(?:^|[\s_-])(cya30|cyas|cya|mea|yes|dg18|crea|oa|m40y)[\s_-]+(ob|rev)(?:$|[\s_-])",
             lower,
         )
         if m_angle:
-            media = m_angle.group(1).upper()
+            raw_media = m_angle.group(1).upper()
+            media = "CYA" if raw_media in ("CYA30", "CYAS") else raw_media
             angle = m_angle.group(2)
             rest = lower[: m_angle.start()].strip()
 

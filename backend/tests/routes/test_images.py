@@ -142,7 +142,10 @@ def test_batch_folder_upload_single_image(
                 ("files", ("mycoai_new_species/StrainA/img_01.png", f, "image/png")),
             ],
             data={
-                "metadata": '{"batch_name": "test_batch", "strains": {"StrainA": {"species": "Penicillium", "media": "MEA"}}}',
+                "metadata": (
+                    '{"batch_name": "test_batch", "strains": '
+                    '{"StrainA": {"species": "Penicillium", "media": "MEA"}}}'
+                ),
                 "default_media": "MEA",
             },
             headers=headers,
@@ -295,7 +298,11 @@ def fixture_s3_client(test_session_factory):
 def _login_s3_test_user(client: TestClient) -> dict[str, str]:
     client.post(
         "/api/v1/auth/register",
-        json={"email": "s3test@mycoai.dev", "password": "s3testpass", "name": "S3Tester"},
+        json={
+            "email": "s3test@mycoai.dev",
+            "password": "s3testpass",
+            "name": "S3Tester",
+        },
     )
     login_resp = client.post(
         "/api/v1/auth/login",

@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from pydantic import ValidationError
 
@@ -74,12 +76,12 @@ class TestFeedbackCreateRequest:
 
     def test_feedback_create_with_all_fields(self) -> None:
         req = FeedbackCreateRequest(
-            retrieval_result_id="result-1",
+            retrieval_result_id=str(uuid.uuid4()),
             feedback_type="wrong_prediction",
             suggested_species="Penicillium chrysogenum",
             description="This looks like P. chrysogenum instead",
             query_strain="DTO 148-D1",
-            image_id="img-1",
+            image_id=str(uuid.uuid4()),
             predicted_species="Penicillium commune",
         )
         assert req.feedback_type == "wrong_prediction"
@@ -96,7 +98,7 @@ class TestFeedbackCreateRequest:
     def test_feedback_create_valid_feedback_types(self) -> None:
         for ft in ("wrong_prediction", "issue", "contribution"):
             req = FeedbackCreateRequest(
-                retrieval_result_id="r",
+                retrieval_result_id=str(uuid.uuid4()),
                 feedback_type=ft,  # type: ignore[arg-type]
                 description="desc",
             )
