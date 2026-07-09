@@ -16,7 +16,7 @@ research-best formula is explicitly promoted into application behavior.
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 # Top formulas from expanded threshold analysis (sorted by f1_grid F1)
 # Source: research/results/threshold/all_experiments.csv

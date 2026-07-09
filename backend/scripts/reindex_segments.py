@@ -15,7 +15,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from pathlib import Path
 
 sys.path.insert(0, ".")
 
@@ -30,7 +29,7 @@ async def main(limit: int = 0) -> dict:
     from backend.database import _get_sessionmaker
     session_factory = _get_sessionmaker()
 
-    from backend.models import Image, Segment, Species, Strain, Media
+    from backend.models import Image, Segment
     from backend.services.feature_extraction import index_segment_to_qdrant
     from backend.services.storage import create_storage
 
@@ -77,7 +76,10 @@ async def main(limit: int = 0) -> dict:
 
             try:
                 if seg.crop_path.startswith("/app/Dataset/uploads/"):
-                    seg.crop_path = str(settings.upload_root / seg.crop_path.removeprefix("/app/Dataset/uploads/"))
+                    seg.crop_path = str(
+                        settings.upload_root
+                        / seg.crop_path.removeprefix("/app/Dataset/uploads/")
+                    )
                 result = await index_segment_to_qdrant(
                     db,
                     seg,
