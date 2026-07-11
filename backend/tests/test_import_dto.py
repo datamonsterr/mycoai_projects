@@ -123,6 +123,24 @@ class TestMetadataParser:
         assert result["media"] == "CYA"
         assert result["angle"] == "ob"
 
+    def test_media_angle_only_filename_keeps_unknown_species(self):
+        result = _parse_filename_metadata("crea_ob.jpg")
+        assert result["species"] == "unknown"
+        assert result["media"] == "CREA"
+        assert result["angle"] == "ob"
+
+    def test_media_angle_only_filename_keeps_unknown_species_with_rev(self):
+        result = _parse_filename_metadata("mea_rev.jpg")
+        assert result["species"] == "unknown"
+        assert result["media"] == "MEA"
+        assert result["angle"] == "rev"
+
+    def test_media_angle_only_filename_keeps_unknown_species_with_yes(self):
+        result = _parse_filename_metadata("yes_ob.jpg")
+        assert result["species"] == "unknown"
+        assert result["media"] == "YES"
+        assert result["angle"] == "ob"
+
     # ---------------------------------------------------------------
     # Unknown / fallback cases
     # ---------------------------------------------------------------
@@ -134,7 +152,7 @@ class TestMetadataParser:
         assert result["angle"] == "unknown"
 
     def test_folder_fallback_two_levels(self):
-        """Fallback: species/strain/file.jpg → species from filename if metadata present."""
+        """Fallback: species/strain/file.jpg keeps filename metadata."""
         result = _parse_filename_metadata(
             "DTO 148-C8 CYAo.jpg",
             rel_path="Penicillium commune/DTO 148-C8/DTO 148-C8 CYAo.jpg",

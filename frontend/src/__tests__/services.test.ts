@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { species } from '@/services/species'
 import { media } from '@/services/media'
+import { patchImageSegments, reindexImage, reindexStrainImages } from '@/services/images'
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -132,5 +133,54 @@ describe('media service', () => {
   it('throws on error status', async () => {
     mockFetch({ detail: 'Conflict' }, 409)
     await expect(media.create({ name: 'dup' })).rejects.toThrow('Conflict')
+  })
+})
+
+describe('images service', () => {
+  it('patches image segments', async () => {
+    const data = {
+      image_id: 'img-1',
+      source_url: '/img-1.jpg',
+      segmentation_method: 'manual',
+      segments: [{ segment_id: 'seg-1', segment_index: 0, bbox: { x: 1, y: 2, w: 3, h: 4 }, crop_url: '/seg-1.jpg', pipeline_url: '/pipe-1.jpg' }],
+    }
+    mockFetch(data)
+
+    const result = await patchImageSegments('img-1', {
+      segments: [{ segment_index: 0, bbox: { x: 1, y: 2, w: 3, h: 4 } }],
+      deleted_segments: [1],
+    })
+
+    expect(result).toEqual(data)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/images/img-1/segments'),
+      expect.objectContaining({ method: 'PATCH' }),
+    )
+  })
+
+  it('posts image reindex', async () => {
+    const data = { image_id: 'img-1', indexed_segments: 2 }
+    mockFetch(data)
+
+    const result = await reindexImage('img-1')
+
+    expect(result).toEqual(data)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/images/img-1/reindex'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('posts strain reindex', async () => {
+    const data = { strain_id: 'strain-1', images: 3, indexed_segments: 5 }
+    mockFetch(data)
+
+    const result = await reindexStrainImages('strain-1')
+
+    expect(result).toEqual(data)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/images/strains/strain-1/reindex'),
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 })

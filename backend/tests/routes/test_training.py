@@ -22,6 +22,16 @@ def fixture_owner_headers(client: TestClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest.fixture(name="dataowner_headers")
+def fixture_dataowner_headers(client: TestClient) -> dict[str, str]:
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={"email": "dataowner@mycoai.dev", "password": "password123"},
+    )
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_training_status(client: TestClient, user_headers: dict[str, str]) -> None:
     resp = client.get("/api/v1/training/status", headers=user_headers)
     assert resp.status_code == 200
@@ -72,3 +82,34 @@ def test_rollback(client: TestClient, owner_headers: dict[str, str]) -> None:
     resp = client.post("/api/v1/training/rollback", headers=owner_headers)
     assert resp.status_code == 200
     assert resp.json()["status"] == "rollback_complete"
+
+
+def test_dataowner_can_manage_training_jobs(
+    client: TestClient, dataowner_headers: dict[str, str]
+) -> None:
+    trigger = client.post(
+        "/api/v1/training/trigger",
+        json={"reason": "Data owner validation"},
+        headers=dataowner_headers,
+    )
+    assert trigger.status_code == 202
+    job_id = trigger.json()["id"]
+
+    status = client.get(f"/api/v1/training/jobs/{job_id}", headers=dataowner_headers)
+    assert status.status_code == 200
+
+    cancel = client.post(
+        f"/api/v1/training/jobs/{job_id}/cancel",
+        headers=dataowner_headers,
+    )
+    assert cancel.status_code == 200
+
+    deploy = client.post(
+        f"/api/v1/training/jobs/{job_id}/deploy",
+        json={"force": False},
+        headers=dataowner_headers,
+    )
+    assert deploy.status_code == 200
+
+    rollback = client.post("/api/v1/training/rollback", headers=dataowner_headers)
+    assert rollback.status_code == 200

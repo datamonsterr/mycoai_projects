@@ -32,6 +32,12 @@ def _get_yolo_model(weights: str | Path | None = None) -> object | None:
         return None
     if wpath is None:
         candidates = [
+            Path.cwd() / "weights" / "segmentation" / "yolo_segmentation_best.pt",
+            Path.cwd() / "weights" / "segmentation" / "yolo26_seg_best.pt",
+            Path.cwd() / "weights" / "yolo26n-seg.pt",
+            Path.cwd() / "weights" / "yolov8n-seg.pt",
+            Path("weights/segmentation/yolo_segmentation_best.pt"),
+            Path("weights/segmentation/yolo26_seg_best.pt"),
             Path("weights/yolo26n-seg.pt"),
             Path("weights/yolov8n-seg.pt"),
         ]
@@ -39,6 +45,8 @@ def _get_yolo_model(weights: str | Path | None = None) -> object | None:
             if c.exists():
                 wpath = c
                 break
+        if wpath is not None:
+            wpath = Path(wpath)
     if wpath is None or not wpath.exists():
         return None
     _YOLO_MODEL = YOLO(str(wpath))
@@ -172,10 +180,14 @@ class SegmentationPipeline:
                             crop_path.read_bytes(),
                         )
 
+            source_path = (
+                Path(prefix) / "source.jpg" if self._use_storage else stored_source
+            )
+            artifact_root = Path(prefix) if self._use_storage else artifact_dir
             return ImageRecord(
                 image_id=image_id,
-                source_path=(Path(prefix) / "source.jpg" if self._use_storage else stored_source),
-                artifact_dir=(Path(prefix) if self._use_storage else artifact_dir),
+                source_path=source_path,
+                artifact_dir=artifact_root,
                 source_url=f"/api/v1/images/{image_id}/source",
                 segments=segments,
                 segmentation_method=method,
@@ -315,8 +327,14 @@ class SegmentationPipeline:
         side = min(h, w)
         working_size = min(max(side, 512), 1024)
 
-        small = cv.resize(img, (working_size, working_size),
-                          interpolation=cv.INTER_AREA if side >= working_size else cv.INTER_LINEAR)
+        interpolation = (
+            cv.INTER_AREA if side >= working_size else cv.INTER_LINEAR
+        )
+        small = cv.resize(
+            img,
+            (working_size, working_size),
+            interpolation=interpolation,
+        )
 
         # Median blur to flatten texture
         median_k = SegmentationPipeline._odd_kernel(working_size * 0.03, 15, 99)
@@ -338,7 +356,11 @@ class SegmentationPipeline:
         flat[~mask_bool.reshape(-1)] = np.array([1000.0] * 3, dtype=np.float32)
 
         n_clusters = 3
-        labels = KMeans(n_clusters=n_clusters, random_state=0, n_init=10).fit_predict(flat)
+        labels = KMeans(
+            n_clusters=n_clusters,
+            random_state=0,
+            n_init=10,
+        ).fit_predict(flat)
         label_image = labels.reshape(small.shape[:2]).astype(np.int32)
 
         # Smart foreground label selection
@@ -390,7 +412,7 @@ class SegmentationPipeline:
         if out_path and results:
             vis = small.copy()
             thickness = max(2, int(working_size * 0.005))
-            for i, bb in enumerate(bboxes):
+            for bb in bboxes:
                 cv.rectangle(
                     vis,
                     (bb["xmin"], bb["ymin"]),
@@ -451,6 +473,37 @@ class SegmentationPipeline:
         return results
 
     @staticmethod
+    def _bbox_iou(a: BoundingBox, b: BoundingBox) -> float:
+        ax2 = a.x + a.w
+        ay2 = a.y + a.h
+        bx2 = b.x + b.w
+        by2 = b.y + b.h
+        inter_x1 = max(a.x, b.x)
+        inter_y1 = max(a.y, b.y)
+        inter_x2 = min(ax2, bx2)
+        inter_y2 = min(ay2, by2)
+        if inter_x2 <= inter_x1 or inter_y2 <= inter_y1:
+            return 0.0
+        inter = float((inter_x2 - inter_x1) * (inter_y2 - inter_y1))
+        union = float(a.w * a.h + b.w * b.h - inter)
+        return inter / union if union > 0 else 0.0
+
+    @staticmethod
+    def _filter_non_overlapping_bboxes(
+        bboxes: list[BoundingBox], iou_thresh: float = 0.25, max_boxes: int = 3
+    ) -> list[BoundingBox]:
+        kept: list[BoundingBox] = []
+        for box in bboxes:
+            if all(
+                SegmentationPipeline._bbox_iou(box, kept_box) < iou_thresh
+                for kept_box in kept
+            ):
+                kept.append(box)
+            if len(kept) >= max_boxes:
+                break
+        return kept
+
+    @staticmethod
     def _yolo_bboxes(
         img: np.ndarray, out_path: Path | None = None
     ) -> list[BoundingBox]:
@@ -460,33 +513,39 @@ class SegmentationPipeline:
         h, w = img.shape[:2]
         from ultralytics.engine.results import Results as YOLOResults
 
-        results: YOLOResults = model(img, verbose=False)  # type: ignore[call-overload]
-        if results[0].masks is None or results[0].boxes is None:
+        results: YOLOResults = model(  # type: ignore[call-overload,operator]
+            img, verbose=False, conf=0.15, imgsz=640, end2end=False
+        )
+        if not results or results[0].boxes is None:
             return SegmentationPipeline._kmeans_bboxes(img, out_path)
 
-        masks_data = results[0].masks.data
-        boxes_data = results[0].boxes.data
-        if masks_data is None or boxes_data is None or len(masks_data) == 0:
+        boxes = results[0].boxes.xyxy
+        confs = results[0].boxes.conf
+        if boxes is None or confs is None or len(boxes) == 0:
             return SegmentationPipeline._kmeans_bboxes(img, out_path)
 
         scored_bboxes: list[tuple[float, BoundingBox]] = []
-        for i in range(min(len(masks_data), len(boxes_data))):
-            box = boxes_data[i]
-            x1, y1, x2, y2 = map(float, box[:4])
-            conf = float(box[4]) if len(box) > 4 else 1.0
-            x1c = max(0, int(x1))
-            y1c = max(0, int(y1))
-            x2c = min(w, int(x2))
-            y2c = min(h, int(y2))
+        for conf_val, box_coords in zip(confs.tolist(), boxes.tolist(), strict=False):
+            x1, y1, x2, y2 = map(int, box_coords)
+            x1c = max(0, x1)
+            y1c = max(0, y1)
+            x2c = min(w, x2)
+            y2c = min(h, y2)
             if x2c <= x1c or y2c <= y1c:
                 continue
-            scored_bboxes.append((
-                conf * (x2c - x1c) * (y2c - y1c),
-                BoundingBox(x=x1c, y=y1c, w=x2c - x1c, h=y2c - y1c),
-            ))
+            scored_bboxes.append(
+                (
+                    float(conf_val),
+                    BoundingBox(x=x1c, y=y1c, w=x2c - x1c, h=y2c - y1c),
+                )
+            )
 
         scored_bboxes.sort(key=lambda sb: sb[0], reverse=True)
-        results_bboxes = [bb for _, bb in scored_bboxes[:3]]
+        results_bboxes = SegmentationPipeline._filter_non_overlapping_bboxes(
+            [bb for _, bb in scored_bboxes],
+            iou_thresh=0.25,
+            max_boxes=3,
+        )
 
         if out_path and results_bboxes:
             vis = img.copy()
@@ -605,7 +664,11 @@ class SegmentationPipeline:
         c1_mean = float(v_ch[k2labels == 1].mean())
         bright = 0 if c0_mean >= c1_mean else 1
         bright_mask = (k2labels == bright).reshape(roi.shape[:2]).astype(np.uint8) * 255
-        contours, _ = cv.findContours(bright_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv.findContours(
+            bright_mask,
+            cv.RETR_EXTERNAL,
+            cv.CHAIN_APPROX_SIMPLE,
+        )
         if not contours:
             return None
         best = max(contours, key=cv.contourArea)
@@ -635,9 +698,17 @@ class SegmentationPipeline:
             k_sz = SegmentationPipeline._odd_kernel(size * 0.05, 3, 45)
             kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (k_sz, k_sz))
             eroded = cv.morphologyEx(roi, cv.MORPH_ERODE, kernel)
-            contours, _ = cv.findContours(eroded, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+            contours, _ = cv.findContours(
+                eroded,
+                cv.RETR_EXTERNAL,
+                cv.CHAIN_APPROX_SIMPLE,
+            )
             if not contours:
-                contours, _ = cv.findContours(roi, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+                contours, _ = cv.findContours(
+                    roi,
+                    cv.RETR_EXTERNAL,
+                    cv.CHAIN_APPROX_SIMPLE,
+                )
             if not contours:
                 refined.append(bbox)
                 continue
@@ -660,7 +731,11 @@ class SegmentationPipeline:
             best_fill = cv.contourArea(best_c) / float(max(1, bcw * bch))
             fit_score = 1.0 - min(abs(best_fill - 0.785), 1.0)
             if fit_score < 0.3 and hsv_image is not None and original_bgr is not None:
-                shrunk = SegmentationPipeline._local_k2_shrink(bbox, hsv_image, original_bgr)
+                shrunk = SegmentationPipeline._local_k2_shrink(
+                    bbox,
+                    hsv_image,
+                    original_bgr,
+                )
                 if shrunk is not None:
                     refined.append(shrunk)
                     continue

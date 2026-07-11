@@ -8,7 +8,7 @@ data path.
 
 Usage:
     uv run python scripts/sync_qdrant_to_sql.py
-    uv run python scripts/sync_qdrant_to_sql.py --collection myco_fungi_features_full_finetuned
+    uv run python scripts/sync_qdrant_to_sql.py --collection qdrant-research_fold0
     uv run python scripts/sync_qdrant_to_sql.py --scan-only   # dry run
 
 Requires: backend + Qdrant running
@@ -21,7 +21,11 @@ import asyncio
 import logging
 import sys
 from collections import defaultdict
+from pathlib import Path
 from typing import Any
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import PointStruct
 
 sys.path.insert(0, ".")
 
@@ -37,10 +41,154 @@ def setup_logging(verbose: bool = False) -> None:
     )
 
 
+DATASET_MEDIA_RE = {
+    "CREA",
+    "CYA30",
+    "CYAS",
+    "CYA",
+    "DG18",
+    "MEA",
+    "YES",
+    "OA",
+    "M40Y",
+}
+
+
+def scan_original_prepared_media(root: Path) -> set[str]:
+    media: set[str] = set()
+    if not root.exists():
+        return media
+    for species_dir in root.iterdir():
+        if not species_dir.is_dir():
+            continue
+        for strain_dir in species_dir.iterdir():
+            if not strain_dir.is_dir():
+                continue
+            for media_dir in strain_dir.iterdir():
+                if not media_dir.is_dir():
+                    continue
+                name = media_dir.name.upper()
+                if name in DATASET_MEDIA_RE:
+                    media.add("CYA" if name in {"CYA30", "CYAS"} else name)
+    return media
+
+
+async def _load_sql_segment_metadata() -> dict[str, dict[str, str]]:
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    from backend.database import _get_sessionmaker
+    from backend.models import Image, Segment
+
+    async with _get_sessionmaker()() as db:
+        result = await db.execute(
+            select(Segment)
+            .join(Image, Segment.image_id == Image.id)
+            .options(
+                selectinload(Segment.image).selectinload(Image.media),
+                selectinload(Segment.image).selectinload(Image.species),
+                selectinload(Segment.image).selectinload(Image.strain),
+            )
+            .where(Segment.is_archived.is_(False), Image.is_archived.is_(False))
+        )
+        segments = result.scalars().all()
+
+    metadata: dict[str, dict[str, str]] = {}
+    for segment in segments:
+        image = segment.image
+        if (
+            image is None
+            or image.media is None
+            or image.species is None
+            or image.strain is None
+        ):
+            continue
+        metadata[str(segment.id)] = {
+            "segment_id": str(segment.id),
+            "image_id": str(image.id),
+            "parent_id": str(image.id),
+            "parent_item_id": str(image.id),
+            "parent_image_id": str(image.id),
+            "strain": image.strain.name,
+            "species": image.species.name,
+            "specy": image.species.name,
+            "media": image.media.name,
+            "environment": image.media.name,
+            "angle": image.angle or "",
+            "segment_index": str(segment.segment_index),
+        }
+    return metadata
+
+
+def _copy_collection_vectors(
+    source_collection: str,
+    target_collection: str,
+    sql_segment_metadata: dict[str, dict[str, str]],
+    *,
+    source_host: str = "localhost",
+    source_port: int = 6333,
+    target_host: str = "localhost",
+    target_port: int = 6335,
+) -> dict[str, int]:
+    source = QdrantClient(host=source_host, port=source_port)
+    target = QdrantClient(host=target_host, port=target_port)
+
+    source_info = source.get_collection(source_collection)
+    target.recreate_collection(
+        collection_name=target_collection,
+        vectors_config=source_info.config.params.vectors,
+    )
+
+    copied = 0
+    skipped_missing_sql = 0
+    offset: int | str | None = None
+    while True:
+        points, next_offset = source.scroll(
+            collection_name=source_collection,
+            limit=256,
+            offset=offset,
+            with_payload=True,
+            with_vectors=True,
+        )
+        if not points:
+            break
+
+        upserts: list[PointStruct] = []
+        for point in points:
+            payload = point.payload or {}
+            segment_id = str(payload.get("segment_id") or "")
+            sql_meta = sql_segment_metadata.get(segment_id)
+            if sql_meta is None:
+                skipped_missing_sql += 1
+                continue
+            merged_payload = {**payload, **sql_meta}
+            upserts.append(
+                PointStruct(
+                    id=point.id,
+                    vector=point.vector,
+                    payload=merged_payload,
+                )
+            )
+
+        if upserts:
+            target.upsert(collection_name=target_collection, points=upserts)
+            copied += len(upserts)
+        offset = next_offset
+        if next_offset is None:
+            break
+
+    target_info = target.get_collection(target_collection)
+    target_points = target_info.points_count or 0
+    return {
+        "vectors_copied": copied,
+        "skipped_missing_sql": skipped_missing_sql,
+        "target_points": int(target_points),
+        "sql_segments": len(sql_segment_metadata),
+    }
+
+
 async def scan_qdrant(collection: str) -> dict[str, Any]:
     """Scroll through all Qdrant points and extract unique entities."""
-    from qdrant_client import QdrantClient
-
     client = QdrantClient(host="localhost", port=6333)
 
     try:
@@ -95,6 +243,9 @@ async def scan_qdrant(collection: str) -> dict[str, Any]:
         if next_offset is None:
             break
 
+    dataset_media = scan_original_prepared_media(Path("Dataset/original_prepared"))
+    media_set.update(dataset_media)
+
     logger.info(
         "Scan complete: %d points, %d species, %d media, %d strains",
         scanned,
@@ -112,7 +263,7 @@ async def scan_qdrant(collection: str) -> dict[str, Any]:
 
 async def sync_to_sql(manifest: dict[str, Any]) -> dict[str, int]:
     """Seed species, media, and strains into the backend SQL database."""
-    from backend.database import async_session as session_factory
+    from backend.database import _get_sessionmaker
     from backend.models import Media, Species, Strain
 
     stats: dict[str, int] = {
@@ -121,7 +272,7 @@ async def sync_to_sql(manifest: dict[str, Any]) -> dict[str, int]:
         "strains_created": 0,
     }
 
-    async with session_factory() as db:
+    async with _get_sessionmaker()() as db:
         from sqlalchemy import select
 
         # Seed species
@@ -194,16 +345,23 @@ async def sync_to_sql(manifest: dict[str, Any]) -> dict[str, int]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Sync Qdrant → SQL")
+    parser = argparse.ArgumentParser(
+        description="Sync research Qdrant → SQL + product Qdrant"
+    )
     parser.add_argument(
         "--collection",
-        default="myco_fungi_features_full_finetuned",
+        default="qdrant-research_fold0",
         help="Qdrant collection name",
     )
     parser.add_argument(
         "--scan-only",
         action="store_true",
-        help="Only scan and report, do not sync to SQL",
+        help="Only scan and report, do not sync to SQL or product Qdrant",
+    )
+    parser.add_argument(
+        "--target-collection",
+        default="myco_fungi_features_full_finetuned",
+        help="Product Qdrant collection name",
     )
     parser.add_argument(
         "--verbose",
@@ -247,12 +405,23 @@ def main() -> None:
 
     print("\n=== Syncing to SQL ===")
     try:
-        stats = asyncio.run(sync_to_sql(manifest))
-        print("Sync complete:", stats)
+        sql_stats = asyncio.run(sync_to_sql(manifest))
+        sql_segment_metadata = asyncio.run(_load_sql_segment_metadata())
+        vector_stats = _copy_collection_vectors(
+            args.collection,
+            args.target_collection,
+            sql_segment_metadata,
+        )
+        if vector_stats["vectors_copied"] != vector_stats["target_points"]:
+            raise RuntimeError("Qdrant product point count mismatch after sync")
+        if vector_stats["target_points"] != vector_stats["sql_segments"]:
+            raise RuntimeError("Qdrant product / SQL segment count mismatch after sync")
+        print("SQL sync complete:", sql_stats)
+        print("Qdrant product sync complete:", vector_stats)
     except Exception as exc:
         logger.error("Sync failed: %s", exc)
-        print("\nMake sure the backend database is running and accessible.")
-        print("  docker compose up -d postgres")
+        print("\nMake sure Postgres + both Qdrant instances are running.")
+        print("  docker compose up -d postgres qdrant-research qdrant-product")
         sys.exit(1)
 
 

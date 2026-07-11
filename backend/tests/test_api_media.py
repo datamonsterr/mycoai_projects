@@ -66,11 +66,30 @@ def test_create_media_as_owner(
     )
     assert resp.status_code == 201
     data = resp.json()
-    assert data["name"] == "Sabouraud Dextrose Agar"
+    assert data["name"] == "SABOURAUD DEXTROSE AGAR"
     assert data["description"] == "For dermatophytes"
     assert data["is_archived"] is False
     assert "id" in data
     assert "created_at" in data
+
+
+def test_create_media_normalizes_case_and_rejects_duplicate(
+    client: TestClient, owner_headers: dict[str, str]
+) -> None:
+    first = client.post(
+        "/api/v1/media",
+        json={"name": "crea"},
+        headers=owner_headers,
+    )
+    assert first.status_code == 201
+    assert first.json()["name"] == "CREA"
+
+    second = client.post(
+        "/api/v1/media",
+        json={"name": " CREA "},
+        headers=owner_headers,
+    )
+    assert second.status_code == 409
 
 
 def test_create_media_missing_name(
@@ -107,7 +126,7 @@ def test_get_media_by_id(
     resp = client.get(f"/api/v1/media/{mid}", headers=user_headers)
     assert resp.status_code == 200
     data = resp.json()
-    assert data["name"] == "Corn Meal Agar"
+    assert data["name"] == "CORN MEAL AGAR"
     assert data["id"] == mid
 
 
@@ -133,7 +152,7 @@ def test_update_media(client: TestClient, owner_headers: dict[str, str]) -> None
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["name"] == "New Name"
+    assert data["name"] == "NEW NAME"
     assert data["description"] == "Updated"
 
 

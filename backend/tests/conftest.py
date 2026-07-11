@@ -84,6 +84,12 @@ async def seed_users(engine: AsyncEngine):
                     name="User",
                     role="user",
                 ),
+                User(
+                    email="dataowner@mycoai.dev",
+                    password_hash=hash_password("password123"),
+                    name="Data Owner",
+                    role="dataowner",
+                ),
             ]
         )
         await session.commit()

@@ -9,7 +9,7 @@ from ..config import get_qdrant_settings
 
 
 class QdrantClientService:
-    def __init__(self) -> None:
+    def __init__(self, collection_name: str | None = None) -> None:
         settings = get_qdrant_settings()
         self._client = QdrantClient(
             host=settings.host,
@@ -19,7 +19,7 @@ class QdrantClientService:
             api_key=settings.api_key,
             timeout=settings.timeout_seconds,
         )
-        self._collection = settings.collection_name
+        self._collection = collection_name or settings.collection_name
 
     async def upsert_point(
         self,

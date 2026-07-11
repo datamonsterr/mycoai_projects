@@ -114,7 +114,7 @@ export function uploadBatchZip(
   formData.append('zipfile', zipFile)
   if (options?.defaultMedia) formData.append('default_media', options.defaultMedia)
   if (options?.defaultSpecies) formData.append('default_species', options.defaultSpecies)
-  if (options?.method) formData.append('method', options.method)
+  formData.append('method', options?.method ?? 'yolo')
   return api.post<BatchZipResult>('/images/batch-zip', formData)
 }
 
@@ -157,4 +157,35 @@ export interface AutoSegmentRequest {
 
 export function autoSegment(imageId: string, method: string = 'yolo'): Promise<AutoSegmentResult> {
   return api.post<AutoSegmentResult>(`/images/${imageId}/segment`, { method })
+}
+
+export type SegmentPatchRequest = {
+  segments: Array<{
+    segment_index: number
+    bbox: { x: number; y: number; w: number; h: number }
+  }>
+  deleted_segments: number[]
+}
+
+export function patchImageSegments(imageId: string, payload: SegmentPatchRequest): Promise<ImageDetail> {
+  return api.patch<ImageDetail>(`/images/${imageId}/segments`, payload)
+}
+
+export type ImageReindexResponse = {
+  image_id: string
+  indexed_segments: number
+}
+
+export function reindexImage(imageId: string): Promise<ImageReindexResponse> {
+  return api.post<ImageReindexResponse>(`/images/${imageId}/reindex`)
+}
+
+export type StrainReindexResponse = {
+  strain_id: string
+  images: number
+  indexed_segments: number
+}
+
+export function reindexStrainImages(strainId: string): Promise<StrainReindexResponse> {
+  return api.post<StrainReindexResponse>(`/images/strains/${strainId}/reindex`)
 }

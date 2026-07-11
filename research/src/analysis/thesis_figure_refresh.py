@@ -92,14 +92,14 @@ def build_clean_strain_grid() -> Path:
 
     cell_w = 240
     cell_h = 240
-    left_w = 180
-    top_h = 64
+    left_w = 260
+    top_h = 72
     pad = 10
     border_w = 4
     canvas = Image.new('RGB', (left_w + len(media) * cell_w, top_h + len(rows) * cell_h), 'white')
     draw = ImageDraw.Draw(canvas)
-    title_font = _load_bold_font(24)
-    row_font = _load_bold_font(21)
+    title_font = _load_bold_font(28)
+    row_font = _load_bold_font(25)
 
     for col, medium in enumerate(media):
         x = left_w + col * cell_w + cell_w // 2
@@ -109,9 +109,11 @@ def build_clean_strain_grid() -> Path:
 
     for row_idx, (species, strain, label, color_hex) in enumerate(rows):
         y0 = top_h + row_idx * cell_h
-        text_box = draw.multiline_textbbox((0, 0), label, font=row_font, spacing=4)
+        text_box = draw.multiline_textbbox((0, 0), label, font=row_font, spacing=6)
+        text_w = text_box[2] - text_box[0]
         text_h = text_box[3] - text_box[1]
-        draw.multiline_text((18, y0 + (cell_h - text_h) // 2), label, fill='black', font=row_font, spacing=4)
+        label_x = max(18, left_w - text_w - 20)
+        draw.multiline_text((label_x, y0 + (cell_h - text_h) // 2), label, fill='black', font=row_font, spacing=6, align='right')
         for col, medium in enumerate(media):
             img_dir = ROOT / 'Dataset' / 'original_prepared' / species / strain / medium / 'ob'
             source = next(img_dir.glob('source*.jpg'))
@@ -172,8 +174,7 @@ def build_compact_heatmap() -> Path:
     src = FIG_ROOT / '04_eda' / 'eda_media_species_heatmap.png'
     out = FIG_ROOT / '04_eda' / 'eda_media_species_heatmap_compact.png'
     image = Image.open(src).convert('RGB')
-    resized = image.resize((image.width, int(image.height * 0.72)))
-    resized.save(out)
+    image.save(out)
     return out
 
 

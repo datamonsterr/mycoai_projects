@@ -77,6 +77,14 @@ def build_filter(filter_spec: FilterSpec | None) -> Filter | None:
             )
         )
 
+    if filter_spec.exclude_parent_id is not None:
+        must_not.append(
+            FieldCondition(
+                key=_FIELD_PARENT_ID,
+                match=MatchValue(value=filter_spec.exclude_parent_id),
+            )
+        )
+
     if filter_spec.exclude_ids is not None:
         for eid in filter_spec.exclude_ids:
             must_not.append(

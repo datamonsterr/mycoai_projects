@@ -18,6 +18,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import get_qdrant_settings
 from ..models import Image, Media, QdrantIndexState, Segment, Species, Strain
 from ..segmentation import SegmentationPipeline
 from ..services.feature_extraction import extract_features
@@ -73,6 +74,7 @@ async def run(
     """
     result = BatchImportResult()
     qdrant_svc = QdrantClientService()
+    collection_name = get_qdrant_settings().collection_name
     source = Path(source_dir)
 
     if not source.exists() or not source.is_dir():
@@ -117,7 +119,10 @@ async def run(
                 result.errors.append(
                     {
                         "file": str(img_path),
-                        "error": f"Rejected: species name '{meta.get('species')}' is an artifact filename",
+                        "error": (
+                            "Rejected: species name "
+                            f"'{meta.get('species')}' is an artifact filename"
+                        ),
                     }
                 )
                 logger.warning(
@@ -184,7 +189,7 @@ async def run(
                     qis = QdrantIndexState(
                         segment_id=seg.id,
                         qdrant_point_id=seg.qdrant_point_id,
-                        collection_name="myco_fungi_features_full_finetuned",
+                        collection_name=collection_name,
                         is_active=True,
                     )
                     db.add(qis)
@@ -370,6 +375,7 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
     angle = "unknown"
     species = "unknown"
     strain = "unknown"
+    rest = lower
 
     # Strategy 1: "MEDIA[or]" suffix (CYAo, MEAr, YESob, etc.)
     m_suffix = re.search(
@@ -386,14 +392,15 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
         angle = _normalize_angle(raw_angle)
         rest = lower[: m_suffix.start()].strip()
     else:
-        # Strategy 2: "MEDIA ANGLE" space-separated
-        m_angle = re.search(r"(cya|mea|yes|dg18|crea|oa|m40y)\s+(ob|rev)\b", lower)
+        # Strategy 2: "MEDIA ANGLE" separated by space/underscore/hyphen
+        m_angle = re.search(
+            r"(?:^|[\s_-])(cya|mea|yes|dg18|crea|oa|m40y)[\s_-]+(ob|rev)\b",
+            lower,
+        )
         if m_angle:
             media = m_angle.group(1).upper()
             angle = m_angle.group(2)
             rest = lower[: m_angle.start()].strip()
-        else:
-            rest = lower
 
     # Remove _edited suffix common in DTO dataset
     rest = re.sub(r"_edited$", "", rest, flags=re.IGNORECASE)
@@ -451,7 +458,10 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
             "S-Z",
         }
         meaningful = [
-            p for p in parts if p not in alpha_patterns and not p.endswith(".jpg")
+            p
+            for p in parts[:-1]
+            if p not in alpha_patterns
+            and not p.lower().endswith((".jpg", ".jpeg", ".png", ".jpe"))
         ]
         if len(meaningful) >= 2:
             species = meaningful[-2]

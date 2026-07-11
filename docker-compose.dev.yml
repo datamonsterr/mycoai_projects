@@ -72,6 +72,11 @@ services:
     environment:
       MYCOAI_BACKEND_ENVIRONMENT: development
       MYCOAI_BACKEND_JWT_SECRET_KEY: ${MYCOAI_BACKEND_JWT_SECRET_KEY:-dev-secret-not-for-production}
+      MYCOAI_BACKEND_QDRANT_HOST: qdrant-research
+      MYCOAI_BACKEND_QDRANT_PORT: "6333"
+      MYCOAI_QDRANT_HOST: qdrant-research
+      MYCOAI_QDRANT_PORT: "6333"
+      MYCOAI_QDRANT_COLLECTION_NAME: qdrant-research_fold0
     volumes:
       - ./backend/src:/app/src:ro
       - uploads_data:/app/Dataset/uploads
@@ -89,6 +94,11 @@ services:
     restart: unless-stopped
     environment:
       MYCOAI_BACKEND_ENVIRONMENT: development
+      MYCOAI_BACKEND_QDRANT_HOST: qdrant-research
+      MYCOAI_BACKEND_QDRANT_PORT: "6333"
+      MYCOAI_QDRANT_HOST: qdrant-research
+      MYCOAI_QDRANT_PORT: "6333"
+      MYCOAI_QDRANT_COLLECTION_NAME: qdrant-research_fold0
     volumes:
       - ./backend/src:/app/src:ro
       - uploads_data:/app/Dataset/uploads

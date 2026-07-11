@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import get_storage_settings
+from ..config import get_qdrant_settings, get_storage_settings
 from ..core.dependencies import CurrentOwner, CurrentUser
 from ..database import get_db
 from ..models import Feedback, Image, TrainingJob
@@ -66,6 +66,7 @@ async def trigger_reindex(
     errors: list[dict] = []
 
     qdrant_svc = QdrantClientService()
+    collection_name = get_qdrant_settings().collection_name
     storage = create_storage(get_storage_settings())
 
     for seg in segments:
@@ -117,7 +118,7 @@ async def trigger_reindex(
             qis = QdrantIndexState(
                 segment_id=seg.id,
                 qdrant_point_id=seg.qdrant_point_id,
-                collection_name="myco_fungi_features_full_finetuned",
+                collection_name=collection_name,
                 is_active=True,
             )
             db.add(qis)

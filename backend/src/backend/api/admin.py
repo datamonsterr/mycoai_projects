@@ -14,6 +14,8 @@ from ..core.exceptions import ConflictError, NotFoundError, ValidationError
 from ..core.security import hash_token
 from ..database import get_db
 from ..models import AuditLog, InviteToken, User
+from ..qdrant.client import get_qdrant_client
+from ..qdrant.operations import delete_points
 from ..repos.user import UserRepository
 from ..schemas.admin import (
     AdminUserResponse,
@@ -249,7 +251,9 @@ async def audit_log(
 async def clear_test_data(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_owner: CurrentOwner,
-    strain_pattern: str = Query(default="TEST%", description="Strain name pattern to match"),
+    strain_pattern: str = Query(
+        default="TEST%", description="Strain name pattern to match"
+    ),
 ) -> dict:
     from ..models import Image, QdrantIndexState, Segment, Strain
 
@@ -259,6 +263,7 @@ async def clear_test_data(
     matched_strains = strains_result.scalars().all()
     deleted_images = 0
     deleted_segments = 0
+    qdrant_points_by_collection: dict[str, list[int]] = {}
 
     for strain in matched_strains:
         images_result = await db.execute(
@@ -270,17 +275,33 @@ async def clear_test_data(
                 select(Segment).where(Segment.image_id == img.id)
             )
             for seg in segments_result.scalars().all():
-                if seg.qdrant_point_id:
-                    await db.execute(
-                        select(QdrantIndexState).where(
-                            QdrantIndexState.segment_id == seg.id
-                        )
+                qdrant_state = await db.scalar(
+                    select(QdrantIndexState).where(
+                        QdrantIndexState.segment_id == seg.id
+                    )
+                )
+                if qdrant_state is not None:
+                    qdrant_points_by_collection.setdefault(
+                        qdrant_state.collection_name, []
+                    ).append(qdrant_state.qdrant_point_id.int)
+                    await db.delete(qdrant_state)
+                elif seg.qdrant_point_id is not None:
+                    qdrant_points_by_collection.setdefault("", []).append(
+                        seg.qdrant_point_id.int
                     )
                 await db.delete(seg)
                 deleted_segments += 1
             await db.delete(img)
             deleted_images += 1
         await db.delete(strain)
+
+    qdrant = get_qdrant_client()
+    for collection_name, point_ids in qdrant_points_by_collection.items():
+        delete_points(
+            qdrant,
+            point_ids,
+            collection_name=collection_name or None,
+        )
 
     await db.commit()
     return {

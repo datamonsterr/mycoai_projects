@@ -156,5 +156,5 @@ RESEARCH_DEFAULTS = {
     "media_strategy": "same_media",
     "aggregation": "freq_strength",
     "k": 11,
-    "collection": "myco_fungi_features_full_finetuned",
+    "collection": "qdrant-research_fold0",
 }

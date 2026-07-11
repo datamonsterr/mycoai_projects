@@ -24,6 +24,7 @@ class NeighborResult(BaseModel):
     segment_index: int | None = None
     bbox: dict[str, Any] | None = None
     extractor: str | None = None
+    segment_path: str | None = None
 
 
 class FilterSpec(BaseModel):
@@ -35,6 +36,7 @@ class FilterSpec(BaseModel):
     strain: str | None = None
     specy: str | None = None
     parent_id: str | None = None
+    exclude_parent_id: str | None = None
     exclude_ids: list[int] | None = None
 
 

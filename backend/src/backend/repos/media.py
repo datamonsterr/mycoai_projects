@@ -8,14 +8,19 @@ from ..models import Media
 from ..schemas.media import MediaCreate, MediaUpdate
 
 
+def _normalize_media_name(name: str) -> str:
+    return name.strip().upper()
+
+
 async def create_media(db: AsyncSession, data: MediaCreate) -> Media:
-    existing = await db.execute(select(Media).where(Media.name == data.name))
+    normalized_name = _normalize_media_name(data.name)
+    existing = await db.execute(select(Media).where(Media.name == normalized_name))
     if existing.scalar_one_or_none():
         from ..core.exceptions import ConflictError
 
-        raise ConflictError(f"Media '{data.name}' already exists")
+        raise ConflictError(f"Media '{normalized_name}' already exists")
 
-    media = Media(name=data.name, description=data.description)
+    media = Media(name=normalized_name, description=data.description)
     db.add(media)
     await db.commit()
     await db.refresh(media)
@@ -55,15 +60,17 @@ async def update_media(db: AsyncSession, media_id: UUID, data: MediaUpdate) -> M
     if not media:
         raise NotFoundError(f"Media {media_id} not found")
 
-    if data.name is not None and data.name != media.name:
-        existing = await db.execute(
-            select(Media).where(Media.name == data.name, Media.id != media_id)
-        )
-        if existing.scalar_one_or_none():
-            from ..core.exceptions import ConflictError
+    if data.name is not None:
+        normalized_name = _normalize_media_name(data.name)
+        if normalized_name != media.name:
+            existing = await db.execute(
+                select(Media).where(Media.name == normalized_name, Media.id != media_id)
+            )
+            if existing.scalar_one_or_none():
+                from ..core.exceptions import ConflictError
 
-            raise ConflictError(f"Media '{data.name}' already exists")
-        media.name = data.name
+                raise ConflictError(f"Media '{normalized_name}' already exists")
+            media.name = normalized_name
     if data.description is not None:
         media.description = data.description
     media.updated_at = datetime.datetime.now(datetime.UTC)

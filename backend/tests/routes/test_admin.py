@@ -1,3 +1,6 @@
+import uuid
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -190,3 +193,67 @@ def test_clear_test_data_requires_owner(
         headers=user_headers,
     )
     assert resp.status_code == 403
+
+
+def test_clear_test_data_deletes_matching_qdrant_points(
+    client: TestClient, owner_headers: dict[str, str], session
+) -> None:
+    from backend.models import Image, Media, QdrantIndexState, Segment, Species, Strain
+
+    species = Species(name="Spec A")
+    media = Media(name="MEA")
+    strain = Strain(name="TEST-001", species=species, source="test")
+    image = Image(
+        strain=strain,
+        species=species,
+        media=media,
+        file_path="/tmp/test.jpg",
+    )
+    point_id = uuid.uuid4()
+    segment = Segment(
+        image=image,
+        segment_index=0,
+        crop_path="/tmp/crop.jpg",
+        bbox_x=0,
+        bbox_y=0,
+        bbox_w=10,
+        bbox_h=10,
+        segmentation_method="kmeans",
+        qdrant_point_id=point_id,
+    )
+    session.add_all(
+        [
+            species,
+            media,
+            strain,
+            image,
+            segment,
+            QdrantIndexState(
+                segment=segment,
+                qdrant_point_id=point_id,
+                collection_name="test-collection",
+            ),
+        ]
+    )
+
+    import asyncio
+
+    asyncio.run(session.commit())
+    fake_qdrant = MagicMock()
+
+    with patch("backend.api.admin.get_qdrant_client", return_value=fake_qdrant):
+        resp = client.delete(
+            "/api/v1/admin/test-data?strain_pattern=TEST%25",
+            headers=owner_headers,
+        )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {
+        "deleted_strains": 1,
+        "deleted_images": 1,
+        "deleted_segments": 1,
+    }
+    fake_qdrant.delete.assert_called_once()
+    _, kwargs = fake_qdrant.delete.call_args
+    assert kwargs["collection_name"] == "test-collection"
+    assert kwargs["points_selector"] == [point_id.int]

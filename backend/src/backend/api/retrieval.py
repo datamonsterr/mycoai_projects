@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import csv
 import uuid
+from pathlib import Path
 from typing import Annotated, Any, cast
+from urllib.parse import quote, unquote
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -35,14 +39,38 @@ def _parse_uuid(value: str, resource: str = "Resource") -> uuid.UUID:
         raise NotFoundError(f"{resource} '{value}' not found") from err
 
 
+def _load_strain_map_from_csv() -> dict[str, str]:
+    candidates = [
+        Path.cwd() / 'Dataset/strain_to_specy.csv',
+        Path('/app/Dataset/strain_to_specy.csv'),
+    ]
+    for path in candidates:
+        if not path.exists():
+            continue
+        with path.open(newline='') as handle:
+            return {
+                row['Strain']: row['Species']
+                for row in csv.DictReader(handle)
+                if row.get('Strain') and row.get('Species')
+            }
+    return {}
+
+
 async def _build_strain_map(db: AsyncSession) -> dict[str, str]:
-    """Bulk-load all strain→species in one query."""
+    """Prefer canonical CSV mapping; fall back to SQL if unavailable."""
+    strain_map = _load_strain_map_from_csv()
+    if strain_map:
+        return strain_map
+
     from ..models import Species, Strain
 
     result = await db.execute(
         select(Strain.name, Species.name).join(Species, Strain.species_id == Species.id)
     )
     return {row[0]: row[1] for row in result.all()}
+
+
+_SEGMENT_PATH_PREFIX = "segment_path:"
 
 
 def _resolve_species_fast(neighbor: object, strain_map: dict[str, str]) -> str:
@@ -55,6 +83,31 @@ def _resolve_species_fast(neighbor: object, strain_map: dict[str, str]) -> str:
     return strain_map.get(strain, strain)
 
 
+def _pack_neighbor_identity(image_id: str | None, segment_path: str | None) -> str | None:
+    if image_id:
+        return image_id
+    if segment_path:
+        return f"{_SEGMENT_PATH_PREFIX}{segment_path}"
+    return None
+
+
+def _unpack_neighbor_segment_path(identity: str | None) -> str | None:
+    if identity and identity.startswith(_SEGMENT_PATH_PREFIX):
+        return identity.removeprefix(_SEGMENT_PATH_PREFIX)
+    return None
+
+
+def _build_neighbor_thumbnail_url(image_id: str | None, segment_path: str | None = None) -> str:
+    packed_segment_path = _unpack_neighbor_segment_path(image_id)
+    if packed_segment_path:
+        return f"/api/v1/retrieval/evidence?segment_path={quote(packed_segment_path, safe='')}"
+    if image_id:
+        return f"/api/v1/images/{image_id}/source"
+    if segment_path:
+        return f"/api/v1/retrieval/evidence?segment_path={quote(segment_path, safe='')}"
+    return ""
+
+
 def _get_filter_spec(image: Image, media_strategy: str) -> FilterSpec:
     if media_strategy == "same_media" and image.media is not None:
         return FilterSpec(media=image.media.name, media_strategy=media_strategy)
@@ -63,6 +116,39 @@ def _get_filter_spec(image: Image, media_strategy: str) -> FilterSpec:
 
 def _segment_crop_url(image_id: uuid.UUID, segment_index: int) -> str:
     return f"/api/v1/images/{image_id}/segments/{segment_index}/crop"
+
+
+@router.get("/evidence", response_model=None)
+async def get_retrieval_evidence(segment_path: str) -> Response:
+    raw_segment_path = unquote(segment_path).strip()
+    candidate = Path(raw_segment_path)
+    if candidate.is_absolute() or ".." in candidate.parts:
+        raise HTTPException(status_code=404, detail="retrieval evidence not found")
+    if candidate.exists():
+        return FileResponse(candidate)
+
+    try:
+        from ..config import get_storage_settings
+        from ..services.storage import create_storage
+
+        storage = create_storage(get_storage_settings())
+        candidate_keys: list[str] = []
+        marker = "Dataset/uploads/"
+        if marker in raw_segment_path:
+            candidate_keys.append(raw_segment_path.split(marker, 1)[1])
+        candidate_keys.append(raw_segment_path)
+        candidate_keys.append(str(Path(*candidate.parts[-5:])))
+        candidate_keys.append(str(Path(*candidate.parts[-4:])))
+        candidate_keys.append(str(Path(*candidate.parts[-3:])))
+
+        for key in candidate_keys:
+            data = storage.get_bytes(key)
+            if data:
+                return Response(content=data, media_type="image/jpeg")
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="retrieval evidence not found") from exc
+
+    raise HTTPException(status_code=404, detail="retrieval evidence not found")
 
 
 @router.post("/query", response_model=RetrievalJobResponse, status_code=202)
@@ -151,6 +237,9 @@ async def start_query(
 
             for seg in segments:
                 seg_neighbors: list[dict[str, object]] = []
+                query_filter_spec = filter_spec.model_copy(deep=True)
+                if image.strain is not None:
+                    query_filter_spec.exclude_strain = image.strain.name
 
                 if seg.qdrant_point_id is not None:
                     point_id = seg.qdrant_point_id.int
@@ -159,7 +248,7 @@ async def start_query(
                             qdrant,
                             point_id,
                             k=data.k,
-                            filter_spec=filter_spec,
+                            filter_spec=query_filter_spec,
                             exclude_self=True,
                             exclude_siblings=True,
                             collection_name=collection,
@@ -182,8 +271,11 @@ async def start_query(
                         pass
 
                 if not seg_neighbors:
+                    crop_filter_spec = filter_spec.model_copy(deep=True)
+                    if image.strain is not None:
+                        crop_filter_spec.exclude_strain = image.strain.name
                     seg_neighbors = await _query_by_crop_image(
-                        seg, qdrant, collection, filter_spec, data.k, strain_map
+                        seg, qdrant, collection, crop_filter_spec, data.k, strain_map
                     )
                     for n in seg_neighbors:
                         neighbor = NeighborResult(
@@ -193,6 +285,7 @@ async def start_query(
                             media=str(n.get("media", "")),
                             specy=str(n.get("specy", "")),
                             extractor=str(n.get("extractor", "")),
+                            segment_path=cast(str | None, n.get("segment_path")),
                         )
                         all_neighbors.append(neighbor)
                         image_neighbors.append(neighbor)
@@ -258,10 +351,9 @@ async def start_query(
                             "species": _resolve_species_sync(neighbor, strain_map),
                             "similarity": round(neighbor.score, 4),
                             "media": neighbor.media or "unknown",
-                            "image_thumbnail_url": (
-                                f"/api/v1/images/{neighbor.image_id}/source"
-                                if neighbor.image_id
-                                else ""
+                            "image_thumbnail_url": _build_neighbor_thumbnail_url(
+                                neighbor.image_id,
+                                neighbor.segment_path,
                             ),
                         }
                         for neighbor in query_image["neighbors"]
@@ -284,7 +376,10 @@ async def start_query(
                 species = _resolve_species_sync(rank_neighbor, strain_map)
                 neighbors_list.append(
                     RetrievalNeighbor(
-                        neighbor_image_id=rank_neighbor.image_id,
+                        neighbor_image_id=_pack_neighbor_identity(
+                            rank_neighbor.image_id,
+                            rank_neighbor.segment_path,
+                        ),
                         neighbor_strain=rank_neighbor.strain or "unknown",
                         neighbor_species=species,
                         similarity=round(rank_neighbor.score, 4),
@@ -342,30 +437,33 @@ async def _query_by_crop_image(
 
     vectors: dict[str, list[float]] = {}
     if not crop_path.exists():
-        # Try MinIO storage via the existing storage service
+        # Try object storage via the existing storage service.
         try:
             from ..config import get_storage_settings
             from ..services.storage import create_storage
 
             stg = create_storage(get_storage_settings())
             if hasattr(stg, "get_bytes"):
-                # Build the MinIO key: {artifact_dir}/segments/segment_{index}.jpg
-                artifact_dir = crop_path.parent
-                key = (
-                    f"{artifact_dir.parent.name}/{artifact_dir.name}/segments/"
-                    f"{crop_path.name}"
-                )
-                img_bytes = stg.get_bytes(key)
-                if img_bytes is None:
-                    # Try alternate key format
-                    alt_key = f"{artifact_dir}/segments/{crop_path.name}"
-                    img_bytes = stg.get_bytes(alt_key)
-                if img_bytes:
-                    vectors = extract_features_from_bytes(img_bytes)
+                candidate_keys: list[str] = []
+                marker = "Dataset/uploads/"
+                crop_str = str(crop_path)
+                if marker in crop_str:
+                    candidate_keys.append(crop_str.split(marker, 1)[1])
+                candidate_keys.append(str(Path(*crop_path.parts[-5:])))
+                candidate_keys.append(str(Path(*crop_path.parts[-4:])))
+                candidate_keys.append(str(Path(*crop_path.parts[-3:])))
+
+                for key in candidate_keys:
+                    img_bytes = stg.get_bytes(key)
+                    if img_bytes:
+                        vectors = extract_features_from_bytes(img_bytes)
+                        break
         except Exception:
             pass
 
     if not vectors:
+        if not crop_path.exists():
+            return []
         vectors = extract_features(crop_path)
 
     config = get_qdrant_settings()
@@ -405,6 +503,7 @@ async def _query_by_crop_image(
                 "extractor": neighbor.extractor or "default",
                 "media": neighbor.media,
                 "image_id": neighbor.image_id,
+                "segment_path": neighbor.segment_path,
             }
         )
     return neighbors
@@ -473,10 +572,9 @@ async def get_job_results(
                         "species": n.neighbor_species,
                         "similarity": round(n.similarity, 4),
                         "media": n.media,
-                        "image_thumbnail_url": (
-                            f"/api/v1/images/{n.neighbor_image_id}/source"
-                            if n.neighbor_image_id
-                            else ""
+                        "image_thumbnail_url": _build_neighbor_thumbnail_url(
+                            n.neighbor_image_id,
+                            getattr(n, "segment_path", None),
                         ),
                     }
                     for n in neighbors

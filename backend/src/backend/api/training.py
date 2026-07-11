@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from ..core.dependencies import get_current_user, require_role
+from ..core.dependencies import CurrentOwner, get_current_user
 from ..schemas import (
     TrainingDeployRequest,
     TrainingJobItem,
@@ -31,7 +31,7 @@ def list_training_jobs(user: dict = Depends(get_current_user)) -> list[dict]:
 @router.post("/trigger", response_model=TrainingJobItem, status_code=202)
 def trigger_training(
     data: TrainingTriggerRequest,
-    user: dict = Depends(require_role("owner")),
+    user: CurrentOwner,
 ) -> dict:
     job_id = new_id()
     job = {
@@ -51,7 +51,7 @@ def trigger_training(
 
 
 @router.get("/jobs/{job_id}", response_model=TrainingJobItem)
-def get_training_job(job_id: str, user: dict = Depends(require_role("owner"))) -> dict:
+def get_training_job(job_id: str, user: CurrentOwner) -> dict:
     from ..core.exceptions import NotFoundError
 
     job = get_training_store().get(job_id)
@@ -67,7 +67,7 @@ def get_training_job(job_id: str, user: dict = Depends(require_role("owner"))) -
 
 @router.post("/jobs/{job_id}/cancel", response_model=TrainingJobItem)
 def cancel_training_job(
-    job_id: str, user: dict = Depends(require_role("owner"))
+    job_id: str, user: CurrentOwner
 ) -> dict:
     from ..core.exceptions import NotFoundError
 
@@ -89,7 +89,7 @@ def cancel_training_job(
 def deploy_model(
     job_id: str,
     data: TrainingDeployRequest,
-    user: dict = Depends(require_role("owner")),
+    user: CurrentOwner,
 ) -> dict:
     from ..core.exceptions import NotFoundError
 
@@ -101,5 +101,5 @@ def deploy_model(
 
 
 @router.post("/rollback", response_model=dict)
-def rollback_model(user: dict = Depends(require_role("owner"))) -> dict:
+def rollback_model(user: CurrentOwner) -> dict:
     return {"status": "rollback_complete", "previous_version": "0.1.0"}

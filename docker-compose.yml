@@ -200,7 +200,7 @@ services:
       MYCOAI_QDRANT_HOST: qdrant-product
       MYCOAI_QDRANT_PORT: "6333"
       MYCOAI_QDRANT_GRPC_PORT: "6334"
-      MYCOAI_QDRANT_DEFAULT_VECTOR_NAME: "colorhistogram"
+      MYCOAI_QDRANT_DEFAULT_VECTOR_NAME: "efficientnetb1_finetuned"
     ports:
       - "8000:8000"
     volumes:

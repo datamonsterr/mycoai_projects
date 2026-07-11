@@ -105,6 +105,62 @@ run = "uv run python tools/dataset_sync.py import --help"
 description = "Show dataset export CLI help"
 run = "uv run python tools/dataset_sync.py export --help"
 
+[tasks.dataset-template-zip]
+description = "Create 3-strain template zip in backend uploads"
+run = '''python - <<'PY'
+from pathlib import Path
+import csv
+import shutil
+import zipfile
+
+source = Path("Dataset/original_prepared")
+target_dir = Path("backend/Dataset/uploads")
+tmp_root = Path("/tmp/opencode/dataset-template-zip")
+staging = tmp_root / "mycoai_batch_template"
+zip_path = target_dir / "mycoai_batch_template_3_strains.zip"
+mapping_path = Path("Dataset/strain_to_specy.csv")
+
+if staging.exists():
+    shutil.rmtree(staging)
+staging.mkdir(parents=True, exist_ok=True)
+tmp_root.mkdir(parents=True, exist_ok=True)
+target_dir.mkdir(parents=True, exist_ok=True)
+
+def norm(value: str) -> str:
+    return value.lower().replace(" ", "-").replace("_", "-")
+
+canonical = {}
+with mapping_path.open() as f:
+    for row in csv.DictReader(f):
+        canonical[norm(row["Strain"])] = row["Strain"]
+
+strain_dirs = []
+for species_dir in sorted(source.iterdir()):
+    if not species_dir.is_dir():
+        continue
+    for strain_dir in sorted(species_dir.iterdir()):
+        if strain_dir.is_dir():
+            strain_dirs.append(strain_dir)
+
+selected = strain_dirs[:3]
+if len(selected) < 3:
+    raise SystemExit(f"Need at least 3 strain folders in {source}")
+
+for strain_dir in selected:
+    canonical_name = canonical.get(norm(strain_dir.name), strain_dir.name)
+    dest = staging / canonical_name
+    shutil.copytree(strain_dir, dest)
+
+with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+    for path in sorted(staging.rglob("*")):
+        if path.is_file():
+            zf.write(path, path.relative_to(staging))
+
+print(zip_path)
+for strain_dir in selected:
+    print(f"- {strain_dir.parent.name}/{strain_dir.name}")
+PY'''
+
 [tasks.gdrive-auth]
 description = "Create Google Drive rclone remote"
 run = "bash -lc 'if mise x -- rclone lsd mydrive: >/dev/null 2>&1; then mise x -- rclone lsd mydrive:; exit 0; fi; readarray -t GOOGLE_CREDS < <(python -c \"import json, pathlib; data=json.loads(pathlib.Path.home().joinpath(\\\"client_secret_phamthanhdat170904.json\\\").read_text())[\\\"installed\\\"]; print(data[\\\"client_id\\\"]); print(data[\\\"client_secret\\\"])\"); if [ -z \"${RCLONE_DRIVE_TOKEN:-}\" ]; then printf \"Run on local machine and export token before retrying:\n\"; printf \"rclone authorize \\\"drive\\\" \\\"%s\\\" \\\"%s\\\"\n\" \"${GOOGLE_CREDS[0]}\" \"${GOOGLE_CREDS[1]}\"; exit 1; fi; mkdir -p \"$HOME/.config/rclone\"; mise x -- rclone config create mydrive drive client_id \"${GOOGLE_CREDS[0]}\" client_secret \"${GOOGLE_CREDS[1]}\" scope drive token \"$RCLONE_DRIVE_TOKEN\" && mise x -- rclone lsd mydrive:'"

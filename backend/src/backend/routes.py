@@ -23,8 +23,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from .core.dependencies import get_current_user, require_owner
@@ -37,9 +37,11 @@ from .image_models import (
     ImageRecord,
     ImageResponse,
     ProcessingProgress,
+    SegmentPatchRequest,
 )
 from .image_models import Segment as SegModel
-from .models import Image, Media, Segment, Species, Strain
+from .models import Image, Media, QdrantIndexState, Segment, Species, Strain
+from .qdrant import delete_points, get_qdrant_client
 from .schemas import ImageListItem, ImageListResponse
 from .segmentation import ALLOWED_METHODS, SegmentationPipeline
 from .segmentation import ImageStore as FileStore
@@ -78,7 +80,10 @@ def _batch_progress(
     segmented = sum(img.status in {"segmented", "indexed"} for img in images)
     indexed = sum(img.status == "indexed" for img in images)
     failed = any(img.status == "failed" for img in images)
-    done = uploaded + sum(img.status == "failed" for img in images) == total
+    done = (
+        sum(img.status in {"segmented", "indexed", "failed"} for img in images)
+        == total
+    )
     strain_names = sorted({img.strain for img in images})
     strains = []
     for strain in strain_names:
@@ -116,6 +121,16 @@ def _batch_progress(
         strains=strains,
         images=images,
     )
+
+
+def _set_batch_progress(
+    batch_id: str,
+    batch_name: str,
+    images: list[BatchImageStatus],
+) -> BatchProgressResponse:
+    progress = _batch_progress(batch_id, batch_name, images)
+    _BATCH_PROGRESS[batch_id] = progress
+    return progress
 
 
 def create_image_router(
@@ -534,6 +549,68 @@ def create_image_router(
             "errors": errors[:100],
         }
 
+    async def _run_batch_zip_job(
+        *,
+        batch_id: str,
+        batch_name: str,
+        work_dir: Path,
+        jobs: list[tuple[Path, Path, str, str, str]],
+        method: str,
+        db_factory: async_sessionmaker[AsyncSession],
+    ) -> None:
+        image_statuses = _BATCH_PROGRESS[batch_id].images
+        by_filename = {image.filename: image for image in image_statuses}
+        semaphore = asyncio.Semaphore(SEGMENT_CONCURRENCY_LIMIT)
+
+        async def segment_one(job: tuple[Path, Path, str, str, str]):
+            img_path, rel_path, strain, media_name, species = job
+            try:
+                async with semaphore:
+                    record = await asyncio.to_thread(
+                        pipeline.segment_upload,
+                        img_path,
+                        strain=strain,
+                        media=media_name,
+                        method=method,
+                    )
+                return rel_path, strain, media_name, species, record, None
+            except Exception as exc:
+                return rel_path, strain, media_name, species, None, str(exc)
+
+        try:
+            tasks = [asyncio.create_task(segment_one(job)) for job in jobs]
+            async with db_factory() as db_session:
+                for task in asyncio.as_completed(tasks):
+                    rel_path, strain, media_name, species, record, error = await task
+                    status = by_filename[str(rel_path)]
+                    if error or record is None:
+                        status.status = "failed"
+                        status.error = error or "segmentation failed"
+                        _set_batch_progress(batch_id, batch_name, image_statuses)
+                        continue
+                    try:
+                        species_obj = await _ensure_species(db_session, species)
+                        media_obj = await _ensure_media(db_session, media_name)
+                        strain_obj = await _ensure_strain(
+                            db_session, strain, species_obj.id
+                        )
+                        image_obj = await _create_image(
+                            db_session, record, strain_obj, species_obj, media_obj
+                        )
+                        await db_session.commit()
+                        status.status = "segmented"
+                        status.image_id = str(image_obj.id)
+                        status.segments = len(record.segments)
+                        status.source_url = f"/api/v1/images/{image_obj.id}/source"
+                    except Exception as exc:
+                        await db_session.rollback()
+                        status.status = "failed"
+                        status.error = str(exc)
+                    _set_batch_progress(batch_id, batch_name, image_statuses)
+        finally:
+            _set_batch_progress(batch_id, batch_name, image_statuses)
+            shutil.rmtree(work_dir, ignore_errors=True)
+
     # ------------------------------------------------------------------
     # Batch ZIP upload: accept a ZIP file, extract, segment, and persist
     # ------------------------------------------------------------------
@@ -542,7 +619,7 @@ def create_image_router(
         zipfile_file: Annotated[UploadFile, File(alias="zipfile")],
         default_media: Annotated[str, Form()] = "MEA",
         default_species: Annotated[str, Form()] = "unknown-species",
-        method: Annotated[str, Form()] = "kmeans",
+        method: Annotated[str, Form()] = "yolo",
         db=Depends(get_db),
         user=Depends(require_owner()),
     ) -> dict[str, Any]:
@@ -553,20 +630,15 @@ def create_image_router(
 
         work_dir = Path(mkdtemp(prefix="batch_zip_"))
         zip_path = work_dir / "upload.zip"
-        results: list[dict[str, Any]] = []
-        errors: list[dict[str, Any]] = []
 
         try:
-            # Save uploaded ZIP to temp file
             with zip_path.open("wb") as out:
                 while chunk := await zipfile_file.read(1024 * 1024):
                     out.write(chunk)
 
-            # Extract ZIP
             with zipfile.ZipFile(zip_path, "r") as zf:
                 zf.extractall(work_dir)
 
-            # Find all image files in extracted content
             image_extensions = {".jpg", ".jpeg", ".png", ".jpe"}
             skip_names = {"thumbs.db", ".ds_store", "desktop.ini", ".gitkeep"}
             image_files: list[Path] = []
@@ -583,111 +655,63 @@ def create_image_router(
                 if _is_artifact_filename(img_path.name):
                     continue
                 image_files.append(img_path)
-
-            batch_name = Path(zipfile_file.filename or "batch").stem
-
-            batch_id = uuid.uuid4().hex
-            image_statuses: list[BatchImageStatus] = []
-            jobs: list[tuple[Path, Path, str, str, str]] = []
-            for img_path in image_files:
-                rel_path = img_path.relative_to(work_dir)
-                strain = _extract_strain_from_path(rel_path)
-                meta = _parse_filename_metadata(img_path.name, str(rel_path))
-                media_name = meta.get("media", default_media)
-                if media_name == "unknown":
-                    media_name = default_media
-                species = meta.get("species", default_species)
-                jobs.append((img_path, rel_path, strain, media_name, species))
-                image_statuses.append(
-                    BatchImageStatus(
-                        filename=str(rel_path),
-                        strain=strain,
-                        media=media_name,
-                        species=species,
-                        status="uploaded",
-                    )
-                )
-            _BATCH_PROGRESS[batch_id] = _batch_progress(
-                batch_id, batch_name, image_statuses
-            )
-
-            semaphore = asyncio.Semaphore(SEGMENT_CONCURRENCY_LIMIT)
-
-            async def segment_one(job: tuple[Path, Path, str, str, str]):
-                img_path, rel_path, strain, media_name, species = job
-                try:
-                    async with semaphore:
-                        record = await asyncio.to_thread(
-                            pipeline.segment_upload,
-                            img_path,
-                            strain=strain,
-                            media=media_name,
-                            method=method,
-                        )
-                    return rel_path, strain, media_name, species, record, None
-                except Exception as exc:
-                    return rel_path, strain, media_name, species, None, str(exc)
-
-            segmented = await asyncio.gather(*(segment_one(job) for job in jobs))
-            for rel_path, strain, media_name, species, record, error in segmented:
-                status = next(
-                    img for img in image_statuses if img.filename == str(rel_path)
-                )
-                if error or record is None:
-                    status.status = "failed"
-                    status.error = error or "segmentation failed"
-                    errors.append({"file": str(rel_path), "error": status.error})
-                    continue
-                try:
-                    species_obj = await _ensure_species(db, species)
-                    media_obj = await _ensure_media(db, media_name)
-                    strain_obj = await _ensure_strain(db, strain, species_obj.id)
-                    image_obj = await _create_image(
-                        db, record, strain_obj, species_obj, media_obj
-                    )
-                    status.status = "segmented"
-                    status.image_id = str(image_obj.id)
-                    status.segments = len(record.segments)
-                    status.source_url = f"/api/v1/images/{image_obj.id}/source"
-                    results.append(
-                        {
-                            "image_id": str(image_obj.id),
-                            "strain": strain_obj.name,
-                            "media": media_obj.name,
-                            "species": species_obj.name,
-                            "segments": len(record.segments),
-                            "filename": str(rel_path),
-                            "source_url": status.source_url,
-                            "status": status.status,
-                        }
-                    )
-                except Exception as exc:
-                    status.status = "failed"
-                    status.error = str(exc)
-                    errors.append({"file": str(rel_path), "error": status.error})
-            _BATCH_PROGRESS[batch_id] = _batch_progress(
-                batch_id, batch_name, image_statuses
-            )
-
         except zipfile.BadZipFile:
+            shutil.rmtree(work_dir, ignore_errors=True)
             raise HTTPException(
                 status_code=422, detail="Invalid or corrupted ZIP file"
             ) from None
-        finally:
-            shutil.rmtree(work_dir, ignore_errors=True)
 
-        progress = _BATCH_PROGRESS.get(batch_id) or _batch_progress(
-            batch_id, batch_name, []
+        batch_name = Path(zipfile_file.filename or "batch").stem
+        batch_id = uuid.uuid4().hex
+        image_statuses: list[BatchImageStatus] = []
+        jobs: list[tuple[Path, Path, str, str, str]] = []
+        for img_path in image_files:
+            rel_path = img_path.relative_to(work_dir)
+            strain = _extract_strain_from_path(rel_path)
+            meta = _parse_filename_metadata(img_path.name, str(rel_path))
+            media_name = meta.get("media", default_media)
+            if media_name == "unknown":
+                media_name = default_media
+            species = meta.get("species", default_species)
+            if species == "unknown":
+                species = default_species
+            jobs.append((img_path, rel_path, strain, media_name, species))
+            image_statuses.append(
+                BatchImageStatus(
+                    filename=str(rel_path),
+                    strain=strain,
+                    media=media_name,
+                    species=species,
+                    status="uploaded",
+                )
+            )
+
+        progress = _set_batch_progress(batch_id, batch_name, image_statuses)
+        db_factory = async_sessionmaker(
+            bind=db.bind,
+            class_=AsyncSession,
+            expire_on_commit=False,
         )
+        asyncio.create_task(
+            _run_batch_zip_job(
+                batch_id=batch_id,
+                batch_name=batch_name,
+                work_dir=work_dir,
+                jobs=jobs,
+                method=method,
+                db_factory=db_factory,
+            )
+        )
+
         return {
             "status": progress.status,
             "batch_id": batch_id,
             "batch_name": batch_name,
-            "total": len(results) + len(errors),
-            "successful": len(results),
-            "failed": len(errors),
-            "results": results[:200],
-            "errors": errors[:100],
+            "total": len(image_statuses),
+            "successful": 0,
+            "failed": 0,
+            "results": [],
+            "errors": [],
             "progress": progress.model_dump(),
         }
 
@@ -708,14 +732,70 @@ def create_image_router(
     async def confirm_batch_strain(
         batch_id: str,
         strain: str,
+        db=Depends(get_db),
         user=Depends(require_owner()),
     ) -> BatchProgressResponse:
         progress = _BATCH_PROGRESS.get(batch_id)
         if progress is None:
             raise HTTPException(status_code=404, detail="batch progress not found")
-        for image in progress.images:
-            if image.strain == strain and image.status == "segmented":
-                image.status = "indexed"
+
+        target_images = [
+            image
+            for image in progress.images
+            if image.strain == strain and image.status == "segmented"
+        ]
+        if not target_images:
+            return progress
+
+        for image_status in target_images:
+            if not image_status.image_id:
+                continue
+            try:
+                img_uuid = UUID(image_status.image_id)
+            except ValueError:
+                image_status.status = "failed"
+                image_status.error = "invalid image id"
+                continue
+
+            result = await db.execute(
+                select(Image)
+                .options(
+                    selectinload(Image.segments),
+                    selectinload(Image.strain),
+                    selectinload(Image.species),
+                    selectinload(Image.media),
+                )
+                .where(Image.id == img_uuid)
+            )
+            img = result.scalar_one_or_none()
+            if img is None:
+                image_status.status = "failed"
+                image_status.error = "image not found"
+                continue
+
+            try:
+                strain_name = img.strain.name if img.strain else image_status.strain
+                species_name = img.species.name if img.species else image_status.species
+                media_name = img.media.name if img.media else image_status.media
+                for seg in img.segments:
+                    if seg.qdrant_point_id is not None:
+                        continue
+                    await index_segment_to_qdrant(
+                        db,
+                        seg,
+                        img,
+                        strain_name=strain_name,
+                        species_name=species_name,
+                        media_name=media_name,
+                        storage=storage,
+                    )
+                await db.commit()
+                image_status.status = "indexed"
+            except Exception as exc:
+                await db.rollback()
+                image_status.status = "failed"
+                image_status.error = str(exc)
+
         progress = _batch_progress(batch_id, progress.batch_name, progress.images)
         _BATCH_PROGRESS[batch_id] = progress
         return progress
@@ -789,16 +869,80 @@ def create_image_router(
     @router.patch("/{image_id}/segments", response_model=ImageResponse)
     async def update_segments(
         image_id: str,
-        patch,
+        patch: SegmentPatchRequest,
         db=Depends(get_db),
-        user=Depends(require_owner()),
+        user=Depends(get_current_user),
     ) -> ImageResponse:
         record = store.get(image_id)
-        if record is None:
-            raise HTTPException(status_code=404, detail="image not found")
+        if record is not None:
+            updated = pipeline.update_segments(record, patch)
+            store.add(updated)
+            return ImageResponse.model_validate(updated.model_dump())
+
+        img = await _get_image_for_update(db, image_id)
+        record = _record_from_image(img, storage)
         updated = pipeline.update_segments(record, patch)
-        store.add(updated)
+        _sync_record_to_db(img, updated)
+        await _clear_segment_index_state(db, img.segments)
+        img.data_update_status = "updated_requires_reindex"
+        await db.commit()
         return ImageResponse.model_validate(updated.model_dump())
+
+    @router.post("/{image_id}/reindex")
+    async def reindex_image(
+        image_id: str,
+        db=Depends(get_db),
+        user=Depends(require_owner()),
+    ) -> dict[str, int | str]:
+        img = await _get_image_for_update(db, image_id)
+        indexed_segments = await _reindex_image_segments(db, img, storage)
+        await db.commit()
+        return {
+            "image_id": str(img.id),
+            "segments": len(img.segments),
+            "indexed_segments": indexed_segments,
+        }
+
+    @router.post("/strains/{strain_id}/reindex")
+    async def reindex_strain(
+        strain_id: str,
+        db=Depends(get_db),
+        user=Depends(require_owner()),
+    ) -> dict[str, int | str]:
+        try:
+            strain_uuid = UUID(strain_id)
+        except ValueError as err:
+            raise HTTPException(status_code=404, detail="strain not found") from err
+
+        result = await db.execute(
+            select(Image)
+            .options(
+                selectinload(Image.segments),
+                selectinload(Image.strain),
+                selectinload(Image.species),
+                selectinload(Image.media),
+            )
+            .where(Image.strain_id == strain_uuid, Image.is_archived.is_(False))
+        )
+        images = list(result.scalars().all())
+        if not images:
+            raise HTTPException(status_code=404, detail="strain not found")
+
+        indexed_segments = 0
+        eligible_images = 0
+        for img in images:
+            if img.data_update_status != "updated_requires_reindex" and all(
+                seg.qdrant_point_id is not None for seg in img.segments
+            ):
+                continue
+            eligible_images += 1
+            indexed_segments += await _reindex_image_segments(db, img, storage)
+        await db.commit()
+        return {
+            "strain_id": strain_id,
+            "images": eligible_images,
+            "indexed_segments": indexed_segments,
+        }
 
     # ------------------------------------------------------------------
     # POST auto-segment (kmeans / contour / yolo)
@@ -872,12 +1016,8 @@ def create_image_router(
         # Delete old segments (unique constraint on image_id+segment_index)
         for seg in img.segments:
             # Delete associated qdrant_index_state rows first to avoid FK violation
-            from .models import QdrantIndexState
-
             await db.execute(
-                QdrantIndexState.__table__.delete().where(
-                    QdrantIndexState.segment_id == seg.id
-                )
+                delete(QdrantIndexState).where(QdrantIndexState.segment_id == seg.id)
             )
             await db.delete(seg)
         await db.flush()
@@ -1089,12 +1229,17 @@ def _serve_storage_file(
     fallback_url: str,
 ):
     if storage:
-        key = f"{artifact_dir}/{filename}"
-        data = storage.get_bytes(key)
-        if data is not None:
-            from fastapi.responses import Response
+        candidate_keys = [
+            f"{artifact_dir}/{filename}",
+            str(Path(*artifact_dir.parts[-4:]) / filename),
+            str(Path(*artifact_dir.parts[-3:]) / filename),
+        ]
+        for key in dict.fromkeys(candidate_keys):
+            data = storage.get_bytes(key)
+            if data is not None:
+                from fastapi.responses import Response
 
-            return Response(content=data, media_type="image/jpeg")
+                return Response(content=data, media_type="image/jpeg")
         raise HTTPException(status_code=404, detail="file not found in storage")
 
     if artifact_dir.is_absolute():
@@ -1111,15 +1256,155 @@ def _serve_storage_file(
 # ---------------------------------------------------------------------------
 
 
+async def _get_image_for_update(db: AsyncSession, image_id: str) -> Image:
+    try:
+        img_uuid = UUID(image_id)
+    except ValueError as err:
+        raise HTTPException(status_code=404, detail="image not found") from err
+
+    result = await db.execute(
+        select(Image)
+        .options(
+            selectinload(Image.segments).selectinload(Segment.qdrant_index_state),
+            selectinload(Image.strain),
+            selectinload(Image.species),
+            selectinload(Image.media),
+        )
+        .where(Image.id == img_uuid, Image.is_archived.is_(False))
+    )
+    img = result.scalar_one_or_none()
+    if img is None:
+        raise HTTPException(status_code=404, detail="image not found")
+    return img
+
+
+def _record_from_image(img: Image, storage: ObjectStorage | None) -> ImageRecord:
+    segments = [
+        SegModel(
+            segment_id=f"{img.id}:{seg.segment_index}",
+            segment_index=seg.segment_index,
+            bbox=BoundingBox(x=seg.bbox_x, y=seg.bbox_y, w=seg.bbox_w, h=seg.bbox_h),
+            crop_url=f"/api/v1/images/{img.id}/segments/{seg.segment_index}/crop",
+            pipeline_url=f"/api/v1/images/{img.id}/pipeline?method={seg.segmentation_method}",
+        )
+        for seg in img.segments
+    ]
+    return ImageRecord(
+        image_id=str(img.id),
+        source_path=Path(img.file_path),
+        artifact_dir=Path(img.file_path).parent,
+        source_url=(
+            f"/api/v1/images/{img.id}/source"
+            if storage
+            else f"/static/{img.strain.name}/{img.media.name}/{img.id}/source.jpg"
+        ),
+        segments=segments,
+        segmentation_method=(
+            img.segments[0].segmentation_method if img.segments else "kmeans"
+        ),
+    )
+
+
+async def _clear_segment_index_state(db: AsyncSession, segments: list[Segment]) -> None:
+    points_by_collection: dict[str, list[int]] = {}
+    for seg in segments:
+        state = seg.qdrant_index_state
+        if state is not None:
+            points_by_collection.setdefault(state.collection_name, []).append(
+                state.qdrant_point_id.int
+            )
+            await db.delete(state)
+            seg.qdrant_index_state = None
+        elif seg.qdrant_point_id is not None:
+            points_by_collection.setdefault("", []).append(seg.qdrant_point_id.int)
+        seg.qdrant_point_id = None
+    if points_by_collection:
+        qdrant = get_qdrant_client()
+        for collection_name, point_ids in points_by_collection.items():
+            delete_points(qdrant, point_ids, collection_name=collection_name or None)
+    await db.flush()
+
+
+def _sync_record_to_db(img: Image, record: ImageRecord) -> None:
+    from .config import get_storage_settings
+
+    root = Path(get_storage_settings().upload_root)
+    if not root.is_absolute():
+        root = (Path.cwd() / root).resolve()
+
+    by_index = {seg.segment_index: seg for seg in img.segments}
+    for seg_model in record.segments:
+        seg = by_index.get(seg_model.segment_index)
+        if seg is None:
+            continue
+        seg.bbox_x = seg_model.bbox.x
+        seg.bbox_y = seg_model.bbox.y
+        seg.bbox_w = seg_model.bbox.w
+        seg.bbox_h = seg_model.bbox.h
+        seg.crop_path = str(
+            (
+                root
+                / record.artifact_dir
+                / "segments"
+                / f"segment_{seg.segment_index}.jpg"
+            ).resolve()
+        )
+
+
+async def _reindex_image_segments(
+    db: AsyncSession,
+    img: Image,
+    storage: ObjectStorage | None,
+) -> int:
+    strain_name = img.strain.name if img.strain else "unknown"
+    species_name = img.species.name if img.species else "unknown"
+    media_name = img.media.name if img.media else "unknown"
+    indexed_segments = 0
+    for seg in img.segments:
+        result = await index_segment_to_qdrant(
+            db,
+            seg,
+            img,
+            strain_name=strain_name,
+            species_name=species_name,
+            media_name=media_name,
+            storage=storage,
+        )
+        if result.get("status") == "indexed":
+            indexed_segments += 1
+    img.data_update_status = "current"
+    return indexed_segments
+
+
 def _read_source_from_storage(
     storage: ObjectStorage, img: Image, source_path: Path
 ) -> bytes | None:
-    """Read source image bytes from S3 storage, trying multiple key patterns."""
-    candidates = [
-        str(source_path),
-        f"{img.strain.name}/{img.media.name}/{img.id}/source.jpg",
-        f"{img.strain.name}/{img.media.name}/{str(img.id)}/source.jpg",
-    ]
+    """Read source image bytes from object storage."""
+    from .config import get_storage_settings
+
+    candidates: list[str] = []
+
+    def add_candidate(value: str | Path) -> None:
+        key = str(value).strip()
+        if key and key not in candidates:
+            candidates.append(key)
+
+    add_candidate(source_path)
+
+    upload_root = Path(get_storage_settings().upload_root)
+    if not upload_root.is_absolute():
+        upload_root = (Path.cwd() / upload_root).resolve()
+    if source_path.is_absolute():
+        try:
+            add_candidate(source_path.relative_to(upload_root))
+        except ValueError:
+            pass
+
+    artifact_dir = source_path.parent
+    add_candidate(artifact_dir / "source.jpg")
+    add_candidate(Path(img.strain.name) / img.media.name / "source.jpg")
+    add_candidate(Path(img.strain.name) / img.media.name / str(img.id) / "source.jpg")
+
     for key in candidates:
         data = storage.get_bytes(key)
         if data is not None:
@@ -1305,6 +1590,8 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
     species = "unknown"
     strain = "unknown"
 
+    rest = lower
+
     # Strategy 1: "MEDIA[or]" suffix pattern (CYAo, MEAr, YESob, etc.)
     m_suffix = re.search(
         r"\b(cya30|cyas|cya|mea|yes|dg18|crea|oa|m40y)(ob|rev|o|r)", lower
@@ -1316,14 +1603,15 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
         angle = _normalize_angle(raw_angle)
         rest = lower[: m_suffix.start()].strip()
     else:
-        # Strategy 2: "MEDIA ANGLE" space-separated
-        m_angle = re.search(r"(cya|mea|yes|dg18|crea|oa|m40y)\s+(ob|rev)\b", lower)
+        # Strategy 2: "MEDIA ANGLE" separated by space/underscore/hyphen
+        m_angle = re.search(
+            r"(?:^|[\s_-])(cya|mea|yes|dg18|crea|oa|m40y)[\s_-]+(ob|rev)\b",
+            lower,
+        )
         if m_angle:
             media = m_angle.group(1).upper()
             angle = m_angle.group(2)
             rest = lower[: m_angle.start()].strip()
-        else:
-            rest = lower
 
     # Remove _edited suffix common in DTO dataset
     rest = re.sub(r"_edited$", "", rest, flags=re.IGNORECASE)
@@ -1345,9 +1633,11 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
         species = rest.strip()
 
     species = species.strip().strip("_-").strip()
+    if not species:
+        species = "unknown"
 
     # Fallback: extract species/strain from folder path (DTO folder format)
-    if (not species or species == "unknown") and rel_path:
+    if species == "unknown" and rel_path:
         m_dto = re.search(
             r"DTO\s+[\d\-A-Za-z]+\s+(Penicillium\s+\w+(?:\s+\w+)*)",
             rel_path,
@@ -1372,14 +1662,20 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
             "S-Z",
         }
         meaningful = [
-            p for p in parts if p not in alpha_patterns and not p.endswith(".jpg")
+            p
+            for p in parts[:-1]
+            if p not in alpha_patterns
+            and not p.lower().endswith((".jpg", ".jpeg", ".png", ".jpe"))
         ]
-        if len(meaningful) >= 2:
-            species = meaningful[-2]
-            if strain == "unknown":
-                strain = meaningful[-1]
-        elif len(meaningful) >= 1:
-            species = meaningful[0]
+        species_candidates = [
+            p
+            for p in meaningful
+            if p.lower().startswith("penicillium") or " " in p
+        ]
+        if species_candidates:
+            species = species_candidates[-1]
+        if strain == "unknown" and meaningful:
+            strain = meaningful[-1]
 
     return {
         "species": species or "unknown",

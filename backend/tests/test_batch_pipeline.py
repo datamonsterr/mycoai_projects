@@ -17,13 +17,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import Base
 from backend.models import Image, Segment
-from backend.segmentation import SegmentationPipeline
+from backend.segmentation import SegmentationPipeline, _get_yolo_model
 from backend.tasks.batch import run as batch_run
 
 pytestmark = [
+
     pytest.mark.asyncio,
     pytest.mark.integration,
-    pytest.mark.skip(reason="Requires PostgreSQL + Qdrant — run with integration_postgres marker"),
+    pytest.mark.skip(
+        reason="Requires PostgreSQL + Qdrant — run with integration_postgres marker"
+    ),
 ]
 
 
@@ -86,6 +89,24 @@ async def db_session():
 
 
 @pytest.mark.integration_postgres
+def test_get_yolo_model_prefers_repo_canonical_weights(tmp_path: Path) -> None:
+    canonical = tmp_path / "weights" / "segmentation" / "yolo26_seg_best.pt"
+    canonical.parent.mkdir(parents=True)
+    canonical.write_bytes(b"weights")
+
+    with patch("backend.segmentation._YOLO_MODEL", None), patch(
+        "backend.segmentation._YOLO_WEIGHTS_PATH", None
+    ), patch("backend.segmentation.Path.cwd", return_value=tmp_path), patch(
+        "backend.segmentation.Path.exists",
+        autospec=True,
+        side_effect=lambda path: Path(path) == canonical,
+    ), patch("ultralytics.YOLO", return_value=object()) as yolo:
+        model = _get_yolo_model()
+
+    assert model is not None
+    yolo.assert_called_once_with(str(canonical))
+
+
 class TestBatchPipeline:
     """Integration tests for the batch import pipeline."""
 

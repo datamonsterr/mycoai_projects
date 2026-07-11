@@ -31,7 +31,14 @@ RUN uv sync --frozen --no-install-project --no-dev
 FROM python:3.13-slim-bookworm AS dev
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
+    apt-get install -y --no-install-recommends \
+      curl \
+      libglib2.0-0 \
+      libsm6 \
+      libxext6 \
+      libxrender1 \
+      libxcb1 \
+      libgl1 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=uv-base /usr/local/bin/uv /usr/local/bin/uv
@@ -57,25 +64,35 @@ CMD ["uv", "run", "uvicorn", "backend.app:app", \
 FROM python:3.13-slim-bookworm AS prod
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
+    apt-get install -y --no-install-recommends \
+      curl \
+      libglib2.0-0 \
+      libsm6 \
+      libxext6 \
+      libxrender1 \
+      libxcb1 \
+      libgl1 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --gid 1001 --system appgroup && \
     adduser --uid 1001 --system appuser --ingroup appgroup
 
 COPY --from=uv-base /usr/local/bin/uv /usr/local/bin/uv
-COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONPATH="/app/src"
+    PYTHONPATH="/app/src" \
+    UV_PROJECT_ENVIRONMENT=/app/.venv
 
 WORKDIR /app
+COPY --chown=appuser:appgroup pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project --no-dev
 COPY --chown=appuser:appgroup . .
+RUN uv sync --frozen --no-dev
 
-USER 1001
 EXPOSE 8000
 
 ENV HOME=/app
 RUN mkdir -p /app/.cache && chown appuser:appgroup /app/.cache
+USER 1001
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -sf http://localhost:8000/health || exit 1

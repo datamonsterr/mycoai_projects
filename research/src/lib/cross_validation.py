@@ -306,7 +306,11 @@ def _filter_siblings(
     neighbors: List[Dict[str, Any]], query_parent_id: str
 ) -> List[Dict[str, Any]]:
     """Remove neighbors from the same parent image as the query segment."""
-    return [n for n in neighbors if n.get("parent_id") != query_parent_id]
+    return [
+        n
+        for n in neighbors
+        if (n.get("parent_id") or n.get("parent_item_id")) != query_parent_id
+    ]
 
 
 def _resolve_image_path(image_id: str) -> Optional[Path]:

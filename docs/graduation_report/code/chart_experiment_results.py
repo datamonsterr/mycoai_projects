@@ -425,21 +425,22 @@ def chart_eda_media_distribution():
         for j, env in enumerate(environments):
             mat[i, j] = species_env.get((sp, env), 0)
 
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(12, 10))
     im = ax.imshow(mat, cmap="YlOrRd", aspect="auto")
     ax.set_xticks(range(len(environments)))
-    ax.set_xticklabels(environments, fontsize=7, rotation=45, ha="right")
+    ax.set_xticklabels(environments, fontsize=13, rotation=45, ha="right")
     ax.set_yticks(range(len(top_names)))
-    ax.set_yticklabels([n[:30] for n in top_names], fontsize=6)
-    ax.set_title("Species x Media Distribution (CYA variants normalized)")
+    ax.set_yticklabels([n[:30] for n in top_names], fontsize=12)
+    ax.set_title("Species x Media Distribution (CYA variants normalized)", fontsize=16)
     for i in range(len(top_names)):
         for j in range(len(environments)):
             val = mat[i, j]
             if val > 0:
                 ax.text(j, i, str(int(val)), ha="center", va="center",
-                        fontsize=7, fontweight="bold",
+                        fontsize=11, fontweight="bold",
                         color="white" if val > mat.max() / 2 else "black")
-    plt.colorbar(im, ax=ax, label="Images")
+    cbar = plt.colorbar(im, ax=ax, label="Images")
+    cbar.ax.tick_params(labelsize=11)
     fig.tight_layout()
     save("eda_media_species_heatmap.png", fig, subfolder="04_eda")
 

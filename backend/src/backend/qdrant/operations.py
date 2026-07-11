@@ -24,13 +24,14 @@ def _neighbor_from_point(point: Any) -> NeighborResult:
         score=score,
         distance=1.0 - score,
         strain=payload.get("strain"),
-        media=payload.get("media"),
+        media=payload.get("media") or payload.get("environment"),
         angle=payload.get("angle"),
         specy=payload.get("specy") or payload.get("species"),
         parent_id=payload.get("parent_id") or payload.get("parent_item_id"),
         segment_index=payload.get("segment_index"),
         bbox=payload.get("bbox"),
         extractor=payload.get("extractor"),
+        segment_path=payload.get("segment_path"),
     )
 
 
@@ -98,8 +99,7 @@ def query_points_by_id(
         payload = _point_payload(query_point)
         parent_id = payload.get("parent_id") or payload.get("parent_item_id")
         if parent_id is not None:
-            local_filter.parent_id = str(parent_id)
-            local_filter.exclude_ids = (local_filter.exclude_ids or []) + [point_id]
+            local_filter.exclude_parent_id = str(parent_id)
     if exclude_self:
         local_filter.exclude_ids = (local_filter.exclude_ids or []) + [point_id]
     response = client.query_points(

@@ -294,7 +294,11 @@ def filter_siblings(
     """Remove neighbors from the same parent image as the query segment."""
     if query_parent_id is None:
         return neighbors
-    return [n for n in neighbors if n.get("parent_id") != query_parent_id]
+    return [
+        n
+        for n in neighbors
+        if (n.get("parent_id") or n.get("parent_item_id")) != query_parent_id
+    ]
 
 
 def aggregate_predictions(

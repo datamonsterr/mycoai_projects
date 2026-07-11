@@ -260,6 +260,7 @@ def test_query_points_by_image() -> None:
     assert len(result.neighbors) == 1
     assert result.neighbors[0].score == 0.95
     assert result.neighbors[0].strain == "DTO 123-A1"
+    assert result.neighbors[0].media == "MEA"
 
 
 def test_query_points_by_id_mocked() -> None:
@@ -284,6 +285,13 @@ def test_query_points_by_id_mocked() -> None:
         exclude_siblings=True,
     )
     assert len(result.neighbors) >= 0
+    _, kwargs = client.query_points.call_args
+    query_filter = kwargs["query_filter"]
+    assert query_filter is not None
+    assert any(
+        cond.key == "parent_item_id" and cond.match.value == "parent_1"
+        for cond in _must_not(query_filter)
+    )
     client.retrieve.assert_called_once()
 
 
@@ -319,7 +327,7 @@ def test_delete_points() -> None:
 def test_collection_exists_mocked() -> None:
     client = MagicMock()
     fake_col = MagicMock()
-    fake_col.name = "myco_fungi_features_full_finetuned"
+    fake_col.name = "qdrant-research_fold0"
     client.get_collections.return_value.collections = [fake_col]
     assert collection_exists(client) is True
 

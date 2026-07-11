@@ -57,16 +57,19 @@ function PieChart({ data }: { data: Array<{ name: string; count: number }> }) {
         title="Click to toggle percent / quantity"
       >
         <svg width={280} height={280} viewBox="0 0 280 280">
-          {segments.map((seg, i) => (
-            <path
-              key={seg.name}
-              d={describeArc(seg.startAngle, seg.endAngle, r, cx, cy)}
-              fill={COLORS[i % COLORS.length]}
-              stroke="var(--color-card)"
-              strokeWidth={2}
-              className="transition-all duration-300 hover:opacity-80"
-            />
-          ))}
+          {segments.map((seg, i) => {
+            const key = `${seg.name}-${i}`
+            return (
+              <path
+                key={key}
+                d={describeArc(seg.startAngle, seg.endAngle, r, cx, cy)}
+                fill={COLORS[i % COLORS.length]}
+                stroke="var(--color-card)"
+                strokeWidth={2}
+                className="transition-all duration-300 hover:opacity-80"
+              />
+            )
+          })}
           <circle cx={cx} cy={cy} r={r * 0.55} fill="var(--color-card)" />
           <text x={cx} y={cy - 8} textAnchor="middle" className="fill-foreground font-heading text-lg font-bold" fontSize={18}>
             {total}
@@ -74,11 +77,12 @@ function PieChart({ data }: { data: Array<{ name: string; count: number }> }) {
           <text x={cx} y={cy + 14} textAnchor="middle" className="fill-muted-foreground" fontSize={11}>
             {showPercent ? 'percent' : 'images'}
           </text>
-          {segments.map((seg) => {
+          {segments.map((seg, i) => {
+            const key = `${seg.name}-${i}`
             const pos = labelArc(seg.startAngle, seg.endAngle, r, cx, cy)
             const pct = ((seg.count / total) * 100).toFixed(0)
             return (
-              <g key={`label-${seg.name}`}>
+              <g key={`label-${key}`}>
                 <rect
                   x={pos.x - (showPercent ? 18 : 14)}
                   y={pos.y - 10}
@@ -105,15 +109,18 @@ function PieChart({ data }: { data: Array<{ name: string; count: number }> }) {
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 w-full">
-        {segments.map((seg, i) => (
-          <div key={seg.name} className="flex items-center gap-2 text-xs">
-            <span className="h-3 w-3 rounded-sm flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-            <span className="truncate">{seg.name}</span>
-            <span className="font-mono ml-auto">
-              {showPercent ? `${((seg.count / total) * 100).toFixed(0)}%` : seg.count}
-            </span>
-          </div>
-        ))}
+        {segments.map((seg, i) => {
+          const key = `${seg.name}-${i}`
+          return (
+            <div key={key} className="flex items-center gap-2 text-xs">
+              <span className="h-3 w-3 rounded-sm flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+              <span className="truncate">{seg.name}</span>
+              <span className="font-mono ml-auto">
+                {showPercent ? `${((seg.count / total) * 100).toFixed(0)}%` : seg.count}
+              </span>
+            </div>
+          )
+        })}
       </div>
       <p className="text-[10px] text-muted-foreground">Click chart to toggle percent / quantity</p>
     </div>

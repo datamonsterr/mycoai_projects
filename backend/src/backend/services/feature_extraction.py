@@ -55,45 +55,45 @@ _effnet_model: Any = None
 _resnet_model: Any = None
 _mobilenet_model: Any = None
 _torch_available: bool | None = None
+_torch_device: Any = None
 
 
 def _check_torch() -> bool:
-    global _torch_available
+    global _torch_available, _torch_device
     if _torch_available is None:
         try:
-            import torch  # noqa: F401
+            import torch
             import torchvision  # noqa: F401
 
             _torch_available = True
+            _torch_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         except ImportError:
             _torch_available = False
+            _torch_device = None
     return _torch_available
 
 
 def _preprocess_dl(img_rgb: np.ndarray):
-    import torch
-    import torch.nn.functional as F
+    import torchvision.transforms as transforms
 
-    t = torch.from_numpy(img_rgb).permute(2, 0, 1).float().div_(255.0)
-    t = F.interpolate(
-        t.unsqueeze(0),
-        size=(_DL_INPUT_SIZE, _DL_INPUT_SIZE),
-        mode="bilinear",
-        align_corners=False,
-    ).squeeze(0)
-    mean = torch.tensor(_IMAGENET_MEAN, dtype=t.dtype).view(3, 1, 1)
-    std = torch.tensor(_IMAGENET_STD, dtype=t.dtype).view(3, 1, 1)
-    t = (t - mean) / std
-    return t.unsqueeze(0)
+    preprocess = transforms.Compose(
+        [
+            transforms.ToPILImage(),
+            transforms.Resize((_DL_INPUT_SIZE, _DL_INPUT_SIZE)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=_IMAGENET_MEAN, std=_IMAGENET_STD),
+        ]
+    )
+    return preprocess(img_rgb).unsqueeze(0)
 
 
 def _resolve_finetuned_weights(name: str) -> Path | None:
-    """Search for finetuned weights across known locations (yolo/kmeans/folds)."""
+    """Prefer fold0 research snapshot, then generic finetuned fallbacks."""
     candidates = [
+        _WEIGHTS_DIR / "folds" / f"fold0_{name}_finetuned.pth",
         _WEIGHTS_DIR / "yolo_finetuned" / f"{name}_finetuned.pth",
         _WEIGHTS_DIR / "kmeans_finetuned" / f"{name}_finetuned.pth",
         _WEIGHTS_DIR / f"{name}_finetuned.pth",
-        _WEIGHTS_DIR / "folds" / f"fold0_{name}_finetuned.pth",
     ]
     for p in candidates:
         if p.exists():
@@ -109,7 +109,7 @@ def _load_efficientnetb1_finetuned():
         return None
     import torch
     import torch.nn as nn
-    from torchvision.models import efficientnet_b1
+    from torchvision.models import EfficientNet_B1_Weights, efficientnet_b1
 
     model = efficientnet_b1(weights=None)
     weights_path = _resolve_finetuned_weights("EfficientNetB1")
@@ -128,11 +128,13 @@ def _load_efficientnetb1_finetuned():
             logger.info("Loaded EfficientNetB1_finetuned weights from %s", weights_path)
         except Exception as exc:
             logger.warning("Failed to load EfficientNetB1_finetuned weights: %s", exc)
-            return None
+            model = efficientnet_b1(weights=EfficientNet_B1_Weights.DEFAULT)
     else:
         logger.warning("No EfficientNetB1_finetuned weights found in %s", _WEIGHTS_DIR)
-        return None
-    model.classifier = nn.Identity()
+        model = efficientnet_b1(weights=EfficientNet_B1_Weights.DEFAULT)
+    model.classifier = nn.Sequential(nn.Identity())
+    if _torch_device is not None:
+        model.to(_torch_device)
     model.eval()
     _effnet_model = model
     return model
@@ -214,9 +216,15 @@ def _extract_dl_feature(model, img_rgb: np.ndarray) -> list[float]:
     import torch
 
     input_tensor = _preprocess_dl(img_rgb)
+    if _torch_device is not None:
+        input_tensor = input_tensor.to(_torch_device)
     with torch.no_grad():
         output = model(input_tensor)
-    return output.cpu().flatten().tolist()
+    features = output.cpu().numpy().flatten().astype(np.float32)
+    norm = float(np.linalg.norm(features, ord=2))
+    if norm > 0:
+        features = features / norm
+    return features.tolist()
 
 
 def _extract_dl_vectors(vectors: dict[str, list[float]], img_rgb: np.ndarray) -> None:
@@ -298,7 +306,7 @@ async def index_segment_to_qdrant(
     species_name: str,
     media_name: str,
     storage: ObjectStorage | None = None,
-    collection_name: str = "myco_fungi_features_full_finetuned",
+    collection_name: str = "qdrant-research_fold0",
 ) -> dict:
     """Extract features from a segment crop and index in Qdrant.
 
@@ -313,19 +321,30 @@ async def index_segment_to_qdrant(
     from ..models import QdrantIndexState
     from ..services.qdrant_client import QdrantClientService
 
+    if collection_name == "qdrant-research_fold0":
+        from ..config import get_qdrant_settings
+
+        collection_name = get_qdrant_settings().collection_name
+
+    crop_path = Path(segment.crop_path)
     crop_bytes: bytes | None = None
 
-    # Try MinIO/S3 storage first
     if storage is not None:
         artifact_dir = Path(image_obj.file_path).parent
-        crop_key = f"{artifact_dir}/segments/segment_{segment.segment_index}.jpg"
-        crop_bytes = storage.get_bytes(crop_key)
+        crop_keys = [
+            f"{artifact_dir}/segments/segment_{segment.segment_index}.jpg",
+            str(crop_path),
+            str(Path(*crop_path.parts[-5:])),
+            str(Path(*crop_path.parts[-4:])),
+            str(Path(*crop_path.parts[-3:])),
+        ]
+        for crop_key in dict.fromkeys(crop_keys):
+            crop_bytes = storage.get_bytes(crop_key)
+            if crop_bytes is not None:
+                break
 
-    # Fallback to local filesystem
-    if crop_bytes is None:
-        crop_path = Path(segment.crop_path)
-        if crop_path.exists():
-            crop_bytes = crop_path.read_bytes()
+    if crop_bytes is None and crop_path.exists():
+        crop_bytes = crop_path.read_bytes()
 
     if crop_bytes is None:
         return {"error": f"Crop image not found for segment {segment.id}"}
@@ -334,13 +353,18 @@ async def index_segment_to_qdrant(
     if not vectors:
         return {"error": "Feature extraction returned empty vectors"}
 
-    qdrant_svc = QdrantClientService()
+    qdrant_svc = QdrantClientService(collection_name=collection_name)
     # Filter to vectors supported by the collection schema
     try:
         collection_info = await asyncio.to_thread(
             qdrant_svc._client.get_collection, collection_name=collection_name
         )
-        supported = set(collection_info.config.params.vectors.keys())
+        collection_vectors = collection_info.config.params.vectors
+        supported = (
+            set(collection_vectors.keys())
+            if isinstance(collection_vectors, dict)
+            else set(vectors.keys())
+        )
         vectors = {k: v for k, v in vectors.items() if k in supported}
         if not vectors:
             return {
@@ -361,13 +385,22 @@ async def index_segment_to_qdrant(
     payload: dict = {
         "segment_id": str(segment.id),
         "image_id": str(image_obj.id),
+        "parent_id": str(image_obj.id),
+        "parent_item_id": str(image_obj.id),
+        "parent_image_id": str(image_obj.id),
         "segment_index": segment.segment_index,
         "strain": strain_name,
         "specy": species_name,
         "species": species_name,
         "media": media_name,
-        "angle": "",
-        "extractor": "colorhistogram",
+        "environment": media_name,
+        "angle": image_obj.angle or "",
+        "extractor": "multi",
+        "segment_path": str(
+            Path(image_obj.file_path).parent
+            / "segments"
+            / f"segment_{segment.segment_index}.jpg"
+        ),
         "bbox": {
             "x": segment.bbox_x,
             "y": segment.bbox_y,
