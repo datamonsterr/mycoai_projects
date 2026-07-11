@@ -327,7 +327,6 @@ class SegmentationPipeline:
         side = min(h, w)
         working_size = min(max(side, 512), 1024)
 
-<<<<<<< HEAD
         interpolation = (
             cv.INTER_AREA if side >= working_size else cv.INTER_LINEAR
         )
@@ -335,12 +334,6 @@ class SegmentationPipeline:
             img,
             (working_size, working_size),
             interpolation=interpolation,
-=======
-        small = cv.resize(
-            img,
-            (working_size, working_size),
-            interpolation=cv.INTER_AREA if side >= working_size else cv.INTER_LINEAR,
->>>>>>> 0cfd2ac (fix(ci): restore workflow green checks)
         )
 
         # Median blur to flatten texture
@@ -363,17 +356,11 @@ class SegmentationPipeline:
         flat[~mask_bool.reshape(-1)] = np.array([1000.0] * 3, dtype=np.float32)
 
         n_clusters = 3
-<<<<<<< HEAD
         labels = KMeans(
             n_clusters=n_clusters,
             random_state=0,
             n_init=10,
         ).fit_predict(flat)
-=======
-        labels = KMeans(n_clusters=n_clusters, random_state=0, n_init=10).fit_predict(
-            flat
-        )
->>>>>>> 0cfd2ac (fix(ci): restore workflow green checks)
         label_image = labels.reshape(small.shape[:2]).astype(np.int32)
 
         # Smart foreground label selection
@@ -548,11 +535,7 @@ class SegmentationPipeline:
                 continue
             scored_bboxes.append(
                 (
-<<<<<<< HEAD
                     float(conf_val),
-=======
-                    conf * (x2c - x1c) * (y2c - y1c),
->>>>>>> 0cfd2ac (fix(ci): restore workflow green checks)
                     BoundingBox(x=x1c, y=y1c, w=x2c - x1c, h=y2c - y1c),
                 )
             )
@@ -682,13 +665,9 @@ class SegmentationPipeline:
         bright = 0 if c0_mean >= c1_mean else 1
         bright_mask = (k2labels == bright).reshape(roi.shape[:2]).astype(np.uint8) * 255
         contours, _ = cv.findContours(
-<<<<<<< HEAD
             bright_mask,
             cv.RETR_EXTERNAL,
             cv.CHAIN_APPROX_SIMPLE,
-=======
-            bright_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE
->>>>>>> 0cfd2ac (fix(ci): restore workflow green checks)
         )
         if not contours:
             return None
@@ -720,7 +699,6 @@ class SegmentationPipeline:
             kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (k_sz, k_sz))
             eroded = cv.morphologyEx(roi, cv.MORPH_ERODE, kernel)
             contours, _ = cv.findContours(
-<<<<<<< HEAD
                 eroded,
                 cv.RETR_EXTERNAL,
                 cv.CHAIN_APPROX_SIMPLE,
@@ -730,13 +708,6 @@ class SegmentationPipeline:
                     roi,
                     cv.RETR_EXTERNAL,
                     cv.CHAIN_APPROX_SIMPLE,
-=======
-                eroded, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE
-            )
-            if not contours:
-                contours, _ = cv.findContours(
-                    roi, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE
->>>>>>> 0cfd2ac (fix(ci): restore workflow green checks)
                 )
             if not contours:
                 refined.append(bbox)
@@ -761,13 +732,9 @@ class SegmentationPipeline:
             fit_score = 1.0 - min(abs(best_fill - 0.785), 1.0)
             if fit_score < 0.3 and hsv_image is not None and original_bgr is not None:
                 shrunk = SegmentationPipeline._local_k2_shrink(
-<<<<<<< HEAD
                     bbox,
                     hsv_image,
                     original_bgr,
-=======
-                    bbox, hsv_image, original_bgr
->>>>>>> 0cfd2ac (fix(ci): restore workflow green checks)
                 )
                 if shrunk is not None:
                     refined.append(shrunk)
