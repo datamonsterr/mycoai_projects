@@ -12,7 +12,7 @@ from backend.schemas.media import MediaCreate, MediaUpdate
 async def test_create_media(session: AsyncSession) -> None:
     data = MediaCreate(name="Potato Dextrose Agar", description="Common fungal medium")
     result = await media_repo.create_media(session, data)
-    assert result.name == "Potato Dextrose Agar"
+    assert result.name == "POTATO DEXTROSE AGAR"
     assert result.description == "Common fungal medium"
     assert result.is_archived is False
     assert isinstance(result.id, UUID)
@@ -22,7 +22,7 @@ async def test_create_media(session: AsyncSession) -> None:
 async def test_create_duplicate_media_raises(session: AsyncSession) -> None:
     data = MediaCreate(name="Malt Extract Agar")
     await media_repo.create_media(session, data)
-    with pytest.raises(ConflictError, match="Malt Extract Agar"):
+    with pytest.raises(ConflictError, match="MALT EXTRACT AGAR"):
         await media_repo.create_media(session, data)
 
 
@@ -32,7 +32,7 @@ async def test_get_media(session: AsyncSession) -> None:
     created = await media_repo.create_media(session, data)
     found = await media_repo.get_media(session, created.id)
     assert found is not None
-    assert found.name == "Czapek Dox Agar"
+    assert found.name == "CZAPEK DOX AGAR"
     assert found.description == "For Aspergillus"
 
 
@@ -63,9 +63,9 @@ async def test_list_media_archived(session: AsyncSession) -> None:
     archived = await media_repo.list_media(session, is_archived=True)
 
     assert len(active) == 1
-    assert active[0].name == "Active"
+    assert active[0].name == "ACTIVE"
     assert len(archived) == 1
-    assert archived[0].name == "Archived"
+    assert archived[0].name == "ARCHIVED"
 
 
 @pytest.mark.asyncio
@@ -75,8 +75,8 @@ async def test_list_media_with_pagination(session: AsyncSession) -> None:
 
     page = await media_repo.list_media(session, offset=1, limit=2)
     assert len(page) == 2
-    assert page[0].name == "Medium-1"
-    assert page[1].name == "Medium-2"
+    assert page[0].name == "MEDIUM-1"
+    assert page[1].name == "MEDIUM-2"
 
 
 @pytest.mark.asyncio
@@ -95,7 +95,7 @@ async def test_update_media(session: AsyncSession) -> None:
         created.id,
         MediaUpdate(name="Renamed", description="Updated description"),
     )
-    assert updated.name == "Renamed"
+    assert updated.name == "RENAMED"
     assert updated.description == "Updated description"
 
 
@@ -107,7 +107,7 @@ async def test_update_media_partial_name_only(session: AsyncSession) -> None:
     updated = await media_repo.update_media(
         session, created.id, MediaUpdate(name="New Name")
     )
-    assert updated.name == "New Name"
+    assert updated.name == "NEW NAME"
     assert updated.description == "Keep me"
 
 
@@ -117,7 +117,7 @@ async def test_update_media_partial_description_only(session: AsyncSession) -> N
     updated = await media_repo.update_media(
         session, created.id, MediaUpdate(description="New desc")
     )
-    assert updated.name == "Stick"
+    assert updated.name == "STICK"
     assert updated.description == "New desc"
 
 
@@ -126,7 +126,7 @@ async def test_update_media_duplicate_name_raises(session: AsyncSession) -> None
     await media_repo.create_media(session, MediaCreate(name="Existing"))
     target = await media_repo.create_media(session, MediaCreate(name="Target"))
 
-    with pytest.raises(ConflictError, match="Existing"):
+    with pytest.raises(ConflictError, match="EXISTING"):
         await media_repo.update_media(session, target.id, MediaUpdate(name="Existing"))
 
 

@@ -24,6 +24,8 @@ import numpy as np
 if TYPE_CHECKING:
     from ..services.storage import ObjectStorage
 
+from ..services.storage import storage_candidates
+
 logger = logging.getLogger(__name__)
 
 VECTOR_DIMS: dict[str, int] = {
@@ -63,7 +65,7 @@ def _check_torch() -> bool:
     if _torch_available is None:
         try:
             import torch
-            import torchvision  # noqa: F401
+            import torchvision  # type: ignore[import-untyped]  # noqa: F401
 
             _torch_available = True
             _torch_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -74,7 +76,7 @@ def _check_torch() -> bool:
 
 
 def _preprocess_dl(img_rgb: np.ndarray):
-    import torchvision.transforms as transforms
+    import torchvision.transforms as transforms  # type: ignore[import-untyped]
 
     preprocess = transforms.Compose(
         [
@@ -109,7 +111,10 @@ def _load_efficientnetb1_finetuned():
         return None
     import torch
     import torch.nn as nn
-    from torchvision.models import EfficientNet_B1_Weights, efficientnet_b1
+    from torchvision.models import (  # type: ignore[import-untyped]
+        EfficientNet_B1_Weights,
+        efficientnet_b1,
+    )
 
     model = efficientnet_b1(weights=None)
     weights_path = _resolve_finetuned_weights("EfficientNetB1")
@@ -330,15 +335,18 @@ async def index_segment_to_qdrant(
     crop_bytes: bytes | None = None
 
     if storage is not None:
-        artifact_dir = Path(image_obj.file_path).parent
-        crop_keys = [
-            f"{artifact_dir}/segments/segment_{segment.segment_index}.jpg",
-            str(crop_path),
-            str(Path(*crop_path.parts[-5:])),
-            str(Path(*crop_path.parts[-4:])),
-            str(Path(*crop_path.parts[-3:])),
-        ]
-        for crop_key in dict.fromkeys(crop_keys):
+        from ..config import get_storage_settings
+
+        upload_root = Path(get_storage_settings().upload_root)
+        if not upload_root.is_absolute():
+            upload_root = (Path.cwd() / upload_root).resolve()
+        for crop_key in storage_candidates(
+            crop_path,
+            upload_root=upload_root,
+            strain=strain_name,
+            media=media_name,
+            image_id=image_obj.id,
+        ):
             crop_bytes = storage.get_bytes(crop_key)
             if crop_bytes is not None:
                 break

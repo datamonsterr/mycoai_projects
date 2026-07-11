@@ -66,17 +66,17 @@ def test_query_sync_image_not_found(
 def test_build_strain_map_prefers_canonical_csv(tmp_path: Path) -> None:
     import asyncio
 
-    csv_path = tmp_path / 'Dataset' / 'strain_to_specy.csv'
+    csv_path = tmp_path / "Dataset" / "strain_to_specy.csv"
     csv_path.parent.mkdir(parents=True)
-    csv_path.write_text('Strain,Species\nDTO 162-C6,Penicillium freii\n')
+    csv_path.write_text("Strain,Species\nDTO 162-C6,Penicillium freii\n")
     db = SimpleNamespace(execute=AsyncMock())
 
-    with patch('backend.api.retrieval.Path.cwd', return_value=tmp_path):
+    with patch("backend.api.retrieval.Path.cwd", return_value=tmp_path):
         from backend.api.retrieval import _build_strain_map
 
         strain_map = asyncio.run(_build_strain_map(db))
 
-    assert strain_map == {'DTO 162-C6': 'Penicillium freii'}
+    assert strain_map == {"DTO 162-C6": "Penicillium freii"}
     db.execute.assert_not_called()
 
 
@@ -238,8 +238,8 @@ def test_get_retrieval_evidence_rejects_path_traversal(client: TestClient) -> No
     assert response.status_code == 404
 
 
-
-def test_start_query_stores_queried_image_neighbor_fallback_when_only_segment_path() -> None:
+def test_start_query_stores_queried_image_neighbor_fallback_when_only_segment_path(
+) -> None:
     import asyncio
 
     payload = SimpleNamespace(
@@ -270,7 +270,9 @@ def test_start_query_stores_queried_image_neighbor_fallback_when_only_segment_pa
         media=SimpleNamespace(name="CYA"),
         strain=SimpleNamespace(name="DTO 148-F1"),
         segments=[
-            SimpleNamespace(qdrant_point_id=uuid.uuid4(), is_archived=False, segment_index=0)
+            SimpleNamespace(
+                qdrant_point_id=uuid.uuid4(), is_archived=False, segment_index=0
+            )
         ],
     )
 
@@ -313,27 +315,36 @@ def test_start_query_stores_queried_image_neighbor_fallback_when_only_segment_pa
         ranking=[SimpleNamespace(species="Penicillium chrysogenum", score=0.91)]
     )
 
-    with patch("backend.api.retrieval.query_points_by_id", return_value=query_result), patch(
-        "backend.api.retrieval.aggregate_predictions",
-        return_value=aggregation_result,
-    ), patch(
-        "backend.api.retrieval._build_strain_map",
-        new=AsyncMock(return_value={"DTO 148-F2": "Penicillium chrysogenum"}),
-    ), patch(
-        "backend.api.retrieval.get_qdrant_client",
-        return_value=object(),
-    ), patch(
-        "backend.api.retrieval.get_collection_name",
-        return_value="segments",
-    ), patch(
-        "backend.api.retrieval._query_by_crop_image",
-        new=AsyncMock(return_value=[]),
-    ), patch(
-        "backend.api.retrieval._resolve_species_sync",
-        return_value="Penicillium chrysogenum",
-    ), patch(
-        "backend.api.retrieval._resolve_species_fast",
-        return_value="Penicillium chrysogenum",
+    with (
+        patch("backend.api.retrieval.query_points_by_id", return_value=query_result),
+        patch(
+            "backend.api.retrieval.aggregate_predictions",
+            return_value=aggregation_result,
+        ),
+        patch(
+            "backend.api.retrieval._build_strain_map",
+            new=AsyncMock(return_value={"DTO 148-F2": "Penicillium chrysogenum"}),
+        ),
+        patch(
+            "backend.api.retrieval.get_qdrant_client",
+            return_value=object(),
+        ),
+        patch(
+            "backend.api.retrieval.get_collection_name",
+            return_value="segments",
+        ),
+        patch(
+            "backend.api.retrieval._query_by_crop_image",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.api.retrieval._resolve_species_sync",
+            return_value="Penicillium chrysogenum",
+        ),
+        patch(
+            "backend.api.retrieval._resolve_species_fast",
+            return_value="Penicillium chrysogenum",
+        ),
     ):
         from backend.api.retrieval import start_query
 

@@ -27,6 +27,7 @@ from ..schemas import (
     RetrievalResultsResponse,
 )
 from ..services.stores import utcnow
+from ..services.storage import storage_candidates
 from ..services.threshold import is_known_confidence
 
 router = APIRouter()
@@ -41,17 +42,17 @@ def _parse_uuid(value: str, resource: str = "Resource") -> uuid.UUID:
 
 def _load_strain_map_from_csv() -> dict[str, str]:
     candidates = [
-        Path.cwd() / 'Dataset/strain_to_specy.csv',
-        Path('/app/Dataset/strain_to_specy.csv'),
+        Path.cwd() / "Dataset/strain_to_specy.csv",
+        Path("/app/Dataset/strain_to_specy.csv"),
     ]
     for path in candidates:
         if not path.exists():
             continue
-        with path.open(newline='') as handle:
+        with path.open(newline="") as handle:
             return {
-                row['Strain']: row['Species']
+                row["Strain"]: row["Species"]
                 for row in csv.DictReader(handle)
-                if row.get('Strain') and row.get('Species')
+                if row.get("Strain") and row.get("Species")
             }
     return {}
 
@@ -75,7 +76,7 @@ _SEGMENT_PATH_PREFIX = "segment_path:"
 
 def _resolve_species_fast(neighbor: object, strain_map: dict[str, str]) -> str:
     specy = getattr(neighbor, "specy", None)
-    if specy and specy != "unknown":
+    if specy and specy not in {"unknown", "unknown-species"}:
         return specy
     strain = getattr(neighbor, "strain", None)
     if not strain:
@@ -83,7 +84,10 @@ def _resolve_species_fast(neighbor: object, strain_map: dict[str, str]) -> str:
     return strain_map.get(strain, strain)
 
 
-def _pack_neighbor_identity(image_id: str | None, segment_path: str | None) -> str | None:
+def _pack_neighbor_identity(
+    image_id: str | None,
+    segment_path: str | None,
+) -> str | None:
     if image_id:
         return image_id
     if segment_path:
@@ -97,10 +101,16 @@ def _unpack_neighbor_segment_path(identity: str | None) -> str | None:
     return None
 
 
-def _build_neighbor_thumbnail_url(image_id: str | None, segment_path: str | None = None) -> str:
+def _build_neighbor_thumbnail_url(
+    image_id: str | None,
+    segment_path: str | None = None,
+) -> str:
     packed_segment_path = _unpack_neighbor_segment_path(image_id)
     if packed_segment_path:
-        return f"/api/v1/retrieval/evidence?segment_path={quote(packed_segment_path, safe='')}"
+        return (
+            f"/api/v1/retrieval/evidence?segment_path="
+            f"{quote(packed_segment_path, safe='')}"
+        )
     if image_id:
         return f"/api/v1/images/{image_id}/source"
     if segment_path:
@@ -131,22 +141,24 @@ async def get_retrieval_evidence(segment_path: str) -> Response:
         from ..config import get_storage_settings
         from ..services.storage import create_storage
 
-        storage = create_storage(get_storage_settings())
-        candidate_keys: list[str] = []
-        marker = "Dataset/uploads/"
-        if marker in raw_segment_path:
-            candidate_keys.append(raw_segment_path.split(marker, 1)[1])
-        candidate_keys.append(raw_segment_path)
-        candidate_keys.append(str(Path(*candidate.parts[-5:])))
-        candidate_keys.append(str(Path(*candidate.parts[-4:])))
-        candidate_keys.append(str(Path(*candidate.parts[-3:])))
+        settings = get_storage_settings()
+        storage = create_storage(settings)
+        upload_root = Path(settings.upload_root)
+        if not upload_root.is_absolute():
+            upload_root = (Path.cwd() / upload_root).resolve()
 
-        for key in candidate_keys:
+        for key in storage_candidates(
+            raw_segment_path,
+            upload_root=upload_root,
+        ):
             data = storage.get_bytes(key)
             if data:
                 return Response(content=data, media_type="image/jpeg")
     except Exception as exc:
-        raise HTTPException(status_code=404, detail="retrieval evidence not found") from exc
+        raise HTTPException(
+            status_code=404,
+            detail="retrieval evidence not found",
+        ) from exc
 
     raise HTTPException(status_code=404, detail="retrieval evidence not found")
 
@@ -231,8 +243,7 @@ async def start_query(
             filter_spec = _get_filter_spec(image, data.media_strategy)
             image_neighbors: list[NeighborResult] = []
             image_segment_urls = [
-                _segment_crop_url(image.id, seg.segment_index)
-                for seg in segments[:3]
+                _segment_crop_url(image.id, seg.segment_index) for seg in segments[:3]
             ]
 
             for seg in segments:

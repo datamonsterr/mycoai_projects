@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -35,6 +36,12 @@ def anyio_backend() -> str:
 @pytest_asyncio.fixture(scope="function")
 async def pg_engine() -> AsyncGenerator[AsyncEngine]:
     engine = create_async_engine(POSTGRES_URL, echo=False)
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        await engine.dispose()
+        pytest.skip("Postgres not available")
     yield engine
     await engine.dispose()
 

@@ -142,7 +142,10 @@ def test_batch_folder_upload_single_image(
                 ("files", ("mycoai_new_species/StrainA/img_01.png", f, "image/png")),
             ],
             data={
-                "metadata": '{"batch_name": "test_batch", "strains": {"StrainA": {"species": "Penicillium", "media": "MEA"}}}',
+                "metadata": (
+                    '{"batch_name": "test_batch", "strains": '
+                    '{"StrainA": {"species": "Penicillium", "media": "MEA"}}}'
+                ),
                 "default_media": "MEA",
             },
             headers=headers,
@@ -295,7 +298,11 @@ def fixture_s3_client(test_session_factory):
 def _login_s3_test_user(client: TestClient) -> dict[str, str]:
     client.post(
         "/api/v1/auth/register",
-        json={"email": "s3test@mycoai.dev", "password": "s3testpass", "name": "S3Tester"},
+        json={
+            "email": "s3test@mycoai.dev",
+            "password": "s3testpass",
+            "name": "S3Tester",
+        },
     )
     login_resp = client.post(
         "/api/v1/auth/login",
@@ -304,7 +311,6 @@ def _login_s3_test_user(client: TestClient) -> dict[str, str]:
     assert login_resp.status_code == 200
     token = login_resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
-
 
 
 def _upload_s3_test_image(client: TestClient, auth_headers: dict[str, str]) -> str:
@@ -324,7 +330,6 @@ def _upload_s3_test_image(client: TestClient, auth_headers: dict[str, str]) -> s
     tmp.unlink(missing_ok=True)
     assert resp.status_code == 201
     return resp.json()["image_id"]
-
 
 
 def test_list_images_presigned_url_with_s3_storage(
@@ -348,7 +353,6 @@ def test_list_images_presigned_url_with_s3_storage(
         f"Got source_url: {item['source_url']}"
     )
     assert "/source.jpg" in item["source_url"]
-
 
 
 def test_auto_segment_after_s3_upload_reuses_uploaded_source(
@@ -387,9 +391,7 @@ def fixture_user_headers(client: TestClient) -> dict[str, str]:
 
 
 @pytest.fixture(name="db_image_id")
-def fixture_db_image_id(
-    session, sample_source_png: bytes
-) -> str:
+def fixture_db_image_id(session, sample_source_png: bytes) -> str:
     async def seed() -> str:
         tmp = Path("/tmp/opencode/test_db_image_source.png")
         tmp.parent.mkdir(parents=True, exist_ok=True)
@@ -461,27 +463,40 @@ def test_patch_segments_persists_db_and_clears_index_state(
         return len(point_ids)
 
     monkeypatch.setattr("backend.routes.delete_points", fake_delete_points)
-    monkeypatch.setattr("backend.routes.get_qdrant_client", lambda: object(), raising=False)
+    monkeypatch.setattr(
+        "backend.routes.get_qdrant_client", lambda: object(), raising=False
+    )
 
     resp = client.patch(
         f"/api/v1/images/{db_image_id}/segments",
-        json={"segments": [{"segment_index": 0, "bbox": {"x": 0, "y": 0, "w": 1, "h": 1}}]},
+        json={
+            "segments": [{"segment_index": 0, "bbox": {"x": 0, "y": 0, "w": 1, "h": 1}}]
+        },
         headers=headers,
     )
 
     assert resp.status_code == 200, resp.text
-    async def fetch_state() -> tuple[Image | None, Segment | None, QdrantIndexState | None]:
+
+    async def fetch_state() -> tuple[
+        Image | None, Segment | None, QdrantIndexState | None
+    ]:
         await session.rollback()
-        refreshed = await session.scalar(select(Image).where(Image.id == UUID(db_image_id)))
+        refreshed = await session.scalar(
+            select(Image).where(Image.id == UUID(db_image_id))
+        )
         seg = None
         state = None
         if refreshed is not None:
             await session.refresh(refreshed)
-            seg = await session.scalar(select(Segment).where(Segment.image_id == refreshed.id))
+            seg = await session.scalar(
+                select(Segment).where(Segment.image_id == refreshed.id)
+            )
             if seg is not None:
                 await session.refresh(seg)
                 state = await session.scalar(
-                    select(QdrantIndexState).where(QdrantIndexState.segment_id == seg.id)
+                    select(QdrantIndexState).where(
+                        QdrantIndexState.segment_id == seg.id
+                    )
                 )
         return refreshed, seg, state
 
@@ -502,11 +517,15 @@ def test_patch_segments_allowed_for_regular_authenticated_user(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("backend.routes.delete_points", lambda *args, **kwargs: 0)
-    monkeypatch.setattr("backend.routes.get_qdrant_client", lambda: object(), raising=False)
+    monkeypatch.setattr(
+        "backend.routes.get_qdrant_client", lambda: object(), raising=False
+    )
 
     resp = client.patch(
         f"/api/v1/images/{db_image_id}/segments",
-        json={"segments": [{"segment_index": 0, "bbox": {"x": 0, "y": 0, "w": 1, "h": 1}}]},
+        json={
+            "segments": [{"segment_index": 0, "bbox": {"x": 0, "y": 0, "w": 1, "h": 1}}]
+        },
         headers=user_headers,
     )
 
@@ -526,7 +545,9 @@ def test_reextract_one_image_endpoint_reindexes_segments(
         segment.qdrant_point_id = uuid4()
         return {"status": "indexed"}
 
-    monkeypatch.setattr("backend.routes.index_segment_to_qdrant", fake_index_segment_to_qdrant)
+    monkeypatch.setattr(
+        "backend.routes.index_segment_to_qdrant", fake_index_segment_to_qdrant
+    )
 
     resp = client.post(
         f"/api/v1/images/{db_image_id}/reindex",
@@ -599,7 +620,9 @@ def test_reextract_batch_strain_endpoint_reindexes_eligible_images(
         segment.qdrant_point_id = uuid4()
         return {"status": "indexed"}
 
-    monkeypatch.setattr("backend.routes.index_segment_to_qdrant", fake_index_segment_to_qdrant)
+    monkeypatch.setattr(
+        "backend.routes.index_segment_to_qdrant", fake_index_segment_to_qdrant
+    )
 
     resp = client.post(
         f"/api/v1/images/strains/{strain_id}/reindex",
@@ -619,7 +642,9 @@ class _RecordingStorage:
         self.objects = objects
         self.calls: list[str] = []
 
-    def upload_bytes(self, key: str, data: bytes, content_type: str = "image/jpeg") -> str:
+    def upload_bytes(
+        self, key: str, data: bytes, content_type: str = "image/jpeg"
+    ) -> str:
         self.objects[key] = data
         return f"s3://bucket/{key}"
 
@@ -684,8 +709,13 @@ def test_index_segment_to_qdrant_uses_configured_collection_name(
     collection_name = "qdrant-research_fold0"
 
     class _FakeClient:
-        def get_collection(self, requested_collection_name: str | None = None, **kwargs):
-            assert requested_collection_name == collection_name or kwargs.get("collection_name") == collection_name
+        def get_collection(
+            self, requested_collection_name: str | None = None, **kwargs
+        ):
+            assert (
+                requested_collection_name == collection_name
+                or kwargs.get("collection_name") == collection_name
+            )
 
             class _Vectors:
                 def keys(self):
@@ -706,7 +736,9 @@ def test_index_segment_to_qdrant_uses_configured_collection_name(
         def __init__(self, *args, **kwargs) -> None:
             pass
 
-        def get_collection(self, requested_collection_name: str | None = None, **kwargs):
+        def get_collection(
+            self, requested_collection_name: str | None = None, **kwargs
+        ):
             return _FakeClient().get_collection(requested_collection_name, **kwargs)
 
         def upsert(self, *, collection_name: str, points: list[object]) -> None:
@@ -714,15 +746,24 @@ def test_index_segment_to_qdrant_uses_configured_collection_name(
             captured["points"] = points
 
     captured: dict[str, object] = {}
-    monkeypatch.setattr("backend.services.feature_extraction.extract_features_from_bytes", lambda _: {"colorhistogram": [0.1, 0.2]})
-    monkeypatch.setattr("backend.services.qdrant_client.QdrantClient", _FakeQdrantClient)
+    monkeypatch.setattr(
+        "backend.services.feature_extraction.extract_features_from_bytes",
+        lambda _: {"colorhistogram": [0.1, 0.2]},
+    )
+    monkeypatch.setattr(
+        "backend.services.qdrant_client.QdrantClient", _FakeQdrantClient
+    )
     monkeypatch.setattr(
         "backend.services.qdrant_client.get_qdrant_settings",
-        lambda: get_qdrant_settings().model_copy(update={"collection_name": collection_name}),
+        lambda: get_qdrant_settings().model_copy(
+            update={"collection_name": collection_name}
+        ),
     )
     monkeypatch.setattr(
         "backend.config.get_qdrant_settings",
-        lambda: get_qdrant_settings().model_copy(update={"collection_name": collection_name}),
+        lambda: get_qdrant_settings().model_copy(
+            update={"collection_name": collection_name}
+        ),
     )
 
     result = asyncio.run(
@@ -738,7 +779,9 @@ def test_index_segment_to_qdrant_uses_configured_collection_name(
 
     assert result["status"] == "indexed"
     state = asyncio.run(
-        session.scalar(select(QdrantIndexState).where(QdrantIndexState.segment_id == segment.id))
+        session.scalar(
+            select(QdrantIndexState).where(QdrantIndexState.segment_id == segment.id)
+        )
     )
     assert state is not None
     assert state.collection_name == collection_name
@@ -785,7 +828,9 @@ def test_index_segment_to_qdrant_reads_s3_crop_via_relative_segment_key(
         return segment, image
 
     segment, image = asyncio.run(seed())
-    storage = _RecordingStorage({"S3_STRAIN/S3_MEDIA/image-123/segments/segment_0.jpg": sample_source_png})
+    storage = _RecordingStorage(
+        {"S3_STRAIN/S3_MEDIA/image-123/segments/segment_0.jpg": sample_source_png}
+    )
 
     class _FakeClient:
         def get_collection(self, collection_name: str | None = None, **kwargs):
@@ -814,8 +859,13 @@ def test_index_segment_to_qdrant_reads_s3_crop_via_relative_segment_key(
         def upsert(self, *, collection_name: str, points: list[object]) -> None:
             pass
 
-    monkeypatch.setattr("backend.services.feature_extraction.extract_features_from_bytes", lambda data: {"colorhistogram": [float(len(data))]})
-    monkeypatch.setattr("backend.services.qdrant_client.QdrantClient", _FakeQdrantClient)
+    monkeypatch.setattr(
+        "backend.services.feature_extraction.extract_features_from_bytes",
+        lambda data: {"colorhistogram": [float(len(data))]},
+    )
+    monkeypatch.setattr(
+        "backend.services.qdrant_client.QdrantClient", _FakeQdrantClient
+    )
 
     result = asyncio.run(
         index_segment_to_qdrant(

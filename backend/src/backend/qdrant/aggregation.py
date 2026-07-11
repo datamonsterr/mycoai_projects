@@ -27,7 +27,7 @@ def aggregate_predictions(
             specy = neighbor.get("specy")
             score = neighbor.get("score", 0.0)
             extractor = neighbor.get("extractor", "")
-            if not specy or specy == "unknown":
+            if not specy or specy in {"unknown", "unknown-species"}:
                 strain = neighbor.get("strain")
                 if strain:
                     specy = strain_to_specy.get(strain, "unknown")
@@ -50,7 +50,7 @@ def aggregate_predictions(
         for neighbor in result["neighbors"]:
             specy = neighbor.get("specy")
             score = neighbor.get("score", 0.0)
-            if not specy or specy == "unknown":
+            if not specy or specy in {"unknown", "unknown-species"}:
                 strain = neighbor.get("strain")
                 if strain:
                     specy = strain_to_specy.get(strain, "unknown")

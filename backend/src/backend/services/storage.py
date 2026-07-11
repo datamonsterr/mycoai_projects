@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from pathlib import Path
 from typing import Protocol
+from uuid import UUID
 
 from ..config import StorageSettings
 
@@ -115,6 +116,45 @@ class S3Storage:
             return True
         except Exception:
             return False
+
+
+def storage_artifact_prefix(*, strain: str, media: str, image_id: str | UUID) -> Path:
+    return Path(strain) / media / str(image_id)
+
+
+def storage_candidates(
+    path: str | Path,
+    *,
+    upload_root: Path,
+    strain: str | None = None,
+    media: str | None = None,
+    image_id: str | UUID | None = None,
+) -> list[str]:
+    raw = Path(path)
+    keys: list[str] = []
+
+    def add(candidate: Path | str) -> None:
+        key = str(candidate).strip()
+        if key and key not in keys:
+            keys.append(key)
+
+    add(raw)
+    if raw.is_absolute():
+        try:
+            add(raw.relative_to(upload_root))
+        except ValueError:
+            pass
+    parts = raw.parts
+    for width in (5, 4, 3):
+        if len(parts) >= width:
+            add(Path(*parts[-width:]))
+    if strain and media and image_id:
+        prefix = storage_artifact_prefix(strain=strain, media=media, image_id=image_id)
+        if raw.name:
+            add(prefix / raw.name)
+            if raw.parent.name == "segments":
+                add(prefix / "segments" / raw.name)
+    return keys
 
 
 def create_storage(settings: StorageSettings) -> ObjectStorage:

@@ -18,7 +18,7 @@ from ..schemas.index import (
     RetrainingCounter,
     RetrainingStatus,
 )
-from ..services.storage import create_storage
+from ..services.storage import create_storage, storage_candidates
 
 router = APIRouter()
 
@@ -67,21 +67,37 @@ async def trigger_reindex(
 
     qdrant_svc = QdrantClientService()
     collection_name = get_qdrant_settings().collection_name
-    storage = create_storage(get_storage_settings())
+    settings = get_storage_settings()
+    storage = create_storage(settings)
+    upload_root = Path(settings.upload_root)
+    if not upload_root.is_absolute():
+        upload_root = (Path.cwd() / upload_root).resolve()
 
     for seg in segments:
         try:
             crop_path = Path(seg.crop_path)
-            crop_key = str(crop_path)
             crop_data = None
 
             if crop_path.exists():
                 crop_data = crop_path.read_bytes()
             else:
-                crop_data = storage.get_bytes(crop_key)
-                if crop_data is None:
-                    relative_key = str(Path(*crop_path.parts[-3:]))
-                    crop_data = storage.get_bytes(relative_key)
+                crop_data = None
+                for crop_key in storage_candidates(
+                    crop_path,
+                    upload_root=upload_root,
+                    strain=(
+                        seg.image.strain.name
+                        if seg.image and seg.image.strain
+                        else None
+                    ),
+                    media=(
+                        seg.image.media.name if seg.image and seg.image.media else None
+                    ),
+                    image_id=seg.image.id if seg.image else None,
+                ):
+                    crop_data = storage.get_bytes(crop_key)
+                    if crop_data is not None:
+                        break
 
             if crop_data is None:
                 errors.append(

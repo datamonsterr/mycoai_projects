@@ -35,7 +35,18 @@ class _FakeClient:
             point_b = SimpleNamespace(
                 id=2,
                 vector={"v": [0.2]},
-                payload={"segment_id": "seg-missing", "image_id": "wrong"},
+                payload={
+                    "segment_id": "item_0323_seg0",
+                    "image_id": "wrong",
+                    "segment_index": 0,
+                    "segment_path": (
+                        "Dataset/full_prepared/spec/strain/crea/ob/"
+                        "segments_kmeans/segment_0.jpg"
+                    ),
+                    "strain": "Strain",
+                    "environment": "CREA",
+                    "angle": "ob",
+                },
             )
             return [point_a, point_b], None
         return [], None
@@ -76,16 +87,34 @@ def test_copy_collection_vectors(monkeypatch) -> None:
                 "segment_index": "0",
             }
         },
+        {
+            ("strain", "crea", "ob", "0", "segment_0.jpg"): {
+                "segment_id": "seg-legacy",
+                "image_id": "img-2",
+                "media": "CREA",
+                "environment": "CREA",
+                "species": "Spec",
+                "specy": "Spec",
+                "strain": "Strain",
+                "parent_id": "img-2",
+                "parent_item_id": "img-2",
+                "parent_image_id": "img-2",
+                "angle": "ob",
+                "segment_index": "0",
+            }
+        },
     )
 
     assert stats == {
-        "vectors_copied": 1,
-        "skipped_missing_sql": 1,
-        "target_points": 1,
+        "vectors_copied": 2,
+        "skipped_missing_sql": 0,
+        "target_points": 2,
         "sql_segments": 1,
     }
     assert len(clients) == 2
     upsert_call = next(call for call in clients[1].calls if call[0] == "upsert")
-    point = upsert_call[1]["points"][0]
-    assert point.payload["image_id"] == "img-1"
-    assert point.payload["media"] == "CREA"
+    points = upsert_call[1]["points"]
+    assert points[0].payload["image_id"] == "img-1"
+    assert points[0].payload["media"] == "CREA"
+    assert points[1].payload["segment_id"] == "seg-legacy"
+    assert points[1].payload["image_id"] == "img-2"

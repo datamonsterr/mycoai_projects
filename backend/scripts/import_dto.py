@@ -330,7 +330,10 @@ class ApiImporter:
         self.stats.start_time = time.time()
 
         # Step 1: Register species
-        logger.info("=== Step 1: Registering %d species ===", len(self.manifest.species))
+        logger.info(
+            "=== Step 1: Registering %d species ===",
+            len(self.manifest.species),
+        )
         for name in sorted(self.manifest.species):
             try:
                 self.client.ensure_species(name)
@@ -400,7 +403,10 @@ class ApiImporter:
 # ---------------------------------------------------------------------------
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Import DTO original dataset into MycoAI backend (PostgreSQL + Qdrant)"
+        description=(
+            "Import DTO original dataset into MycoAI backend "
+            "(PostgreSQL + Qdrant)"
+        )
     )
     parser.add_argument(
         "--source",

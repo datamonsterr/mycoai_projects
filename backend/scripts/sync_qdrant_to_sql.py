@@ -73,7 +73,10 @@ def scan_original_prepared_media(root: Path) -> set[str]:
     return media
 
 
-async def _load_sql_segment_metadata() -> dict[str, dict[str, str]]:
+async def _load_sql_segment_metadata() -> tuple[
+    dict[str, dict[str, str]],
+    dict[tuple[str, str, str, str, str], dict[str, str]],
+]:
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -93,7 +96,8 @@ async def _load_sql_segment_metadata() -> dict[str, dict[str, str]]:
         )
         segments = result.scalars().all()
 
-    metadata: dict[str, dict[str, str]] = {}
+    by_segment_id: dict[str, dict[str, str]] = {}
+    by_legacy_key: dict[tuple[str, str, str, str, str], dict[str, str]] = {}
     for segment in segments:
         image = segment.image
         if (
@@ -103,7 +107,7 @@ async def _load_sql_segment_metadata() -> dict[str, dict[str, str]]:
             or image.strain is None
         ):
             continue
-        metadata[str(segment.id)] = {
+        entry = {
             "segment_id": str(segment.id),
             "image_id": str(image.id),
             "parent_id": str(image.id),
@@ -117,13 +121,49 @@ async def _load_sql_segment_metadata() -> dict[str, dict[str, str]]:
             "angle": image.angle or "",
             "segment_index": str(segment.segment_index),
         }
-    return metadata
+        by_segment_id[str(segment.id)] = entry
+        by_legacy_key[
+            (
+                image.strain.name.casefold(),
+                image.media.name.casefold(),
+                (image.angle or "").casefold(),
+                str(segment.segment_index),
+                Path(segment.crop_path).name,
+            )
+        ] = entry
+    return by_segment_id, by_legacy_key
+
+
+def _lookup_sql_meta(
+    payload: dict[str, Any],
+    sql_segment_metadata: dict[str, dict[str, str]],
+    sql_legacy_metadata: dict[tuple[str, str, str, str, str], dict[str, str]],
+) -> dict[str, str] | None:
+    segment_id = str(payload.get("segment_id") or "")
+    if segment_id:
+        sql_meta = sql_segment_metadata.get(segment_id)
+        if sql_meta is not None:
+            return sql_meta
+    segment_path = str(payload.get("segment_path") or "")
+    if not segment_path:
+        return None
+    segment_index = payload.get("segment_index")
+    return sql_legacy_metadata.get(
+        (
+            str(payload.get("strain") or "").casefold(),
+            str(payload.get("media") or payload.get("environment") or "").casefold(),
+            str(payload.get("angle") or "").casefold(),
+            "" if segment_index is None else str(segment_index),
+            Path(segment_path).name,
+        )
+    )
 
 
 def _copy_collection_vectors(
     source_collection: str,
     target_collection: str,
     sql_segment_metadata: dict[str, dict[str, str]],
+    sql_legacy_metadata: dict[tuple[str, str, str, str, str], dict[str, str]],
     *,
     source_host: str = "localhost",
     source_port: int = 6333,
@@ -156,8 +196,11 @@ def _copy_collection_vectors(
         upserts: list[PointStruct] = []
         for point in points:
             payload = point.payload or {}
-            segment_id = str(payload.get("segment_id") or "")
-            sql_meta = sql_segment_metadata.get(segment_id)
+            sql_meta = _lookup_sql_meta(
+                payload,
+                sql_segment_metadata,
+                sql_legacy_metadata,
+            )
             if sql_meta is None:
                 skipped_missing_sql += 1
                 continue
@@ -406,11 +449,14 @@ def main() -> None:
     print("\n=== Syncing to SQL ===")
     try:
         sql_stats = asyncio.run(sync_to_sql(manifest))
-        sql_segment_metadata = asyncio.run(_load_sql_segment_metadata())
+        sql_segment_metadata, sql_legacy_metadata = asyncio.run(
+            _load_sql_segment_metadata()
+        )
         vector_stats = _copy_collection_vectors(
             args.collection,
             args.target_collection,
             sql_segment_metadata,
+            sql_legacy_metadata,
         )
         if vector_stats["vectors_copied"] != vector_stats["target_points"]:
             raise RuntimeError("Qdrant product point count mismatch after sync")

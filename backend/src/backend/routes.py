@@ -46,7 +46,7 @@ from .schemas import ImageListItem, ImageListResponse
 from .segmentation import ALLOWED_METHODS, SegmentationPipeline
 from .segmentation import ImageStore as FileStore
 from .services.feature_extraction import index_segment_to_qdrant
-from .services.storage import ObjectStorage
+from .services.storage import ObjectStorage, storage_artifact_prefix, storage_candidates
 
 logger = logging.getLogger(__name__)
 SEGMENT_CONCURRENCY_LIMIT = 2
@@ -665,6 +665,20 @@ def create_image_router(
         batch_id = uuid.uuid4().hex
         image_statuses: list[BatchImageStatus] = []
         jobs: list[tuple[Path, Path, str, str, str]] = []
+
+        strain_species_map: dict[str, str] = {}
+        for csv_path in (
+            Path("Dataset/strain_to_specy.csv"),
+            Path("/app/Dataset/strain_to_specy.csv"),
+        ):
+            if csv_path.exists():
+                with csv_path.open() as handle:
+                    for row in csv.DictReader(handle):
+                        strain_key = (row.get("Strain") or "").strip().upper()
+                        species_val = (row.get("Species") or "").strip()
+                        if strain_key and species_val:
+                            strain_species_map[strain_key] = species_val
+                break
         for img_path in image_files:
             rel_path = img_path.relative_to(work_dir)
             strain = _extract_strain_from_path(rel_path)
@@ -675,6 +689,8 @@ def create_image_router(
             species = meta.get("species", default_species)
             if species == "unknown":
                 species = default_species
+            if species == default_species:
+                species = strain_species_map.get(strain.upper(), default_species)
             jobs.append((img_path, rel_path, strain, media_name, species))
             image_statuses.append(
                 BatchImageStatus(
@@ -1326,11 +1342,11 @@ async def _clear_segment_index_state(db: AsyncSession, segments: list[Segment]) 
 
 
 def _sync_record_to_db(img: Image, record: ImageRecord) -> None:
-    from .config import get_storage_settings
-
-    root = Path(get_storage_settings().upload_root)
-    if not root.is_absolute():
-        root = (Path.cwd() / root).resolve()
+    artifact_dir = storage_artifact_prefix(
+        strain=img.strain.name if img.strain else "unknown",
+        media=img.media.name if img.media else "unknown",
+        image_id=img.id,
+    )
 
     by_index = {seg.segment_index: seg for seg in img.segments}
     for seg_model in record.segments:
@@ -1342,12 +1358,7 @@ def _sync_record_to_db(img: Image, record: ImageRecord) -> None:
         seg.bbox_w = seg_model.bbox.w
         seg.bbox_h = seg_model.bbox.h
         seg.crop_path = str(
-            (
-                root
-                / record.artifact_dir
-                / "segments"
-                / f"segment_{seg.segment_index}.jpg"
-            ).resolve()
+            artifact_dir / "segments" / f"segment_{seg.segment_index}.jpg"
         )
 
 
@@ -1382,30 +1393,17 @@ def _read_source_from_storage(
     """Read source image bytes from object storage."""
     from .config import get_storage_settings
 
-    candidates: list[str] = []
-
-    def add_candidate(value: str | Path) -> None:
-        key = str(value).strip()
-        if key and key not in candidates:
-            candidates.append(key)
-
-    add_candidate(source_path)
-
     upload_root = Path(get_storage_settings().upload_root)
     if not upload_root.is_absolute():
         upload_root = (Path.cwd() / upload_root).resolve()
-    if source_path.is_absolute():
-        try:
-            add_candidate(source_path.relative_to(upload_root))
-        except ValueError:
-            pass
 
-    artifact_dir = source_path.parent
-    add_candidate(artifact_dir / "source.jpg")
-    add_candidate(Path(img.strain.name) / img.media.name / "source.jpg")
-    add_candidate(Path(img.strain.name) / img.media.name / str(img.id) / "source.jpg")
-
-    for key in candidates:
+    for key in storage_candidates(
+        source_path,
+        upload_root=upload_root,
+        strain=img.strain.name if img.strain else None,
+        media=img.media.name if img.media else None,
+        image_id=img.id,
+    ):
         data = storage.get_bytes(key)
         if data is not None:
             return data
@@ -1457,17 +1455,28 @@ async def _create_image(
 ) -> Image:
     from .config import get_storage_settings
 
-    root = upload_root or Path(get_storage_settings().upload_root)
+    settings = get_storage_settings()
+    root = upload_root or Path(settings.upload_root)
     if not root.is_absolute():
         root = (Path.cwd() / root).resolve()
 
     source_path = record.source_path
-    if not source_path.is_absolute():
-        source_path = (root / source_path).resolve()
-    prepared_path = (root / record.artifact_dir / "prepared.jpg").resolve()
-    pipeline_path = (
-        root / record.artifact_dir / f"pipeline_{record.segmentation_method}.jpg"
-    ).resolve()
+    if settings.backend == "s3":
+        artifact_dir = storage_artifact_prefix(
+            strain=strain_obj.name,
+            media=media_obj.name,
+            image_id=record.image_id,
+        )
+        source_path = artifact_dir / "source.jpg"
+        prepared_path = artifact_dir / "prepared.jpg"
+        pipeline_path = artifact_dir / f"pipeline_{record.segmentation_method}.jpg"
+    else:
+        if not source_path.is_absolute():
+            source_path = (root / source_path).resolve()
+        prepared_path = (root / record.artifact_dir / "prepared.jpg").resolve()
+        pipeline_path = (
+            root / record.artifact_dir / f"pipeline_{record.segmentation_method}.jpg"
+        ).resolve()
 
     img = Image(
         strain_id=strain_obj.id,
@@ -1483,8 +1492,15 @@ async def _create_image(
 
     for seg in record.segments:
         crop_path = (
-            root / record.artifact_dir / "segments" / f"segment_{seg.segment_index}.jpg"
-        ).resolve()
+            artifact_dir / "segments" / f"segment_{seg.segment_index}.jpg"
+            if settings.backend == "s3"
+            else (
+                root
+                / record.artifact_dir
+                / "segments"
+                / f"segment_{seg.segment_index}.jpg"
+            ).resolve()
+        )
         segment = Segment(
             image_id=img.id,
             segment_index=seg.segment_index,
@@ -1590,6 +1606,23 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
     species = "unknown"
     strain = "unknown"
 
+    structured = re.match(
+        r"^(dto\s+\d+[\-a-z0-9]+|cbs\s+[\d_/]+|ibt\s+\d+|nrrl\s+\d+|t\d+)[_\s-]+(cya30|cyas|cya|mea|yes|dg18|crea|oa|m40y)[_\s-]+(ob|rev)(?:[_\s-].*)?$",
+        lower,
+        re.IGNORECASE,
+    )
+    if structured:
+        strain = structured.group(1).upper()
+        raw_media = structured.group(2).upper()
+        media = "CYA" if raw_media in ("CYA30", "CYAS") else raw_media
+        angle = structured.group(3).lower()
+        return {
+            "species": "unknown",
+            "strain": strain,
+            "media": media,
+            "angle": angle,
+        }
+
     rest = lower
 
     # Strategy 1: "MEDIA[or]" suffix pattern (CYAo, MEAr, YESob, etc.)
@@ -1605,11 +1638,12 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
     else:
         # Strategy 2: "MEDIA ANGLE" separated by space/underscore/hyphen
         m_angle = re.search(
-            r"(?:^|[\s_-])(cya|mea|yes|dg18|crea|oa|m40y)[\s_-]+(ob|rev)\b",
+            r"(?:^|[\s_-])(cya30|cyas|cya|mea|yes|dg18|crea|oa|m40y)[\s_-]+(ob|rev)(?:$|[\s_-])",
             lower,
         )
         if m_angle:
-            media = m_angle.group(1).upper()
+            raw_media = m_angle.group(1).upper()
+            media = "CYA" if raw_media in ("CYA30", "CYAS") else raw_media
             angle = m_angle.group(2)
             rest = lower[: m_angle.start()].strip()
 

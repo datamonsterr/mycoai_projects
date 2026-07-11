@@ -15,13 +15,17 @@ def test_get_yolo_model_prefers_research_finetuned_weights(tmp_path: Path) -> No
     finetuned.write_bytes(b"finetuned")
     generic.write_bytes(b"generic")
 
-    with patch("backend.segmentation._YOLO_MODEL", None), patch(
-        "backend.segmentation._YOLO_WEIGHTS_PATH", None
-    ), patch("backend.segmentation.Path.cwd", return_value=tmp_path), patch(
-        "backend.segmentation.Path.exists",
-        autospec=True,
-        side_effect=lambda path: Path(path) in {finetuned, generic},
-    ), patch("ultralytics.YOLO", return_value=object()) as yolo:
+    with (
+        patch("backend.segmentation._YOLO_MODEL", None),
+        patch("backend.segmentation._YOLO_WEIGHTS_PATH", None),
+        patch("backend.segmentation.Path.cwd", return_value=tmp_path),
+        patch(
+            "backend.segmentation.Path.exists",
+            autospec=True,
+            side_effect=lambda path: Path(path) in {finetuned, generic},
+        ),
+        patch("ultralytics.YOLO", return_value=object()) as yolo,
+    ):
         model = _get_yolo_model()
 
     assert model is not None
@@ -38,7 +42,9 @@ def test_resolve_finetuned_weights_prefers_fold0_efficientnet_snapshot(
     generic.write_bytes(b"generic")
     fold0.write_bytes(b"fold0")
 
-    with patch("backend.services.feature_extraction._WEIGHTS_DIR", tmp_path / "weights"):
+    with patch(
+        "backend.services.feature_extraction._WEIGHTS_DIR", tmp_path / "weights"
+    ):
         weights_path = _resolve_finetuned_weights("EfficientNetB1")
 
     assert weights_path == fold0
@@ -49,9 +55,12 @@ def test_yolo_segmentation_uses_research_parity_imgsz_640() -> None:
     empty_boxes = SimpleNamespace(xyxy=np.empty((0, 4)), conf=np.empty((0,)))
     model = MagicMock(return_value=[SimpleNamespace(boxes=empty_boxes)])
 
-    with patch("backend.segmentation._get_yolo_model", return_value=model), patch(
-        "backend.segmentation.SegmentationPipeline._kmeans_bboxes",
-        return_value=[],
+    with (
+        patch("backend.segmentation._get_yolo_model", return_value=model),
+        patch(
+            "backend.segmentation.SegmentationPipeline._kmeans_bboxes",
+            return_value=[],
+        ),
     ):
         SegmentationPipeline._yolo_bboxes(image)
 
