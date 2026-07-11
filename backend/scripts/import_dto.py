@@ -197,6 +197,7 @@ class BackendClient:
     @staticmethod
     def _create_session():
         import requests
+
         return requests.Session()
 
     def login(self, email: str, password: str) -> str:
@@ -376,7 +377,10 @@ class ApiImporter:
                     rate = (i + 1) / elapsed if elapsed > 0 else 0
                     logger.info(
                         "  progress: %d/%d images (%.1f img/s, %d segments)",
-                        i + 1, len(self.manifest.images), rate, total_segments,
+                        i + 1,
+                        len(self.manifest.images),
+                        rate,
+                        total_segments,
                     )
             except Exception as e:
                 self.stats.images_failed += 1
@@ -451,7 +455,8 @@ def main() -> None:
         help="Segmentation method",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable debug logging",
     )

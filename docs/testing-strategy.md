@@ -130,6 +130,18 @@ DATABASE_URL="sqlite+aiosqlite://" uv --directory backend run pytest -m "not int
 
 Integration tests verify connectivity and behavior against real PostgreSQL, Redis, and Qdrant instances. They auto-skip when services are unavailable, making them safe for local development and CI.
 
+### Upload Fixture Data
+
+Use the constructed files under `Dataset/uploads/` for retrieval manual checks and API smoke tests:
+
+- `DTO 217 D6/` and `DTO 473 D6/` are single-strain upload fixtures.
+- Each strain directory keeps all available media images copied from `Dataset/original_prepared/` using source images only.
+- `mycoai_batch_template_3_strains.zip` is the batch upload fixture for multi-strain processing.
+- The batch zip contains `DTO 217 D6`, `DTO 473 D6`, and `DTO 457 A6` in the expected batch-processing layout.
+- Rebuild these fixtures from `Dataset/original_prepared/` if upload format or available source images change.
+
+Use single-strain folders to test retrieve-species flows. Use the batch zip to test index/import new data flows.
+
 ### Docker Compose Setup
 
 ```bash

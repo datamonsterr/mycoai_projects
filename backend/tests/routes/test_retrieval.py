@@ -115,7 +115,9 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
         segments=[],
     )
     segment = SimpleNamespace(
-        qdrant_point_id=uuid.uuid4(), is_archived=False, segment_index=0
+        qdrant_point_id=uuid.uuid4(),
+        is_archived=False,
+        segment_index=0,
     )
     image.segments = [segment]
 

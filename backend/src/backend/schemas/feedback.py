@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
 class FeedbackCreate(BaseModel):
-    retrieval_result_id: str | None = None
+    retrieval_result_id: UUID | None = None
     feedback_type: Literal["wrong_prediction", "issue", "contribution"]
-    suggested_species: str | None = None
+    suggested_species: str | None = Field(default=None, min_length=1)
     description: str = Field(min_length=1)
     query_strain: str | None = None
-    image_id: str | None = None
+    image_id: UUID | None = None
     predicted_species: str | None = None
 
 

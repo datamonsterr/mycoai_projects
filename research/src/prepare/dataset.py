@@ -132,7 +132,9 @@ def _iou(box1: dict, box2: dict) -> float:
     return inter / (area1 + area2 - inter)
 
 
-def _filter_non_overlapping(bboxes: list[dict], iou_thresh: float = 0.25, max_boxes: int = 3) -> list[dict]:
+def _filter_non_overlapping(
+    bboxes: list[dict], iou_thresh: float = 0.25, max_boxes: int = 3
+) -> list[dict]:
     if not bboxes:
         return []
     kept: list[dict] = []
@@ -247,7 +249,8 @@ def _parse_incoming_filename(stem: str) -> tuple[str, str, str] | None:
         r"\s+(?P<environment>[A-Z][A-Z0-9]*)"
         r"\s+(?P<angle>(?:ob|rev|o|r)[0-9]*(?:[_\s][0-9]+)?)"
         r"(?:\s.*)?$",
-        stem, re.IGNORECASE,
+        stem,
+        re.IGNORECASE,
     )
     if m:
         angle_raw = re.sub(r"[0-9_].*$", "", m.group("angle"))
@@ -264,7 +267,8 @@ def _parse_incoming_filename(stem: str) -> tuple[str, str, str] | None:
         r"^(?P<strain>T[0-9]+|IBT\s+[0-9]+)"
         r"\s+(?P<angle>ob|rev|o|r)"
         r"\s+(?P<environment>[A-Z][A-Z0-9]*)$",
-        stem, re.IGNORECASE,
+        stem,
+        re.IGNORECASE,
     )
     if m:
         angle = _normalize_angle(m.group("angle"))
@@ -279,7 +283,8 @@ def _parse_incoming_filename(stem: str) -> tuple[str, str, str] | None:
     m = re.match(
         r"^(?P<strain>T[0-9]+|IBT\s+[0-9]+|CBS\s+[0-9._]+)"
         r"\s+(?P<environment>[A-Z][A-Z0-9]*)$",
-        stem, re.IGNORECASE,
+        stem,
+        re.IGNORECASE,
     )
     if m:
         return (
@@ -293,7 +298,8 @@ def _parse_incoming_filename(stem: str) -> tuple[str, str, str] | None:
     #    Also handles no-space: "dipodomiys CBS170_87 CYAo"
     m = re.match(
         r"^\S+\s+(?P<strain>(?:CBS|IBT)[_\s]?[0-9][0-9._]+)\s+(?P<enva>[A-Z0-9]+)$",
-        stem, re.IGNORECASE,
+        stem,
+        re.IGNORECASE,
     )
     if m:
         enva = m.group("enva")
@@ -330,7 +336,9 @@ def _infer_species_from_path(image_path: Path) -> str:
 def _infer_strain_from_path(image_path: Path) -> str:
     """Use parent dir name as strain if it looks like a strain id."""
     parent = image_path.parent.name
-    if re.match(r"^(?:T[0-9()N]+|IBT\s+[0-9]+|CBS\s+[0-9._]+|[0-9]+)$", parent, re.IGNORECASE):
+    if re.match(
+        r"^(?:T[0-9()N]+|IBT\s+[0-9]+|CBS\s+[0-9._]+|[0-9]+)$", parent, re.IGNORECASE
+    ):
         # Normalise "317" → "T317" when dir is missing the T prefix
         if re.match(r"^[0-9]+$", parent):
             return normalize_label(f"T{parent}")
@@ -433,18 +441,27 @@ def iter_incoming_images(source_collection: SourceCollection) -> list[Path]:
             )
             if has_direct_images:
                 for img_path in sorted(species_dir.iterdir()):
-                    if img_path.is_file() and img_path.suffix.lower() in {".jpg", ".jpeg"}:
+                    if img_path.is_file() and img_path.suffix.lower() in {
+                        ".jpg",
+                        ".jpeg",
+                    }:
                         results.append(img_path)
             else:
                 # Normal: species_dir contains strain subdirs
                 for strain_dir in sorted(species_dir.iterdir()):
                     if not strain_dir.is_dir():
                         # Image directly in species dir alongside strain dirs
-                        if strain_dir.is_file() and strain_dir.suffix.lower() in {".jpg", ".jpeg"}:
+                        if strain_dir.is_file() and strain_dir.suffix.lower() in {
+                            ".jpg",
+                            ".jpeg",
+                        }:
                             results.append(strain_dir)
                         continue
                     for img_path in sorted(strain_dir.iterdir()):
-                        if img_path.is_file() and img_path.suffix.lower() in {".jpg", ".jpeg"}:
+                        if img_path.is_file() and img_path.suffix.lower() in {
+                            ".jpg",
+                            ".jpeg",
+                        }:
                             results.append(img_path)
     return results
 
@@ -456,13 +473,15 @@ def iter_source_images(source_collection: SourceCollection) -> list[Path]:
 
 
 def build_item_id(instance_info: InstanceInfo, source_filename: str) -> str:
-    seed = "|".join([
-        instance_info.species,
-        instance_info.strain,
-        instance_info.environment,
-        instance_info.angle,
-        source_filename,
-    ])
+    seed = "|".join(
+        [
+            instance_info.species,
+            instance_info.strain,
+            instance_info.environment,
+            instance_info.angle,
+            source_filename,
+        ]
+    )
     return uuid.uuid5(uuid.NAMESPACE_URL, seed).hex
 
 
@@ -496,7 +515,7 @@ def _save_segment_crops(
             x1, y1 = bbox.get("x", 0), bbox.get("y", 0)
             x2 = x1 + bbox.get("w", 0)
             y2 = y1 + bbox.get("h", 0)
-        crop = prepared_image[max(0, y1):max(y1, y2), max(0, x1):max(x1, x2)]
+        crop = prepared_image[max(0, y1) : max(y1, y2), max(0, x1) : max(x1, x2)]
         if crop.size > 0:
             seg_path = segments_dir / f"segment_{i}{FILE_EXTENSION}"
             cv2.imwrite(str(seg_path), crop)
@@ -529,7 +548,9 @@ def _contour_bboxes(image: np.ndarray) -> list[dict[str, int]]:
     bboxes: list[dict[str, int]] = []
     for _, cnt in scored[:3]:
         x, y, w, h = cv2.boundingRect(cnt)
-        bboxes.append({"xmin": int(x), "ymin": int(y), "xmax": int(x + w), "ymax": int(y + h)})
+        bboxes.append(
+            {"xmin": int(x), "ymin": int(y), "xmax": int(x + w), "ymax": int(y + h)}
+        )
     return bboxes
 
 
@@ -537,12 +558,14 @@ def _bboxes_to_schema(bboxes: list[dict[str, int]]) -> list[dict[str, int]]:
     result: list[dict[str, int]] = []
     for b in bboxes:
         if "xmin" in b:
-            result.append({
-                "x": b["xmin"],
-                "y": b["ymin"],
-                "w": b["xmax"] - b["xmin"],
-                "h": b["ymax"] - b["ymin"],
-            })
+            result.append(
+                {
+                    "x": b["xmin"],
+                    "y": b["ymin"],
+                    "w": b["xmax"] - b["xmin"],
+                    "h": b["ymax"] - b["ymin"],
+                }
+            )
         else:
             result.append(b)
     return result
@@ -583,6 +606,9 @@ def _build_pipeline_visualization(
 
 
 def _write_prepared_metadata(item_records: list[DatasetItemRecord]) -> None:
+    PREPARED_ITEMS_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+    PREPARED_SEGMENTS_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+
     with open(PREPARED_ITEMS_METADATA_PATH, "w") as handle:
         json.dump([item.to_dict() for item in item_records], handle, indent=2)
 
@@ -625,7 +651,9 @@ def prepare_dataset(
 ) -> list[DatasetItemRecord]:
     available_collections = load_source_collections()
     requested_collections = source_collections or list(available_collections)
-    unknown = [name for name in requested_collections if name not in available_collections]
+    unknown = [
+        name for name in requested_collections if name not in available_collections
+    ]
     if unknown:
         names = ", ".join(sorted(unknown))
         raise ValueError(f"Unknown source collections: {names}")
@@ -724,7 +752,10 @@ def segment_item(
     prepared_rel = item_record.paths.get("prepared")
     source_rel = item_record.paths.get("source")
     if not prepared_rel:
-        return [{"method": m, "status": "failed", "reason": "no prepared path"} for m in selected_methods]
+        return [
+            {"method": m, "status": "failed", "reason": "no prepared path"}
+            for m in selected_methods
+        ]
 
     leaf_dir = WORKSPACE_ROOT / prepared_rel
     leaf_dir = leaf_dir.parent
@@ -737,7 +768,9 @@ def segment_item(
             for m in selected_methods
         ]
 
-    source_image = cv2.imread(str(source_path)) if source_path and source_path.exists() else None
+    source_image = (
+        cv2.imread(str(source_path)) if source_path and source_path.exists() else None
+    )
 
     all_segments: list[str] = []
     results: list[dict] = []
@@ -758,20 +791,34 @@ def segment_item(
 
                 yolo_weights = WEIGHTS_DIR / "segmentation" / "yolo26_seg_best.pt"
                 if not yolo_weights.exists():
-                    results.append({"method": method, "status": "failed", "reason": f"weights not found at {yolo_weights}"})
+                    results.append(
+                        {
+                            "method": method,
+                            "status": "failed",
+                            "reason": f"weights not found at {yolo_weights}",
+                        }
+                    )
                     continue
                 model = YOLO(str(yolo_weights))
-                yolo_results = model(prepared_image, verbose=False, conf=0.15, end2end=False)
+                yolo_results = model(
+                    prepared_image, verbose=False, conf=0.15, end2end=False
+                )
                 bboxes = []
                 if yolo_results and yolo_results[0].boxes is not None:
                     confs = yolo_results[0].boxes.conf
                     scored = []
-                    for conf_val, box_coords in zip(confs.tolist(), yolo_results[0].boxes.xyxy.tolist()):
+                    for conf_val, box_coords in zip(
+                        confs.tolist(), yolo_results[0].boxes.xyxy.tolist()
+                    ):
                         x1, y1, x2, y2 = map(int, box_coords)
-                        scored.append((conf_val, {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2}))
+                        scored.append(
+                            (conf_val, {"xmin": x1, "ymin": y1, "xmax": x2, "ymax": y2})
+                        )
                     scored.sort(key=lambda x: -x[0])
                     all_bboxes = [b for _, b in scored]
-                    bboxes = _filter_non_overlapping(all_bboxes, iou_thresh=0.25, max_boxes=3)
+                    bboxes = _filter_non_overlapping(
+                        all_bboxes, iou_thresh=0.25, max_boxes=3
+                    )
             else:
                 results.append({"method": method, "status": "skipped"})
                 continue
@@ -908,8 +955,10 @@ def aggregate_all_metadata() -> None:
         ("full_prepared", FULL_PREPARED_DATASET_DIR),
     ]:
         items = prepare_dataset(
-            source_collections=["curated"] if split_name == "original_prepared"
-            else ["incoming"] if split_name == "new_data_prepared"
+            source_collections=["curated"]
+            if split_name == "original_prepared"
+            else ["incoming"]
+            if split_name == "new_data_prepared"
             else ["curated", "incoming"],
             prepared_root=root,
             limit=None,

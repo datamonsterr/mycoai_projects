@@ -143,7 +143,5 @@ def test_resolve_species_fast_falls_back_to_strain_map():
 
 
 def test_resolve_species_fast_unknown_when_no_signal():
-    n = NeighborResult(
-        image_id="x", score=0.5, strain=None, media="CYA", specy=None
-    )
+    n = NeighborResult(image_id="x", score=0.5, strain=None, media="CYA", specy=None)
     assert _resolve_species_fast(n, {}) == "unknown"

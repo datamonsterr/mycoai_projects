@@ -252,7 +252,8 @@ async def clear_test_data(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_owner: CurrentOwner,
     strain_pattern: str = Query(
-        default="TEST%", description="Strain name pattern to match"
+        default="TEST%",
+        description="Strain name pattern to match",
     ),
 ) -> dict:
     from ..models import Image, QdrantIndexState, Segment, Strain

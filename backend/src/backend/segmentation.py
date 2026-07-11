@@ -625,9 +625,7 @@ class SegmentationPipeline:
         )
 
     @staticmethod
-    def _get_bbox(
-        labels: np.ndarray, points: np.ndarray
-    ) -> list[dict[str, int]]:
+    def _get_bbox(labels: np.ndarray, points: np.ndarray) -> list[dict[str, int]]:
         cluster_count = int(labels.max()) + 1 if labels.size else 0
         clusters: list[list[np.ndarray]] = [[] for _ in range(cluster_count)]
         for i, lbl in enumerate(labels):
@@ -637,12 +635,14 @@ class SegmentationPipeline:
             if not cluster:
                 continue
             cp = np.array(cluster, dtype=np.int32)
-            bboxes.append({
-                "xmin": int(np.min(cp[:, 1])),
-                "ymin": int(np.min(cp[:, 0])),
-                "xmax": int(np.max(cp[:, 1])),
-                "ymax": int(np.max(cp[:, 0])),
-            })
+            bboxes.append(
+                {
+                    "xmin": int(np.min(cp[:, 1])),
+                    "ymin": int(np.min(cp[:, 0])),
+                    "xmax": int(np.max(cp[:, 1])),
+                    "ymax": int(np.max(cp[:, 0])),
+                }
+            )
         return bboxes
 
     @staticmethod
@@ -740,12 +740,14 @@ class SegmentationPipeline:
                     refined.append(shrunk)
                     continue
             pad = (k_sz // 2) + int(size * 0.02)
-            refined.append({
-                "xmin": max(0, x1 + bcx - pad),
-                "ymin": max(0, y1 + bcy - pad),
-                "xmax": min(mask.shape[1], x1 + bcx + bcw + pad),
-                "ymax": min(mask.shape[0], y1 + bcy + bch + pad),
-            })
+            refined.append(
+                {
+                    "xmin": max(0, x1 + bcx - pad),
+                    "ymin": max(0, y1 + bcy - pad),
+                    "xmax": min(mask.shape[1], x1 + bcx + bcw + pad),
+                    "ymax": min(mask.shape[0], y1 + bcy + bch + pad),
+                }
+            )
         refined.sort(key=lambda bb: (bb["ymin"], bb["xmin"]))
         return refined
 

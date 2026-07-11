@@ -164,15 +164,14 @@ def run_retrieval(resume: bool = False, limit: Optional[int] = None) -> Path:
                 continue
 
             env_filter = Filter(
-                must_not=[
-                    FieldCondition(key="strain", match=MatchValue(value=strain))
-                ]
+                must_not=[FieldCondition(key="strain", match=MatchValue(value=strain))]
             )
             if environment.lower() not in ("unknown", ""):
                 env_filter = Filter(
                     must=[
                         FieldCondition(
-                            key="environment", match=MatchValue(value=environment.upper())
+                            key="environment",
+                            match=MatchValue(value=environment.upper()),
                         )
                     ],
                     must_not=[
@@ -235,10 +234,6 @@ def run_retrieval(resume: bool = False, limit: Optional[int] = None) -> Path:
             processed += 1
 
             if processed % 50 == 0:
-                known_so_far = sum(
-                    1
-                    for _ in range(max(0, processed - 50), processed)
-                )
                 print(
                     f"  [{processed}/{len(retrieval_list)}] {sample_id} "
                     f"-> {top_species} (conf={top_confidence:.4f}, "
@@ -264,7 +259,9 @@ def main():
     parser.add_argument(
         "--resume", action="store_true", help="Skip already-processed sample_ids"
     )
-    parser.add_argument("--limit", type=int, default=None, help="Max entries to process")
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Max entries to process"
+    )
     args = parser.parse_args()
     run_retrieval(resume=args.resume, limit=args.limit)
 

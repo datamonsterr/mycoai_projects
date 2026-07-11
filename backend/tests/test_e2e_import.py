@@ -154,9 +154,7 @@ class TestE2ESegmentationFlow:
         try:
             pipeline = SegmentationPipeline(tmp_upload)
 
-            img_path = next(
-                p for p in dto_fixture_dir.rglob("*.jpg") if "DT" in p.name
-            )
+            img_path = next(p for p in dto_fixture_dir.rglob("*.jpg") if "DT" in p.name)
 
             record = await asyncio.to_thread(
                 pipeline.segment_upload,

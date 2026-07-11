@@ -85,6 +85,7 @@ EXTRACTOR_KEY = "resnet50_finetuned"
 K = 11
 TOP_N_SCORES = 5
 
+
 def _load_known_species_map() -> Dict[str, str]:
     """Build mapping from stripped species names to full DB names using curated metadata."""
     if not CURATED_METADATA_PATH.exists():
@@ -111,7 +112,7 @@ def _strip_penicillium(label: str) -> str:
     clean = label.strip().lower()
     for prefix in ("penicillium ",):
         if clean.startswith(prefix):
-            return clean[len(prefix):]
+            return clean[len(prefix) :]
     return clean
 
 
@@ -444,7 +445,9 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
 
         for strain, strain_entries in strain_groups:
             sorted_entries = sorted(strain_entries, key=_entry_sort_key)
-            base_info = sorted_entries[0].get("instance_info", sorted_entries[0].get("data", {}))
+            base_info = sorted_entries[0].get(
+                "instance_info", sorted_entries[0].get("data", {})
+            )
             species_label = base_info.get("species", "UNKNOWN")
             is_known = is_known_species(species_label)
             db_species = map_to_db_species(species_label)
@@ -531,7 +534,10 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
                             {
                                 "image_id": image_id,
                                 "image_path": _resolve_image_path(
-                                    {"image_id": image_id, "image_path": payload.get("segment_path")},
+                                    {
+                                        "image_id": image_id,
+                                        "image_path": payload.get("segment_path"),
+                                    },
                                     str(SEGMENTED_IMAGE_DIR),
                                     "image_id",
                                 ),
@@ -609,9 +615,12 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
                 predicted_specy = ranked[0]["species"] if ranked else "unknown"
                 predicted_confidence = ranked[0]["score"] if ranked else 0.0
                 is_correct = bool(
-                    is_known and db_species and (
+                    is_known
+                    and db_species
+                    and (
                         predicted_specy == db_species
-                        or _strip_penicillium(predicted_specy) == _strip_penicillium(db_species)
+                        or _strip_penicillium(predicted_specy)
+                        == _strip_penicillium(db_species)
                     )
                 )
 
@@ -634,7 +643,8 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
                 }
 
                 vis_output_path = (
-                    VIS_OUTPUT_DIR / ("correct" if is_correct else "incorrect")
+                    VIS_OUTPUT_DIR
+                    / ("correct" if is_correct else "incorrect")
                     / f"vis_{safe_filename(strain)}_set{test_set_index}.jpg"
                 )
                 try:
@@ -677,7 +687,8 @@ def retrieve_diverse(limit: Optional[int] = None, resume: bool = False) -> Path:
 def _draw_confusion_matrix(csv_path: Path) -> None:
     """Draw confusion matrix with unknown class from diverse retrieval results."""
     import matplotlib
-    matplotlib.use('Agg')
+
+    matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import pandas as pd
     from sklearn.metrics import confusion_matrix
@@ -718,8 +729,9 @@ def _draw_confusion_matrix(csv_path: Path) -> None:
     row_sums = cm.sum(axis=1)
     col_sums = cm.sum(axis=0)
     import numpy as np
+
     keep = np.logical_or(row_sums > 0, col_sums > 0)
-    keep_labels = [l for l, k in zip(labels, keep) if k]
+    keep_labels = [label for label, keep_label in zip(labels, keep) if keep_label]
     cm = cm[keep][:, keep]
     labels = keep_labels
 
@@ -727,10 +739,20 @@ def _draw_confusion_matrix(csv_path: Path) -> None:
 
     accuracy = correct / max(known_count, 1)
     fig, ax = plt.subplots(figsize=(14, 12))
-    sns.heatmap(cm, annot=True, fmt="d", xticklabels=labels, yticklabels=labels, cmap="Blues", ax=ax)
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        xticklabels=labels,
+        yticklabels=labels,
+        cmap="Blues",
+        ax=ax,
+    )
     ax.set_xlabel("Predicted")
     ax.set_ylabel("True")
-    ax.set_title(f"Threshold Retrieval Confusion Matrix\nAccuracy (known): {accuracy:.3f} | Known: {known_count}")
+    ax.set_title(
+        f"Threshold Retrieval Confusion Matrix\nAccuracy (known): {accuracy:.3f} | Known: {known_count}"
+    )
     plt.xticks(rotation=90, fontsize=8)
     plt.yticks(rotation=0, fontsize=8)
     fig.tight_layout()

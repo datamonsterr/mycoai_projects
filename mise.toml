@@ -149,7 +149,17 @@ if len(selected) < 3:
 for strain_dir in selected:
     canonical_name = canonical.get(norm(strain_dir.name), strain_dir.name)
     dest = staging / canonical_name
-    shutil.copytree(strain_dir, dest)
+    dest.mkdir(parents=True, exist_ok=True)
+    for image_path in sorted(strain_dir.rglob('source_*.jpg')):
+        rel = image_path.relative_to(strain_dir)
+        parts = rel.parts
+        if len(parts) < 3:
+            continue
+        media = parts[0].upper()
+        angle = parts[1].lower()
+        suffix = image_path.stem.removeprefix('source_')
+        renamed = f"{canonical_name}_{media}_{angle}_{suffix}.jpg"
+        shutil.copy2(image_path, dest / renamed)
 
 with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
     for path in sorted(staging.rglob("*")):
@@ -158,7 +168,9 @@ with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
 
 print(zip_path)
 for strain_dir in selected:
-    print(f"- {strain_dir.parent.name}/{strain_dir.name}")
+    canonical_name = canonical.get(norm(strain_dir.name), strain_dir.name)
+    count = sum(1 for _ in strain_dir.rglob('source_*.jpg'))
+    print(f"- {canonical_name}: {count} source images")
 PY'''
 
 [tasks.gdrive-auth]

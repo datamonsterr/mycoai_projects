@@ -500,7 +500,7 @@ async def _query_by_crop_image(
             filter_spec=filter_spec,
             collection_name=collection,
         )
-    except (ValueError, RuntimeError):
+    except Exception:
         return []
 
     neighbors: list[dict[str, object]] = []
