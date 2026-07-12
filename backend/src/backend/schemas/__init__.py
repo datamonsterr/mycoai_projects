@@ -51,6 +51,30 @@ class ImageListResponse(BaseModel):
     total: int
 
 
+class ImageGroupChild(BaseModel):
+    id: str
+    source_url: str
+    data_update_status: str
+    indexed_in_qdrant: bool = False
+    is_archived: bool = False
+    created_at: datetime
+
+
+class ImageGroupItem(BaseModel):
+    strain_id: str
+    strain_name: str
+    species_id: str
+    species_name: str
+    media_names: list[str]
+    image_count: int
+    images: list[ImageGroupChild]
+
+
+class ImageGroupResponse(BaseModel):
+    items: list[ImageGroupItem]
+    total: int
+
+
 class SegmentDetail(BaseModel):
     id: str
     image_id: str

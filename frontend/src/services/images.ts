@@ -2,6 +2,7 @@ import { api } from '@/services/api-client'
 import type {
   ImageUploadResponse,
   ImageDetail,
+  ImageGroupResponse,
   ImageListResponse,
   SegmentDetail,
 } from '@/services/types'
@@ -16,7 +17,7 @@ export interface ImageListParams {
   limit?: number
 }
 
-export function listImages(params?: ImageListParams): Promise<ImageListResponse> {
+function imageListSearchParams(params?: ImageListParams) {
   const sp = new URLSearchParams()
   sp.set('offset', String(params?.offset ?? 0))
   sp.set('limit', String(params?.limit ?? 50))
@@ -25,7 +26,15 @@ export function listImages(params?: ImageListParams): Promise<ImageListResponse>
   if (params?.search) sp.set('search', params.search)
   params?.species_id?.forEach((sid) => sp.append('species_id', sid))
   params?.media_id?.forEach((mid) => sp.append('media_id', mid))
-  return api.get<ImageListResponse>(`/images?${sp.toString()}`)
+  return sp
+}
+
+export function listImages(params?: ImageListParams): Promise<ImageListResponse> {
+  return api.get<ImageListResponse>(`/images?${imageListSearchParams(params).toString()}`)
+}
+
+export function listImageGroups(params?: ImageListParams): Promise<ImageGroupResponse> {
+  return api.get<ImageGroupResponse>(`/images/groups?${imageListSearchParams(params).toString()}`)
 }
 
 export function uploadImage(

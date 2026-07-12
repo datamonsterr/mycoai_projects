@@ -5,6 +5,7 @@ import {
   getImage,
   deleteImage,
   listSegments,
+  listImageGroups,
   listImages,
 } from '@/services/images'
 import type { ImageListParams } from '@/services/images'
@@ -15,6 +16,7 @@ const imagesKeys = {
   detail: (imageId: string) => [...imagesKeys.all, 'detail', imageId] as const,
   segments: (imageId: string) => [...imagesKeys.all, 'segments', imageId] as const,
   list: (params?: ImageListParams) => [...imagesKeys.all, 'list', params] as const,
+  groups: (params?: ImageListParams) => [...imagesKeys.all, 'groups', params] as const,
 }
 
 export function useImageUpload() {
@@ -95,5 +97,12 @@ export function useImagesList(params?: ImageListParams) {
   return useQuery({
     queryKey: imagesKeys.list(params),
     queryFn: () => listImages(params),
+  })
+}
+
+export function useImageGroups(params?: ImageListParams) {
+  return useQuery({
+    queryKey: imagesKeys.groups(params),
+    queryFn: () => listImageGroups(params),
   })
 }

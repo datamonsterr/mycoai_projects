@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { useSpeciesList, useMediaList } from '@/hooks/use-taxonomy'
-import { useImagesList } from '@/hooks/use-images'
+import { useImageGroups } from '@/hooks/use-images'
 import { useAuth } from '@/lib/use-auth'
 import {
   Search,
@@ -34,16 +34,18 @@ export default function DatasetPage() {
 
   const { data: speciesData } = useSpeciesList()
   const { data: mediaData } = useMediaList()
-  const { data: imagesData, isLoading } = useImagesList({
+  const { data: imagesData, isLoading } = useImageGroups({
     species_id: filterSpecies.length > 0 ? filterSpecies : undefined,
     media_id: filterMedia.length > 0 ? filterMedia : undefined,
     status: filterStatus || undefined,
     search: search || undefined,
+    include_archived: filterStatus === 'archived',
   })
 
   const speciesList = speciesData?.items ?? []
   const mList = mediaData?.items ?? []
-  const images = imagesData?.items ?? []
+  const strainGroups = imagesData?.items ?? []
+  const images = strainGroups.flatMap((group) => group.images)
   const total = imagesData?.total ?? 0
 
   const toggleSpecies = (id: string) => {
@@ -85,7 +87,7 @@ export default function DatasetPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-foreground">Dataset Browser</h1>
-          <p className="text-sm text-muted-foreground mt-1">{total} records</p>
+          <p className="text-sm text-muted-foreground mt-1">{total} strains</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm"><Download className="h-4 w-4" /> Export CSV</Button>
@@ -191,7 +193,7 @@ export default function DatasetPage() {
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground">{images.length} results</p>
+            <p className="text-xs text-muted-foreground">{strainGroups.length} results</p>
           </CardContent>
         </Card>
       )}
@@ -207,11 +209,10 @@ export default function DatasetPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10" />
-                <TableHead>Plate</TableHead>
                 <TableHead>Strain</TableHead>
                 <TableHead>Species</TableHead>
                 <TableHead>Media</TableHead>
-                {isOwner && <TableHead>Actions</TableHead>}
+                <TableHead>Images</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -219,123 +220,94 @@ export default function DatasetPage() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`skel-${i}`}>
                     <TableCell><div className="h-4 w-4 rounded bg-muted animate-pulse" /></TableCell>
-                    <TableCell><div className="h-10 w-10 rounded bg-muted animate-pulse" /></TableCell>
                     <TableCell><div className="h-4 w-24 rounded bg-muted animate-pulse" /></TableCell>
                     <TableCell><div className="h-4 w-32 rounded bg-muted animate-pulse" /></TableCell>
+                    <TableCell><div className="h-4 w-20 rounded bg-muted animate-pulse" /></TableCell>
                     <TableCell><div className="h-4 w-12 rounded bg-muted animate-pulse" /></TableCell>
-                    {isOwner && <TableCell><div className="h-4 w-16 rounded bg-muted animate-pulse" /></TableCell>}
                   </TableRow>
                 ))
-              ) : images.length === 0 ? (
+              ) : strainGroups.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isOwner ? 6 : 5} className="text-center py-12 text-muted-foreground">
-                    No images found
+                  <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                    No strains found
                   </TableCell>
                 </TableRow>
               ) : (
-                images.map((img) => {
-                  const isArchived = img.data_update_status === 'archived'
-                  const isExpanded = expandedRows.has(img.id)
+                strainGroups.map((group) => {
+                  const isExpanded = expandedRows.has(group.strain_id)
                   return (
-                    <>
-                      <TableRow key={img.id} className={isArchived ? 'opacity-50' : ''}>
+                    <Fragment key={group.strain_id}>
+                      <TableRow>
                         <TableCell>
                           <button
-                            onClick={() => toggleExpand(img.id)}
+                            onClick={() => toggleExpand(group.strain_id)}
                             className="cursor-pointer hover:bg-muted rounded p-0.5 transition-colors"
-                            title={isExpanded ? 'Collapse details' : 'Expand details'}
+                            title={isExpanded ? 'Collapse images' : 'Expand images'}
                           >
                             {isExpanded
                               ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              : <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            }
+                              : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                           </button>
                         </TableCell>
-                        <TableCell>
-                          <img
-                            src={img.source_url}
-                            alt=""
-                            className="h-12 w-12 rounded object-cover border border-border"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{img.strain_name}</TableCell>
-                        <TableCell>{img.species_name}</TableCell>
-                        <TableCell>{img.media_name}</TableCell>
-                        {isOwner && (
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => setEditItem(img.id)}><Edit className="h-4 w-4" /></Button>
-                              {isArchived ? (
-                                <Button variant="ghost" size="sm"><RotateCcw className="h-4 w-4" /></Button>
-                              ) : (
-                                <Button variant="ghost" size="sm" className="text-destructive"><Archive className="h-4 w-4" /></Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        )}
+                        <TableCell className="font-mono text-xs">{group.strain_name}</TableCell>
+                        <TableCell>{group.species_name}</TableCell>
+                        <TableCell>{group.media_names.join(', ')}</TableCell>
+                        <TableCell>{group.image_count}</TableCell>
                       </TableRow>
                       {isExpanded && (
-                        <TableRow key={`${img.id}-expanded`}>
+                        <TableRow key={`${group.strain_id}-images`}>
                           <TableCell />
-                          <TableCell colSpan={isOwner ? 5 : 4} className="bg-muted/30">
-                            <div className="flex gap-4 py-2 min-h-64">
-                              <div className="flex-shrink-0 w-72 self-stretch">
-                                <img
-                                  src={img.source_url}
-                                  alt={img.strain_name ?? 'Plate'}
-                                  className="w-full h-full object-cover rounded-md border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                                  onClick={() => setFullscreenImage({ src: img.source_url, alt: img.strain_name ?? 'Plate' })}
-                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                                />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-1 text-xs">
-                                  <div>
-                                    <span className="text-muted-foreground">Image ID</span>
-                                    <p className="font-mono mt-0.5 truncate max-w-[200px]" title={img.id}>{img.id}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Segments</span>
-                                    <p className="font-mono mt-0.5">{img.segments_count}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Qdrant</span>
-                                    <p className="mt-0.5">
-                                      {img.indexed_in_qdrant
+                          <TableCell colSpan={4} className="bg-muted/30 p-0">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Image</TableHead>
+                                  <TableHead>Created</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead>Qdrant</TableHead>
+                                  {isOwner && <TableHead>Actions</TableHead>}
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {group.images.map((image) => (
+                                  <TableRow key={image.id} className={image.is_archived ? 'opacity-50' : ''}>
+                                    <TableCell>
+                                      <img
+                                        src={image.source_url}
+                                        alt={`${group.strain_name} image`}
+                                        className="h-16 w-16 rounded object-cover border border-border cursor-pointer"
+                                        onClick={() => setFullscreenImage({ src: image.source_url, alt: `${group.strain_name} image` })}
+                                      />
+                                    </TableCell>
+                                    <TableCell>{new Date(image.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell>
+                                      <Badge variant={image.data_update_status === 'current' ? 'success' : image.data_update_status === 'updated_requires_reindex' ? 'warning' : 'destructive'}>
+                                        {image.data_update_status === 'updated_requires_reindex' ? 'Needs Reindex' : image.data_update_status}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      {image.indexed_in_qdrant
                                         ? <Badge variant="success">Indexed</Badge>
                                         : <Badge variant="secondary">No</Badge>}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Status</span>
-                                    <p className="mt-0.5">
-                                      <Badge variant={
-                                        img.data_update_status === 'current' ? 'success'
-                                          : img.data_update_status === 'updated_requires_reindex' ? 'warning'
-                                          : 'destructive'
-                                      }>
-                                        {img.data_update_status === 'updated_requires_reindex' ? 'Needs Reindex' : img.data_update_status}
-                                      </Badge>
-                                    </p>
-                                  </div>
-                                  {img.angle && (
-                                    <div>
-                                      <span className="text-muted-foreground">Angle</span>
-                                      <p className="mt-0.5">{img.angle}</p>
-                                    </div>
-                                  )}
-                                  <div>
-                                    <span className="text-muted-foreground">Created</span>
-                                    <p className="mt-0.5">{new Date(img.created_at).toLocaleDateString()}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
+                                    </TableCell>
+                                    {isOwner && (
+                                      <TableCell>
+                                        <div className="flex gap-1">
+                                          <Button aria-label="Edit image" variant="ghost" size="sm" onClick={() => setEditItem(image.id)}><Edit className="h-4 w-4" /></Button>
+                                          {image.is_archived
+                                            ? <Button aria-label="Restore image" variant="ghost" size="sm"><RotateCcw className="h-4 w-4" /></Button>
+                                            : <Button aria-label="Archive image" variant="ghost" size="sm" className="text-destructive"><Archive className="h-4 w-4" /></Button>}
+                                        </div>
+                                      </TableCell>
+                                    )}
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })
               )}
@@ -351,14 +323,17 @@ export default function DatasetPage() {
         </DialogHeader>
         <DialogContent>
           <div className="space-y-3">
-            <p className="text-xs font-mono">Image: {editItem}</p>
-            {images.find((img) => img.id === editItem) && (
-              <img
-                src={images.find((img) => img.id === editItem)!.source_url}
-                alt="Selected plate"
-                className="w-full max-h-64 rounded-md object-contain border border-border bg-muted"
-              />
-            )}
+            {(() => {
+              const group = strainGroups.find((g) => g.images.some((img) => img.id === editItem))
+              const image = group?.images.find((img) => img.id === editItem)
+              return image && group ? (
+                <img
+                  src={image.source_url}
+                  alt={`${group.strain_name} image`}
+                  className="w-full max-h-64 rounded-md object-contain border border-border bg-muted"
+                />
+              ) : null
+            })()}
             <div className="space-y-2">
               <label className="text-sm font-medium">Species</label>
               <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
@@ -369,7 +344,7 @@ export default function DatasetPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Strain</label>
-              <Input defaultValue={images.find((img) => img.id === editItem)?.strain_name ?? ''} />
+              <Input defaultValue={strainGroups.find((g) => g.images.some((img) => img.id === editItem))?.strain_name ?? ''} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Media</label>
