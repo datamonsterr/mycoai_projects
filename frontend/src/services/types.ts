@@ -93,6 +93,30 @@ export interface ImageListResponse {
   total: number
 }
 
+export type ImageGroupChild = {
+  id: string
+  source_url: string
+  data_update_status: string
+  indexed_in_qdrant: boolean
+  is_archived: boolean
+  created_at: string
+}
+
+export type ImageGroupItem = {
+  strain_id: string
+  strain_name: string
+  species_id: string
+  species_name: string
+  media_names: string[]
+  image_count: number
+  images: ImageGroupChild[]
+}
+
+export type ImageGroupResponse = {
+  items: ImageGroupItem[]
+  total: number
+}
+
 export interface RetrievalQueryRequest {
   image_id: string
   image_ids?: string[]

@@ -44,7 +44,13 @@ from .image_models import Segment as SegModel
 from .models import Image, Media, QdrantIndexState, Segment, Species, Strain
 from .qdrant import delete_points, get_qdrant_client
 from .repos.media import _normalize_media_name
-from .schemas import ImageListItem, ImageListResponse
+from .schemas import (
+    ImageGroupChild,
+    ImageGroupItem,
+    ImageGroupResponse,
+    ImageListItem,
+    ImageListResponse,
+)
 from .segmentation import ALLOWED_METHODS, SegmentationPipeline
 from .segmentation import ImageStore as FileStore
 from .services.feature_extraction import index_segment_to_qdrant
@@ -67,6 +73,14 @@ class BatchImportRequest(BaseModel):
 
 class AutoSegmentRequest(BaseModel):
     method: str = "kmeans"
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 def _progress(completed: int, total: int) -> ProcessingProgress:
@@ -265,6 +279,87 @@ def create_image_router(
             )
 
         return ImageListResponse(items=items, total=total)
+
+    @router.get("/groups", response_model=ImageGroupResponse)
+    async def list_image_groups(
+        species_id: Annotated[list[str] | None, Query()] = None,
+        media_id: Annotated[list[str] | None, Query()] = None,
+        status: Annotated[str | None, Query()] = None,
+        search: Annotated[str | None, Query()] = None,
+        include_archived: Annotated[bool, Query()] = False,
+        offset: Annotated[int, Query(ge=0)] = 0,
+        limit: Annotated[int, Query(ge=1, le=200)] = 50,
+        db=Depends(get_db),
+        user=Depends(get_current_user),
+    ) -> ImageGroupResponse:
+        stmt = select(Image).options(
+            selectinload(Image.strain),
+            selectinload(Image.species),
+            selectinload(Image.media),
+            selectinload(Image.segments).selectinload(Segment.qdrant_index_state),
+        )
+
+        if not include_archived:
+            stmt = stmt.where(Image.is_archived.is_(False))
+        if species_id:
+            species_uuids = [UUID(value) for value in species_id if _is_uuid(value)]
+            if species_uuids:
+                stmt = stmt.where(Image.species_id.in_(species_uuids))
+        if media_id:
+            media_uuids = [UUID(value) for value in media_id if _is_uuid(value)]
+            if media_uuids:
+                stmt = stmt.where(Image.media_id.in_(media_uuids))
+        if status:
+            stmt = stmt.where(Image.data_update_status == status)
+        if search:
+            stmt = stmt.join(Image.strain).where(Strain.name.ilike(f"%{search}%"))
+
+        result = await db.execute(stmt.order_by(Image.created_at.desc()))
+        images = result.unique().scalars().all()
+        grouped: dict[UUID, list[Image]] = {}
+        for image in images:
+            grouped.setdefault(image.strain_id, []).append(image)
+
+        groups: list[ImageGroupItem] = []
+        for strain_images in list(grouped.values())[offset : offset + limit]:
+            first = strain_images[0]
+            children = []
+            for image in strain_images:
+                indexed = any(
+                    segment.qdrant_index_state is not None
+                    and segment.qdrant_index_state.is_active
+                    for segment in image.segments
+                )
+                source_url = f"/api/v1/images/{image.id}/source"
+                if storage:
+                    candidate = storage.get_url(image.file_path)
+                    if candidate.startswith(("http://", "https://")):
+                        source_url = candidate.replace("http://minio:9000/", "/minio/")
+                children.append(
+                    ImageGroupChild(
+                        id=str(image.id),
+                        source_url=source_url,
+                        data_update_status=image.data_update_status,
+                        indexed_in_qdrant=indexed,
+                        is_archived=image.is_archived,
+                        created_at=image.created_at,
+                    )
+                )
+            groups.append(
+                ImageGroupItem(
+                    strain_id=str(first.strain_id),
+                    strain_name=first.strain.name if first.strain else "unknown",
+                    species_id=str(first.species_id),
+                    species_name=first.species.name if first.species else "unknown",
+                    media_names=sorted(
+                        {image.media.name for image in strain_images if image.media}
+                    ),
+                    image_count=len(children),
+                    images=children,
+                )
+            )
+
+        return ImageGroupResponse(items=groups, total=len(grouped))
 
     # ------------------------------------------------------------------
     # Shared upload logic (used by both POST / and POST /upload)

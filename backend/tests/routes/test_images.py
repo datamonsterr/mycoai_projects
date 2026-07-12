@@ -248,6 +248,38 @@ def test_list_images_pagination(
     assert data["total"] >= 1
 
 
+def test_list_image_groups_returns_strain_rows(
+    client: TestClient, headers: dict[str, str], image_id: str
+) -> None:
+    resp = client.get("/api/v1/images/groups", headers=headers)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    group = data["items"][0]
+    assert group["strain_name"] == "DTO 148-F1"
+    assert group["species_name"] == "Penicillium chrysogenum"
+    assert group["media_names"] == ["CYA"]
+    assert group["image_count"] == 1
+    assert group["images"][0]["id"] == image_id
+    assert "segments_count" not in group["images"][0]
+
+
+def test_list_image_groups_filters_child_images(
+    client: TestClient, headers: dict[str, str], image_id: str
+) -> None:
+    resp = client.get(
+        "/api/v1/images/groups?search=148-F1&status=current",
+        headers=headers,
+    )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    assert [image["id"] for image in data["items"][0]["images"]] == [image_id]
+
+
 # ── Presigned URL tests ──────────────────────────────────────────────────
 
 
