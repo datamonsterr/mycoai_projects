@@ -487,7 +487,9 @@ function apiNeighborsToDisplay(neighbors: RetrievalNeighbor[] | DisplayNeighbor[
 
 function mediaFromFilename(filename: string) {
   const parts = filename.split('/').filter(Boolean)
+  const tokenPattern = /(CREA|CYA30|CYAS|CYA|DG18|MEA|YES|OA|M40Y)/i
   const media = [...parts].reverse().find((part) => ['CREA', 'CYA30', 'CYAS', 'CYA', 'DG18', 'MEA', 'YES', 'OA', 'M40Y', 'OTHER MEDIA'].includes(part.toUpperCase()))
+    ?? filename.match(tokenPattern)?.[1]
   if (!media) return 'Other media'
   const normalized = media.toUpperCase()
   return normalized === 'CYA30' || normalized === 'CYAS' ? 'CYA' : normalized
@@ -639,7 +641,6 @@ export default function RetrievePage() {
   const queryClient = useQueryClient()
   const { data: mediaData } = useMediaList()
   const mediaItems = mediaData?.items ?? []
-  const defaultMediaName = mediaItems[0]?.name ?? 'Other media'
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingStrainIndex = useRef(0)
   const lastSubmittedConfig = useRef<RetrievalConfig | null>(null)
@@ -851,14 +852,15 @@ export default function RetrievePage() {
     for (const file of fileList) {
       try {
         setUploadProgress({ completed: uploadedCount, total: fileList.length, current: file.name })
-        const res = await uploadImage(file, strainName, defaultMediaName)
+        const detectedMedia = mediaFromFilename(file.name)
+        const res = await uploadImage(file, strainName, detectedMedia)
         const segmentResult = res.segments?.length
           ? { segments: res.segments }
           : await autoSegment(res.image_id, 'yolo')
         const newImage: StrainImage = {
           id: res.image_id,
           fileName: file.name,
-          media: defaultMediaName,
+          media: detectedMedia,
           mediaIsNew: false,
           maxColonies: 'default',
           original: res.source_url,
