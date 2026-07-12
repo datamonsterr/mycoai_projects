@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import scripts.sync_qdrant_to_sql as sync_qdrant_to_sql
 from scripts.sync_qdrant_to_sql import _copy_collection_vectors
 
 
@@ -56,7 +57,9 @@ class _FakeClient:
         self._points_count += len(kwargs["points"])
 
 
-def test_copy_collection_vectors(monkeypatch) -> None:
+def test_copy_collection_vectors_skips_points_without_recognized_sql_mapping(
+    monkeypatch,
+) -> None:
     clients = []
 
     def _factory(*args, **kwargs):
@@ -64,9 +67,7 @@ def test_copy_collection_vectors(monkeypatch) -> None:
         clients.append(client)
         return client
 
-    monkeypatch.setattr(
-        "scripts.sync_qdrant_to_sql.QdrantClient", _factory, raising=False
-    )
+    monkeypatch.setattr(sync_qdrant_to_sql, "QdrantClient", _factory, raising=False)
 
     stats = _copy_collection_vectors(
         "qdrant-research_fold0",
@@ -76,15 +77,6 @@ def test_copy_collection_vectors(monkeypatch) -> None:
                 "segment_id": "seg-1",
                 "image_id": "img-1",
                 "media": "CREA",
-                "environment": "CREA",
-                "species": "Spec",
-                "specy": "Spec",
-                "strain": "Strain",
-                "parent_id": "img-1",
-                "parent_item_id": "img-1",
-                "parent_image_id": "img-1",
-                "angle": "ob",
-                "segment_index": "0",
             }
         },
         {
@@ -92,29 +84,15 @@ def test_copy_collection_vectors(monkeypatch) -> None:
                 "segment_id": "seg-legacy",
                 "image_id": "img-2",
                 "media": "CREA",
-                "environment": "CREA",
-                "species": "Spec",
-                "specy": "Spec",
-                "strain": "Strain",
-                "parent_id": "img-2",
-                "parent_item_id": "img-2",
-                "parent_image_id": "img-2",
-                "angle": "ob",
-                "segment_index": "0",
             }
         },
     )
 
     assert stats == {
-        "vectors_copied": 2,
-        "skipped_missing_sql": 0,
-        "target_points": 2,
+        "vectors_copied": 0,
+        "skipped_missing_sql": 2,
+        "target_points": 0,
         "sql_segments": 1,
     }
     assert len(clients) == 2
-    upsert_call = next(call for call in clients[1].calls if call[0] == "upsert")
-    points = upsert_call[1]["points"]
-    assert points[0].payload["image_id"] == "img-1"
-    assert points[0].payload["media"] == "CREA"
-    assert points[1].payload["segment_id"] == "seg-legacy"
-    assert points[1].payload["image_id"] == "img-2"
+    assert all(call[0] != "upsert" for call in clients[1].calls)

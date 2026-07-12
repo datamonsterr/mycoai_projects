@@ -15,15 +15,17 @@ from sqlalchemy.orm import selectinload
 from backend.config import get_qdrant_settings, get_storage_settings
 from backend.database import _get_sessionmaker
 from backend.models import Image, Media, QdrantIndexState, Segment, Species, Strain
-from backend.services.storage import create_storage, storage_artifact_prefix, storage_candidates
+from backend.services.storage import (
+    create_storage,
+    storage_artifact_prefix,
+    storage_candidates,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _slugify(value: str) -> str:
-    normalized = "".join(
-        ch.lower() if ch.isalnum() else "-" for ch in value
-    )
+    normalized = "".join(ch.lower() if ch.isalnum() else "-" for ch in value)
     return "-".join(part for part in normalized.split("-") if part)
 
 
@@ -58,6 +60,7 @@ def _upload_root() -> Path:
 
 def _minio() -> Minio:
     import os
+
     settings = get_storage_settings()
     endpoint = os.getenv("MYCOAI_BACKEND_STORAGE_S3_PUBLIC_ENDPOINT", "")
     if endpoint:
@@ -198,15 +201,21 @@ async def rebuild_from_full_prepared() -> dict[str, int]:
             species_root = full_root / species_slug
             if not species_root.exists():
                 continue
-            for strain_dir in sorted(path for path in species_root.iterdir() if path.is_dir()):
+            for strain_dir in sorted(
+                path for path in species_root.iterdir() if path.is_dir()
+            ):
                 strain_slug = strain_dir.name.lower()
                 strain_name = (
-                    f"DTO {strain_slug.split('-')[1]}-{strain_slug.split('-')[2].upper()}"
+                    f"DTO {strain_slug.split('-')[1]}-"
+                    f"{strain_slug.split('-')[2].upper()}"
                     if strain_slug.startswith("dto-") and strain_slug.count("-") >= 2
                     else strain_dir.name.replace("-", " ").upper()
                 )
                 expected_species = strain_map.get(strain_name.casefold())
-                if expected_species is None or expected_species.casefold() != species_name.casefold():
+                if (
+                    expected_species is None
+                    or expected_species.casefold() != species_name.casefold()
+                ):
                     continue
                 strain = Strain(
                     name=strain_name,
@@ -217,11 +226,15 @@ async def rebuild_from_full_prepared() -> dict[str, int]:
                 await db.flush()
                 stats["strains_created"] += 1
 
-                for media_dir in sorted(path for path in strain_dir.iterdir() if path.is_dir()):
+                for media_dir in sorted(
+                    path for path in strain_dir.iterdir() if path.is_dir()
+                ):
                     media_name = media_dir.name.upper()
                     media = media_by_name.get(media_name)
                     if media is None:
-                        media = await db.scalar(select(Media).where(Media.name == media_name))
+                        media = await db.scalar(
+                            select(Media).where(Media.name == media_name)
+                        )
                     if media is None:
                         media = Media(name=media_name, description=None)
                         db.add(media)
@@ -229,16 +242,22 @@ async def rebuild_from_full_prepared() -> dict[str, int]:
                         stats["media_created"] += 1
                     media_by_name[media_name] = media
 
-                    for angle_dir in sorted(path for path in media_dir.iterdir() if path.is_dir()):
+                    for angle_dir in sorted(
+                        path for path in media_dir.iterdir() if path.is_dir()
+                    ):
                         angle = angle_dir.name
                         source_files = sorted(angle_dir.glob("source_*.jpg"))
                         if not source_files:
                             continue
                         source_file = source_files[0]
-                        prepared_file = next(iter(sorted(angle_dir.glob("prepared_*.jpg"))), None)
+                        prepared_file = next(
+                            iter(sorted(angle_dir.glob("prepared_*.jpg"))), None
+                        )
                         pipeline_file = angle_dir / "pipeline_kmeans.jpg"
                         bbox_file = angle_dir / "bbox_kmeans.jpg"
-                        segment_files = sorted((angle_dir / "segments_kmeans").glob("segment_*.jpg"))
+                        segment_files = sorted(
+                            (angle_dir / "segments_kmeans").glob("segment_*.jpg")
+                        )
                         if not segment_files:
                             continue
 
@@ -263,7 +282,9 @@ async def rebuild_from_full_prepared() -> dict[str, int]:
                         await db.flush()
                         stats["images_created"] += 1
 
-                        storage.upload_bytes(str(prefix / "source.jpg"), source_file.read_bytes())
+                        storage.upload_bytes(
+                            str(prefix / "source.jpg"), source_file.read_bytes()
+                        )
                         if prepared_file and prepared_file.exists():
                             storage.upload_bytes(
                                 str(prefix / "prepared.jpg"), prepared_file.read_bytes()
@@ -457,7 +478,12 @@ async def clear_runtime() -> dict[str, int]:
     async with session_factory() as db:
         from sqlalchemy import text
 
-        await db.execute(text("TRUNCATE TABLE qdrant_index_state, segments, images, strains, species, media RESTART IDENTITY CASCADE"))
+        await db.execute(
+            text(
+                "TRUNCATE TABLE qdrant_index_state, segments, images, strains, "
+                "species, media RESTART IDENTITY CASCADE"
+            )
+        )
         await db.commit()
         stats["sql_cleared"] = 1
 

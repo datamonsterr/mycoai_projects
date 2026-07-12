@@ -70,7 +70,9 @@ def headers(client):
 
 
 @pytest.mark.asyncio
-async def test_upload_image_persists_db_qdrant_and_storage(s3_client, headers, image_file: Path, session) -> None:
+async def test_upload_image_persists_db_qdrant_and_storage(
+    s3_client, headers, image_file: Path, session
+) -> None:
     client, fake_storage = s3_client
     with image_file.open("rb") as handle:
         response = client.post(
@@ -88,16 +90,34 @@ async def test_upload_image_persists_db_qdrant_and_storage(s3_client, headers, i
     assert response.status_code == 201, response.text
     image_id = UUID(response.json()["image_id"])
 
-    image_row = (await session.execute(select(Image).where(Image.id == image_id))).scalar_one()
-    segments = (await session.execute(select(Segment).where(Segment.image_id == image_id))).scalars().all()
-    index_states = (await session.execute(
-        select(QdrantIndexState).where(
-            QdrantIndexState.segment_id.in_([segment.id for segment in segments])
+    image_row = (
+        await session.execute(select(Image).where(Image.id == image_id))
+    ).scalar_one()
+    segments = (
+        (await session.execute(select(Segment).where(Segment.image_id == image_id)))
+        .scalars()
+        .all()
+    )
+    index_states = (
+        (
+            await session.execute(
+                select(QdrantIndexState).where(
+                    QdrantIndexState.segment_id.in_(
+                        [segment.id for segment in segments]
+                    )
+                )
+            )
         )
-    )).scalars().all() if segments else []
+        .scalars()
+        .all()
+        if segments
+        else []
+    )
 
     assert image_row.file_path
     assert image_row.media_id is not None
     assert any(key.endswith("source.jpg") for key in fake_storage._objects)
     if segments:
-        assert len(index_states) == len([segment for segment in segments if segment.qdrant_point_id is not None])
+        assert len(index_states) == len(
+            [segment for segment in segments if segment.qdrant_point_id is not None]
+        )

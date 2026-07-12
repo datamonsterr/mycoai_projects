@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 from qdrant_client.models import Distance, VectorParams
 
+from backend.app import create_app
 from backend.config import get_qdrant_settings
 from backend.database import get_db
-from backend.app import create_app
 
 
 class FakeS3Storage:
@@ -42,13 +42,19 @@ TEST_COLLECTION = f"itest_retrieval_{uuid.uuid4().hex[:8]}"
 
 @pytest.fixture
 def e2e_client(test_session_factory, qdrant_client):
-    settings = get_qdrant_settings().model_copy(update={"collection_name": TEST_COLLECTION})
+    settings = get_qdrant_settings().model_copy(
+        update={"collection_name": TEST_COLLECTION}
+    )
     fake_storage = FakeS3Storage()
     vectors = {
-        get_qdrant_settings().default_vector_name: VectorParams(size=1280, distance=Distance.COSINE)
+        get_qdrant_settings().default_vector_name: VectorParams(
+            size=1280, distance=Distance.COSINE
+        )
     }
     try:
-        qdrant_client.create_collection(collection_name=TEST_COLLECTION, vectors_config=vectors)
+        qdrant_client.create_collection(
+            collection_name=TEST_COLLECTION, vectors_config=vectors
+        )
     except Exception:
         pass
 
@@ -56,7 +62,9 @@ def e2e_client(test_session_factory, qdrant_client):
         patch("backend.app.create_storage", return_value=fake_storage),
         patch("backend.config.get_qdrant_settings", return_value=settings),
         patch("backend.qdrant.client.get_qdrant_settings", return_value=settings),
-        patch("backend.services.qdrant_client.get_qdrant_settings", return_value=settings),
+        patch(
+            "backend.services.qdrant_client.get_qdrant_settings", return_value=settings
+        ),
         patch("backend.api.retrieval.get_qdrant_settings", return_value=settings),
     ):
         app = create_app()
@@ -88,7 +96,9 @@ def e2e_image() -> Path:
     return path
 
 
-def test_full_e2e_upload_segment_extract_retrieve_freq_strength_k5(e2e_client, headers, e2e_image: Path) -> None:
+def test_full_e2e_upload_segment_extract_retrieve_freq_strength_k5(
+    e2e_client, headers, e2e_image: Path
+) -> None:
     client, _fake_storage = e2e_client
 
     with e2e_image.open("rb") as handle:

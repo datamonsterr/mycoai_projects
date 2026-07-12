@@ -329,7 +329,7 @@ def test_collection_exists_mocked() -> None:
     fake_col = MagicMock()
     fake_col.name = "qdrant-research_fold0"
     client.get_collections.return_value.collections = [fake_col]
-    assert collection_exists(client) is True
+    assert collection_exists(client, "qdrant-research_fold0") is True
 
 
 def test_get_collection_stats_mocked() -> None:
