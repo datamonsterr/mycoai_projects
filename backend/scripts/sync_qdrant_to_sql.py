@@ -145,9 +145,9 @@ async def _load_sql_segment_metadata() -> tuple[
             str(segment.segment_index),
         )
         by_legacy_key[legacy_prefix + (Path(segment.crop_path).name,)] = entry
-        by_legacy_key[
-            legacy_prefix + (f"segment_{segment.segment_index + 1}.jpg",)
-        ] = entry
+        by_legacy_key[legacy_prefix + (f"segment_{segment.segment_index + 1}.jpg",)] = (
+            entry
+        )
     return by_segment_id, by_legacy_key
 
 

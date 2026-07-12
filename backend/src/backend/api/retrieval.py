@@ -72,9 +72,9 @@ async def _build_strain_map(db: AsyncSession) -> dict[str, str]:
 
     def score_species(name: str) -> tuple[int, int]:
         lower = name.lower()
-        if lower.startswith('penicillium '):
+        if lower.startswith("penicillium "):
             return (3, len(name))
-        if lower in {'unknown', 'unknown-species'} or lower.startswith('dto '):
+        if lower in {"unknown", "unknown-species"} or lower.startswith("dto "):
             return (0, len(name))
         return (1, len(name))
 

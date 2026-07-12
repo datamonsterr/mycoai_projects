@@ -102,15 +102,13 @@ def _batch_progress(
         for img in images
     )
     segmented = sum(
-        img.status in {"segmented", "extracting", "indexed"}
-        for img in images
+        img.status in {"segmented", "extracting", "indexed"} for img in images
     )
 
     indexed = sum(img.status == "indexed" for img in images)
     failed = any(img.status == "failed" for img in images)
     done = (
-        sum(img.status in {"segmented", "indexed", "failed"} for img in images)
-        == total
+        sum(img.status in {"segmented", "indexed", "failed"} for img in images) == total
     )
     strain_names = sorted({img.strain for img in images})
     strains = []
@@ -690,9 +688,15 @@ def create_image_router(
                     and species_name.startswith("Penicillium ")
                 }
                 for task in asyncio.as_completed(tasks):
-                    rel_path, strain, media_name, species, image_id, record, error = (
-                        await task
-                    )
+                    (
+                        rel_path,
+                        strain,
+                        media_name,
+                        species,
+                        image_id,
+                        record,
+                        error,
+                    ) = await task
                     status = by_filename[str(rel_path)]
                     if error or record is None:
                         status.status = "failed"
@@ -1849,9 +1853,7 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
             and not p.lower().endswith((".jpg", ".jpeg", ".png", ".jpe"))
         ]
         species_candidates = [
-            p
-            for p in meaningful
-            if p.lower().startswith("penicillium") or " " in p
+            p for p in meaningful if p.lower().startswith("penicillium") or " " in p
         ]
         if species_candidates:
             species = species_candidates[-1]

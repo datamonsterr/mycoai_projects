@@ -332,9 +332,7 @@ class SegmentationPipeline:
         side = min(h, w)
         working_size = min(max(side, 512), 1024)
 
-        interpolation = (
-            cv.INTER_AREA if side >= working_size else cv.INTER_LINEAR
-        )
+        interpolation = cv.INTER_AREA if side >= working_size else cv.INTER_LINEAR
         small = cv.resize(
             img,
             (working_size, working_size),

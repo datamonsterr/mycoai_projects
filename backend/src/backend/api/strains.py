@@ -125,9 +125,7 @@ async def get_strain_delete_impact(
     segment_count = segment_result.scalar() or 0
     return DeleteImpactResponse(
         segment_count=segment_count,
-        warning_message=(
-            f"Archiving this strain affects {segment_count} segment(s)."
-        ),
+        warning_message=(f"Archiving this strain affects {segment_count} segment(s)."),
     )
 
 
