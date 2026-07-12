@@ -62,6 +62,13 @@ def test_copy_collection_vectors_skips_points_without_recognized_sql_mapping(
 ) -> None:
     clients = []
 
+    monkeypatch.setattr(
+        sync_qdrant_to_sql,
+        "_canonical_species_names",
+        lambda: {"spec"},
+        raising=False,
+    )
+
     def _factory(*args, **kwargs):
         client = _FakeClient(*args, **kwargs)
         clients.append(client)
