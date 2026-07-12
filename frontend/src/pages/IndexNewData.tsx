@@ -369,33 +369,67 @@ export default function IndexNewDataPage() {
 
   const findSpeciesByName = useCallback((name: string) => speciesList.find((sp) => sp.name === name)?.id, [speciesList])
 
+  const syncBatchStrains = useCallback((progress: BatchProgress) => {
+    const next: IndexStrain[] = []
+    const byStrain = new Map<string, IndexStrain>()
+    for (const [index, image] of progress.images.entries()) {
+      const strainKey = image.strain || 'unknown-strain'
+      if (!byStrain.has(strainKey)) {
+        const speciesId = image.species ? findSpeciesByName(image.species) ?? defaultSpeciesId : defaultSpeciesId
+        const strain = { strain: strainKey, species: speciesId, images: [] }
+        byStrain.set(strainKey, strain)
+        next.push(strain)
+      }
+      byStrain.get(strainKey)!.images.push({
+        id: image.image_id || `${strainKey}-${image.filename}-${index}`,
+        imageId: image.image_id || '',
+        fileName: image.filename,
+        media: image.media || 'Other media',
+        original: image.source_url || undefined,
+        yoloBboxes: [],
+        segments: (image.segment_urls ?? []).map((url) => ({ url, bbox: { x: 0, y: 0, w: 1, h: 1 } })),
+      })
+    }
+    if (next.length) {
+      setStrains(next)
+      setActiveStrain((current) => Math.min(current, next.length - 1))
+    }
+  }, [defaultSpeciesId, findSpeciesByName])
+
   useEffect(() => {
-    if (!batchProgress?.batch_id || !isUploading || batchProgress.batch_id === 'pending-upload') return
+    const batchId = batchProgress?.batch_id
+    if (!batchId || !isUploading || batchId === 'pending-upload') return
     let cancelled = false
-    const timer = window.setInterval(async () => {
+    let timer: number | undefined
+
+    const poll = async () => {
       try {
-        const next = await getBatchProgress(batchProgress.batch_id)
+        const next = await getBatchProgress(batchId)
         if (cancelled) return
         batchPollFailures.current = 0
         setBatchProgress(next)
+        syncBatchStrains(next)
         if (next.status !== 'processing') {
           setIsUploading(false)
-          window.clearInterval(timer)
+          return
         }
       } catch {
         batchPollFailures.current += 1
         if (batchPollFailures.current >= 3) {
           toast.error('Batch progress polling stopped. Refresh to check final status.')
           setIsUploading(false)
-          window.clearInterval(timer)
+          return
         }
       }
-    }, 800)
+      if (!cancelled) timer = window.setTimeout(poll, 800)
+    }
+
+    timer = window.setTimeout(poll, 800)
     return () => {
       cancelled = true
-      window.clearInterval(timer)
+      if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [batchProgress?.batch_id, isUploading, toast])
+  }, [batchProgress?.batch_id, isUploading, syncBatchStrains, toast])
 
   const loadSample = () => {
     const mapped = (sampleStrains as unknown as Array<{

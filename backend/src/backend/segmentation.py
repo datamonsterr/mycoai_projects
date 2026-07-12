@@ -32,10 +32,10 @@ def _get_yolo_model(weights: str | Path | None = None) -> object | None:
         return None
     if wpath is None:
         candidates = [
-            Path("/app/weights/segmentation/yolo_segmentation_best.pt"),
-            Path("/app/weights/segmentation/yolo26_seg_best.pt"),
-            Path("/app/weights/yolo26n-seg.pt"),
-            Path("/app/weights/yolov8n-seg.pt"),
+            Path("/app/segmentation_weights/yolo_segmentation_best.pt"),
+            Path("/app/segmentation_weights/yolo26_seg_best.pt"),
+            Path("/app/segmentation_weights/yolo26n-seg.pt"),
+            Path("/app/segmentation_weights/yolov8n-seg.pt"),
             Path.cwd() / "weights" / "segmentation" / "yolo_segmentation_best.pt",
             Path.cwd() / "weights" / "segmentation" / "yolo26_seg_best.pt",
             Path.cwd() / "weights" / "yolo26n-seg.pt",

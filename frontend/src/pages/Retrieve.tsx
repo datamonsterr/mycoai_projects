@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { sampleStrains } from '@/lib/sample-assets'
 import { downloadTemplateZip } from '@/lib/template'
-import { uploadImage, uploadBatchZip, autoSegment, getBatchProgress, patchImageSegments, updateImageMedia, reindexImage, reindexStrainImages, type BatchProgress } from '@/services/images'
+import { uploadImage, uploadBatchZip, autoSegment, getBatchProgress, patchImageSegments, updateImageMedia, reindexImage, type BatchProgress } from '@/services/images'
 import { useMediaList } from '@/hooks/use-taxonomy'
 import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Loader2, Plus, Trash2, FileArchive } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -705,11 +705,14 @@ export default function RetrievePage() {
   }, [])
 
   useEffect(() => {
-    if (!batchProgress?.batch_id || !isZipUploading || batchProgress.batch_id === 'pending-upload') return
+    const batchId = batchProgress?.batch_id
+    if (!batchId || !isZipUploading || batchId === 'pending-upload') return
     let cancelled = false
-    const timer = window.setInterval(async () => {
+    let timer: number | undefined
+
+    const poll = async () => {
       try {
-        const next = await getBatchProgress(batchProgress.batch_id)
+        const next = await getBatchProgress(batchId)
         if (cancelled) return
         batchPollFailures.current = 0
         setBatchProgress(next)
@@ -720,20 +723,23 @@ export default function RetrievePage() {
         }
         if (next.status !== 'processing') {
           setIsZipUploading(false)
-          window.clearInterval(timer)
+          return
         }
       } catch {
         batchPollFailures.current += 1
         if (batchPollFailures.current >= 3) {
           toast.error('Batch progress polling stopped. Refresh to check final status.')
           setIsZipUploading(false)
-          window.clearInterval(timer)
+          return
         }
       }
-    }, 800)
+      if (!cancelled) timer = window.setTimeout(poll, 800)
+    }
+
+    timer = window.setTimeout(poll, 800)
     return () => {
       cancelled = true
-      window.clearInterval(timer)
+      if (timer !== undefined) window.clearTimeout(timer)
     }
   }, [batchProgress?.batch_id, isZipUploading, syncBatchStrains, toast])
 
@@ -1121,19 +1127,42 @@ export default function RetrievePage() {
 
   const runStrainReindex = useCallback(async () => {
     const strain = strains[activeStrain]
-    if (!strain?.id) return
+    if (!strain) return
+    const images = strain.images.filter((image) => image.id && (image.segments?.length ?? 0) > 0)
     setReindexingStrain(true)
-    setFeatureProgress({ completed: 0, total: strain.images.length, current: strain.strain || strain.id })
+    setFeatureProgress({ completed: 0, total: images.length, current: strain.strain || 'New strain' })
+    let completed = 0
     try {
-      for (const image of strain.images) {
-        if (image.id && image.media) await updateImageMedia(image.id, image.media)
+      for (const image of images) {
+        setFeatureProgress({ completed, total: images.length, current: image.fileName })
+        setStrains((prev) => prev.map((item, strainIndex) => ({
+          ...item,
+          images: item.images.map((candidate) => strainIndex === activeStrain && candidate.id === image.id
+            ? { ...candidate, featureStatus: 'extracting' }
+            : candidate),
+        })))
+        try {
+          if (image.media) await updateImageMedia(image.id, image.media)
+          await reindexImage(image.id)
+          completed += 1
+          setStrains((prev) => prev.map((item, strainIndex) => ({
+            ...item,
+            images: item.images.map((candidate) => strainIndex === activeStrain && candidate.id === image.id
+              ? { ...candidate, featureStatus: 'done', confirmed: true }
+              : candidate),
+          })))
+        } catch (err) {
+          setStrains((prev) => prev.map((item, strainIndex) => ({
+            ...item,
+            images: item.images.map((candidate) => strainIndex === activeStrain && candidate.id === image.id
+              ? { ...candidate, featureStatus: 'failed' }
+              : candidate),
+          })))
+          toast.apiError(err, `Failed to extract ${image.fileName}`)
+        }
       }
-      const result = await reindexStrainImages(strain.id)
-      setFeatureProgress({ completed: result.images, total: strain.images.length, current: strain.strain || strain.id })
-      toast.success(`Re-indexed ${result.images} image(s) for ${strain.strain || strain.id}`)
-      setStep('results')
-    } catch (err) {
-      toast.apiError(err, `Failed to re-index ${strain.strain || 'strain'}`)
+      setFeatureProgress({ completed, total: images.length, current: strain.strain || 'New strain' })
+      if (completed === images.length) toast.success(`Extracted ${completed} image(s) for ${strain.strain || 'new strain'}`)
     } finally {
       setReindexingStrain(false)
     }
@@ -1525,7 +1554,7 @@ export default function RetrievePage() {
                 <Button variant="outline" size="sm" onClick={runAutoSegment} disabled={autoSegmenting || currentSegments.length === 0}>
                   Segment All
                 </Button>
-                <Button variant="default" size="sm" onClick={() => void runStrainReindex()} disabled={reindexingStrain || !strains[activeStrain]?.id}>
+                <Button variant="default" size="sm" onClick={() => void runStrainReindex()} disabled={reindexingStrain || currentSegments.length === 0}>
                   {reindexingStrain ? <><Loader2 className="h-4 w-4 animate-spin" /> Extracting...</> : 'Extract all'}
                 </Button>
                 <Badge variant="secondary" className="ml-auto">{totalSegments} total segments</Badge>

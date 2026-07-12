@@ -324,7 +324,8 @@ class TestBatchZipUpload:
         assert data["results"] == []
         assert started.is_set()
         assert any(
-            image["status"] == "uploaded" for image in data["progress"]["images"]
+            image["status"] in {"queued", "uploaded"}
+            for image in data["progress"]["images"]
         )
 
         progress_resp = client.get(

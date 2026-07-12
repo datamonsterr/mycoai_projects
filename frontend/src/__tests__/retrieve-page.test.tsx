@@ -423,8 +423,8 @@ describe('RetrievePage', () => {
   })
 
   it('shows active feature extraction progress during extract-all instead of unavailable copy', async () => {
-    let resolveReindex: ((value: { strain_id: string; images: number; indexed_segments: number }) => void) | undefined
-    imagesModule.reindexStrainImages.mockImplementation(() => new Promise((resolve) => {
+    let resolveReindex: ((value: { image_id: string; indexed_segments: number }) => void) | undefined
+    imagesModule.reindexImage.mockImplementation(() => new Promise((resolve) => {
       resolveReindex = resolve as typeof resolveReindex
     }))
 
@@ -441,7 +441,7 @@ describe('RetrievePage', () => {
     expect(screen.getByRole('button', { name: /extracting/i })).toBeDisabled()
 
     await act(async () => {
-      resolveReindex?.({ strain_id: 'strain-a', images: 1, indexed_segments: 1 })
+      resolveReindex?.({ image_id: 'img-a', indexed_segments: 1 })
     })
   })
 

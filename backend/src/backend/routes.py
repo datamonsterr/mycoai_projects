@@ -304,30 +304,6 @@ def create_image_router(
         strain_obj = await _ensure_strain(db, strain, species_obj.id)
         image_obj = await _create_image(db, record, strain_obj, species_obj, media_obj)
 
-        # Re-fetch image with eagerly-loaded segments.
-        result = await db.execute(
-            select(Image)
-            .options(selectinload(Image.segments))
-            .where(Image.id == image_obj.id)
-        )
-        image_obj = result.scalar_one()
-
-        # Index segments to Qdrant with feature vectors
-        for seg in image_obj.segments:
-            try:
-                await index_segment_to_qdrant(
-                    db,
-                    seg,
-                    image_obj,
-                    strain_name=strain_obj.name,
-                    species_name=species_obj.name,
-                    media_name=media_obj.name,
-                    storage=storage,
-                )
-            except Exception as exc:
-                logger.warning("Qdrant index failed for segment %s: %s", seg.id, exc)
-
-        # Persist segment updates (qdrant_point_id, qdrant_index_state) to DB
         await db.commit()
 
         record.image_id = str(image_obj.id)
@@ -1173,42 +1149,6 @@ def create_image_router(
 
         img.data_update_status = "updated_requires_reindex"
         await db.commit()
-
-        # Reload image with freshly committed segments (avoid lazy-load + stale IDs)
-        result2 = await db.execute(
-            select(Image)
-            .options(
-                selectinload(Image.segments),
-                selectinload(Image.strain),
-                selectinload(Image.species),
-                selectinload(Image.media),
-            )
-            .where(Image.id == img.id)
-        )
-        img_reloaded = result2.scalar_one_or_none()
-        if img_reloaded:
-            strain_name = img_reloaded.strain.name if img_reloaded.strain else "unknown"
-            species_name = (
-                img_reloaded.species.name if img_reloaded.species else "unknown"
-            )
-            media_name = img_reloaded.media.name if img_reloaded.media else "unknown"
-            for seg in img_reloaded.segments:
-                if seg.qdrant_point_id is None:
-                    try:
-                        await index_segment_to_qdrant(
-                            db,
-                            seg,
-                            img_reloaded,
-                            strain_name=strain_name,
-                            species_name=species_name,
-                            media_name=media_name,
-                            storage=storage,
-                        )
-                    except Exception as exc:
-                        logger.warning(
-                            "Qdrant index failed for segment %s: %s", seg.id, exc
-                        )
-            await db.commit()
 
         record.image_id = str(img.id)
         record.source_url = f"/api/v1/images/{record.image_id}/source"

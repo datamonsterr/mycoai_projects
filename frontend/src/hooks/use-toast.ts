@@ -1,16 +1,10 @@
 import { toast } from 'sonner'
 import { ApiError } from '@/services/api-client'
 
-export function useToast() {
-  const success = (message: string) => {
-    toast.success(message)
-  }
-
-  const error = (message: string) => {
-    toast.error(message)
-  }
-
-  const apiError = (err: unknown, fallback = 'Something went wrong') => {
+const toastApi = {
+  success: (message: string) => toast.success(message),
+  error: (message: string) => toast.error(message),
+  apiError: (err: unknown, fallback = 'Something went wrong') => {
     if (err instanceof ApiError) {
       const msg = typeof err.detail === 'string'
         ? err.detail
@@ -21,11 +15,10 @@ export function useToast() {
     } else {
       toast.error(fallback)
     }
-  }
+  },
+  info: (message: string) => toast(message),
+}
 
-  const info = (message: string) => {
-    toast(message)
-  }
-
-  return { success, error, apiError, info }
+export function useToast() {
+  return toastApi
 }
