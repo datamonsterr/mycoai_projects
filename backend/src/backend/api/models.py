@@ -14,21 +14,15 @@ def upload_candidate(user: CurrentOwner) -> JSONResponse:
 
 
 @router.post("/candidates/{candidate_id}/evaluate")
-def evaluate_candidate(
-    candidate_id: str, user: CurrentOwner
-) -> JSONResponse:
+def evaluate_candidate(candidate_id: str, user: CurrentOwner) -> JSONResponse:
     return JSONResponse(status_code=501, content={"detail": "Not implemented"})
 
 
 @router.post("/candidates/{candidate_id}/promote")
-def promote_candidate(
-    candidate_id: str, user: CurrentOwner
-) -> JSONResponse:
+def promote_candidate(candidate_id: str, user: CurrentOwner) -> JSONResponse:
     return JSONResponse(status_code=501, content={"detail": "Not implemented"})
 
 
 @router.post("/candidates/{candidate_id}/reject")
-def reject_candidate(
-    candidate_id: str, user: CurrentOwner
-) -> JSONResponse:
+def reject_candidate(candidate_id: str, user: CurrentOwner) -> JSONResponse:
     return JSONResponse(status_code=501, content={"detail": "Not implemented"})

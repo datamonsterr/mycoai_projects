@@ -408,8 +408,7 @@ class ApiImporter:
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Import DTO original dataset into MycoAI backend "
-            "(PostgreSQL + Qdrant)"
+            "Import DTO original dataset into MycoAI backend (PostgreSQL + Qdrant)"
         )
     )
     parser.add_argument(

@@ -21,7 +21,6 @@ from backend.segmentation import SegmentationPipeline, _get_yolo_model
 from backend.tasks.batch import run as batch_run
 
 pytestmark = [
-
     pytest.mark.asyncio,
     pytest.mark.integration,
     pytest.mark.skip(
@@ -94,13 +93,17 @@ def test_get_yolo_model_prefers_repo_canonical_weights(tmp_path: Path) -> None:
     canonical.parent.mkdir(parents=True)
     canonical.write_bytes(b"weights")
 
-    with patch("backend.segmentation._YOLO_MODEL", None), patch(
-        "backend.segmentation._YOLO_WEIGHTS_PATH", None
-    ), patch("backend.segmentation.Path.cwd", return_value=tmp_path), patch(
-        "backend.segmentation.Path.exists",
-        autospec=True,
-        side_effect=lambda path: Path(path) == canonical,
-    ), patch("ultralytics.YOLO", return_value=object()) as yolo:
+    with (
+        patch("backend.segmentation._YOLO_MODEL", None),
+        patch("backend.segmentation._YOLO_WEIGHTS_PATH", None),
+        patch("backend.segmentation.Path.cwd", return_value=tmp_path),
+        patch(
+            "backend.segmentation.Path.exists",
+            autospec=True,
+            side_effect=lambda path: Path(path) == canonical,
+        ),
+        patch("ultralytics.YOLO", return_value=object()) as yolo,
+    ):
         model = _get_yolo_model()
 
     assert model is not None

@@ -66,9 +66,7 @@ def get_training_job(job_id: str, user: CurrentOwner) -> dict:
 
 
 @router.post("/jobs/{job_id}/cancel", response_model=TrainingJobItem)
-def cancel_training_job(
-    job_id: str, user: CurrentOwner
-) -> dict:
+def cancel_training_job(job_id: str, user: CurrentOwner) -> dict:
     from ..core.exceptions import NotFoundError
 
     store = get_training_store()

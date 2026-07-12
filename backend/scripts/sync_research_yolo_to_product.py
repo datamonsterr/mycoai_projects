@@ -162,8 +162,7 @@ async def _run_import(features_path: Path, dry_run: bool) -> dict[str, Any]:
                 source_key = artifact_dir / "source.jpg"
                 prepared_key = artifact_dir / "prepared.jpg"
                 pipeline_key = (
-                    artifact_dir
-                    / f"pipeline_{image_rows[0].segmentation_method}.jpg"
+                    artifact_dir / f"pipeline_{image_rows[0].segmentation_method}.jpg"
                 )
                 placeholder = b"placeholder"
                 storage.upload_bytes(str(source_key), placeholder)
@@ -183,9 +182,7 @@ async def _run_import(features_path: Path, dry_run: bool) -> dict[str, Any]:
                         else placeholder
                     )
                     crop_key = (
-                        artifact_dir
-                        / "segments"
-                        / f"segment_{row.segment_index}.jpg"
+                        artifact_dir / "segments" / f"segment_{row.segment_index}.jpg"
                     )
                     storage.upload_bytes(str(crop_key), crop_bytes)
                     record.segments.append(
@@ -214,9 +211,7 @@ async def _run_import(features_path: Path, dry_run: bool) -> dict[str, Any]:
                         species_name=species_name,
                         media_name=media_name,
                         storage=storage,
-                        collection_name=(
-                            collection_name
-                        ),
+                        collection_name=(collection_name),
                     )
                     if "error" not in result:
                         stats.imported_segments += 1

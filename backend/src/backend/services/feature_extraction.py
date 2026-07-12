@@ -68,7 +68,7 @@ def _check_torch() -> bool:
             import torchvision  # type: ignore[import-untyped]  # noqa: F401
 
             _torch_available = True
-            _torch_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            _torch_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         except ImportError:
             _torch_available = False
             _torch_device = None
