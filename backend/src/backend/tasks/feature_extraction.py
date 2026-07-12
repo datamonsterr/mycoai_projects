@@ -20,7 +20,7 @@ async def run(
     segment_id: UUID,
     db: AsyncSession,
     *,
-    collection_name: str = "qdrant-research_fold0",
+    collection_name: str = "qdrant-research_fold1",
 ) -> dict:
     """Extract features from a segment crop and index it in Qdrant.
 

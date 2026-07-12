@@ -1,5 +1,5 @@
 import { api } from './api-client'
-import type { SpeciesCreate, SpeciesItem, SpeciesUpdate } from './types'
+import type { DeleteImpact, SpeciesCreate, SpeciesItem, SpeciesUpdate } from './types'
 
 export type SpeciesListResponse = {
   items: SpeciesItem[]
@@ -27,5 +27,17 @@ export const species = {
 
   archive(id: string) {
     return api.delete(`/species/${id}`)
+  },
+
+  getDeleteImpact(id: string) {
+    return api.get<DeleteImpact>(`/species/${id}/delete-impact`)
+  },
+
+  restore(id: string) {
+    return api.post<SpeciesItem>(`/species/${id}/restore`)
+  },
+
+  clean(id: string) {
+    return api.delete(`/species/${id}/clean`)
   },
 }

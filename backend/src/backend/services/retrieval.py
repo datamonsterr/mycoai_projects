@@ -156,5 +156,5 @@ RESEARCH_DEFAULTS = {
     "media_strategy": "same_media",
     "aggregation": "freq_strength",
     "k": 11,
-    "collection": "qdrant-research_fold0",
+    "collection": "qdrant-research_fold1",
 }

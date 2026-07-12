@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { uploadImage, getImage, deleteImage, uploadBatchZip, listImages } from '@/services/images'
+import { uploadImage, getImage, deleteImage, uploadBatchZip, updateImageMedia, listImages } from '@/services/images'
 import { resolveImageUrl } from '@/lib/utils'
 
 const mockFetch = vi.fn()
@@ -68,6 +68,20 @@ describe('deleteImage', () => {
     const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
     expect(url).toContain('/api/v1/images/img-del')
     expect(init.method).toBe('DELETE')
+  })
+})
+
+describe('updateImageMedia', () => {
+  it('patches image media before reindex', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ image_id: 'img-1', media: 'CYA' }))
+
+    const result = await updateImageMedia('img-1', 'cya')
+
+    expect(result.media).toBe('CYA')
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('/api/v1/images/img-1/media')
+    expect(init.method).toBe('PATCH')
+    expect(init.body).toBe(JSON.stringify({ media: 'cya' }))
   })
 })
 

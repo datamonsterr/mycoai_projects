@@ -1,5 +1,5 @@
 import { api } from './api-client'
-import type { PaginatedResponse, StrainCreateRequest, StrainItem } from './types'
+import type { DeleteImpact, PaginatedResponse, StrainCreateRequest, StrainItem } from './types'
 
 export const strains = {
   list(params?: {
@@ -22,5 +22,9 @@ export const strains = {
 
   archive(id: string) {
     return api.delete(`/strains/${id}`)
+  },
+
+  getDeleteImpact(id: string) {
+    return api.get<DeleteImpact>(`/strains/${id}/delete-impact`)
   },
 }

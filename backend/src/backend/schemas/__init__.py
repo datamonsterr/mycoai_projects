@@ -85,12 +85,19 @@ class RetrievalNeighbor(BaseModel):
     image_thumbnail_url: str
 
 
+class RetrievalQuerySegmentResult(BaseModel):
+    segment_index: int
+    segment_image_url: str
+    neighbors: list[RetrievalNeighbor]
+
+
 class RetrievalQueryImageResult(BaseModel):
     image_id: str
     image_url: str
     media: str
     segment_image_urls: list[str]
     neighbors: list[RetrievalNeighbor]
+    segments: list[RetrievalQuerySegmentResult] = []
 
 
 class RetrievalRanking(BaseModel):

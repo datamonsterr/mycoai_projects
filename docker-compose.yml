@@ -27,6 +27,8 @@ services:
     image: postgres:16-alpine
     container_name: mycoai-postgres
     restart: always
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-mycoai}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mycoai}
@@ -55,6 +57,8 @@ services:
     image: redis:7-alpine
     container_name: mycoai-redis
     restart: always
+    ports:
+      - "6379:6379"
     command: >
       redis-server
       --save 60 1
@@ -80,6 +84,9 @@ services:
     image: qdrant/qdrant:latest
     container_name: mycoai-qdrant-product
     restart: always
+    ports:
+      - "6335:6333"
+      - "6336:6334"
     environment:
       QDRANT__SERVICE__HTTP_PORT: 6333
       QDRANT__SERVICE__GRPC_PORT: 6334
@@ -107,6 +114,9 @@ services:
     image: qdrant/qdrant:latest
     container_name: mycoai-qdrant-research
     restart: always
+    ports:
+      - "6333:6333"
+      - "6334:6334"
     environment:
       QDRANT__SERVICE__HTTP_PORT: 6333
       QDRANT__SERVICE__GRPC_PORT: 6334
@@ -134,6 +144,9 @@ services:
     image: minio/minio:latest
     container_name: mycoai-minio
     restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -141,10 +154,9 @@ services:
       MINIO_SERVER_URL: ${MINIO_SERVER_URL:-http://localhost:9000}
     volumes:
       - minio_data:/data
-    ports:
-      - "9000:9000"
     networks:
       - backend
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -200,6 +212,7 @@ services:
       MYCOAI_QDRANT_HOST: qdrant-product
       MYCOAI_QDRANT_PORT: "6333"
       MYCOAI_QDRANT_GRPC_PORT: "6334"
+      MYCOAI_QDRANT_COLLECTION_NAME: myco_fungi_features_full_finetuned
       MYCOAI_QDRANT_DEFAULT_VECTOR_NAME: "efficientnetb1_finetuned"
     ports:
       - "8000:8000"
@@ -276,6 +289,7 @@ services:
       MYCOAI_QDRANT_HOST: qdrant-product
       MYCOAI_QDRANT_PORT: "6333"
       MYCOAI_QDRANT_GRPC_PORT: "6334"
+      MYCOAI_QDRANT_COLLECTION_NAME: myco_fungi_features_full_finetuned
       MYCOAI_QDRANT_DEFAULT_VECTOR_NAME: "colorhistogram"
       MYCOAI_BACKEND_STORAGE_BACKEND: s3
       MYCOAI_BACKEND_STORAGE_S3_ENDPOINT: minio:9000
@@ -302,24 +316,32 @@ services:
           cpus: "1.0"
           memory: 512M
 
-  # ── Frontend (nginx serving built assets) ──────────────────────────────────
+  # ── Frontend (Vite dev server with HMR on :5173 by default) ───────────────
   frontend:
     build:
       context: ./frontend
-      target: prod
+      target: dev
     container_name: mycoai-frontend
     restart: always
+    environment:
+      VITE_API_URL: ""
+      VITE_PROXY_API_URL: http://backend:8000
     ports:
-      - "80:80"
+      - "5173:5173"
     networks:
       - backend
     depends_on:
       - backend
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+      - ./frontend/index.html:/app/index.html:ro
+      - ./frontend/vite.config.ts:/app/vite.config.ts:ro
     deploy:
       resources:
         limits:
           cpus: "0.5"
-          memory: 128M
+          memory: 512M
 
 networks:
   backend:

@@ -355,3 +355,134 @@ def test_start_query_stores_queried_image_neighbor_fallback_when_only_segment_pa
     assert created_jobs
     stored_neighbor = created_jobs[0].config["queried_images"][0]["neighbors"][0]
     assert stored_neighbor["image_thumbnail_url"].startswith("/api/v1/retrieval/")
+
+
+def test_batch_results_use_batch_strain_label() -> None:
+    import asyncio
+
+    payload = SimpleNamespace(
+        image_id=_VALID_UUID,
+        image_ids=[_VALID_UUID, str(uuid.uuid4())],
+        k=3,
+        aggregation="freq_strength",
+        media_strategy="same_media",
+    )
+    from backend.qdrant.models import NeighborResult, QueryResult
+
+    image_a = SimpleNamespace(
+        id=uuid.UUID(_VALID_UUID),
+        media=SimpleNamespace(name="CYA"),
+        strain=SimpleNamespace(name="DTO 148-F1"),
+        segments=[
+            SimpleNamespace(
+                qdrant_point_id=uuid.uuid4(),
+                is_archived=False,
+                segment_index=0,
+            )
+        ],
+    )
+    image_b = SimpleNamespace(
+        id=uuid.UUID(payload.image_ids[1]),
+        media=SimpleNamespace(name="CYA"),
+        strain=SimpleNamespace(name="DTO 148-F2"),
+        segments=[
+            SimpleNamespace(
+                qdrant_point_id=uuid.uuid4(),
+                is_archived=False,
+                segment_index=0,
+            )
+        ],
+    )
+
+    class FakeExecuteResult:
+        def __init__(self, rows=None, scalar_value=None):
+            self._rows = rows or []
+            self._scalar_value = scalar_value
+
+        def scalars(self):
+            return self
+
+        def all(self):
+            return self._rows
+
+        def scalar_one_or_none(self):
+            return self._scalar_value
+
+    created_results: list[object] = []
+
+    def fake_add(obj, *_args, **_kwargs):
+        if getattr(obj, "id", None) is None:
+            obj.id = uuid.uuid4()
+        if obj.__class__.__name__ == "RetrievalResult":
+            created_results.append(obj)
+
+    db = SimpleNamespace(
+        execute=AsyncMock(
+            side_effect=[
+                FakeExecuteResult([image_a, image_b]),
+            ]
+        ),
+        add=fake_add,
+        flush=AsyncMock(),
+        commit=AsyncMock(),
+    )
+    user = SimpleNamespace(id=uuid.uuid4())
+    aggregation_result = SimpleNamespace(
+        ranking=[SimpleNamespace(species="Penicillium chrysogenum", score=0.91)]
+    )
+
+    with (
+        patch(
+            "backend.api.retrieval.query_points_by_id",
+            return_value=QueryResult(
+                neighbors=[
+                    NeighborResult(
+                        image_id="neighbor-image-1",
+                        score=0.91,
+                        strain="DTO 148-F9",
+                        media="CYA",
+                        specy="Penicillium chrysogenum",
+                        extractor="EfficientNetB1_finetuned",
+                    )
+                ],
+                total=1,
+            ),
+        ),
+        patch(
+            "backend.api.retrieval.aggregate_predictions",
+            return_value=aggregation_result,
+        ),
+        patch(
+            "backend.api.retrieval._build_strain_map",
+            new=AsyncMock(return_value={}),
+        ),
+        patch("backend.api.retrieval.get_qdrant_client", return_value=object()),
+        patch("backend.api.retrieval.get_collection_name", return_value="segments"),
+        patch(
+            "backend.api.retrieval._query_by_crop_image",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.api.retrieval._resolve_species_sync",
+            return_value="Penicillium chrysogenum",
+        ),
+        patch(
+            "backend.api.retrieval._resolve_species_fast",
+            return_value="Penicillium chrysogenum",
+        ),
+        patch(
+            "backend.api.retrieval.is_known_confidence",
+            return_value={
+                "formula": "gnorm_0_2",
+                "confidence": 0.0,
+                "threshold": 0.12,
+                "is_known": True,
+            },
+        ),
+    ):
+        from backend.api.retrieval import start_query
+
+        asyncio.run(start_query(payload, user, db))
+
+    assert created_results
+    assert created_results[0].strain_name == "batch"

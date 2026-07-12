@@ -122,12 +122,19 @@ export interface RetrievalRanking {
   neighbors: RetrievalNeighbor[]
 }
 
+export interface RetrievalQuerySegmentResult {
+  segment_index: number
+  segment_image_url: string
+  neighbors: RetrievalNeighbor[]
+}
+
 export interface RetrievalQueryImageResult {
   image_id: string
   image_url: string
   media: string
   segment_image_urls: string[]
   neighbors: RetrievalNeighbor[]
+  segments: RetrievalQuerySegmentResult[]
 }
 
 export interface ThresholdConfidence {
@@ -182,6 +189,13 @@ export interface MediaCreate {
 export interface MediaUpdate {
   name?: string | null
   description?: string | null
+}
+
+export type DeleteImpact = {
+  strain_count?: number
+  image_count?: number
+  segment_count: number
+  warning_message: string
 }
 
 export interface StrainItem {

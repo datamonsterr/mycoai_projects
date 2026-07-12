@@ -26,7 +26,13 @@ export default function LoginPage() {
 
     if (mode === 'login') {
       const ok = await login(email, password)
-      if (!ok) setError('Invalid credentials or inactive account.')
+      if (!ok) {
+        setError('Invalid credentials or inactive account.')
+      } else {
+        const params = new URLSearchParams(window.location.search)
+        const next = params.get('next') || '/retrieve'
+        window.location.assign(next)
+      }
     } else {
       try {
         const { authService } = await import('@/services/auth')

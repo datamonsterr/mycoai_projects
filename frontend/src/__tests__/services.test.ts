@@ -83,6 +83,17 @@ describe('species service', () => {
     )
   })
 
+  it('getDeleteImpact fetches archive impact', async () => {
+    const impact = { strain_count: 2, segment_count: 8, warning_message: 'Archiving this species affects 2 strain(s) and 8 segment(s).' }
+    mockFetch(impact)
+    const result = await species.getDeleteImpact('sp1')
+    expect(result).toEqual(impact)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/species/sp1/delete-impact'),
+      expect.objectContaining({ method: 'GET' }),
+    )
+  })
+
   it('throws on error status', async () => {
     mockFetch({ detail: 'Conflict' }, 409)
     await expect(species.create({ name: 'dup' })).rejects.toThrow('Conflict')
@@ -127,6 +138,17 @@ describe('media service', () => {
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/media/abc'),
       expect.objectContaining({ method: 'DELETE' }),
+    )
+  })
+
+  it('getDeleteImpact fetches archive impact', async () => {
+    const impact = { strain_count: 3, segment_count: 12, warning_message: 'Archiving this media affects 3 strain(s) and 12 segment(s).' }
+    mockFetch(impact)
+    const result = await media.getDeleteImpact('media-1')
+    expect(result).toEqual(impact)
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/media/media-1/delete-impact'),
+      expect.objectContaining({ method: 'GET' }),
     )
   })
 

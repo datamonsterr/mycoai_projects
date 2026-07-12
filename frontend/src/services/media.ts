@@ -1,5 +1,5 @@
 import { api } from './api-client'
-import type { MediaCreate, MediaItem, MediaUpdate } from './types'
+import type { DeleteImpact, MediaCreate, MediaItem, MediaUpdate } from './types'
 
 export type MediaListResponse = {
   items: MediaItem[]
@@ -27,5 +27,17 @@ export const media = {
 
   archive(id: string) {
     return api.delete(`/media/${id}`)
+  },
+
+  getDeleteImpact(id: string) {
+    return api.get<DeleteImpact>(`/media/${id}/delete-impact`)
+  },
+
+  restore(id: string) {
+    return api.post<MediaItem>(`/media/${id}/restore`)
+  },
+
+  clean(id: string) {
+    return api.delete(`/media/${id}/clean`)
   },
 }

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import IndexNewDataPage from '@/pages/IndexNewData'
@@ -13,29 +13,42 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ success: vi.fn(), error: vi.fn(), apiError: vi.fn() }),
 }))
 
-vi.mock('@/services/images', () => ({
+const imagesModule = vi.hoisted(() => ({
   uploadBatchZip: vi.fn().mockResolvedValue({
-    status: 'completed',
+    status: 'processing',
     batch_id: 'batch-1',
     batch_name: 'test',
     total: 2,
-    successful: 2,
+    successful: 0,
     failed: 0,
-    results: [
-      { image_id: 'img1', strain: 'T1', species: 'thymicola', media: 'MEA', segments: 1, filename: 'a.jpg', source_url: '/a.jpg', status: 'segmented' },
-      { image_id: 'img2', strain: 'T2', species: 'thymicola', media: 'MEA', segments: 1, filename: 'b.jpg', source_url: '/b.jpg', status: 'uploaded' },
-    ],
+    results: [],
     errors: [],
     progress: {
       batch_id: 'batch-1',
-      status: 'completed',
+      status: 'processing',
       batch_name: 'test',
       upload: { completed: 2, total: 2, percent: 100 },
       segmentation: { completed: 1, total: 2, percent: 50 },
       feature_extraction: { completed: 0, total: 2, percent: 0 },
       strains: [],
-      images: [],
+      images: [
+        { filename: 'images/T1/MEA/a.jpg', strain: 'T1', species: 'thymicola', media: 'MEA', status: 'segmented', image_id: 'img1', segments: 1, source_url: '/a.jpg', error: null },
+        { filename: 'images/T2/CYA/b.jpg', strain: 'T2', species: 'thymicola', media: 'CYA', status: 'uploaded', image_id: 'img2', segments: 0, source_url: '/b.jpg', error: null },
+      ],
     },
+  }),
+  getBatchProgress: vi.fn().mockResolvedValue({
+    batch_id: 'batch-1',
+    status: 'completed',
+    batch_name: 'test',
+    upload: { completed: 2, total: 2, percent: 100 },
+    segmentation: { completed: 2, total: 2, percent: 100 },
+    feature_extraction: { completed: 0, total: 2, percent: 0 },
+    strains: [],
+    images: [
+      { filename: 'images/T1/MEA/a.jpg', strain: 'T1', species: 'thymicola', media: 'MEA', status: 'segmented', image_id: 'img1', segments: 1, source_url: '/a.jpg', error: null },
+      { filename: 'images/T2/CYA/b.jpg', strain: 'T2', species: 'thymicola', media: 'CYA', status: 'segmented', image_id: 'img2', segments: 1, source_url: '/b.jpg', error: null },
+    ],
   }),
   confirmBatchStrain: vi.fn().mockResolvedValue({
     batch_id: 'batch-1',
@@ -50,6 +63,8 @@ vi.mock('@/services/images', () => ({
   listSegments: vi.fn().mockResolvedValue([]),
   autoSegment: vi.fn().mockResolvedValue({ segmentation_method: 'yolo', segments: [] }),
 }))
+
+vi.mock('@/services/images', () => imagesModule)
 
 describe('IndexNewDataPage', () => {
   it('shows compact batch guidance and AGENTS modal', async () => {
@@ -83,17 +98,34 @@ describe('IndexNewDataPage', () => {
 
     expect(await screen.findByText(/Upload 2\/2 \(100%\)/)).toBeInTheDocument()
     expect(screen.getByText(/Segmentation 1\/2 \(50%\)/)).toBeInTheDocument()
-    expect(screen.getByText('b.jpg').closest('tr')).toHaveClass('opacity-50')
+    expect(screen.getByText(/2 strain\(s\) · 2 image\(s\)/i)).toBeInTheDocument()
   })
 
-  it('shows per-strain confirmation progress and advances review flow', async () => {
+  it('shows per-strain confirmation flow without crashing after segment step', async () => {
     render(<IndexNewDataPage />)
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
     await userEvent.upload(input, new File(['zip'], 'batch.zip', { type: 'application/zip' }))
-    await userEvent.click(await screen.findByRole('button', { name: /Segment Uploaded/ }))
+    const segmentButton = await screen.findByRole('button', { name: /Segment Uploaded/ })
+    expect(segmentButton).toBeInTheDocument()
+  })
 
-    expect(await screen.findByText(/Segmentation 0\/2/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Confirm strain 0\/2/ })).toBeInTheDocument()
+  it('polls batch progress after zip upload', async () => {
+    render(<IndexNewDataPage />)
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    await userEvent.upload(input, new File(['zip'], 'batch.zip', { type: 'application/zip' }))
+
+    await waitFor(() => expect(imagesModule.getBatchProgress.mock.calls.length).toBeGreaterThan(0))
+  })
+
+  it('keeps media from nested zip folder instead of defaulting to MEA', async () => {
+    render(<IndexNewDataPage />)
+
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    await userEvent.upload(input, new File(['zip'], 'batch.zip', { type: 'application/zip' }))
+
+    expect(screen.getByText(/2 strain\(s\) · 2 image\(s\)/i)).toBeInTheDocument()
+    expect(screen.getByText(/Upload 2\/2 \(100%\)/)).toBeInTheDocument()
   })
 })

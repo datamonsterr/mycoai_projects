@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import uuid
 from collections import Counter
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from sqlalchemy.orm import selectinload
 from backend.config import get_qdrant_settings, get_storage_settings
 from backend.database import _get_sessionmaker
 from backend.models import Image, Media, QdrantIndexState, Segment, Species, Strain
-from backend.services.storage import storage_artifact_prefix, storage_candidates
+from backend.services.storage import create_storage, storage_artifact_prefix, storage_candidates
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -56,9 +57,15 @@ def _upload_root() -> Path:
 
 
 def _minio() -> Minio:
+    import os
     settings = get_storage_settings()
+    endpoint = os.getenv("MYCOAI_BACKEND_STORAGE_S3_PUBLIC_ENDPOINT", "")
+    if endpoint:
+        endpoint = endpoint.replace("http://", "").replace("https://", "")
+    else:
+        endpoint = settings.s3_endpoint.replace("http://", "").replace("https://", "")
     return Minio(
-        endpoint=settings.s3_endpoint.replace("http://", "").replace("https://", ""),
+        endpoint=endpoint,
         access_key=settings.s3_access_key,
         secret_key=settings.s3_secret_key,
         secure=settings.s3_secure,
@@ -165,6 +172,127 @@ async def normalize_species() -> dict[str, int]:
                     image.species_id = target_species.id
                     stats["images_reassigned"] += 1
 
+        await db.commit()
+    return dict(stats)
+
+
+async def rebuild_from_full_prepared() -> dict[str, int]:
+    session_factory = _get_sessionmaker()
+    stats = Counter()
+    canonical_by_slug = _canonical_species_by_slug()
+    strain_map = _strain_species_map()
+    storage = create_storage(get_storage_settings())
+    full_root = REPO_ROOT / "Dataset/full_prepared"
+
+    async with session_factory() as db:
+        species_by_name: dict[str, Species] = {}
+        media_by_name: dict[str, Media] = {}
+
+        for species_slug, species_name in sorted(canonical_by_slug.items()):
+            species = Species(name=species_name, description=None)
+            db.add(species)
+            await db.flush()
+            species_by_name[species_name.casefold()] = species
+            stats["species_created"] += 1
+
+            species_root = full_root / species_slug
+            if not species_root.exists():
+                continue
+            for strain_dir in sorted(path for path in species_root.iterdir() if path.is_dir()):
+                strain_slug = strain_dir.name.lower()
+                strain_name = (
+                    f"DTO {strain_slug.split('-')[1]}-{strain_slug.split('-')[2].upper()}"
+                    if strain_slug.startswith("dto-") and strain_slug.count("-") >= 2
+                    else strain_dir.name.replace("-", " ").upper()
+                )
+                expected_species = strain_map.get(strain_name.casefold())
+                if expected_species is None or expected_species.casefold() != species_name.casefold():
+                    continue
+                strain = Strain(
+                    name=strain_name,
+                    species_id=species.id,
+                    source="full_prepared_rebuild",
+                )
+                db.add(strain)
+                await db.flush()
+                stats["strains_created"] += 1
+
+                for media_dir in sorted(path for path in strain_dir.iterdir() if path.is_dir()):
+                    media_name = media_dir.name.upper()
+                    media = media_by_name.get(media_name)
+                    if media is None:
+                        media = await db.scalar(select(Media).where(Media.name == media_name))
+                    if media is None:
+                        media = Media(name=media_name, description=None)
+                        db.add(media)
+                        await db.flush()
+                        stats["media_created"] += 1
+                    media_by_name[media_name] = media
+
+                    for angle_dir in sorted(path for path in media_dir.iterdir() if path.is_dir()):
+                        angle = angle_dir.name
+                        source_files = sorted(angle_dir.glob("source_*.jpg"))
+                        if not source_files:
+                            continue
+                        source_file = source_files[0]
+                        prepared_file = next(iter(sorted(angle_dir.glob("prepared_*.jpg"))), None)
+                        pipeline_file = angle_dir / "pipeline_kmeans.jpg"
+                        bbox_file = angle_dir / "bbox_kmeans.jpg"
+                        segment_files = sorted((angle_dir / "segments_kmeans").glob("segment_*.jpg"))
+                        if not segment_files:
+                            continue
+
+                        image_id = uuid.uuid4()
+                        prefix = storage_artifact_prefix(
+                            strain=strain_name,
+                            media=media_name,
+                            image_id=image_id,
+                        )
+                        image = Image(
+                            id=image_id,
+                            strain_id=strain.id,
+                            species_id=species.id,
+                            media_id=media.id,
+                            angle=angle,
+                            file_path=str(prefix / "source.jpg"),
+                            prepared_path=str(prefix / "prepared.jpg"),
+                            pipeline_path=str(prefix / "pipeline_kmeans.jpg"),
+                            data_update_status="current",
+                        )
+                        db.add(image)
+                        await db.flush()
+                        stats["images_created"] += 1
+
+                        storage.upload_bytes(str(prefix / "source.jpg"), source_file.read_bytes())
+                        if prepared_file and prepared_file.exists():
+                            storage.upload_bytes(
+                                str(prefix / "prepared.jpg"), prepared_file.read_bytes()
+                            )
+                        if pipeline_file.exists():
+                            storage.upload_bytes(
+                                str(prefix / "pipeline_kmeans.jpg"),
+                                pipeline_file.read_bytes(),
+                            )
+                        if bbox_file.exists():
+                            storage.upload_bytes(
+                                str(prefix / "bbox_kmeans.jpg"), bbox_file.read_bytes()
+                            )
+
+                        for seg_index, seg_file in enumerate(segment_files):
+                            crop_key = prefix / "segments" / f"segment_{seg_index}.jpg"
+                            storage.upload_bytes(str(crop_key), seg_file.read_bytes())
+                            segment = Segment(
+                                image_id=image.id,
+                                segment_index=seg_index,
+                                crop_path=str(crop_key),
+                                bbox_x=0,
+                                bbox_y=0,
+                                bbox_w=1,
+                                bbox_h=1,
+                                segmentation_method="kmeans",
+                            )
+                            db.add(segment)
+                            stats["segments_created"] += 1
         await db.commit()
     return dict(stats)
 
@@ -327,12 +455,9 @@ async def clear_runtime() -> dict[str, int]:
     session_factory = _get_sessionmaker()
     stats = Counter()
     async with session_factory() as db:
-        await db.execute(delete(QdrantIndexState))
-        await db.execute(delete(Segment))
-        await db.execute(delete(Image))
-        await db.execute(delete(Strain))
-        await db.execute(delete(Species))
-        await db.execute(delete(Media))
+        from sqlalchemy import text
+
+        await db.execute(text("TRUNCATE TABLE qdrant_index_state, segments, images, strains, species, media RESTART IDENTITY CASCADE"))
         await db.commit()
         stats["sql_cleared"] = 1
 
@@ -356,6 +481,8 @@ async def _main(args: argparse.Namespace) -> None:
         result = await normalize_storage_paths()
     elif args.command == "normalize-species":
         result = await normalize_species()
+    elif args.command == "rebuild-from-full-prepared":
+        result = await rebuild_from_full_prepared()
     elif args.command == "prune-orphans":
         result = await prune_orphans()
     elif args.command == "audit":
@@ -370,6 +497,7 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("normalize-storage-paths")
     sub.add_parser("normalize-species")
+    sub.add_parser("rebuild-from-full-prepared")
     sub.add_parser("prune-orphans")
     sub.add_parser("audit")
     sub.add_parser("clear-runtime")

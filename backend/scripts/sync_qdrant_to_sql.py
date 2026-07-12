@@ -56,6 +56,20 @@ DATASET_MEDIA_RE = {
 }
 
 
+def _normalize_media_name(value: str) -> str:
+    upper = value.upper()
+    return "CYA" if upper in {"CYA30", "CYAS"} else upper
+
+
+def _canonical_species_names() -> set[str]:
+    root = Path("/home/dat/dev/mycoai/Dataset/original_prepared")
+    return {
+        path.name.replace("-", " ").title().casefold()
+        for path in root.iterdir()
+        if path.is_dir()
+    }
+
+
 def scan_original_prepared_media(root: Path) -> set[str]:
     media: set[str] = set()
     if not root.exists():
@@ -124,14 +138,15 @@ async def _load_sql_segment_metadata() -> tuple[
             "segment_index": str(segment.segment_index),
         }
         by_segment_id[str(segment.id)] = entry
+        legacy_prefix = (
+            image.strain.name.casefold(),
+            _normalize_media_name(image.media.name).casefold(),
+            (image.angle or "").casefold(),
+            str(segment.segment_index),
+        )
+        by_legacy_key[legacy_prefix + (Path(segment.crop_path).name,)] = entry
         by_legacy_key[
-            (
-                image.strain.name.casefold(),
-                image.media.name.casefold(),
-                (image.angle or "").casefold(),
-                str(segment.segment_index),
-                Path(segment.crop_path).name,
-            )
+            legacy_prefix + (f"segment_{segment.segment_index + 1}.jpg",)
         ] = entry
     return by_segment_id, by_legacy_key
 
@@ -153,7 +168,9 @@ def _lookup_sql_meta(
     return sql_legacy_metadata.get(
         (
             str(payload.get("strain") or "").casefold(),
-            str(payload.get("media") or payload.get("environment") or "").casefold(),
+            _normalize_media_name(
+                str(payload.get("media") or payload.get("environment") or "")
+            ).casefold(),
             str(payload.get("angle") or "").casefold(),
             "" if segment_index is None else str(segment_index),
             Path(segment_path).name,
@@ -174,6 +191,7 @@ def _copy_collection_vectors(
 ) -> dict[str, int]:
     source = QdrantClient(host=source_host, port=source_port)
     target = QdrantClient(host=target_host, port=target_port)
+    canonical_species = _canonical_species_names()
 
     source_info = source.get_collection(source_collection)
     target.recreate_collection(
@@ -198,6 +216,10 @@ def _copy_collection_vectors(
         upserts: list[PointStruct] = []
         for point in points:
             payload = point.payload or {}
+            species = str(payload.get("species") or payload.get("specy") or "")
+            if species.casefold() not in canonical_species:
+                skipped_missing_sql += 1
+                continue
             sql_meta = _lookup_sql_meta(
                 payload,
                 sql_segment_metadata,
@@ -244,6 +266,7 @@ async def scan_qdrant(collection: str) -> dict[str, Any]:
         logger.error("Cannot access Qdrant: %s", exc)
         sys.exit(1)
 
+    canonical_species = _canonical_species_names()
     species_set: set[str] = set()
     media_set: set[str] = set()
     strains: dict[str, str] = {}  # strain → species
@@ -271,16 +294,17 @@ async def scan_qdrant(collection: str) -> dict[str, Any]:
             payload = point.payload or {}
             strain = payload.get("strain", "")
             specy = payload.get("specy") or payload.get("species", "")
-            env = payload.get("media", "")
+            env = payload.get("media") or payload.get("environment") or ""
+            normalized_env = _normalize_media_name(str(env)) if env else ""
 
-            if specy and specy.lower() != "unknown":
+            if specy.casefold() in canonical_species:
                 species_set.add(specy)
-            if env and env.lower() != "unknown":
-                media_set.add(env.upper())
-            if strain and specy:
+            if normalized_env and normalized_env.lower() != "unknown":
+                media_set.add(normalized_env)
+            if strain and specy.casefold() in canonical_species:
                 strains[strain] = specy
-            if strain and env:
-                strain_media_map[strain].add(env.upper())
+            if strain and normalized_env:
+                strain_media_map[strain].add(normalized_env)
 
         if scanned % 5000 == 0 and scanned > 0:
             logger.info("  Scanned %d points...", scanned)
@@ -389,6 +413,48 @@ async def sync_to_sql(manifest: dict[str, Any]) -> dict[str, int]:
     return stats
 
 
+async def _async_main(args: argparse.Namespace) -> None:
+    manifest = await scan_qdrant(args.collection)
+
+    print("\n=== Qdrant Scan Summary ===")
+    print(f"  Total points: {manifest['total_points']}")
+    print(f"  Species: {len(manifest['species'])}")
+    for s in manifest["species"][:10]:
+        print(f"    - {s}")
+    if len(manifest["species"]) > 10:
+        print(f"    ... and {len(manifest['species']) - 10} more")
+
+    print(f"  Media: {len(manifest['media'])}")
+    for m in manifest["media"]:
+        print(f"    - {m}")
+
+    print(f"  Strains: {len(manifest['strains'])}")
+    for i, (strain, specy) in enumerate(manifest["strains"].items()):
+        if i >= 10:
+            print(f"    ... and {len(manifest['strains']) - 10} more")
+            break
+        print(f"    - {strain} → {specy}")
+
+    if args.scan_only:
+        return
+
+    print("\n=== Syncing to SQL ===")
+    sql_stats = await sync_to_sql(manifest)
+    sql_segment_metadata, sql_legacy_metadata = await _load_sql_segment_metadata()
+    vector_stats = _copy_collection_vectors(
+        args.collection,
+        args.target_collection,
+        sql_segment_metadata,
+        sql_legacy_metadata,
+    )
+    if vector_stats["vectors_copied"] != vector_stats["target_points"]:
+        raise RuntimeError("Qdrant product point count mismatch after sync")
+    if vector_stats["target_points"] != vector_stats["sql_segments"]:
+        raise RuntimeError("Qdrant product / SQL segment count mismatch after sync")
+    print("SQL sync complete:", sql_stats)
+    print("Qdrant product sync complete:", vector_stats)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Sync research Qdrant → SQL + product Qdrant"
@@ -424,48 +490,8 @@ def main() -> None:
 
     setup_logging(verbose=args.verbose)
 
-    manifest = asyncio.run(scan_qdrant(args.collection))
-
-    print("\n=== Qdrant Scan Summary ===")
-    print(f"  Total points: {manifest['total_points']}")
-    print(f"  Species: {len(manifest['species'])}")
-    for s in manifest["species"][:10]:
-        print(f"    - {s}")
-    if len(manifest["species"]) > 10:
-        print(f"    ... and {len(manifest['species']) - 10} more")
-
-    print(f"  Media: {len(manifest['media'])}")
-    for m in manifest["media"]:
-        print(f"    - {m}")
-
-    print(f"  Strains: {len(manifest['strains'])}")
-    for i, (strain, specy) in enumerate(manifest["strains"].items()):
-        if i >= 10:
-            print(f"    ... and {len(manifest['strains']) - 10} more")
-            break
-        print(f"    - {strain} → {specy}")
-
-    if args.scan_only:
-        return
-
-    print("\n=== Syncing to SQL ===")
     try:
-        sql_stats = asyncio.run(sync_to_sql(manifest))
-        sql_segment_metadata, sql_legacy_metadata = asyncio.run(
-            _load_sql_segment_metadata()
-        )
-        vector_stats = _copy_collection_vectors(
-            args.collection,
-            args.target_collection,
-            sql_segment_metadata,
-            sql_legacy_metadata,
-        )
-        if vector_stats["vectors_copied"] != vector_stats["target_points"]:
-            raise RuntimeError("Qdrant product point count mismatch after sync")
-        if vector_stats["target_points"] != vector_stats["sql_segments"]:
-            raise RuntimeError("Qdrant product / SQL segment count mismatch after sync")
-        print("SQL sync complete:", sql_stats)
-        print("Qdrant product sync complete:", vector_stats)
+        asyncio.run(_async_main(args))
     except Exception as exc:
         logger.error("Sync failed: %s", exc)
         print("\nMake sure Postgres + both Qdrant instances are running.")

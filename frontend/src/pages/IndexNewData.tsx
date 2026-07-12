@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import JSZip from 'jszip'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,7 +12,7 @@ import { sampleStrains } from '@/lib/sample-assets'
 import { AGENTS_MD_CONTENT, downloadTemplateZip } from '@/lib/template'
 import { useSpeciesList, useMediaList, useCreateSpecies } from '@/hooks/use-taxonomy'
 import { useToast } from '@/hooks/use-toast'
-import { uploadBatchZip, listSegments, autoSegment, confirmBatchStrain, type BatchProgress, type BatchZipResult } from '@/services/images'
+import { uploadBatchZip, getBatchProgress, listSegments, autoSegment, confirmBatchStrain, type BatchProgress, type BatchZipResult } from '@/services/images'
 import type { SegmentDetail } from '@/services/types'
 import { ArrowRight, ChevronRight, Download, Images, Plus, Trash2, Check, X, FileArchive, Loader2, FileText } from 'lucide-react'
 
@@ -39,6 +40,33 @@ interface IndexStrain {
   strain: string
   species: string
   images: StrainImage[]
+}
+
+const BATCH_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.jpe'])
+const BATCH_ARTIFACT_PATTERNS = [/^segment_\d+\.(jpg|jpeg|png|jpe)$/i, /^prepared\.(jpg|jpeg|png|jpe)$/i, /^source\.(jpg|jpeg|png|jpe)$/i, /^bbox_.*\.(jpg|jpeg|png|jpe)$/i, /^pipeline_.*\.(jpg|jpeg|png|jpe)$/i]
+
+type BatchZipPreview = {
+  total: number
+  images: BatchProgress['images']
+}
+
+async function inspectBatchZip(file: File): Promise<BatchZipPreview> {
+  const zip = await JSZip.loadAsync(file)
+  const images: BatchProgress['images'] = []
+  const mediaNames = new Set(['CREA', 'CYA30', 'CYAS', 'CYA', 'DG18', 'MEA', 'YES', 'OA', 'M40Y'])
+  for (const entry of Object.values(zip.files)) {
+    if (entry.dir) continue
+    const parts = entry.name.split('/').filter(Boolean)
+    const filename = parts.at(-1) ?? ''
+    const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase()
+    if (!BATCH_IMAGE_EXTENSIONS.has(ext)) continue
+    if (BATCH_ARTIFACT_PATTERNS.some((pattern) => pattern.test(filename))) continue
+    const folderParts = parts.slice(0, -1)
+    const strain = folderParts.find((part) => !['images', 'mycoai_batch', 'mycoai_batch_template'].includes(part.toLowerCase()) && !mediaNames.has(part.toUpperCase())) ?? 'unknown-strain'
+    const media = folderParts.map((part) => part.toUpperCase()).find((part) => mediaNames.has(part)) ?? (filename.match(/(CREA|CYA30|CYAS|CYA|DG18|MEA|YES|OA|M40Y)/i)?.[1]?.toUpperCase() ?? 'Other media')
+    images.push({ filename: entry.name, strain, media: media === 'CYA30' || media === 'CYAS' ? 'CYA' : media, species: 'pending', status: 'queued', image_id: null, segments: 0, error: null, source_url: null })
+  }
+  return { total: images.length, images }
 }
 
 function Breadcrumb({ step }: { step: Step }) {
@@ -292,6 +320,7 @@ export default function IndexNewDataPage() {
   const [segmentsByImage, setSegmentsByImage] = useState<Record<string, SegmentDetail[]>>({})
   const [uploadMode, setUploadMode] = useState<'batch' | 'single'>('batch')
   const [agentsOpen, setAgentsOpen] = useState(false)
+  const batchPollFailures = useRef(0)
 
   const { data: speciesData } = useSpeciesList()
   const { data: mediaData } = useMediaList()
@@ -340,6 +369,34 @@ export default function IndexNewDataPage() {
 
   const findSpeciesByName = useCallback((name: string) => speciesList.find((sp) => sp.name === name)?.id, [speciesList])
 
+  useEffect(() => {
+    if (!batchProgress?.batch_id || !isUploading || batchProgress.batch_id === 'pending-upload') return
+    let cancelled = false
+    const timer = window.setInterval(async () => {
+      try {
+        const next = await getBatchProgress(batchProgress.batch_id)
+        if (cancelled) return
+        batchPollFailures.current = 0
+        setBatchProgress(next)
+        if (next.status !== 'processing') {
+          setIsUploading(false)
+          window.clearInterval(timer)
+        }
+      } catch {
+        batchPollFailures.current += 1
+        if (batchPollFailures.current >= 3) {
+          toast.error('Batch progress polling stopped. Refresh to check final status.')
+          setIsUploading(false)
+          window.clearInterval(timer)
+        }
+      }
+    }, 800)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [batchProgress?.batch_id, isUploading, toast])
+
   const loadSample = () => {
     const mapped = (sampleStrains as unknown as Array<{
       strain: string; species: string; images: Array<{
@@ -386,33 +443,58 @@ export default function IndexNewDataPage() {
   const handleBatchZipUpload = useCallback(async (file: File) => {
     setIsUploading(true)
     setBatchResult(null)
+    let keepPolling = false
     try {
+      const preview = await inspectBatchZip(file).catch<BatchZipPreview>(() => ({ total: 0, images: [] }))
+      if (preview.total > 0) {
+        setBatchProgress({
+          batch_id: 'pending-upload',
+          status: 'processing',
+          batch_name: file.name.replace(/\.zip$/i, ''),
+          upload: { completed: 0, total: preview.total, percent: 0 },
+          segmentation: { completed: 0, total: preview.total, percent: 0 },
+          feature_extraction: { completed: 0, total: preview.total, percent: 0 },
+          strains: [],
+          images: preview.images,
+        })
+      }
+
       const result = await uploadBatchZip(file)
-      setBatchResult(result)
-      setBatchProgress(result.progress)
+      const mergedProgress = result.progress.upload.total === 0 && preview.total > 0
+        ? {
+            ...result.progress,
+            upload: { ...result.progress.upload, total: preview.total },
+            segmentation: { ...result.progress.segmentation, total: preview.total },
+            feature_extraction: { ...result.progress.feature_extraction, total: preview.total },
+            images: result.progress.images.length > 0 ? result.progress.images : preview.images,
+          }
+        : result.progress
+      setBatchResult({ ...result, total: result.total || preview.total, progress: mergedProgress })
+      setBatchProgress(mergedProgress)
+      keepPolling = mergedProgress.status === 'processing'
 
       const indexed: IndexStrain[] = []
       const strainMap = new Map<string, IndexStrain>()
 
-      for (const r of result.results) {
-        const strainKey = r.strain || 'unknown'
+      for (const [index, image] of mergedProgress.images.entries()) {
+        const strainKey = image.strain || 'unknown'
         if (!strainMap.has(strainKey)) {
-          const speciesId = r.species ? findSpeciesByName(r.species) ?? defaultSpeciesId : defaultSpeciesId
+          const speciesId = image.species ? findSpeciesByName(image.species) ?? defaultSpeciesId : defaultSpeciesId
           strainMap.set(strainKey, { strain: strainKey, species: speciesId, images: [] })
           indexed.push(strainMap.get(strainKey)!)
         }
         strainMap.get(strainKey)!.images.push({
-          id: r.image_id || crypto.randomUUID(),
-          imageId: r.image_id || '',
-          fileName: r.filename,
-          media: r.media || 'MEA',
-          original: r.source_url || undefined,
+          id: image.image_id || `${strainKey}-${image.filename}-${index}`,
+          imageId: image.image_id || '',
+          fileName: image.filename,
+          media: image.media || 'Other media',
+          original: image.source_url || undefined,
           yoloBboxes: [],
-          segments: [],
+          segments: (image.segment_urls ?? []).map((url) => ({ url, bbox: { x: 0, y: 0, w: 1, h: 1 } })),
         })
       }
 
-      if (indexed.length === 0) {
+      if (indexed.length === 0 && mergedProgress.images.length === 0) {
         toast.error('No valid images found in the uploaded ZIP. Ensure the ZIP contains strain folders with .jpg/.jpeg/.png images.')
         return
       }
@@ -425,11 +507,16 @@ export default function IndexNewDataPage() {
     } catch (err) {
       toast.apiError(err, 'Batch upload failed')
     } finally {
-      setIsUploading(false)
+      if (!keepPolling) setIsUploading(false)
     }
   }, [defaultSpeciesId, findSpeciesByName, toast])
 
   const runAutoSegment = async () => {
+    if (batchProgress?.batch_id) {
+      await loadSegmentsForAll()
+      setStep('segment')
+      return
+    }
     setAutoSegmenting(true)
     let successCount = 0
     const nextSegmentsByImage: Record<string, SegmentDetail[]> = {}
@@ -562,7 +649,7 @@ export default function IndexNewDataPage() {
 
   const goToSegment = async () => {
     await runAutoSegment()
-    await loadSegmentsForAll()
+    if (!batchProgress?.batch_id) await loadSegmentsForAll()
   }
 
   const confirmActiveStrain = async () => {

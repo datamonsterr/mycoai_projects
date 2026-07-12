@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import JSZip from 'jszip'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,11 +7,11 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { mediaList } from '@/lib/mock-data'
 import { sampleStrains } from '@/lib/sample-assets'
-import { downloadTemplate, INDEX_TEMPLATE_CSV, downloadAgentsMd, downloadTemplateZip } from '@/lib/template'
-import { uploadImage, uploadBatchZip, autoSegment, getBatchProgress, patchImageSegments, reindexImage, reindexStrainImages, type BatchProgress } from '@/services/images'
-import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Loader2, Plus, Trash2, FileText, FileArchive } from 'lucide-react'
+import { downloadTemplateZip } from '@/lib/template'
+import { uploadImage, uploadBatchZip, autoSegment, getBatchProgress, patchImageSegments, updateImageMedia, reindexImage, reindexStrainImages, type BatchProgress } from '@/services/images'
+import { useMediaList } from '@/hooks/use-taxonomy'
+import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Loader2, Plus, Trash2, FileArchive } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStartRetrieval, useJobStatus, useJobResults } from '@/hooks/use-retrieval'
 import { useToast } from '@/hooks/use-toast'
@@ -34,7 +35,9 @@ type StrainImage = {
   yoloPreview?: string
   yoloBboxes?: Array<{ x: number; y: number; w: number; h: number }>
   segments?: Array<{ url: string; bbox: { x: number; y: number; w: number; h: number } }>
-  featureStatus?: 'pending' | 'extracting' | 'done'
+  selected?: boolean
+  confirmed?: boolean
+  featureStatus?: 'pending' | 'extracting' | 'done' | 'failed'
 }
 
 type StrainDraft = {
@@ -124,18 +127,48 @@ function fromSampleImage(image: SampleImage): StrainImage {
     yoloPreview: image.yoloPreview,
     yoloBboxes: image.yoloBboxes ? [...image.yoloBboxes] : undefined,
     segments: [...image.segments],
+    selected: true,
+    confirmed: true,
     featureStatus: 'done',
   }
 }
 
-function mediaOptions() {
-  return mediaList.filter((media) => !media.is_archived).map((media) => (
-    <option key={media.media_id} value={media.name}>{media.name}</option>
+function mediaOptions(items: Array<{ id: string; name: string; is_archived: boolean }>) {
+  return items.filter((media) => !media.is_archived).map((media) => (
+    <option key={media.id} value={media.name}>{media.name}</option>
   ))
 }
 
 function imageCount(strains: StrainDraft[]) {
   return strains.reduce((sum, strain) => sum + strain.images.length, 0)
+}
+
+const BATCH_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.jpe'])
+const BATCH_ARTIFACT_PATTERNS = [/^segment_\d+\.(jpg|jpeg|png|jpe)$/i, /^prepared\.(jpg|jpeg|png|jpe)$/i, /^source\.(jpg|jpeg|png|jpe)$/i, /^bbox_.*\.(jpg|jpeg|png|jpe)$/i, /^pipeline_.*\.(jpg|jpeg|png|jpe)$/i]
+
+type BatchZipPreview = {
+  total: number
+  images: BatchProgress['images']
+}
+
+async function inspectBatchZip(file: File): Promise<BatchZipPreview> {
+  const zip = await JSZip.loadAsync(file)
+  const images: BatchProgress['images'] = []
+  const mediaNames = new Set(['CREA', 'CYA30', 'CYAS', 'CYA', 'DG18', 'MEA', 'YES', 'OA', 'M40Y'])
+  for (const entry of Object.values(zip.files)) {
+    if (entry.dir) continue
+    const parts = entry.name.split('/').filter(Boolean)
+    const filename = parts.at(-1) ?? ''
+    const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase()
+    if (!BATCH_IMAGE_EXTENSIONS.has(ext)) continue
+    if (BATCH_ARTIFACT_PATTERNS.some((pattern) => pattern.test(filename))) continue
+    const folderParts = parts.slice(0, -1)
+    const strain = folderParts.find((part) => !['images', 'mycoai_batch', 'mycoai_batch_template'].includes(part.toLowerCase()) && !mediaNames.has(part.toUpperCase())) ?? 'unknown-strain'
+     const media = folderParts.map((part) => part.toUpperCase()).find((part) => mediaNames.has(part)) ?? (filename.match(/(CREA|CYA30|CYAS|CYA|DG18|MEA|YES|OA|M40Y)/i)?.[1]?.toUpperCase() ?? 'Other media')
+     images.push({ filename: entry.name, strain, media: media === 'CYA30' || media === 'CYAS' ? 'CYA' : media, species: 'pending', status: 'queued', image_id: null, segments: 0, error: null, source_url: null })
+
+  }
+  return { total: images.length, images }
 }
 
 function getNeighbors(currentImage: StrainImage, k = 5) {
@@ -153,10 +186,12 @@ function getNeighbors(currentImage: StrainImage, k = 5) {
 
 function ImageMetaCard({
   image,
+  mediaItems,
   onUpdate,
   onRemove,
 }: {
   image: StrainImage
+  mediaItems: Array<{ id: string; name: string; is_archived: boolean }>
   onUpdate: (field: Partial<StrainImage>) => void
   onRemove: () => void
 }) {
@@ -181,9 +216,10 @@ function ImageMetaCard({
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Media</Label>
-            <Select className="h-8 text-xs" value={image.media} disabled={image.mediaIsNew} onChange={(e) => onUpdate({ media: e.target.value, mediaIsNew: false })}>
-              {mediaOptions()}
-            </Select>
+              <Select className="h-8 text-xs" value={image.media} disabled={image.mediaIsNew} onChange={(e) => onUpdate({ media: e.target.value, mediaIsNew: false })}>
+                {mediaOptions(mediaItems)}
+              </Select>
+
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Max</Label>
@@ -194,7 +230,7 @@ function ImageMetaCard({
           </div>
         </div>
         <label className="mt-2 flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={image.mediaIsNew} onChange={(e) => onUpdate({ mediaIsNew: e.target.checked, media: e.target.checked ? '' : mediaList[0].name })} />
+          <input type="checkbox" checked={image.mediaIsNew} onChange={(e) => onUpdate({ mediaIsNew: e.target.checked, media: e.target.checked ? '' : mediaItems[0]?.name ?? 'Other media' })} />
           <span>New/other media</span>
           {image.mediaIsNew && <Input className="h-7 max-w-48 text-xs" placeholder="Media name" value={image.media} onChange={(e) => onUpdate({ media: e.target.value })} />}
         </label>
@@ -210,6 +246,7 @@ function SegmentCard({
   onRemoveBbox,
   onSave,
   onConfirm,
+  onToggleSelected,
   saving,
   confirming,
 }: {
@@ -219,6 +256,7 @@ function SegmentCard({
   onRemoveBbox: (segmentIndex: number) => void
   onSave: () => void
   onConfirm: () => void
+  onToggleSelected: (selected: boolean) => void
   saving: boolean
   confirming: boolean
 }) {
@@ -334,14 +372,18 @@ function SegmentCard({
             <CardDescription className="text-xs">{image.media} · {segments.length} detected segments · YOLO segmentation</CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input type="checkbox" checked={image.selected ?? false} onChange={(e) => onToggleSelected(e.target.checked)} />
+              <span>Select uploaded</span>
+            </label>
             <Button size="sm" variant="outline" onClick={onSave} disabled={saving || confirming}>
               {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</> : 'Save boxes'}
             </Button>
-            <Button size="sm" onClick={onConfirm} disabled={saving || confirming}>
+            <Button size="sm" onClick={onConfirm} disabled={confirming || !(image.selected ?? false)}>
               {confirming ? <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</> : 'Confirm image'}
             </Button>
-            <Badge variant={image.featureStatus === 'done' ? 'success' : image.featureStatus === 'extracting' ? 'warning' : 'secondary'}>
-              {image.featureStatus === 'done' ? 'Feature extracted' : image.featureStatus === 'extracting' ? 'Extracting' : 'Pending confirmation'}
+            <Badge variant={image.featureStatus === 'done' ? 'success' : image.featureStatus === 'extracting' ? 'warning' : image.featureStatus === 'failed' ? 'destructive' : image.confirmed ? 'warning' : 'secondary'}>
+              {image.featureStatus === 'done' ? 'Feature extracted' : image.featureStatus === 'extracting' ? 'Extracting' : image.featureStatus === 'failed' ? 'Failed' : image.confirmed ? 'Confirmed' : 'Uploaded'}
             </Badge>
           </div>
         </div>
@@ -402,11 +444,15 @@ function SegmentCard({
 }
 
 function getRetrievalReadyImages(strain: StrainDraft | undefined) {
-  return (strain?.images ?? []).filter((image) => !image.mediaIsNew && image.featureStatus === 'done')
+  return (strain?.images ?? []).filter((image) => !image.mediaIsNew && !!image.id && !!image.confirmed && ((image.yoloBboxes?.length ?? 0) > 0 || (image.segments?.length ?? 0) > 0))
 }
 
 function getAllRetrievalReadyImages(strains: StrainDraft[]) {
   return strains.flatMap((strain) => getRetrievalReadyImages(strain))
+}
+
+function getConfirmableImages(strain: StrainDraft | undefined) {
+  return (strain?.images ?? []).filter((image) => image.selected && ((image.yoloBboxes?.length ?? 0) > 0 || (image.segments?.length ?? 0) > 0))
 }
 
 function hasNewMediaImages(strain: StrainDraft | undefined) {
@@ -421,14 +467,30 @@ function getNeighborImageUrl(url: string) {
   return url || ''
 }
 
-function apiNeighborsToDisplay(neighbors: RetrievalNeighbor[]) {
+type DisplayNeighbor = {
+  strain: string
+  species: string
+  media: string
+  original: string
+  similarity: number
+}
+
+function apiNeighborsToDisplay(neighbors: RetrievalNeighbor[] | DisplayNeighbor[]): DisplayNeighbor[] {
   return neighbors.map((neighbor) => ({
-    strain: neighbor.strain,
-    species: neighbor.species,
-    media: neighbor.media,
-    original: neighbor.image_thumbnail_url,
-    similarity: neighbor.similarity,
+    strain: 'strain' in neighbor ? neighbor.strain : '',
+    species: 'species' in neighbor ? neighbor.species : '',
+    media: 'media' in neighbor ? neighbor.media : '',
+    original: 'image_thumbnail_url' in neighbor ? neighbor.image_thumbnail_url : 'original' in neighbor ? neighbor.original : '',
+    similarity: 'similarity' in neighbor ? neighbor.similarity : 0,
   }))
+}
+
+function mediaFromFilename(filename: string) {
+  const parts = filename.split('/').filter(Boolean)
+  const media = [...parts].reverse().find((part) => ['CREA', 'CYA30', 'CYAS', 'CYA', 'DG18', 'MEA', 'YES', 'OA', 'M40Y', 'OTHER MEDIA'].includes(part.toUpperCase()))
+  if (!media) return 'Other media'
+  const normalized = media.toUpperCase()
+  return normalized === 'CYA30' || normalized === 'CYAS' ? 'CYA' : normalized
 }
 
 function ResultDetail({
@@ -489,15 +551,18 @@ function ResultDetail({
 
       <Card>
         <CardHeader className="p-4">
-          <CardTitle className="font-heading">Per Queried Image KNN Detail</CardTitle>
-          <CardDescription>Each uploaded image shows its top k={knnK} matching database images ({aggMethod}).</CardDescription>
+          <CardTitle className="font-heading">Per Segment KNN Detail</CardTitle>
+          <CardDescription>Each query segment shows its own top k={knnK} nearest neighbors ({aggMethod}) in one horizontal row.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 pt-0">
           {images.map((image) => {
             const queriedImage = queriedImages?.find((item) => item.image_id === image.id)
-            const displayNeighbors = queriedImage ? apiNeighborsToDisplay(queriedImage.neighbors) : getNeighbors(image, knnK)
             const displayImageUrl = queriedImage?.image_url || getDisplayImageUrl(image)
-            const segmentUrls = queriedImage?.segment_image_urls ?? image.segments?.slice(0, 3).map((segment) => segment.url) ?? []
+            const querySegments = queriedImage?.segments ?? (image.segments ?? []).map((segment, index) => ({
+              segment_index: index,
+              segment_image_url: segment.url,
+              neighbors: getNeighbors(image, knnK),
+            }))
 
             return (
               <details key={image.id} className="rounded-lg border border-border bg-card" open>
@@ -509,39 +574,49 @@ function ResultDetail({
                   )}
                   <div>
                     <div className="font-heading font-semibold">{image.fileName}</div>
-                    <div className="text-xs text-muted-foreground">Query image · media {queriedImage?.media ?? image.media} · {segmentUrls.length} segments shown</div>
+                    <div className="text-xs text-muted-foreground">Query image · media {queriedImage?.media ?? image.media} · {querySegments.length} segments queried</div>
                   </div>
                   <Badge variant="secondary">K={knnK}</Badge>
                 </summary>
-                <div className="space-y-3 border-t border-border p-3">
-                  <div className="grid grid-cols-3 gap-3">
-                    {segmentUrls.map((segmentUrl, index) => (
-                      <div key={`${image.id}-segment-preview-${index}`} className="overflow-hidden rounded-lg border border-border bg-muted">
-                        {segmentUrl ? (
-                          <img src={segmentUrl} alt={`${image.fileName} segment ${index + 1}`} className="h-28 w-full object-contain" />
-                        ) : (
-                          <div className="flex h-28 w-full items-center justify-center text-xs text-muted-foreground">No segment image</div>
-                        )}
-                        <div className="bg-card p-2 text-xs font-medium">Segment {index + 1}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
-                    {displayNeighbors.map((neighbor, index) => (
-                      <div key={`${image.id}-${neighbor.strain}-${neighbor.media}-${index}`} className="overflow-hidden rounded-lg border border-border bg-muted">
-                        {getNeighborImageUrl(neighbor.original) ? (
-                          <img src={getNeighborImageUrl(neighbor.original)} alt={`${neighbor.species} ${neighbor.media}`} className="h-32 w-full object-contain" />
-                        ) : (
-                          <div className="flex h-32 w-full items-center justify-center text-xs text-muted-foreground">No neighbor image</div>
-                        )}
-                        <div className="space-y-1 bg-card p-2 text-xs">
-                          <div className="font-heading font-semibold truncate">#{index + 1} {neighbor.species}</div>
-                          <div className="font-mono text-muted-foreground">{neighbor.strain} · {neighbor.media}</div>
-                          <div className="font-mono">sim {neighbor.similarity.toFixed(2)}</div>
+                <div className="space-y-4 border-t border-border p-3">
+                  {querySegments.map((segment) => {
+                    const displayNeighbors = apiNeighborsToDisplay(segment.neighbors)
+                    return (
+                      <div key={`${image.id}-segment-${segment.segment_index}`} className="space-y-2 rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="overflow-hidden rounded-lg border border-border bg-muted">
+                            {segment.segment_image_url ? (
+                              <img src={segment.segment_image_url} alt={`${image.fileName} segment ${segment.segment_index + 1}`} className="h-24 w-24 object-contain" />
+                            ) : (
+                              <div className="flex h-24 w-24 items-center justify-center text-xs text-muted-foreground">No segment image</div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium">Segment {segment.segment_index + 1}</div>
+                            <div className="text-xs text-muted-foreground">Top {displayNeighbors.length} neighbors</div>
+                          </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <div className="flex min-w-max gap-3">
+                            {displayNeighbors.map((neighbor, index) => (
+                              <div key={`${image.id}-${segment.segment_index}-${neighbor.strain}-${neighbor.media}-${index}`} className="w-40 overflow-hidden rounded-lg border border-border bg-muted">
+                                {getNeighborImageUrl(neighbor.original) ? (
+                                  <img src={getNeighborImageUrl(neighbor.original)} alt={`${neighbor.species} ${neighbor.media}`} className="h-32 w-full object-contain" />
+                                ) : (
+                                  <div className="flex h-32 w-full items-center justify-center text-xs text-muted-foreground">No neighbor image</div>
+                                )}
+                                <div className="space-y-1 bg-card p-2 text-xs">
+                                  <div className="font-heading font-semibold truncate">#{index + 1} {neighbor.species}</div>
+                                  <div className="font-mono text-muted-foreground">{neighbor.strain} · {neighbor.media}</div>
+                                  <div className="font-mono">sim {neighbor.similarity.toFixed(2)}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )
+                  })}
                 </div>
               </details>
             )
@@ -562,6 +637,9 @@ export default function RetrievePage() {
   const [strains, setStrains] = useState<StrainDraft[]>([{ strain: '', images: [] }])
   const toast = useToast()
   const queryClient = useQueryClient()
+  const { data: mediaData } = useMediaList()
+  const mediaItems = mediaData?.items ?? []
+  const defaultMediaName = mediaItems[0]?.name ?? 'Other media'
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingStrainIndex = useRef(0)
   const lastSubmittedConfig = useRef<RetrievalConfig | null>(null)
@@ -572,7 +650,7 @@ export default function RetrievePage() {
   const [featureProgress, setFeatureProgress] = useState<{ completed: number; total: number; current?: string } | null>(null)
   const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null)
   const [savingImageId, setSavingImageId] = useState<string | null>(null)
-  const [reindexingImageId, setReindexingImageId] = useState<string | null>(null)
+  const [confirmingImageId, setConfirmingImageId] = useState<string | null>(null)
   const [reindexingStrain, setReindexingStrain] = useState(false)
   const [zipResult, setZipResult] = useState<{
     successful: number
@@ -610,11 +688,14 @@ export default function RetrievePage() {
         strainMap.get(key)!.images.push({
           id: image.image_id || `${key}-${image.filename}-${index}`,
           fileName: image.filename,
-          media: image.media || 'MEA',
-          mediaIsNew: false,
+          media: image.media || mediaFromFilename(image.filename),
+          mediaIsNew: (image.media || mediaFromFilename(image.filename)) === 'Other media',
           maxColonies: 'default',
           original: image.source_url || undefined,
-          featureStatus: image.status === 'indexed' ? 'done' : 'pending',
+          segments: image.segment_urls?.map((url) => ({ url, bbox: { x: 0, y: 0, w: 1, h: 1 } })) ?? undefined,
+          selected: false,
+          confirmed: image.status === 'indexed',
+          featureStatus: image.status === 'indexed' ? 'done' : image.status === 'extracting' ? 'extracting' : image.status === 'failed' ? 'failed' : image.status === 'segmented' ? 'pending' : 'pending',
         })
 
     }
@@ -624,7 +705,7 @@ export default function RetrievePage() {
   }, [])
 
   useEffect(() => {
-    if (!batchProgress?.batch_id || !isZipUploading) return
+    if (!batchProgress?.batch_id || !isZipUploading || batchProgress.batch_id === 'pending-upload') return
     let cancelled = false
     const timer = window.setInterval(async () => {
       try {
@@ -764,14 +845,14 @@ export default function RetrievePage() {
     for (const file of fileList) {
       try {
         setUploadProgress({ completed: uploadedCount, total: fileList.length, current: file.name })
-        const res = await uploadImage(file, strainName, mediaList[0].name)
+        const res = await uploadImage(file, strainName, defaultMediaName)
         const segmentResult = res.segments?.length
           ? { segments: res.segments }
           : await autoSegment(res.image_id, 'yolo')
         const newImage: StrainImage = {
           id: res.image_id,
           fileName: file.name,
-          media: mediaList[0].name,
+          media: defaultMediaName,
           mediaIsNew: false,
           maxColonies: 'default',
           original: res.source_url,
@@ -782,6 +863,8 @@ export default function RetrievePage() {
           yoloBboxes: segmentResult.segments.map((seg) => ({
             x: seg.bbox.x, y: seg.bbox.y, w: seg.bbox.w, h: seg.bbox.h,
           })),
+          selected: false,
+          confirmed: false,
           featureStatus: 'pending',
         }
         uploadedCount += 1
@@ -809,55 +892,73 @@ export default function RetrievePage() {
     setIsZipUploading(true)
     setZipResult(null)
     try {
+      const preview = await inspectBatchZip(file).catch<BatchZipPreview>(() => ({ total: 0, images: [] }))
+      if (preview.total > 0) {
+        setBatchProgress({
+          batch_id: 'pending-upload',
+          status: 'processing',
+          batch_name: file.name.replace(/\.zip$/i, ''),
+          upload: { completed: 0, total: preview.total, percent: 0 },
+          segmentation: { completed: 0, total: preview.total, percent: 0 },
+          feature_extraction: { completed: 0, total: preview.total, percent: 0 },
+          strains: [],
+          images: preview.images,
+        })
+        syncBatchStrains({
+          batch_id: 'pending-upload',
+          status: 'processing',
+          batch_name: file.name.replace(/\.zip$/i, ''),
+          upload: { completed: 0, total: preview.total, percent: 0 },
+          segmentation: { completed: 0, total: preview.total, percent: 0 },
+          feature_extraction: { completed: 0, total: preview.total, percent: 0 },
+          strains: [],
+          images: preview.images,
+        })
+      }
+
       const result = await uploadBatchZip(file)
-      setBatchProgress(result.progress)
-      syncBatchStrains(result.progress)
+      const mergedProgress = result.progress.upload.total === 0 && preview.total > 0
+        ? {
+            ...result.progress,
+            upload: { ...result.progress.upload, total: preview.total },
+            segmentation: { ...result.progress.segmentation, total: preview.total },
+            feature_extraction: { ...result.progress.feature_extraction, total: preview.total },
+            images: result.progress.images.length > 0 ? result.progress.images : preview.images,
+          }
+        : result.progress
+      setBatchProgress(mergedProgress)
+      syncBatchStrains(mergedProgress)
       setIsZipUploading(result.progress.status === 'processing')
-      setZipResult({ successful: result.successful, failed: result.failed, total: result.total, results: result.results.map((r) => ({ strain: r.strain, media: r.media, filename: r.filename, image_id: r.image_id })) })
+      setZipResult({ successful: result.successful, failed: result.failed, total: result.total || preview.total, results: result.results.map((r) => ({ strain: r.strain, media: r.media, filename: r.filename, image_id: r.image_id })) })
       if (result.failed > 0) {
         toast.error(`${result.failed} batch image${result.failed === 1 ? '' : 's'} failed to upload or segment`)
       }
 
-      const batchStrains: StrainDraft[] = []
-      const strainMap = new Map<string, StrainDraft>()
-      for (const [index, r] of result.results.entries()) {
-        const key = r.strain || 'unknown'
-        if (!strainMap.has(key)) {
-          strainMap.set(key, { id: key, strain: key, images: [] })
-          batchStrains.push(strainMap.get(key)!)
-        }
-
-        strainMap.get(key)!.images.push({
-          id: r.image_id || `${key}-${r.filename}-${index}`,
-          fileName: r.filename,
-          media: r.media || 'MEA',
-          mediaIsNew: false,
-          maxColonies: 'default',
-          original: r.source_url || undefined,
-          featureStatus: 'pending',
-        })
-      }
-      if (batchStrains.length === 0 && result.total > 0) {
+      if (result.total === 0 && mergedProgress.images.length === 0) {
         toast.error('No valid images found in the uploaded ZIP. Ensure the ZIP contains strain folders with .jpg/.jpeg/.png images.')
         return
       }
-      setStrains(batchStrains)
-      setIsBatch(batchStrains.length > 1)
-      setActiveStrain(0)
+      syncBatchStrains(mergedProgress)
     } catch {
       setIsZipUploading(false)
     }
   }
 
   const runAutoSegment = async () => {
+    if (batchProgress?.batch_id) {
+      setStep('segmentation')
+      return
+    }
     setAutoSegmenting(true)
     const total = strains.reduce((sum, strain) => sum + strain.images.length, 0)
     let successCount = 0
+    let attemptedCount = 0
     setSegmentProgress({ completed: 0, total })
     try {
       for (const strain of strains) {
         for (const img of strain.images) {
           if (!img.id) continue
+          attemptedCount++
           setSegmentProgress({ completed: successCount, total, current: img.fileName })
           try {
             const result = await autoSegment(img.id, 'yolo')
@@ -884,7 +985,7 @@ export default function RetrievePage() {
           }
         }
       }
-      if (successCount > 0) {
+      if (attemptedCount > 0 && successCount === attemptedCount) {
         setStep('segmentation')
       }
     } catch {
@@ -941,6 +1042,20 @@ export default function RetrievePage() {
   const resultStrains = isBatch ? strains : [strains[0]]
   const activeResult = resultStrains[detailStrain] ?? resultStrains[0]
 
+  const toggleImageSelected = useCallback((strainIndex: number, imageId: string, selected: boolean) => {
+    setStrains((prev) => prev.map((strain, idx) => ({
+      ...strain,
+      images: strain.images.map((image) => idx === strainIndex && image.id === imageId ? { ...image, selected } : image),
+    })))
+  }, [])
+
+  const setSelectAllUploaded = useCallback((strainIndex: number, selected: boolean) => {
+    setStrains((prev) => prev.map((strain, idx) => ({
+      ...strain,
+      images: strain.images.map((image) => idx === strainIndex ? { ...image, selected } : image),
+    })))
+  }, [])
+
   const persistSegments = useCallback(async (strainIndex: number, imageId: string) => {
     const image = strains[strainIndex]?.images.find((item) => item.id === imageId)
     if (!image?.id) return
@@ -978,29 +1093,29 @@ export default function RetrievePage() {
     }
   }, [strains, toast])
 
-  const runImageReindex = useCallback(async (imageId: string) => {
-    const image = strains.flatMap((strain) => strain.images).find((item) => item.id === imageId)
+  const confirmImage = useCallback(async (strainIndex: number, imageId: string) => {
+    const image = strains[strainIndex]?.images.find((item) => item.id === imageId)
     if (!image?.id) return
-    setReindexingImageId(imageId)
-    setStrains((prev) => prev.map((strain) => ({
+    setConfirmingImageId(imageId)
+    setStrains((prev) => prev.map((strain, idx) => ({
       ...strain,
-      images: strain.images.map((item) => item.id === imageId ? { ...item, featureStatus: 'extracting' } : item),
+      images: strain.images.map((item) => idx === strainIndex && item.id === imageId ? { ...item, featureStatus: 'extracting', confirmed: true } : item),
     })))
     try {
       await reindexImage(image.id)
-      setStrains((prev) => prev.map((strain) => ({
+      setStrains((prev) => prev.map((strain, idx) => ({
         ...strain,
-        images: strain.images.map((item) => item.id === imageId ? { ...item, featureStatus: 'done' } : item),
+        images: strain.images.map((item) => idx === strainIndex && item.id === imageId ? { ...item, featureStatus: 'done', confirmed: true } : item),
       })))
       toast.success(`Confirmed ${image.fileName}`)
     } catch (err) {
-      setStrains((prev) => prev.map((strain) => ({
+      setStrains((prev) => prev.map((strain, idx) => ({
         ...strain,
-        images: strain.images.map((item) => item.id === imageId ? { ...item, featureStatus: 'pending' } : item),
+        images: strain.images.map((item) => idx === strainIndex && item.id === imageId ? { ...item, featureStatus: 'failed', confirmed: false } : item),
       })))
       toast.apiError(err, `Failed to confirm ${image.fileName}`)
     } finally {
-      setReindexingImageId(null)
+      setConfirmingImageId(null)
     }
   }, [strains, toast])
 
@@ -1010,6 +1125,9 @@ export default function RetrievePage() {
     setReindexingStrain(true)
     setFeatureProgress({ completed: 0, total: strain.images.length, current: strain.strain || strain.id })
     try {
+      for (const image of strain.images) {
+        if (image.id && image.media) await updateImageMedia(image.id, image.media)
+      }
       const result = await reindexStrainImages(strain.id)
       setFeatureProgress({ completed: result.images, total: strain.images.length, current: strain.strain || strain.id })
       toast.success(`Re-indexed ${result.images} image(s) for ${strain.strain || strain.id}`)
@@ -1025,9 +1143,23 @@ export default function RetrievePage() {
   const retrievalReadyImages = isBatch ? getAllRetrievalReadyImages(strains) : getRetrievalReadyImages(strains[0])
   const singleHasNewMedia = hasNewMediaImages(strains[0])
 
-  const runRetrieval = useCallback((config: RetrievalConfig) => {
+  const runRetrieval = useCallback(async (config: RetrievalConfig) => {
     const queryImageId = retrievalReadyImages[0]?.id
     if (!queryImageId || retrievalSubmitting) return
+
+    setFeatureProgress({ completed: 0, total: retrievalReadyImages.length, current: 'Preparing retrieval images' })
+    try {
+      for (const [index, image] of retrievalReadyImages.entries()) {
+        setFeatureProgress({ completed: index, total: retrievalReadyImages.length, current: image.fileName })
+        if (image.media) await updateImageMedia(image.id, image.media)
+        if (image.featureStatus !== 'done') {
+          await reindexImage(image.id)
+        }
+      }
+    } catch (err) {
+      toast.apiError(err, 'Failed to prepare images for retrieval')
+      return
+    }
 
     setFeatureProgress({ completed: retrievalReadyImages.length, total: retrievalReadyImages.length, current: 'KNN retrieval' })
     setStep('processing')
@@ -1043,10 +1175,15 @@ export default function RetrievePage() {
         media_strategy: 'same_media',
       },
       {
-        onSuccess: (data) => setJobId(data.job_id),
+        onSuccess: (data) => {
+          setJobId(data.job_id)
+          if (jobStatus.data?.status === 'completed') {
+            setStep('results')
+          }
+        },
       },
     )
-  }, [queryClient, retrievalReadyImages, retrievalSubmitting, startRetrieval])
+  }, [jobStatus.data?.status, queryClient, retrievalReadyImages, retrievalSubmitting, startRetrieval, toast])
 
   return (
     <div className="space-y-5">
@@ -1141,8 +1278,6 @@ export default function RetrievePage() {
             onChange={handleFilesSelected}
           />
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => downloadTemplate('mycoai_retrieve_template.csv', INDEX_TEMPLATE_CSV)}><Download className="h-4 w-4" /> Download CSV Template</Button>
-            <Button variant="outline" size="sm" onClick={downloadAgentsMd}><FileText className="h-4 w-4" /> View AGENTS.md</Button>
             <Tabs defaultValue={isBatch ? 'batch' : 'single'} className="w-auto">
               <TabsList>
                 <TabsTrigger value="single" active={!isBatch} onClick={() => { setIsBatch(false); setActiveStrain(0) }}><FlaskConical className="h-4 w-4" /> Single Strain</TabsTrigger>
@@ -1201,7 +1336,7 @@ export default function RetrievePage() {
                   {isZipUploading ? (
                     <div className="flex flex-col items-center gap-2">
                       <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      <span className="text-sm text-muted-foreground">Processing {batchProgress?.upload.completed ?? 0}/{batchProgress?.upload.total ?? 0} images...</span>
+                      <span className="text-sm text-muted-foreground">Uploading ZIP… {batchProgress?.upload.completed ?? 0}/{batchProgress?.upload.total ?? 0} images queued</span>
                       {batchProgress && <span className="text-xs text-muted-foreground">Segment {batchProgress.segmentation.completed}/{batchProgress.segmentation.total} · Feature {batchProgress.feature_extraction.completed}/{batchProgress.feature_extraction.total}</span>}
                     </div>
                   ) : (
@@ -1292,7 +1427,7 @@ export default function RetrievePage() {
                       {autoSegmenting ? (
                         <><Loader2 className="h-4 w-4 animate-spin" /> Segmenting {segmentProgress?.completed ?? 0}/{segmentProgress?.total ?? 0}</>
                       ) : (
-                        <><Images className="h-4 w-4" /> Auto Segment</>
+                        <><Images className="h-4 w-4" /> Upload & segment</>
                       )}
                     </Button>
                     {isBatch && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeStrain(activeStrain)}><Trash2 className="h-4 w-4" /></Button>}
@@ -1307,12 +1442,14 @@ export default function RetrievePage() {
                  ) : (
                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                      {current.images.map((image) => (
-                       <ImageMetaCard
-                         key={image.id}
-                         image={image}
-                         onUpdate={(field) => updateImage(activeStrain, image.id, field)}
-                         onRemove={() => removeImage(activeStrain, image.id)}
-                       />
+                        <ImageMetaCard
+                          key={image.id}
+                          image={image}
+                          mediaItems={mediaItems}
+                          onUpdate={(field) => updateImage(activeStrain, image.id, field)}
+                          onRemove={() => removeImage(activeStrain, image.id)}
+                        />
+
                      ))}
                    </div>
                  )}
@@ -1355,26 +1492,45 @@ export default function RetrievePage() {
               {featureProgress && <div className="text-xs text-muted-foreground">Feature extraction {featureProgress.completed}/{featureProgress.total}{featureProgress.current ? ` · ${featureProgress.current}` : ''}</div>}
               {currentSegments.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No images for this strain.</p>
-              ) : currentSegments.map((image) => (
-                <SegmentCard
-                  key={image.id}
-                  image={image}
-                  onUpdateBbox={(si, bb) => updateYoloBbox(activeStrain, image.id, si, bb)}
-                  onAddBbox={(bb) => addYoloBbox(activeStrain, image.id, bb)}
-                  onRemoveBbox={(si) => removeYoloBbox(activeStrain, image.id, si)}
-                  onSave={() => void persistSegments(activeStrain, image.id)}
-                  onConfirm={() => void runImageReindex(image.id)}
-                  saving={savingImageId === image.id}
-                  confirming={reindexingImageId === image.id}
-                />
-              ))}
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={currentSegments.length > 0 && currentSegments.every((image) => image.selected)}
+                        onChange={(e) => setSelectAllUploaded(activeStrain, e.target.checked)}
+                      />
+                      <span>Select all uploaded</span>
+                    </label>
+                    <Badge variant="secondary" className="ml-auto">{getConfirmableImages(strains[activeStrain]).length} selected</Badge>
+                  </div>
+                  {currentSegments.map((image) => (
+                    <SegmentCard
+                      key={image.id}
+                      image={image}
+                      onUpdateBbox={(si, bb) => updateYoloBbox(activeStrain, image.id, si, bb)}
+                      onAddBbox={(bb) => addYoloBbox(activeStrain, image.id, bb)}
+                      onRemoveBbox={(si) => removeYoloBbox(activeStrain, image.id, si)}
+                      onSave={() => void persistSegments(activeStrain, image.id)}
+                      onConfirm={() => void confirmImage(activeStrain, image.id)}
+                      onToggleSelected={(selected) => toggleImageSelected(activeStrain, image.id, selected)}
+                      saving={savingImageId === image.id}
+                      confirming={confirmingImageId === image.id}
+                    />
+                  ))}
+                </>
+              )}
               <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={runAutoSegment} disabled={autoSegmenting || currentSegments.length === 0}>
+                  Segment All
+                </Button>
                 <Button variant="default" size="sm" onClick={() => void runStrainReindex()} disabled={reindexingStrain || !strains[activeStrain]?.id}>
                   {reindexingStrain ? <><Loader2 className="h-4 w-4 animate-spin" /> Extracting...</> : 'Extract all'}
                 </Button>
                 <Badge variant="secondary" className="ml-auto">{totalSegments} total segments</Badge>
               </div>
-              <p className="text-xs text-muted-foreground">Feature extraction uses image/strain re-index endpoints for Retrieve persistence.</p>
+              <p className="text-xs text-muted-foreground">Confirm view only validates bounding boxes and image status. Retrieval extracts only remaining unindexed segments.</p>
             </CardContent>
           </Card>
         </div>
@@ -1453,12 +1609,13 @@ export default function RetrievePage() {
         <Button variant="outline" disabled={step === 'upload' || step === 'processing'} onClick={() => setStep(step === 'results' ? 'segmentation' : 'upload')}>Previous</Button>
         <Button
           onClick={() => {
-             if (step === 'upload') setStep('segmentation')
-             if (step === 'segmentation') {
-                runRetrieval(retrievalConfig)
-
-             }
-
+            if (step === 'upload') {
+              void runAutoSegment()
+              return
+            }
+            if (step === 'segmentation') {
+              runRetrieval(retrievalConfig)
+            }
           }}
           disabled={step === 'results' || step === 'processing' || (step === 'segmentation' && retrievalReadyImages.length === 0)}
         >

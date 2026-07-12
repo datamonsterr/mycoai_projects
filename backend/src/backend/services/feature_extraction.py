@@ -47,7 +47,7 @@ _MONOREPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 _WEIGHTS_DIR = (
     Path("/app/weights")
     if Path("/app/weights").exists()
-    else _MONOREPO_ROOT / "research" / "weights"
+    else _MONOREPO_ROOT / "weights"
 )
 _IMAGENET_MEAN = (0.485, 0.456, 0.406)
 _IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -90,11 +90,11 @@ def _preprocess_dl(img_rgb: np.ndarray):
 
 
 def _resolve_finetuned_weights(name: str) -> Path | None:
-    """Prefer fold0 research snapshot, then generic finetuned fallbacks."""
+    """Prefer segmentation-specific finetuned weights before fold snapshots."""
     candidates = [
-        _WEIGHTS_DIR / "folds" / f"fold0_{name}_finetuned.pth",
         _WEIGHTS_DIR / "yolo_finetuned" / f"{name}_finetuned.pth",
         _WEIGHTS_DIR / "kmeans_finetuned" / f"{name}_finetuned.pth",
+        _WEIGHTS_DIR / "folds" / f"fold0_{name}_finetuned.pth",
         _WEIGHTS_DIR / f"{name}_finetuned.pth",
     ]
     for p in candidates:
@@ -235,17 +235,12 @@ def _extract_dl_feature(model, img_rgb: np.ndarray) -> list[float]:
 def _extract_dl_vectors(vectors: dict[str, list[float]], img_rgb: np.ndarray) -> None:
     if not _check_torch():
         return
-    for model_name, loader in [
-        ("efficientnetb1_finetuned", _load_efficientnetb1_finetuned),
-        ("resnet50_finetuned", _load_resnet50_finetuned),
-        ("mobilenetv2_finetuned", _load_mobilenetv2_finetuned),
-    ]:
-        try:
-            model = loader()
-            if model is not None:
-                vectors[model_name] = _extract_dl_feature(model, img_rgb)
-        except Exception as exc:
-            logger.warning("DL extraction failed for %s: %s", model_name, exc)
+    try:
+        model = _load_efficientnetb1_finetuned()
+        if model is not None:
+            vectors["efficientnetb1_finetuned"] = _extract_dl_feature(model, img_rgb)
+    except Exception as exc:
+        logger.warning("DL extraction failed for efficientnetb1_finetuned: %s", exc)
 
 
 def extract_features(image_path: Path) -> dict[str, list[float]]:
@@ -311,7 +306,7 @@ async def index_segment_to_qdrant(
     species_name: str,
     media_name: str,
     storage: ObjectStorage | None = None,
-    collection_name: str = "qdrant-research_fold0",
+    collection_name: str = "qdrant-research_fold1",
 ) -> dict:
     """Extract features from a segment crop and index in Qdrant.
 
@@ -326,7 +321,7 @@ async def index_segment_to_qdrant(
     from ..models import QdrantIndexState
     from ..services.qdrant_client import QdrantClientService
 
-    if collection_name == "qdrant-research_fold0":
+    if collection_name in {"qdrant-research_fold0", "qdrant-research_fold1"}:
         from ..config import get_qdrant_settings
 
         collection_name = get_qdrant_settings().collection_name
@@ -340,13 +335,27 @@ async def index_segment_to_qdrant(
         upload_root = Path(get_storage_settings().upload_root)
         if not upload_root.is_absolute():
             upload_root = (Path.cwd() / upload_root).resolve()
-        for crop_key in storage_candidates(
+        candidate_keys = storage_candidates(
             crop_path,
             upload_root=upload_root,
             strain=strain_name,
             media=media_name,
             image_id=image_obj.id,
-        ):
+        )
+        image_prefix = Path(image_obj.file_path).parent
+        candidate_keys.extend(
+            [
+                str(image_prefix / "segments" / crop_path.name),
+                str(
+                    Path(strain_name)
+                    / media_name
+                    / image_prefix.name
+                    / "segments"
+                    / crop_path.name
+                ),
+            ]
+        )
+        for crop_key in dict.fromkeys(candidate_keys):
             crop_bytes = storage.get_bytes(crop_key)
             if crop_bytes is not None:
                 break

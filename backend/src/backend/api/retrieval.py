@@ -26,8 +26,8 @@ from ..schemas import (
     RetrievalQueryRequest,
     RetrievalResultsResponse,
 )
-from ..services.stores import utcnow
 from ..services.storage import storage_candidates
+from ..services.stores import utcnow
 from ..services.threshold import is_known_confidence
 
 router = APIRouter()
@@ -59,16 +59,30 @@ def _load_strain_map_from_csv() -> dict[str, str]:
 
 async def _build_strain_map(db: AsyncSession) -> dict[str, str]:
     """Prefer canonical CSV mapping; fall back to SQL if unavailable."""
-    strain_map = _load_strain_map_from_csv()
-    if strain_map:
-        return strain_map
+    csv_strain_map = _load_strain_map_from_csv()
+    if csv_strain_map:
+        return csv_strain_map
 
     from ..models import Species, Strain
 
     result = await db.execute(
         select(Strain.name, Species.name).join(Species, Strain.species_id == Species.id)
     )
-    return {row[0]: row[1] for row in result.all()}
+    strain_map: dict[str, str] = {}
+
+    def score_species(name: str) -> tuple[int, int]:
+        lower = name.lower()
+        if lower.startswith('penicillium '):
+            return (3, len(name))
+        if lower in {'unknown', 'unknown-species'} or lower.startswith('dto '):
+            return (0, len(name))
+        return (1, len(name))
+
+    for strain_name, species_name in result.all():
+        current = strain_map.get(strain_name)
+        if current is None or score_species(species_name) > score_species(current):
+            strain_map[strain_name] = species_name
+    return strain_map
 
 
 _SEGMENT_PATH_PREFIX = "segment_path:"
@@ -241,10 +255,7 @@ async def start_query(
 
         for image, segments in query_images:
             filter_spec = _get_filter_spec(image, data.media_strategy)
-            image_neighbors: list[NeighborResult] = []
-            image_segment_urls = [
-                _segment_crop_url(image.id, seg.segment_index) for seg in segments[:3]
-            ]
+            query_segments: list[dict[str, Any]] = []
 
             for seg in segments:
                 seg_neighbors: list[dict[str, object]] = []
@@ -266,6 +277,8 @@ async def start_query(
                         )
                         for neighbor in result.neighbors:
                             species = _resolve_species_fast(neighbor, strain_map)
+                            if species in {"unknown", "unknown-species"}:
+                                continue
                             seg_neighbors.append(
                                 {
                                     "specy": species,
@@ -274,10 +287,10 @@ async def start_query(
                                     "extractor": neighbor.extractor or "default",
                                     "media": neighbor.media,
                                     "image_id": neighbor.image_id,
+                                    "segment_path": neighbor.segment_path,
                                 }
                             )
                             all_neighbors.append(neighbor)
-                            image_neighbors.append(neighbor)
                     except (ValueError, RuntimeError):
                         pass
 
@@ -299,11 +312,23 @@ async def start_query(
                             segment_path=cast(str | None, n.get("segment_path")),
                         )
                         all_neighbors.append(neighbor)
-                        image_neighbors.append(neighbor)
 
                 if seg_neighbors:
                     raw_results.append(
-                        {"neighbors": seg_neighbors, "query_image_id": str(image.id)}
+                        {
+                            "neighbors": seg_neighbors,
+                            "query_image_id": str(image.id),
+                            "segment_index": seg.segment_index,
+                        }
+                    )
+                    query_segments.append(
+                        {
+                            "segment_index": seg.segment_index,
+                            "segment_image_url": _segment_crop_url(
+                                image.id, seg.segment_index
+                            ),
+                            "neighbors": seg_neighbors[: data.k],
+                        }
                     )
 
             queried_images.append(
@@ -311,8 +336,10 @@ async def start_query(
                     "image_id": str(image.id),
                     "image_url": f"/api/v1/images/{image.id}/source",
                     "media": image.media.name if image.media else "unknown",
-                    "segment_image_urls": image_segment_urls,
-                    "neighbors": image_neighbors[: data.k],
+                    "segment_image_urls": [
+                        item["segment_image_url"] for item in query_segments
+                    ],
+                    "segments": query_segments,
                 }
             )
 
@@ -356,18 +383,48 @@ async def start_query(
             "queried_images": [
                 {
                     **query_image,
+                    "segments": [
+                        {
+                            **segment,
+                            "neighbors": [
+                                {
+                                    "strain": str(neighbor.get("strain") or "unknown"),
+                                    "species": str(neighbor.get("specy") or "unknown"),
+                                    "similarity": round(
+                                        float(neighbor.get("score", 0.0)), 4
+                                    ),
+                                    "media": str(neighbor.get("media") or "unknown"),
+                                    "image_thumbnail_url": (
+                                        _build_neighbor_thumbnail_url(
+                                            cast(
+                                                str | None,
+                                                neighbor.get("image_id"),
+                                            ),
+                                            cast(
+                                                str | None,
+                                                neighbor.get("segment_path"),
+                                            ),
+                                        )
+                                    ),
+                                }
+                                for neighbor in segment["neighbors"]
+                            ],
+                        }
+                        for segment in query_image["segments"]
+                    ],
                     "neighbors": [
                         {
-                            "strain": neighbor.strain or "unknown",
-                            "species": _resolve_species_sync(neighbor, strain_map),
-                            "similarity": round(neighbor.score, 4),
-                            "media": neighbor.media or "unknown",
+                            "strain": str(neighbor.get("strain") or "unknown"),
+                            "species": str(neighbor.get("specy") or "unknown"),
+                            "similarity": round(float(neighbor.get("score", 0.0)), 4),
+                            "media": str(neighbor.get("media") or "unknown"),
                             "image_thumbnail_url": _build_neighbor_thumbnail_url(
-                                neighbor.image_id,
-                                neighbor.segment_path,
+                                cast(str | None, neighbor.get("image_id")),
+                                cast(str | None, neighbor.get("segment_path")),
                             ),
                         }
-                        for neighbor in query_image["neighbors"]
+                        for segment in query_image["segments"]
+                        for neighbor in segment["neighbors"]
                     ],
                 }
                 for query_image in queried_images
@@ -376,6 +433,8 @@ async def start_query(
 
         rankings: list[object] = []
         for rank_entry in aggregation_result.ranking:
+            if rank_entry.species in {"unknown", "unknown-species"}:
+                continue
             rank_neighbors = [
                 n
                 for n in all_neighbors
@@ -401,7 +460,7 @@ async def start_query(
 
             retrieval_result = RetrievalResult(
                 job_id=job.id,
-                strain_name=primary_strain_name,
+                strain_name=primary_strain_name if len(query_images) == 1 else "batch",
                 rank=len(rankings) + 1,
                 species_name=rank_entry.species,
                 score=rank_entry.score,
@@ -506,6 +565,8 @@ async def _query_by_crop_image(
     neighbors: list[dict[str, object]] = []
     for neighbor in result.neighbors:
         species = _resolve_species_fast(neighbor, strain_map)
+        if species in {"unknown", "unknown-species"}:
+            continue
         neighbors.append(
             {
                 "specy": species,

@@ -1,10 +1,11 @@
 import datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
-from ..models import Media
+from ..models import Image, Media, Segment, Strain
 from ..schemas.media import MediaCreate, MediaUpdate
 
 
@@ -79,6 +80,28 @@ async def update_media(db: AsyncSession, media_id: UUID, data: MediaUpdate) -> M
     return media
 
 
+async def delete_impact_media(db: AsyncSession, media_id: UUID) -> tuple[int, int]:
+    strain_alias = aliased(Strain)
+    strain_result = await db.execute(
+        select(func.count(func.distinct(Image.strain_id)))
+        .select_from(Image)
+        .where(Image.media_id == media_id)
+    )
+    segment_result = await db.execute(
+        select(func.count(Segment.id))
+        .select_from(Segment)
+        .join(Image, Segment.image_id == Image.id)
+        .join(strain_alias, Image.strain_id == strain_alias.id)
+        .where(
+            Image.media_id == media_id,
+            Image.is_archived.is_(False),
+            Segment.is_archived.is_(False),
+            strain_alias.is_archived.is_(False),
+        )
+    )
+    return strain_result.scalar() or 0, segment_result.scalar() or 0
+
+
 async def archive_media(db: AsyncSession, media_id: UUID) -> Media:
     from ..core.exceptions import NotFoundError
 
@@ -105,3 +128,23 @@ async def restore_media(db: AsyncSession, media_id: UUID) -> Media:
     await db.commit()
     await db.refresh(media)
     return media
+
+
+async def clean_media(db: AsyncSession, media_id: UUID) -> None:
+    from ..core.exceptions import NotFoundError
+
+    media = await get_media(db, media_id)
+    if not media:
+        raise NotFoundError(f"Media {media_id} not found")
+
+    segment_ids = await db.execute(
+        select(Segment.id)
+        .join(Image, Segment.image_id == Image.id)
+        .where(Image.media_id == media_id)
+    )
+    await db.execute(
+        delete(Segment).where(Segment.id.in_(list(segment_ids.scalars().all())))
+    )
+    await db.execute(delete(Image).where(Image.media_id == media_id))
+    await db.delete(media)
+    await db.commit()

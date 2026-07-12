@@ -152,6 +152,26 @@ def storage_candidates(
     return keys
 
 
+def cleanup_source_artifact(
+    storage: ObjectStorage | None,
+    artifact_dir: str | Path,
+    *,
+    upload_root: Path | None = None,
+) -> bool:
+    artifact_path = Path(artifact_dir)
+    key = str(artifact_path / "source.jpg")
+    if storage is not None and storage.object_exists(key):
+        storage.delete(key)
+        return True
+    local_path = artifact_path / "source.jpg"
+    if not artifact_path.is_absolute() and upload_root is not None:
+        local_path = upload_root / artifact_path / "source.jpg"
+    if local_path.exists():
+        local_path.unlink()
+        return True
+    return False
+
+
 def create_storage(settings: StorageSettings) -> ObjectStorage:
     if settings.backend == "s3":
         storage = S3Storage(settings)

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.dependencies import CurrentOwner, CurrentUser
 from ..database import get_db
+from ..schemas.delete_impact import DeleteImpactResponse
 from ..schemas.species import (
     SpeciesCreate,
     SpeciesListResponse,
@@ -79,6 +80,24 @@ async def update_species(
     return SpeciesResponse.model_validate(species)
 
 
+@router.get("/{species_id}/delete-impact", response_model=DeleteImpactResponse)
+async def get_species_delete_impact(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentOwner,
+    species_id: UUID,
+) -> DeleteImpactResponse:
+    repo = _repo()
+    strain_count, segment_count = await repo.delete_impact_species(db, species_id)
+    return DeleteImpactResponse(
+        strain_count=strain_count,
+        segment_count=segment_count,
+        warning_message=(
+            "Archiving this species affects "
+            f"{strain_count} strain(s) and {segment_count} segment(s)."
+        ),
+    )
+
+
 @router.delete("/{species_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def archive_species(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -87,3 +106,24 @@ async def archive_species(
 ) -> None:
     repo = _repo()
     await repo.archive_species(db, species_id)
+
+
+@router.post("/{species_id}/restore", response_model=SpeciesResponse)
+async def restore_species(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentOwner,
+    species_id: UUID,
+) -> SpeciesResponse:
+    repo = _repo()
+    species = await repo.restore_species(db, species_id)
+    return SpeciesResponse.model_validate(species)
+
+
+@router.delete("/{species_id}/clean", status_code=status.HTTP_204_NO_CONTENT)
+async def clean_species(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentOwner,
+    species_id: UUID,
+) -> None:
+    repo = _repo()
+    await repo.clean_species(db, species_id)

@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import Species
+from ..models import Image, Segment, Species, Strain
 from ..schemas.species import SpeciesCreate, SpeciesUpdate
 from . import system_state
 
@@ -76,6 +76,23 @@ async def update_species(
     return species
 
 
+async def delete_impact_species(db: AsyncSession, species_id: UUID) -> tuple[int, int]:
+    strain_result = await db.execute(
+        select(func.count()).select_from(Strain).where(Strain.species_id == species_id)
+    )
+    segment_result = await db.execute(
+        select(func.count(Segment.id))
+        .select_from(Segment)
+        .join(Image, Segment.image_id == Image.id)
+        .where(
+            Image.species_id == species_id,
+            Image.is_archived.is_(False),
+            Segment.is_archived.is_(False),
+        )
+    )
+    return strain_result.scalar() or 0, segment_result.scalar() or 0
+
+
 async def archive_species(db: AsyncSession, species_id: UUID) -> Species:
     from ..core.exceptions import NotFoundError
 
@@ -102,3 +119,13 @@ async def restore_species(db: AsyncSession, species_id: UUID) -> Species:
     await db.commit()
     await db.refresh(species)
     return species
+
+
+async def clean_species(db: AsyncSession, species_id: UUID) -> None:
+    from ..core.exceptions import NotFoundError
+
+    species = await get_species(db, species_id)
+    if not species:
+        raise NotFoundError(f"Species {species_id} not found")
+    await db.delete(species)
+    await db.commit()

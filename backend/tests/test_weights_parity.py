@@ -32,14 +32,14 @@ def test_get_yolo_model_prefers_research_finetuned_weights(tmp_path: Path) -> No
     yolo.assert_called_once_with(str(finetuned))
 
 
-def test_resolve_finetuned_weights_prefers_fold0_efficientnet_snapshot(
+def test_resolve_finetuned_weights_prefers_yolo_finetuned_before_fold0(
     tmp_path: Path,
 ) -> None:
-    generic = tmp_path / "weights" / "yolo_finetuned" / "EfficientNetB1_finetuned.pth"
+    yolo_finetuned = tmp_path / "weights" / "yolo_finetuned" / "EfficientNetB1_finetuned.pth"
     fold0 = tmp_path / "weights" / "folds" / "fold0_EfficientNetB1_finetuned.pth"
-    generic.parent.mkdir(parents=True)
+    yolo_finetuned.parent.mkdir(parents=True)
     fold0.parent.mkdir(parents=True)
-    generic.write_bytes(b"generic")
+    yolo_finetuned.write_bytes(b"yolo")
     fold0.write_bytes(b"fold0")
 
     with patch(
@@ -47,7 +47,7 @@ def test_resolve_finetuned_weights_prefers_fold0_efficientnet_snapshot(
     ):
         weights_path = _resolve_finetuned_weights("EfficientNetB1")
 
-    assert weights_path == fold0
+    assert weights_path == yolo_finetuned
 
 
 def test_yolo_segmentation_uses_research_parity_imgsz_640() -> None:

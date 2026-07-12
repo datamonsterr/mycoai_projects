@@ -76,7 +76,7 @@ services:
       MYCOAI_BACKEND_QDRANT_PORT: "6333"
       MYCOAI_QDRANT_HOST: qdrant-research
       MYCOAI_QDRANT_PORT: "6333"
-      MYCOAI_QDRANT_COLLECTION_NAME: qdrant-research_fold0
+      MYCOAI_QDRANT_COLLECTION_NAME: qdrant-research_fold1
     volumes:
       - ./backend/src:/app/src:ro
       - uploads_data:/app/Dataset/uploads
@@ -98,7 +98,7 @@ services:
       MYCOAI_BACKEND_QDRANT_PORT: "6333"
       MYCOAI_QDRANT_HOST: qdrant-research
       MYCOAI_QDRANT_PORT: "6333"
-      MYCOAI_QDRANT_COLLECTION_NAME: qdrant-research_fold0
+      MYCOAI_QDRANT_COLLECTION_NAME: qdrant-research_fold1
     volumes:
       - ./backend/src:/app/src:ro
       - uploads_data:/app/Dataset/uploads
@@ -124,7 +124,8 @@ services:
       target: dev
     restart: unless-stopped
     environment:
-      VITE_API_URL: http://backend:8000
+      VITE_API_URL: ""
+      VITE_PROXY_API_URL: http://backend:8000
     ports:
       - "5173:5173"
     volumes:

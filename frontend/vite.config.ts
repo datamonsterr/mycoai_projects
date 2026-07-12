@@ -17,11 +17,11 @@ export default defineConfig({
     allowedHosts: ['datamonster', 'datamonster.tailce7f83.ts.net'],
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        target: process.env.VITE_PROXY_API_URL || 'http://backend:8000',
         changeOrigin: true,
       },
       '/health': {
-        target: process.env.VITE_API_URL || 'http://localhost:8000',
+        target: process.env.VITE_PROXY_API_URL || 'http://backend:8000',
         changeOrigin: true,
       },
     },

@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { media } from '@/services/media'
+import { species } from '@/services/species'
+import type { DeleteImpact } from '@/services/types'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
@@ -7,16 +10,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter } from '@/components/ui/dialog'
-import { Plus, Archive, RotateCcw, Edit, TagIcon, Beaker } from 'lucide-react'
+import { Plus, Archive, RotateCcw, Edit, TagIcon, Beaker, Trash2 } from 'lucide-react'
 import {
   useSpeciesList,
   useCreateSpecies,
   useUpdateSpecies,
   useArchiveSpecies,
+  useRestoreSpecies,
+  useCleanSpecies,
   useMediaList,
   useCreateMedia,
   useUpdateMedia,
   useArchiveMedia,
+  useRestoreMedia,
+  useCleanMedia,
 } from '@/hooks/use-taxonomy'
 import { useToast } from '@/hooks/use-toast'
 
@@ -24,23 +31,34 @@ export default function MetadataPage() {
   const [tab, setTab] = useState('species')
   const [createOpen, setCreateOpen] = useState(false)
   const [createType, setCreateType] = useState<'species' | 'media'>('species')
+  const [showArchived, setShowArchived] = useState(false)
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
+  const [pendingArchive, setPendingArchive] = useState<{
+    type: 'species' | 'media'
+    id: string
+    impact: DeleteImpact
+  } | null>(null)
+  const [archiveLoading, setArchiveLoading] = useState(false)
 
-  const { data: speciesData, isLoading: speciesLoading } = useSpeciesList()
-  const { data: mediaData, isLoading: mediaLoading } = useMediaList()
+  const { data: speciesData, isLoading: speciesLoading } = useSpeciesList(showArchived)
+  const { data: mediaData, isLoading: mediaLoading } = useMediaList(showArchived)
   const speciesList = speciesData?.items ?? []
   const mList = mediaData?.items ?? []
 
   const createSpecies = useCreateSpecies()
   const updateSpecies = useUpdateSpecies()
   const archiveSpecies = useArchiveSpecies()
+  const restoreSpecies = useRestoreSpecies()
+  const cleanSpecies = useCleanSpecies()
   const createMedia = useCreateMedia()
   const updateMedia = useUpdateMedia()
   const archiveMedia = useArchiveMedia()
+  const restoreMedia = useRestoreMedia()
+  const cleanMedia = useCleanMedia()
   const toast = useToast()
 
   const openCreate = (type: 'species' | 'media') => {
@@ -91,14 +109,56 @@ export default function MetadataPage() {
 
   const handleArchive = async (type: 'species' | 'media', id: string) => {
     try {
-      if (type === 'species') {
-        await archiveSpecies.mutateAsync(id)
-      } else {
-        await archiveMedia.mutateAsync(id)
-      }
-      toast.success(`${type === 'species' ? 'Species' : 'Media'} archived`)
+      const impact = type === 'species'
+        ? await species.getDeleteImpact(id)
+        : await media.getDeleteImpact(id)
+      setPendingArchive({ type, id, impact })
     } catch (err) {
-      toast.apiError(err, `Failed to archive ${type}`)
+      toast.apiError(err, `Failed to load archive impact for ${type}`)
+    }
+  }
+
+  const confirmArchive = async () => {
+    if (!pendingArchive) return
+    setArchiveLoading(true)
+    try {
+      if (pendingArchive.type === 'species') {
+        await archiveSpecies.mutateAsync(pendingArchive.id)
+      } else {
+        await archiveMedia.mutateAsync(pendingArchive.id)
+      }
+      toast.success(`${pendingArchive.type === 'species' ? 'Species' : 'Media'} archived`)
+      setPendingArchive(null)
+    } catch (err) {
+      toast.apiError(err, `Failed to archive ${pendingArchive.type}`)
+    } finally {
+      setArchiveLoading(false)
+    }
+  }
+
+  const handleRestore = async (type: 'species' | 'media', id: string) => {
+    try {
+      if (type === 'species') {
+        await restoreSpecies.mutateAsync(id)
+      } else {
+        await restoreMedia.mutateAsync(id)
+      }
+      toast.success(`${type === 'species' ? 'Species' : 'Media'} restored`)
+    } catch (err) {
+      toast.apiError(err, `Failed to restore ${type}`)
+    }
+  }
+
+  const handleClean = async (type: 'species' | 'media', id: string) => {
+    try {
+      if (type === 'species') {
+        await cleanSpecies.mutateAsync(id)
+      } else {
+        await cleanMedia.mutateAsync(id)
+      }
+      toast.success(`${type === 'species' ? 'Species' : 'Media'} cleaned`)
+    } catch (err) {
+      toast.apiError(err, `Failed to clean ${type}`)
     }
   }
 
@@ -114,6 +174,9 @@ export default function MetadataPage() {
           <h1 className="font-heading text-2xl font-bold text-foreground">Manage Metadata</h1>
           <p className="text-sm text-muted-foreground mt-1">Species and Media catalogs used by retrieval and indexing</p>
         </div>
+        <Button variant="outline" onClick={() => setShowArchived((value) => !value)}>
+          <Trash2 className="h-4 w-4" /> {showArchived ? 'Active' : 'Trash'}
+        </Button>
       </div>
 
       <Tabs defaultValue="species">
@@ -157,11 +220,15 @@ export default function MetadataPage() {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="sm" onClick={() => openEdit('species', s.id, s.name, s.description)}><Edit className="h-4 w-4" /></Button>
-                            {s.is_archived ? (
-                              <Button variant="ghost" size="sm"><RotateCcw className="h-4 w-4" /></Button>
-                            ) : (
-                              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleArchive('species', s.id)}><Archive className="h-4 w-4" /></Button>
-                            )}
+                             {s.is_archived ? (
+                               <>
+                                 <Button variant="ghost" size="sm" onClick={() => handleRestore('species', s.id)}><RotateCcw className="h-4 w-4" /></Button>
+                                 <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleClean('species', s.id)}><Trash2 className="h-4 w-4" /></Button>
+                               </>
+                             ) : (
+                               <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleArchive('species', s.id)}><Archive className="h-4 w-4" /></Button>
+                             )}
+
                           </div>
                         </TableCell>
                       </TableRow>
@@ -209,11 +276,15 @@ export default function MetadataPage() {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="sm" onClick={() => openEdit('media', m.id, m.name, m.description)}><Edit className="h-4 w-4" /></Button>
-                            {m.is_archived ? (
-                              <Button variant="ghost" size="sm"><RotateCcw className="h-4 w-4" /></Button>
-                            ) : (
-                              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleArchive('media', m.id)}><Archive className="h-4 w-4" /></Button>
-                            )}
+                             {m.is_archived ? (
+                               <>
+                                 <Button variant="ghost" size="sm" onClick={() => handleRestore('media', m.id)}><RotateCcw className="h-4 w-4" /></Button>
+                                 <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleClean('media', m.id)}><Trash2 className="h-4 w-4" /></Button>
+                               </>
+                             ) : (
+                               <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleArchive('media', m.id)}><Archive className="h-4 w-4" /></Button>
+                             )}
+
                           </div>
                         </TableCell>
                       </TableRow>
@@ -230,6 +301,31 @@ export default function MetadataPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={pendingArchive !== null} onClose={() => setPendingArchive(null)}>
+        <DialogHeader>
+          <DialogTitle>Confirm archive</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <div className="space-y-2 text-sm">
+            <p>{pendingArchive?.impact.warning_message}</p>
+            {pendingArchive?.type === 'species' && (
+              <p>
+                {pendingArchive.impact.strain_count ?? 0} strain(s) · {pendingArchive.impact.segment_count} segment(s)
+              </p>
+            )}
+            {pendingArchive?.type === 'media' && (
+              <p>
+                {pendingArchive.impact.strain_count ?? 0} strain(s) · {pendingArchive.impact.segment_count} segment(s)
+              </p>
+            )}
+          </div>
+        </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setPendingArchive(null)}>Cancel</Button>
+          <Button onClick={confirmArchive} disabled={archiveLoading}>Archive</Button>
+        </DialogFooter>
+      </Dialog>
 
       <Dialog open={createOpen} onClose={closeDialog}>
         <DialogHeader>

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.dependencies import CurrentOwner, CurrentUser
 from ..database import get_db
+from ..schemas.delete_impact import DeleteImpactResponse
 from ..schemas.media import (
     MediaCreate,
     MediaListResponse,
@@ -79,6 +80,24 @@ async def update_media(
     return MediaResponse.model_validate(media)
 
 
+@router.get("/{media_id}/delete-impact", response_model=DeleteImpactResponse)
+async def get_media_delete_impact(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentOwner,
+    media_id: UUID,
+) -> DeleteImpactResponse:
+    repo = _repo()
+    strain_count, segment_count = await repo.delete_impact_media(db, media_id)
+    return DeleteImpactResponse(
+        strain_count=strain_count,
+        segment_count=segment_count,
+        warning_message=(
+            "Archiving this media affects "
+            f"{strain_count} strain(s) and {segment_count} segment(s)."
+        ),
+    )
+
+
 @router.delete("/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def archive_media(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -87,3 +106,24 @@ async def archive_media(
 ) -> None:
     repo = _repo()
     await repo.archive_media(db, media_id)
+
+
+@router.post("/{media_id}/restore", response_model=MediaResponse)
+async def restore_media(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentOwner,
+    media_id: UUID,
+) -> MediaResponse:
+    repo = _repo()
+    media = await repo.restore_media(db, media_id)
+    return MediaResponse.model_validate(media)
+
+
+@router.delete("/{media_id}/clean", status_code=status.HTTP_204_NO_CONTENT)
+async def clean_media(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: CurrentOwner,
+    media_id: UUID,
+) -> None:
+    repo = _repo()
+    await repo.clean_media(db, media_id)

@@ -428,7 +428,9 @@ async def test_batch_progress_updates_incrementally_during_background_job(
     async def fake_ensure_strain(db, strain, species_id):
         return DummyObj("strain-1")
 
-    async def fake_create_image(db, record, strain_obj, species_obj, media_obj):
+    async def fake_create_image(
+        db, record, strain_obj, species_obj, media_obj, **kwargs
+    ):
         image = DummyObj(f"image-{record.source_path.stem}")
         image.segments = []
         return image
@@ -473,3 +475,64 @@ async def test_batch_progress_updates_incrementally_during_background_job(
 
 def test_segmentation_concurrency_limit_is_bounded():
     assert SEGMENT_CONCURRENCY_LIMIT == 2
+
+
+def test_batch_progress_counts_uploaded_rows_as_uploaded_even_before_segmentation():
+    progress = _batch_progress(
+        "batch-2",
+        "batch",
+        [
+            BatchImageStatus(
+                filename="images/T1/MEA/a.jpg",
+                strain="T1",
+                media="MEA",
+                species="sp",
+                status="uploaded",
+                image_id="img-1",
+                source_url="/api/v1/images/img-1/source",
+            )
+        ],
+    )
+    assert progress.upload.completed == 1
+    assert progress.segmentation.completed == 0
+    assert progress.images[0].image_id == "img-1"
+
+
+def test_batch_preview_nested_media_folder_keeps_strain_bucketing():
+    from pathlib import Path
+
+    from backend.routes import (
+        _extract_species_and_strain_from_path,
+        _extract_strain_from_path,
+        _parse_filename_metadata,
+    )
+
+    rel = Path("images/penicillium-thymicola/T379/MEA/T379_plate_01.jpg")
+    assert _extract_strain_from_path(rel) == "T379"
+    assert _extract_species_and_strain_from_path(rel) == (
+        "penicillium-thymicola",
+        "T379",
+    )
+    meta = _parse_filename_metadata(rel.name, str(rel))
+    assert meta["media"] == "unknown"
+
+
+def test_batch_progress_counts_extracting_as_segmented_not_indexed():
+    progress = _batch_progress(
+        "batch-3",
+        "batch",
+        [
+            BatchImageStatus(
+                filename="images/T1/MEA/a.jpg",
+                strain="T1",
+                media="MEA",
+                species="sp",
+                status="extracting",
+                image_id="img-1",
+            )
+        ],
+    )
+    assert progress.upload.completed == 1
+    assert progress.segmentation.completed == 1
+    assert progress.feature_extraction.completed == 0
+    assert progress.status == "processing"

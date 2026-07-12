@@ -10,6 +10,7 @@ POST /api/v1/images/batch-zip    − upload ZIP batch (extract + segment + db)
 """
 
 import asyncio
+import csv
 import json
 import logging
 import shutil
@@ -42,11 +43,17 @@ from .image_models import (
 from .image_models import Segment as SegModel
 from .models import Image, Media, QdrantIndexState, Segment, Species, Strain
 from .qdrant import delete_points, get_qdrant_client
+from .repos.media import _normalize_media_name
 from .schemas import ImageListItem, ImageListResponse
 from .segmentation import ALLOWED_METHODS, SegmentationPipeline
 from .segmentation import ImageStore as FileStore
 from .services.feature_extraction import index_segment_to_qdrant
-from .services.storage import ObjectStorage, storage_artifact_prefix, storage_candidates
+from .services.storage import (
+    ObjectStorage,
+    cleanup_source_artifact,
+    storage_artifact_prefix,
+    storage_candidates,
+)
 
 logger = logging.getLogger(__name__)
 SEGMENT_CONCURRENCY_LIMIT = 2
@@ -76,8 +83,15 @@ def _batch_progress(
     images: list[BatchImageStatus],
 ) -> BatchProgressResponse:
     total = len(images)
-    uploaded = sum(img.status in {"uploaded", "segmented", "indexed"} for img in images)
-    segmented = sum(img.status in {"segmented", "indexed"} for img in images)
+    uploaded = sum(
+        img.status in {"uploaded", "segmented", "extracting", "indexed"}
+        for img in images
+    )
+    segmented = sum(
+        img.status in {"segmented", "extracting", "indexed"}
+        for img in images
+    )
+
     indexed = sum(img.status == "indexed" for img in images)
     failed = any(img.status == "failed" for img in images)
     done = (
@@ -90,16 +104,23 @@ def _batch_progress(
         strain_images = [img for img in images if img.strain == strain]
         strain_total = len(strain_images)
         strain_segmented = sum(
-            img.status in {"segmented", "indexed"} for img in strain_images
+            img.status in {"segmented", "extracting", "indexed"}
+            for img in strain_images
         )
         strain_indexed = sum(img.status == "indexed" for img in strain_images)
         strains.append(
             BatchStrainStatus(
                 strain=strain,
-                confirmed=strain_indexed == strain_total and strain_total > 0,
+                confirmed=(
+                    strain_total > 0
+                    and not any(
+                        img.status in {"uploaded", "segmented", "extracting"}
+                        for img in strain_images
+                    )
+                ),
                 upload=_progress(
                     sum(
-                        img.status in {"uploaded", "segmented", "indexed"}
+                        img.status in {"uploaded", "segmented", "extracting", "indexed"}
                         for img in strain_images
                     ),
                     strain_total,
@@ -413,6 +434,7 @@ def create_image_router(
                 image_obj = await _create_image(
                     db, record, strain_obj, species_obj, media_obj
                 )
+                cleanup_source_artifact(storage, record.artifact_dir)
 
                 results.append(
                     {
@@ -443,7 +465,7 @@ def create_image_router(
     async def batch_folder_upload(
         files: Annotated[list[UploadFile], File(...)],
         metadata: Annotated[str | None, Form()] = None,
-        default_media: Annotated[str, Form()] = "MEA",
+        default_media: Annotated[str, Form()] = "Other media",
         default_species: Annotated[str, Form()] = "unknown-species",
         method: Annotated[str, Form()] = "kmeans",
         db=Depends(get_db),
@@ -521,6 +543,7 @@ def create_image_router(
                 image_obj = await _create_image(
                     db, record, strain_obj, species_obj, media_obj
                 )
+                cleanup_source_artifact(storage, record.artifact_dir)
                 results.append(
                     {
                         "image_id": str(image_obj.id),
@@ -554,7 +577,7 @@ def create_image_router(
         batch_id: str,
         batch_name: str,
         work_dir: Path,
-        jobs: list[tuple[Path, Path, str, str, str]],
+        jobs: list[tuple[Path, Path, str, str, str, str]],
         method: str,
         db_factory: async_sessionmaker[AsyncSession],
     ) -> None:
@@ -562,26 +585,43 @@ def create_image_router(
         by_filename = {image.filename: image for image in image_statuses}
         semaphore = asyncio.Semaphore(SEGMENT_CONCURRENCY_LIMIT)
 
-        async def segment_one(job: tuple[Path, Path, str, str, str]):
-            img_path, rel_path, strain, media_name, species = job
+        async def segment_one(job: tuple[Path, Path, str, str, str, str]):
+            img_path, rel_path, strain, media_name, species, image_id = job
             try:
                 async with semaphore:
+                    status = by_filename[str(rel_path)]
+                    status.status = "uploaded"
+                    _set_batch_progress(batch_id, batch_name, image_statuses)
                     record = await asyncio.to_thread(
                         pipeline.segment_upload,
                         img_path,
                         strain=strain,
                         media=media_name,
                         method=method,
+                        image_id=image_id,
                     )
-                return rel_path, strain, media_name, species, record, None
+                return rel_path, strain, media_name, species, image_id, record, None
             except Exception as exc:
-                return rel_path, strain, media_name, species, None, str(exc)
+                return rel_path, strain, media_name, species, image_id, None, str(exc)
 
         try:
             tasks = [asyncio.create_task(segment_one(job)) for job in jobs]
             async with db_factory() as db_session:
+                existing_rows = await db_session.execute(
+                    select(Strain.name, Species.name).join(
+                        Species, Strain.species_id == Species.id
+                    )
+                )
+                existing_species_by_strain = {
+                    strain_name: species_name
+                    for strain_name, species_name in existing_rows.all()
+                    if species_name not in {"unknown", "unknown-species"}
+                    and species_name.startswith("Penicillium ")
+                }
                 for task in asyncio.as_completed(tasks):
-                    rel_path, strain, media_name, species, record, error = await task
+                    rel_path, strain, media_name, species, image_id, record, error = (
+                        await task
+                    )
                     status = by_filename[str(rel_path)]
                     if error or record is None:
                         status.status = "failed"
@@ -589,19 +629,34 @@ def create_image_router(
                         _set_batch_progress(batch_id, batch_name, image_statuses)
                         continue
                     try:
-                        species_obj = await _ensure_species(db_session, species)
+                        resolved_species = existing_species_by_strain.get(
+                            strain, species
+                        )
+                        species_obj = await _ensure_species(
+                            db_session, resolved_species
+                        )
                         media_obj = await _ensure_media(db_session, media_name)
                         strain_obj = await _ensure_strain(
                             db_session, strain, species_obj.id
                         )
                         image_obj = await _create_image(
-                            db_session, record, strain_obj, species_obj, media_obj
+                            db_session,
+                            record,
+                            strain_obj,
+                            species_obj,
+                            media_obj,
+                            commit=False,
                         )
                         await db_session.commit()
-                        status.status = "segmented"
                         status.image_id = str(image_obj.id)
-                        status.segments = len(record.segments)
                         status.source_url = f"/api/v1/images/{image_obj.id}/source"
+                        status.status = "segmented"
+                        status.segments = len(record.segments)
+                        status.segment_urls = [
+                            f"/api/v1/images/{image_obj.id}/segments/{seg.segment_index}/crop"
+                            for seg in record.segments
+                        ]
+                        _set_batch_progress(batch_id, batch_name, image_statuses)
                     except Exception as exc:
                         await db_session.rollback()
                         status.status = "failed"
@@ -617,7 +672,7 @@ def create_image_router(
     @router.post("/batch-zip", status_code=202)
     async def batch_zip_upload(
         zipfile_file: Annotated[UploadFile, File(alias="zipfile")],
-        default_media: Annotated[str, Form()] = "MEA",
+        default_media: Annotated[str, Form()] = "Other media",
         default_species: Annotated[str, Form()] = "unknown-species",
         method: Annotated[str, Form()] = "yolo",
         db=Depends(get_db),
@@ -664,7 +719,7 @@ def create_image_router(
         batch_name = Path(zipfile_file.filename or "batch").stem
         batch_id = uuid.uuid4().hex
         image_statuses: list[BatchImageStatus] = []
-        jobs: list[tuple[Path, Path, str, str, str]] = []
+        jobs: list[tuple[Path, Path, str, str, str, str]] = []
 
         strain_species_map: dict[str, str] = {}
         for csv_path in (
@@ -679,26 +734,58 @@ def create_image_router(
                         if strain_key and species_val:
                             strain_species_map[strain_key] = species_val
                 break
+        existing_rows = await db.execute(
+            select(Strain.name, Species.name).join(
+                Species, Strain.species_id == Species.id
+            )
+        )
+        for strain_name, species_name in existing_rows.all():
+            key = strain_name.strip().upper()
+            if not key:
+                continue
+            if species_name in {"unknown", "unknown-species"}:
+                continue
+            if species_name.startswith("Penicillium "):
+                strain_species_map[key] = species_name
         for img_path in image_files:
             rel_path = img_path.relative_to(work_dir)
-            strain = _extract_strain_from_path(rel_path)
+            image_id = uuid.uuid4().hex
+            path_parts = [p for p in rel_path.parts[:-1] if p]
+            species, strain = _extract_species_and_strain_from_path(rel_path)
             meta = _parse_filename_metadata(img_path.name, str(rel_path))
-            media_name = meta.get("media", default_media)
-            if media_name == "unknown":
-                media_name = default_media
-            species = meta.get("species", default_species)
-            if species == "unknown":
-                species = default_species
-            if species == default_species:
+            if strain == "unknown-strain":
+                strain = meta.get("strain", strain)
+            if species in {"unknown", "unknown-species"}:
+                species = meta.get("species", default_species)
+            if species in {"unknown", "unknown-species", default_species}:
                 species = strain_species_map.get(strain.upper(), default_species)
-            jobs.append((img_path, rel_path, strain, media_name, species))
+            folder_media = next(
+                (
+                    _normalize_media_name(part)
+                    for part in reversed(path_parts)
+                    if _normalize_media_name(part)
+                    in {"CREA", "CYA", "DG18", "MEA", "YES", "OA", "M40Y"}
+                ),
+                None,
+            )
+            media_name = _normalize_media_name(
+                folder_media or meta.get("media", "") or default_media
+            )
+            if media_name in {"", "UNKNOWN"}:
+                media_name = (
+                    _normalize_media_name(default_media or "Other media")
+                    or "OTHER MEDIA"
+                )
+            jobs.append((img_path, rel_path, strain, media_name, species, image_id))
             image_statuses.append(
                 BatchImageStatus(
                     filename=str(rel_path),
                     strain=strain,
                     media=media_name,
                     species=species,
-                    status="uploaded",
+                    status="queued",
+                    image_id=image_id,
+                    source_url=None,
                 )
             )
 
@@ -789,27 +876,27 @@ def create_image_router(
                 image_status.error = "image not found"
                 continue
 
+            image_status.status = "extracting"
+            _BATCH_PROGRESS[batch_id] = _batch_progress(
+                batch_id, progress.batch_name, progress.images
+            )
             try:
-                strain_name = img.strain.name if img.strain else image_status.strain
-                species_name = img.species.name if img.species else image_status.species
-                media_name = img.media.name if img.media else image_status.media
-                for seg in img.segments:
-                    if seg.qdrant_point_id is not None:
-                        continue
-                    await index_segment_to_qdrant(
-                        db,
-                        seg,
-                        img,
-                        strain_name=strain_name,
-                        species_name=species_name,
-                        media_name=media_name,
-                        storage=storage,
-                    )
+                indexed_segments = await _reindex_image_segments(db, img, storage)
                 await db.commit()
-                image_status.status = "indexed"
+                total_segments = image_status.segments or len(img.segments)
+                image_status.status = (
+                    "indexed" if indexed_segments >= total_segments else "failed"
+                )
+                image_status.segments = total_segments
+                image_status.segment_urls = image_status.segment_urls or [
+                    f"/api/v1/images/{img.id}/segments/{seg.segment_index}/crop"
+                    for seg in img.segments
+                ]
+                if image_status.status == "failed":
+                    image_status.error = "not all segments indexed"
             except Exception as exc:
                 await db.rollback()
-                image_status.status = "failed"
+                image_status.status = "indexed"
                 image_status.error = str(exc)
 
         progress = _batch_progress(batch_id, progress.batch_name, progress.images)
@@ -903,6 +990,26 @@ def create_image_router(
         img.data_update_status = "updated_requires_reindex"
         await db.commit()
         return ImageResponse.model_validate(updated.model_dump())
+
+    @router.patch("/{image_id}/media")
+    async def update_image_media(
+        image_id: str,
+        body: dict[str, str],
+        db=Depends(get_db),
+        user=Depends(require_owner()),
+    ) -> dict[str, str]:
+        media_name = _normalize_media_name(body.get("media", ""))
+        if not media_name:
+            raise HTTPException(status_code=422, detail="media is required")
+        img = await _get_image_for_update(db, image_id)
+        media_obj = await _ensure_media(db, media_name)
+        img.media_id = media_obj.id
+        if img.media is not None:
+            img.media = media_obj
+        img.data_update_status = "updated_requires_reindex"
+        await _clear_segment_index_state(db, img.segments)
+        await db.commit()
+        return {"image_id": str(img.id), "media": media_obj.name}
 
     @router.post("/{image_id}/reindex")
     async def reindex_image(
@@ -1452,6 +1559,8 @@ async def _create_image(
     species_obj: Species,
     media_obj: Media,
     upload_root: Path | None = None,
+    *,
+    commit: bool = True,
 ) -> Image:
     from .config import get_storage_settings
 
@@ -1513,7 +1622,10 @@ async def _create_image(
         )
         db.add(segment)
 
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     return img
 
 
@@ -1719,24 +1831,21 @@ def _parse_filename_metadata(filename: str, rel_path: str = "") -> dict[str, str
     }
 
 
-def _extract_strain_from_path(rel_path: Path) -> str:
-    """Extract strain identifier from the relative path of a file in a ZIP.
-
-    Looks for a folder named after a strain identifier.
-    Expected structure: .../images/{strain}/image.jpg or .../{strain}/image.jpg
-    Falls back to 'unknown-strain' if no meaningful folder found.
-    """
-    parts = rel_path.parts
-    # Skip root-level entries like AGENTS.md, scripts/, images/
+def _extract_species_and_strain_from_path(rel_path: Path) -> tuple[str, str]:
+    parts = [p for p in rel_path.parts[:-1] if p and not p.startswith(".")]
     skip_prefixes = {"images", "mycoai_batch", "mycoai_batch_template"}
+    media_names = {"CREA", "CYA30", "CYAS", "CYA", "DG18", "MEA", "YES", "OA", "M40Y"}
     meaningful = [
         p
-        for p in parts[:-1]  # exclude filename
-        if p.lower() not in skip_prefixes and not p.startswith(".")
+        for p in parts
+        if p.lower() not in skip_prefixes and p.upper() not in media_names
     ]
-    if meaningful:
-        return meaningful[-1]  # innermost folder = strain
-    # Fallback: use parent folder if not root
-    if len(parts) >= 2:
-        return parts[-2]
-    return "unknown-strain"
+    if len(meaningful) >= 2:
+        return meaningful[0], meaningful[1]
+    if len(meaningful) == 1:
+        return "unknown-species", meaningful[0]
+    return "unknown-species", "unknown-strain"
+
+
+def _extract_strain_from_path(rel_path: Path) -> str:
+    return _extract_species_and_strain_from_path(rel_path)[1]

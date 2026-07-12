@@ -4,7 +4,7 @@ import { media } from '@/services/media'
 import { strains } from '@/services/strains'
 import type { SpeciesCreate, SpeciesUpdate, MediaCreate, MediaUpdate, StrainCreateRequest } from '@/services/types'
 
-type ArchiveFn = (id: string) => Promise<void>
+type ArchiveFn = (id: string) => Promise<unknown>
 
 function useArchiveMutation(
   key: string[],
@@ -69,6 +69,14 @@ export function useArchiveSpecies() {
   return useArchiveMutation(['species'], (id: string) => species.archive(id))
 }
 
+export function useRestoreSpecies() {
+  return useArchiveMutation(['species'], (id: string) => species.restore(id))
+}
+
+export function useCleanSpecies() {
+  return useArchiveMutation(['species'], (id: string) => species.clean(id))
+}
+
 // ── Media ──
 
 export function useMediaList(archived = false, offset = 0, limit = 50) {
@@ -91,6 +99,14 @@ export function useUpdateMedia() {
 
 export function useArchiveMedia() {
   return useArchiveMutation(['media'], (id: string) => media.archive(id))
+}
+
+export function useRestoreMedia() {
+  return useArchiveMutation(['media'], (id: string) => media.restore(id))
+}
+
+export function useCleanMedia() {
+  return useArchiveMutation(['media'], (id: string) => media.clean(id))
 }
 
 // ── Strains ──

@@ -12,6 +12,7 @@ const imagesModule = vi.hoisted(() => ({
   autoSegment: vi.fn(),
   getBatchProgress: vi.fn(),
   patchImageSegments: vi.fn(),
+  updateImageMedia: vi.fn(),
   reindexImage: vi.fn(),
   reindexStrainImages: vi.fn(),
 }))
@@ -24,6 +25,9 @@ const mockUseAuth = vi.fn(() => ({ user: { role: 'owner' } }))
 
 vi.mock('@/hooks/use-toast', () => ({ useToast: () => mockToast }))
 vi.mock('@/lib/use-auth', () => ({ useAuth: () => mockUseAuth() }))
+vi.mock('@/hooks/use-taxonomy', () => ({
+  useMediaList: () => ({ data: { items: [{ id: 'm1', name: 'MEA', is_archived: false }, { id: 'm2', name: 'Other media', is_archived: false }] } }),
+}))
 vi.mock('@/lib/template', () => ({
   downloadTemplate: vi.fn(),
   downloadAgentsMd: vi.fn(),
@@ -31,9 +35,6 @@ vi.mock('@/lib/template', () => ({
   INDEX_TEMPLATE_CSV: 'strain,media,file',
 }))
 vi.mock('@/services/images', () => imagesModule)
-vi.mock('@/lib/mock-data', () => ({
-  mediaList: [{ media_id: 'm1', name: 'MEA', is_archived: false }],
-}))
 vi.mock('@/lib/sample-assets', () => ({
   sampleStrains: [
     {
@@ -95,6 +96,7 @@ describe('RetrievePage', () => {
     imagesModule.autoSegment.mockReset()
     imagesModule.getBatchProgress.mockReset()
     imagesModule.patchImageSegments.mockReset()
+    imagesModule.updateImageMedia.mockReset()
     imagesModule.reindexImage.mockReset()
     imagesModule.reindexStrainImages.mockReset()
     imagesModule.uploadImage
@@ -121,8 +123,8 @@ describe('RetrievePage', () => {
         feature_extraction: { completed: 0, total: 2, percent: 0 },
         strains: [],
         images: [
-          { filename: 'strain-a/a.jpg', strain: 'strain-a', media: 'MEA', species: 'spec-a', status: 'segmented', image_id: 'img-a', segments: 1, source_url: '/uploaded-a.jpg', error: null },
-          { filename: 'strain-b/b.jpg', strain: 'strain-b', media: 'MEA', species: 'spec-b', status: 'failed', image_id: null, segments: 0, source_url: null, error: 'segment failed' },
+          { filename: 'images/strain-a/MEA/a.jpg', strain: 'strain-a', media: 'MEA', species: 'spec-a', status: 'segmented', image_id: 'img-a', segments: 1, source_url: '/uploaded-a.jpg', error: null },
+          { filename: 'images/strain-b/CYA/b.jpg', strain: 'strain-b', media: 'CYA', species: 'spec-b', status: 'failed', image_id: null, segments: 0, source_url: null, error: 'segment failed' },
         ],
       },
     })
@@ -151,6 +153,7 @@ describe('RetrievePage', () => {
       segmentation_method: 'manual',
       segments: [{ segment_id: 'seg-1', segment_index: 0, bbox: { x: 1, y: 2, w: 30, h: 40 }, crop_url: '/seg-a.jpg', pipeline_url: '/pipe-a.jpg' }],
     })
+    imagesModule.updateImageMedia.mockResolvedValue({ image_id: 'img-a', media: 'CYA' })
     imagesModule.reindexImage.mockResolvedValue({ image_id: 'img-a', indexed_segments: 1 })
     imagesModule.reindexStrainImages.mockResolvedValue({ strain_id: 'strain-a', images: 1, indexed_segments: 1 })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ blob: () => Promise.resolve(new Blob(['img'], { type: 'image/jpeg' })) }))
@@ -221,6 +224,19 @@ describe('RetrievePage', () => {
     expect(screen.getByText(/3\. Upload ZIP/i)).toBeInTheDocument()
   })
 
+  it('does not poll backend progress for local pending-upload preview ids', async () => {
+    imagesModule.uploadBatchZip.mockImplementation(() => new Promise(() => {}))
+
+    renderPage()
+
+    await userEvent.click(screen.getByRole('button', { name: /batch processing/i }))
+    const zipInput = document.querySelector('input[type="file"][accept=".zip"]') as HTMLInputElement
+    await userEvent.upload(zipInput, new File(['not-a-real-zip'], 'batch.zip', { type: 'application/zip' }))
+
+    expect(await screen.findByText(/Uploading ZIP… 0\/0 images queued/i)).toBeInTheDocument()
+    expect(imagesModule.getBatchProgress).not.toHaveBeenCalledWith('pending-upload')
+  })
+
   it('shows batch per-image statuses and toasts failed zip rows', async () => {
     renderPage()
 
@@ -229,8 +245,8 @@ describe('RetrievePage', () => {
     await userEvent.upload(zipInput, new File(['zip'], 'batch.zip', { type: 'application/zip' }))
 
     expect(await screen.findByText(/1 successful, 1 failed/i)).toBeInTheDocument()
-    expect(screen.getByText('strain-a/a.jpg')).toBeInTheDocument()
-    expect(screen.getByText('strain-b/b.jpg')).toBeInTheDocument()
+    expect(screen.getByText('images/strain-a/MEA/a.jpg')).toBeInTheDocument()
+    expect(screen.getByText('images/strain-b/CYA/b.jpg')).toBeInTheDocument()
     expect(screen.getByText('failed')).toBeInTheDocument()
     await waitFor(() => expect(imagesModule.getBatchProgress).toHaveBeenCalledWith('batch-1'))
     expect(mockToast.error).toHaveBeenCalled()
@@ -245,9 +261,22 @@ describe('RetrievePage', () => {
 
     const strainTab = await screen.findByRole('button', { name: /strain-a/i })
     expect(strainTab).toBeInTheDocument()
-    expect(screen.getByDisplayValue('strain-a/a.jpg')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('images/strain-a/MEA/a.jpg')).toBeInTheDocument()
     expect(screen.getAllByText('Media').length).toBeGreaterThan(0)
+    expect(screen.getByDisplayValue('MEA')).toBeInTheDocument()
+    expect(screen.getByText('images/strain-b/CYA/b.jpg')).toBeInTheDocument()
     expect(screen.getByText('Max')).toBeInTheDocument()
+  })
+
+  it('does not call single-image auto segment for batch zip flow', async () => {
+    renderPage()
+
+    await userEvent.click(screen.getByRole('button', { name: /batch processing/i }))
+    const zipInput = document.querySelector('input[type="file"][accept=".zip"]') as HTMLInputElement
+    await userEvent.upload(zipInput, new File(['zip'], 'batch.zip', { type: 'application/zip' }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Segment All$/i }))
+
+    expect(imagesModule.autoSegment).not.toHaveBeenCalled()
   })
 
   it('does not emit duplicate key warnings when batch progress and grouped cards reuse filenames', async () => {
@@ -331,6 +360,38 @@ describe('RetrievePage', () => {
     expect(screen.getByText(/Segmentation Confirmation/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Run Retrieval/i })).toBeInTheDocument()
     expect(screen.queryByText(/Ranked Species Result/i)).not.toBeInTheDocument()
+  })
+
+  it('does not advance to segmentation when only one single-strain image segments successfully', async () => {
+    imagesModule.uploadImage
+      .mockReset()
+      .mockResolvedValueOnce({ image_id: 'img-a', source_url: '/uploaded-a.jpg' })
+      .mockResolvedValueOnce({ image_id: 'img-b', source_url: '/uploaded-b.jpg' })
+    imagesModule.autoSegment
+      .mockReset()
+      .mockResolvedValueOnce({
+        image_id: 'img-a',
+        source_url: '/uploaded-a.jpg',
+        segmentation_method: 'yolo',
+        segments: [{ segment_id: 'seg-1', segment_index: 0, bbox: { x: 1, y: 2, w: 30, h: 40 }, crop_url: '/seg-a.jpg', pipeline_url: '/pipe-a.jpg' }],
+      })
+      .mockRejectedValueOnce(new Error('boom'))
+
+    renderPage()
+
+    await userEvent.click(screen.getByRole('button', { name: /add image/i }))
+    const imageInput = document.querySelector('input[type="file"][accept="image/*"]') as HTMLInputElement
+    await userEvent.upload(
+      imageInput,
+      [
+        new File(['a'], 'first.jpg', { type: 'image/jpeg' }),
+        new File(['b'], 'second.jpg', { type: 'image/jpeg' }),
+      ],
+    )
+
+    await waitFor(() => expect(imagesModule.autoSegment).toHaveBeenCalledTimes(2))
+    expect(screen.getByRole('button', { name: /^Run Retrieval/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Segment All/i })).toBeInTheDocument()
   })
 
   it('hides batch zip ui for non-owner users, shows for owner and dataowner', async () => {

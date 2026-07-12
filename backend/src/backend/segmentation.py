@@ -32,6 +32,10 @@ def _get_yolo_model(weights: str | Path | None = None) -> object | None:
         return None
     if wpath is None:
         candidates = [
+            Path("/app/weights/segmentation/yolo_segmentation_best.pt"),
+            Path("/app/weights/segmentation/yolo26_seg_best.pt"),
+            Path("/app/weights/yolo26n-seg.pt"),
+            Path("/app/weights/yolov8n-seg.pt"),
             Path.cwd() / "weights" / "segmentation" / "yolo_segmentation_best.pt",
             Path.cwd() / "weights" / "segmentation" / "yolo26_seg_best.pt",
             Path.cwd() / "weights" / "yolo26n-seg.pt",
@@ -98,11 +102,12 @@ class SegmentationPipeline:
         strain: str,
         media: str,
         method: str = "kmeans",
+        image_id: str | None = None,
     ) -> ImageRecord:
         if method not in ALLOWED_METHODS:
             raise ValueError(f"unsupported segmentation method: {method}")
 
-        image_id = uuid4().hex
+        image_id = image_id or uuid4().hex
         prefix = f"{strain}/{media}/{image_id}"
         work_dir = Path(mkdtemp(prefix="seg_"))
 

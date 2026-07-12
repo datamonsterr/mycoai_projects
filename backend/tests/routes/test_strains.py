@@ -92,3 +92,37 @@ def test_delete_strain(
     sid = create.json()["id"]
     resp = client.delete(f"/api/v1/strains/{sid}", headers=owner_headers)
     assert resp.status_code == 204
+
+
+def test_strain_restore_and_clean(
+    client: TestClient,
+    owner_headers: dict[str, str],
+    species_id: str,
+) -> None:
+    create = client.post(
+        "/api/v1/strains",
+        json={"name": "Trash Strain", "species_id": species_id, "source": "test"},
+        headers=owner_headers,
+    )
+    strain_id = create.json()["id"]
+
+    archive = client.delete(f"/api/v1/strains/{strain_id}", headers=owner_headers)
+    assert archive.status_code == 204
+
+    archived_list = client.get(
+        "/api/v1/strains?is_archived=true",
+        headers=owner_headers,
+    )
+    assert archived_list.status_code == 200
+    assert any(item["id"] == strain_id for item in archived_list.json()["items"])
+
+    restore = client.post(f"/api/v1/strains/{strain_id}/restore", headers=owner_headers)
+    assert restore.status_code == 200
+    assert restore.json()["is_archived"] is False
+
+    client.delete(f"/api/v1/strains/{strain_id}", headers=owner_headers)
+    clean = client.delete(f"/api/v1/strains/{strain_id}/clean", headers=owner_headers)
+    assert clean.status_code == 204
+
+    missing = client.get(f"/api/v1/strains/{strain_id}", headers=owner_headers)
+    assert missing.status_code == 404

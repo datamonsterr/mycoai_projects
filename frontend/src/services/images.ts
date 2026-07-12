@@ -64,6 +64,7 @@ export type BatchImageStatus = {
   segments: number
   error?: string | null
   source_url?: string | null
+  segment_urls?: string[]
 }
 
 export type BatchStrainStatus = {
@@ -169,6 +170,15 @@ export type SegmentPatchRequest = {
 
 export function patchImageSegments(imageId: string, payload: SegmentPatchRequest): Promise<ImageDetail> {
   return api.patch<ImageDetail>(`/images/${imageId}/segments`, payload)
+}
+
+export type ImageMediaUpdateResponse = {
+  image_id: string
+  media: string
+}
+
+export function updateImageMedia(imageId: string, media: string): Promise<ImageMediaUpdateResponse> {
+  return api.patch<ImageMediaUpdateResponse>(`/images/${imageId}/media`, { media })
 }
 
 export type ImageReindexResponse = {
