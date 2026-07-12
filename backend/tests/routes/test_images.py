@@ -914,3 +914,7 @@ def test_index_segment_to_qdrant_reads_s3_crop_via_relative_segment_key(
     assert result["status"] == "indexed"
     assert storage.calls[0].endswith("segments/segment_0.jpg")
     assert "S3_STRAIN/S3_MEDIA/image-123/segments/segment_0.jpg" in storage.calls
+
+
+def test_qdrant_default_collection_targets_product_index() -> None:
+    assert get_qdrant_settings().collection_name == "myco_fungi_features_full_finetuned"

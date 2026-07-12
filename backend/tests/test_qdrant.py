@@ -327,7 +327,7 @@ def test_delete_points() -> None:
 def test_collection_exists_mocked() -> None:
     client = MagicMock()
     fake_col = MagicMock()
-    fake_col.name = "qdrant-research_fold0"
+    fake_col.name = "myco_fungi_features_full_finetuned"
     client.get_collections.return_value.collections = [fake_col]
     assert collection_exists(client, "qdrant-research_fold0") is True
 

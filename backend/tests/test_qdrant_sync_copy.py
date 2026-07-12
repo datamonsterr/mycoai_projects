@@ -84,6 +84,15 @@ def test_copy_collection_vectors_skips_points_without_recognized_sql_mapping(
                 "segment_id": "seg-1",
                 "image_id": "img-1",
                 "media": "CREA",
+                "environment": "CREA",
+                "species": "Species A",
+                "specy": "Species A",
+                "strain": "Strain",
+                "parent_id": "img-1",
+                "parent_item_id": "img-1",
+                "parent_image_id": "img-1",
+                "angle": "ob",
+                "segment_index": "0",
             }
         },
         {
@@ -91,6 +100,15 @@ def test_copy_collection_vectors_skips_points_without_recognized_sql_mapping(
                 "segment_id": "seg-legacy",
                 "image_id": "img-2",
                 "media": "CREA",
+                "environment": "CREA",
+                "species": "Species A",
+                "specy": "Species A",
+                "strain": "Strain",
+                "parent_id": "img-2",
+                "parent_item_id": "img-2",
+                "parent_image_id": "img-2",
+                "angle": "ob",
+                "segment_index": "0",
             }
         },
     )

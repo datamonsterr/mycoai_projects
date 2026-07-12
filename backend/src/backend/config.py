@@ -42,7 +42,7 @@ class QdrantSettings(BaseSettings):
     host: str = "localhost"
     port: int = 6333
     grpc_port: int = 6334
-    collection_name: str = "qdrant-research_fold1"
+    collection_name: str = "myco_fungi_features_full_finetuned"
     default_vector_name: str = "efficientnetb1_finetuned"
     prefer_grpc: bool = False
     timeout_seconds: int = 30
