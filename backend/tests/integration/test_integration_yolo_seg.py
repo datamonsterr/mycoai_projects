@@ -24,7 +24,7 @@ def reset_yolo_singletons():
 
 
 @pytest.fixture
-def yolo_fixture_dir() -> Generator[Path, None, None]:
+def yolo_fixture_dir() -> Generator[Path]:
     work_dir = Path(mkdtemp(prefix="itest_yolo_seg_"))
     image = np.zeros((640, 640, 3), dtype=np.uint8)
     cv.circle(image, (200, 200), 80, (180, 160, 140), -1)
@@ -34,7 +34,9 @@ def yolo_fixture_dir() -> Generator[Path, None, None]:
     shutil.rmtree(work_dir, ignore_errors=True)
 
 
-def test_yolo_segmentation_pipeline_uses_root_finetuned_weights(yolo_fixture_dir: Path) -> None:
+def test_yolo_segmentation_pipeline_uses_root_finetuned_weights(
+    yolo_fixture_dir: Path,
+) -> None:
     repo_root = Path("/home/dat/dev/mycoai")
     weights_path = repo_root / "weights" / "segmentation" / "yolo26_seg_best.pt"
     if not weights_path.exists():

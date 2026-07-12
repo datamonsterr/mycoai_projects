@@ -8,9 +8,9 @@ import pytest
 
 from backend.services import feature_extraction as backend_feature_extraction
 from backend.services.feature_extraction import (
-    extract_features_from_bytes,
-    extract_features,
     _resolve_finetuned_weights,
+    extract_features,
+    extract_features_from_bytes,
 )
 
 pytestmark = [pytest.mark.integration]
@@ -24,11 +24,15 @@ def _load_research_feature_rows(limit: int = 10) -> list[dict]:
         pytest.skip(f"Research features JSON not found: {FEATURES_JSON_PATH}")
     rows = json.loads(FEATURES_JSON_PATH.read_text())
     selected = [
-        row for row in rows
+        row
+        for row in rows
         if row.get("features", {}).get("efficientnetb1_finetuned", {}).get("vector")
     ][:limit]
     if len(selected) < limit:
-        pytest.skip(f"Need {limit} rows with efficientnetb1_finetuned vectors, got {len(selected)}")
+        pytest.skip(
+            f"Need {limit} rows with efficientnetb1_finetuned vectors, "
+            f"got {len(selected)}"
+        )
     return selected
 
 
@@ -57,10 +61,13 @@ def test_efficientnetb1_finetuned_vector_parity_for_10_segments() -> None:
         )
         if backend_vector.shape != research_vector.shape:
             raise AssertionError(
-                f"Shape mismatch for {segment_path}: {backend_vector.shape} vs {research_vector.shape}"
+                f"Shape mismatch for {segment_path}: "
+                f"{backend_vector.shape} vs {research_vector.shape}"
             )
 
-        denom = (np.linalg.norm(backend_vector) * np.linalg.norm(research_vector)) + 1e-8
+        denom = (
+            np.linalg.norm(backend_vector) * np.linalg.norm(research_vector)
+        ) + 1e-8
         cosine_similarity = float(np.dot(backend_vector, research_vector) / denom)
         cosine_distance = 1.0 - cosine_similarity
         cosine_distances.append(cosine_distance)

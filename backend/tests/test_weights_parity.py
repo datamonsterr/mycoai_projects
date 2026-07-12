@@ -35,7 +35,9 @@ def test_get_yolo_model_prefers_research_finetuned_weights(tmp_path: Path) -> No
 def test_resolve_finetuned_weights_prefers_yolo_finetuned_before_fold0(
     tmp_path: Path,
 ) -> None:
-    yolo_finetuned = tmp_path / "weights" / "yolo_finetuned" / "EfficientNetB1_finetuned.pth"
+    yolo_finetuned = (
+        tmp_path / "weights" / "yolo_finetuned" / "EfficientNetB1_finetuned.pth"
+    )
     fold0 = tmp_path / "weights" / "folds" / "fold0_EfficientNetB1_finetuned.pth"
     yolo_finetuned.parent.mkdir(parents=True)
     fold0.parent.mkdir(parents=True)

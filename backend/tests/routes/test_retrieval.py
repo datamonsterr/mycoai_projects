@@ -240,8 +240,7 @@ def test_get_retrieval_evidence_rejects_path_traversal(client: TestClient) -> No
     assert response.status_code == 404
 
 
-def test_start_query_stores_queried_image_neighbor_fallback_when_only_segment_path(
-) -> None:
+def test_start_query_stores_neighbor_fallback_for_segment_path() -> None:
     import asyncio
 
     payload = SimpleNamespace(

@@ -88,9 +88,7 @@ def _wait_for_batch_completion(
 class TestBatchZipUpload:
     """Tests for POST /api/v1/images/batch-zip."""
 
-    async def test_requires_authentication(
-        self, client: TestClient, test_zip: BytesIO
-    ):
+    async def test_requires_authentication(self, client: TestClient, test_zip: BytesIO):
         """Anonymous requests should be rejected."""
         resp = client.post(
             "/api/v1/images/batch-zip",
@@ -98,9 +96,7 @@ class TestBatchZipUpload:
         )
         assert resp.status_code == 401
 
-    async def test_requires_owner_role(
-        self, client: TestClient, test_zip: BytesIO
-    ):
+    async def test_requires_owner_role(self, client: TestClient, test_zip: BytesIO):
         """Non-owner users should be rejected."""
         # Register + login as normal user
         import uuid
