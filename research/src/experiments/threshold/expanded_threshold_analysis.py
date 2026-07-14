@@ -289,6 +289,25 @@ def generate_formulas(scores: np.ndarray) -> Dict[str, np.ndarray]:
                 wd * s[:, 0] + s[:, 2] + eps
             )
 
+    # ----- NEW: absolute-score-aware formulas -----
+    gap_0_2 = s[:, 0] - s[:, 2]
+    formulas["s0_x_gnorm_0_2"] = s[:, 0] * gnorm_0_2
+    formulas["s0_sq_x_gnorm_0_2"] = (s[:, 0] ** 2) * gnorm_0_2
+    formulas["s0_x_gap_0_2"] = s[:, 0] * gap_0_2
+    formulas["s0_x_log_rat01"] = s[:, 0] * np.log1p(s[:, 0] / (s[:, 1] + eps))
+    formulas["s0_x_log_rat02"] = s[:, 0] * np.log1p(s[:, 0] / (s[:, 2] + eps))
+    formulas["s0_x_norm_rnk3"] = s[:, 0] * (
+        (s[:, 0] - s[:, 2]) / (s[:, 0] + s[:, 2] + eps)
+    )
+    formulas["s0_min_gnorm_0_2"] = np.minimum(s[:, 0], gnorm_0_2)
+    for floor in [0.20, 0.30, 0.40, 0.50]:
+        formulas[f"clip_s0_{int(floor * 100):02d}_x_gnorm_0_2"] = np.clip(
+            s[:, 0] - floor, 0.0, None
+        ) * gnorm_0_2
+        formulas[f"clip_s0_{int(floor * 100):02d}_x_gap_0_2"] = np.clip(
+            s[:, 0] - floor, 0.0, None
+        ) * gap_0_2
+
     return formulas
 
 
