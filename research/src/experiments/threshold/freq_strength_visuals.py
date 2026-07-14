@@ -187,15 +187,15 @@ def _draw_confusion(rows: list[dict[str, Any]], output_path: Path, title: str) -
     labels = sorted({*y_true, *y_pred} - {"UNKNOWN"}) + ["UNKNOWN"]
     cm = confusion_matrix(y_true, y_pred, labels=labels)
     cm_df = pd.DataFrame(cm, index=labels, columns=labels)
-    fig, ax = plt.subplots(figsize=(max(12, len(labels) * 0.45), max(10, len(labels) * 0.4)))
-    sns.heatmap(cm_df, annot=True, fmt="d", cmap="YlOrRd", linewidths=0.5, linecolor="white", ax=ax, annot_kws={"fontsize": 6})
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("True")
-    ax.set_title(title)
-    plt.xticks(rotation=90, fontsize=6)
-    plt.yticks(rotation=0, fontsize=6)
+    fig, ax = plt.subplots(figsize=(max(16, len(labels) * 0.65), max(13, len(labels) * 0.58)))
+    sns.heatmap(cm_df, annot=True, fmt="d", cmap="YlOrRd", linewidths=0.5, linecolor="white", ax=ax, annot_kws={"fontsize": 12, "fontweight": "bold"})
+    ax.set_xlabel("Predicted", fontsize=16)
+    ax.set_ylabel("True", fontsize=16)
+    ax.set_title(title, fontsize=18)
+    plt.xticks(rotation=90, fontsize=11)
+    plt.yticks(rotation=0, fontsize=11)
     fig.tight_layout()
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    fig.savefig(output_path, dpi=220, bbox_inches="tight")
     plt.close(fig)
 
 

@@ -98,8 +98,8 @@ def build_clean_strain_grid() -> Path:
     border_w = 4
     canvas = Image.new('RGB', (left_w + len(media) * cell_w, top_h + len(rows) * cell_h), 'white')
     draw = ImageDraw.Draw(canvas)
-    title_font = _load_bold_font(28)
-    row_font = _load_bold_font(25)
+    title_font = _load_bold_font(40)
+    row_font = _load_bold_font(34)
 
     for col, medium in enumerate(media):
         x = left_w + col * cell_w + cell_w // 2
@@ -156,15 +156,17 @@ def build_kmeans_vs_yolo() -> Path:
     ]
     out = FIG_ROOT / '06_retrieval' / 'kmeans_vs_yolo_latest.png'
     out.parent.mkdir(parents=True, exist_ok=True)
-    fig, axes = plt.subplots(2, 3, figsize=(12, 7), dpi=300)
+    fig, axes = plt.subplots(2, 3, figsize=(14, 8.2), dpi=300)
+    column_titles = ['CREA oblique', 'CYA30 oblique', 'YES reverse']
     for col, sample in enumerate(samples):
         axes[0, col].imshow(mpimg.imread(sample / 'bbox_kmeans.jpg'))
-        axes[0, col].set_title(f'KMeans - {sample.parent.name.upper()} {sample.name}', fontsize=11)
+        axes[0, col].set_title(column_titles[col], fontsize=18, fontweight='bold', pad=10)
         axes[0, col].axis('off')
         axes[1, col].imshow(mpimg.imread(sample / 'bbox_yolo.jpg'))
-        axes[1, col].set_title(f'YOLO - {sample.parent.name.upper()} {sample.name}', fontsize=11)
         axes[1, col].axis('off')
-    fig.tight_layout()
+    fig.text(0.04, 0.74, 'KMEANS', fontsize=22, fontweight='bold', rotation=90, va='center')
+    fig.text(0.04, 0.29, 'YOLO', fontsize=22, fontweight='bold', rotation=90, va='center')
+    fig.tight_layout(rect=(0.07, 0.02, 1.0, 1.0))
     fig.savefig(out, bbox_inches='tight')
     plt.close(fig)
     return out
@@ -212,12 +214,12 @@ def build_pipeline_steps_oneline() -> Path:
         segment_strip = np.concatenate(row_tiles, axis=1)
         step_images.append(('Exported crops', segment_strip))
 
-    fig, axes = plt.subplots(1, len(step_images), figsize=(18, 4.1), dpi=300)
+    fig, axes = plt.subplots(1, len(step_images), figsize=(22, 5.4), dpi=300)
     for axis, (title, img) in zip(axes, step_images, strict=False):
         axis.imshow(img)
-        axis.set_title(title, fontsize=11, fontweight='bold')
+        axis.set_title(title, fontsize=18, fontweight='bold', pad=10)
         axis.axis('off')
-    fig.tight_layout()
+    fig.tight_layout(w_pad=1.0)
     fig.savefig(out, bbox_inches='tight')
     plt.close(fig)
     return out

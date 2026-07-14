@@ -341,26 +341,26 @@ def visualize_prediction_by_environment(
         print("No raw results to visualize.")
         return
 
-    resolved_thumbnail_size = thumbnail_size or (82, 82)
+    resolved_thumbnail_size = thumbnail_size or (168, 168)
     img_width, img_height = resolved_thumbnail_size
-    padding = 18
-    top_block_gap = 36
-    header_gap = 24
-    card_gap = 10
-    row_gap = 14
-    text_gap = 4
-    line_spacing = 2
+    padding = 22
+    top_block_gap = 42
+    header_gap = 28
+    card_gap = 14
+    row_gap = 18
+    text_gap = 6
+    line_spacing = 4
     columns = min(k + 1, 6)
     card_width = img_width + 8
     cards_width = columns * card_width + (columns - 1) * card_gap
     content_width = cards_width
 
     try:
-        title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 18)
-        body_font = ImageFont.truetype("DejaVuSans.ttf", 14)
-        label_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 13)
-        small_font = ImageFont.truetype("DejaVuSans.ttf", 11)
-        score_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 15)
+        title_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 30)
+        body_font = ImageFont.truetype("DejaVuSans.ttf", 22)
+        label_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 22)
+        small_font = ImageFont.truetype("DejaVuSans.ttf", 18)
+        score_font = ImageFont.truetype("DejaVuSans-Bold.ttf", 24)
     except IOError:
         title_font = ImageFont.load_default()
         body_font = ImageFont.load_default()
@@ -443,12 +443,23 @@ def visualize_prediction_by_environment(
         ]
         ranking_width = max(_text_size(measure_draw, text, font)[0] for text, font, _ in ranking_items)
 
+    pred_line = (
+        f"Pred: {predicted_specy}"
+        if str(predicted_specy).lower() == "unknown"
+        else f"Pred: {predicted_specy} ({confidence:.2f})"
+    )
+    threshold_rule = prediction_result.get("threshold_rule")
+    threshold_value = prediction_result.get("threshold_value")
+    threshold_display = None
+    if threshold_rule and threshold_value is not None:
+        threshold_display = f"Threshold: {threshold_rule}, t={float(threshold_value):.3e}"
+
     if ranking_width:
         max_info_width = max(220, content_width - header_gap - ranking_width)
         info_width = min(max_info_width, max(_text_size(measure_draw, text, font)[0] for text, font, _ in [
             (f"Strain: {prediction_result['strain']}", title_font, text_color),
             (f"GT: {ground_truth}", body_font, text_color),
-            (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, text_color),
+            (pred_line, body_font, text_color),
             (f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}", small_font, text_color),
         ]) + 8)
         ranking_width = max(0, content_width - header_gap - info_width)
@@ -458,9 +469,11 @@ def visualize_prediction_by_environment(
         header_items = [
             (f"Strain: {prediction_result['strain']}", title_font, text_color),
             (f"GT: {ground_truth}", body_font, text_color),
-            (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
+            (pred_line, body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
             (f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}", small_font, text_color),
         ]
+        if threshold_display:
+            header_items.append((threshold_display, small_font, text_color))
         top_block_height = max(top_block_height, measure_text_lines(measure_draw, header_items, info_width))
 
     if ranking_items:
@@ -479,9 +492,11 @@ def visualize_prediction_by_environment(
         header_items = [
             (f"Strain: {prediction_result['strain']}", title_font, text_color),
             (f"GT: {ground_truth}", body_font, text_color),
-            (f"Pred: {predicted_specy} ({confidence:.2f})", body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
+            (pred_line, body_font, (0, 128, 0) if is_correct else (200, 0, 0)),
             (f"{feature_extractor} | Same-medium (E1) | {aggregation_strategy} | K={k}", small_font, text_color),
         ]
+        if threshold_display:
+            header_items.append((threshold_display, small_font, text_color))
         draw_text_lines(draw, header_items, cards_x, current_y, info_width)
 
     if ranking_items:
