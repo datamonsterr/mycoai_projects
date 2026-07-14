@@ -38,12 +38,12 @@ REPORT_FIGURES.mkdir(parents=True, exist_ok=True)
 
 STYLE = {
     "font.family": "serif",
-    "font.size": 14,
-    "axes.titlesize": 18,
-    "axes.labelsize": 16,
-    "xtick.labelsize": 15,
-    "ytick.labelsize": 15,
-    "legend.fontsize": 15,
+    "font.size": 24,
+    "axes.titlesize": 28,
+    "axes.labelsize": 26,
+    "xtick.labelsize": 24,
+    "ytick.labelsize": 24,
+    "legend.fontsize": 22,
 }
 plt.rcParams.update(STYLE)
 
@@ -384,7 +384,7 @@ def chart_seg_comparison(df: pd.DataFrame):
     cf["color"] = cf["seg"].map({"yolo": YOLO_COLOR, "kmeans": KMEANS_COLOR})
     cf = cf.sort_values("accuracy", ascending=True)
 
-    fig, ax = plt.subplots(figsize=(9.5, 3.2))
+    fig, ax = plt.subplots(figsize=(11, 4.6))
     y = np.arange(len(cf))
     bars = ax.barh(y, cf["accuracy"] * 100, color=cf["color"], edgecolor="white", height=0.55)
 
@@ -395,14 +395,14 @@ def chart_seg_comparison(df: pd.DataFrame):
             f"{row.accuracy*100:.1f}%",
             va="center",
             ha="left",
-            fontsize=11,
+            fontsize=15,
             fontweight="bold",
         )
 
     ax.set_yticks(y)
-    ax.set_yticklabels(cf["seg_label"], fontsize=12)
-    ax.set_xlabel("Accuracy (%)", fontsize=12)
-    ax.set_title("YOLO vs K-Means Segmentation — EfficientNetB1 FT, E1, freq_strength, K=5", fontsize=14)
+    ax.set_yticklabels(cf["seg_label"], fontsize=18)
+    ax.set_xlabel("Accuracy (%)", fontsize=18)
+    ax.set_title("YOLO vs K-Means Segmentation — EfficientNetB1 FT, E1, freq_strength, K=5", fontsize=20)
     ax.set_xlim(0, 100)
     ax.grid(axis="x", alpha=0.3)
     ax.set_axisbelow(True)
@@ -538,24 +538,26 @@ def _heatmap(df, index_col, columns_col, index_label, columns_label, title, file
     else:
         col_labels = col_vals
 
-    h, w = len(index_vals) * 0.6 + 1, len(col_vals) * 0.8 + 1
-    fig, ax = plt.subplots(figsize=(max(w, 9), max(h, 5)))
+    h, w = len(index_vals) * 0.9 + 1.6, len(col_vals) * 1.15 + 1.8
+    fig, ax = plt.subplots(figsize=(max(w, 11), max(h, 6.5)))
     im = ax.imshow(mat, cmap="YlOrRd", aspect="auto")
     ax.set_xticks(range(len(col_vals)))
-    ax.set_xticklabels(col_labels, fontsize=10, rotation=30, ha="right")
+    ax.set_xticklabels(col_labels, fontsize=16, rotation=30, ha="right")
     ax.set_yticks(range(len(index_vals)))
-    ax.set_yticklabels(index_labels, fontsize=10)
-    ax.set_title(title, fontsize=12)
-    ax.set_xlabel(columns_label, fontsize=11)
-    ax.set_ylabel(index_label, fontsize=11)
+    ax.set_yticklabels(index_labels, fontsize=16)
+    ax.set_title(title, fontsize=18)
+    ax.set_xlabel(columns_label, fontsize=17)
+    ax.set_ylabel(index_label, fontsize=17)
 
     for i in range(len(index_vals)):
         for j in range(len(col_vals)):
             v = mat[i, j]
             if v > 0:
                 fc = "white" if v > 0.65 else "black"
-                ax.text(j, i, f"{v:.3f}", ha="center", va="center", fontsize=7, color=fc, fontweight="bold")
-    plt.colorbar(im, ax=ax, label="Mean Accuracy")
+                ax.text(j, i, f"{v:.3f}", ha="center", va="center", fontsize=14, color=fc, fontweight="bold")
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label("Mean Accuracy", fontsize=16)
+    cbar.ax.tick_params(labelsize=14)
     fig.tight_layout()
     _save(filename, fig)
 
@@ -706,15 +708,15 @@ def chart_extractor_family(df: pd.DataFrame):
         ax.hlines(yi, min_v, max_v, colors="black", linewidth=1.2, zorder=2)
         ax.vlines(min_v, yi - 0.12, yi + 0.12, colors="black", linewidth=1.0, zorder=2)
     ax.set_yticks(y)
-    ax.set_yticklabels(ext_stats["extractor_full"], fontsize=7)
-    ax.set_xlabel("Accuracy (%)")
-    ax.set_title("Feature Extractor Summary Across Retrieval Settings")
+    ax.set_yticklabels(ext_stats["extractor_full"], fontsize=16)
+    ax.set_xlabel("Accuracy (%)", fontsize=18)
+    ax.set_title("Feature Extractor Summary Across Retrieval Settings", fontsize=20)
     ax.set_xlim(0, 100)
 
     for bar, mean_v, min_v, max_v in zip(bars, ext_stats["mean"], ext_stats["min"], ext_stats["max"]):
         ax.text(max_v * 100 + 0.6, bar.get_y() + bar.get_height() / 2,
                 f"mean {mean_v*100:.1f}% | min {min_v*100:.1f}% | max {max_v*100:.1f}%",
-                va="center", fontsize=6)
+                va="center", fontsize=12)
 
     legend_handles = [
         plt.matplotlib.patches.Patch(facecolor=FT_COLOR, label="Fine-tuned"),

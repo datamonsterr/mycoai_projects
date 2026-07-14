@@ -68,7 +68,7 @@ def build_cv_comparison_chart() -> pd.DataFrame:
     colors = ["#2ecc71" if "finetuned" in x else "#3498db" for x in df["extractor"]]
     bars = ax.bar(range(len(df)), df["accuracy"], color=colors)
     for i, (bar, acc, std) in enumerate(zip(bars, df["accuracy"], df["std"])):
-        ax.text(i, bar.get_height() + 0.01, f"{acc:.1%}\n±{std:.2f}", ha="center", va="bottom", fontsize=9)
+        ax.text(i, bar.get_height() + 0.01, f"{acc:.1%}\n±{std:.2f}", ha="center", va="bottom", fontsize=14)
     ax.set_xticks(range(len(df)))
     ax.set_xticklabels(labels, rotation=30, ha="right")
     ax.set_ylim(0, 1.0)
@@ -92,7 +92,7 @@ def build_threshold_charts() -> tuple[pd.DataFrame, pd.DataFrame]:
         lambda r: norm(r["predicted_species"]) == norm(r["correct_species"]), axis=1
     )
 
-    fig, ax = plt.subplots(figsize=(9, 5))
+    fig, ax = plt.subplots(figsize=(11, 6.5))
     sns.histplot(known["s0_score"].astype(float), color="#2ecc71", label="Known", kde=True, stat="density", ax=ax)
     sns.histplot(unknown["s0_score"].astype(float), color="#e74c3c", label="Unknown", kde=True, stat="density", ax=ax)
     ax.set_title("Threshold retrieval score distribution (s0)")
