@@ -7,16 +7,27 @@ from src.config import DATASET_ROOT, WORKSPACE_ROOT
 from PIL import Image, ImageDraw, ImageFont
 
 
+def _normalize_species_label(species_name: str) -> str:
+    label = str(species_name).strip().lower()
+    if label.startswith("penicillium "):
+        label = label[len("penicillium ") :]
+    return label
+
+
 def generate_distinct_color(
     species_name: str, ground_truth: str
 ) -> Tuple[int, int, int]:
     """
-    Generate a distinct color for a species based on its name.
+    Generate a distinct color for a species based on its normalized name.
     Ground truth species always gets green.
     Other species get distinct colors from a predefined palette.
     """
-    if species_name == ground_truth:
-        return (0, 255, 0)  # Green for ground truth
+    species_norm = _normalize_species_label(species_name)
+    gt_norm = _normalize_species_label(ground_truth)
+    if species_norm == "unknown":
+        return (96, 96, 96)
+    if species_norm == gt_norm:
+        return (0, 255, 0)
 
     # Predefined color palette (avoiding green for ground truth)
     COLOR_PALETTE = [
@@ -37,8 +48,8 @@ def generate_distinct_color(
         (255, 140, 0),  # Dark Orange
     ]
 
-    # Use hash to consistently assign the same color to the same species
-    hash_val = abs(hash(species_name))
+    # Use hash to consistently assign the same color to the same normalized species
+    hash_val = abs(hash(species_norm))
     color_index = hash_val % len(COLOR_PALETTE)
 
     return COLOR_PALETTE[color_index]
@@ -129,7 +140,7 @@ def _draw_legend(
         specy = res["specy"]
         score = res["score"]
         color = generate_distinct_color(specy, ground_truth)
-        legend_text = f"{i + 1}. {specy} (s0={score:.2f})"
+        legend_text = f"{specy} | score={score:.3f}"
         text_w, text_h = _text_size(draw, legend_text, text_font)
         item_width = min(max_text_width, text_w + box_size + item_padding_x * 2 + 8)
         item_x = (canvas_width - item_width) // 2
@@ -153,7 +164,7 @@ def _draw_legend(
         draw.text(
             (item_x + item_padding_x + box_size + 10, y_pos + item_padding_y - 1),
             legend_text,
-            fill=text_color,
+            fill=color,
             font=text_font,
         )
 
@@ -416,9 +427,10 @@ def visualize_prediction_by_environment(
         return total
 
     def build_neighbor_lines(neighbor: Dict[str, Any], index: int) -> List[Tuple[str, ImageFont.ImageFont, Tuple[int, int, int]]]:
-        score = neighbor.get("score", 0.0)
+        del index
+        score = float(neighbor.get("score", 0.0) or 0.0)
         return [
-            (f"{score:.2f}", label_font, text_color),
+            (f"cos={score:.3f}", label_font, text_color),
         ]
 
     measure_canvas = Image.new("RGB", (100, 100), bg_color)
@@ -500,11 +512,12 @@ def visualize_prediction_by_environment(
         draw_text_lines(draw, header_items, cards_x, current_y, info_width)
 
     if ranking_items:
-        ranking_x = cards_x + content_width - ranking_width
+        ranking_x = cards_x + content_width
         ranking_y = current_y
         line_height = _text_size(draw, "Ag", score_font)[1]
         for text, font, color in ranking_items:
-            draw.text((ranking_x, ranking_y), text, fill=color, font=font)
+            text_width, _ = _text_size(draw, text, font)
+            draw.text((ranking_x - text_width, ranking_y), text, fill=color, font=font)
             ranking_y += line_height + 10
 
     current_y += top_block_height + (top_block_gap if top_block_height else 0)
