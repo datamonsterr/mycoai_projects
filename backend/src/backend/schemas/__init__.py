@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -90,9 +91,9 @@ class SegmentDetail(BaseModel):
 class RetrievalQueryRequest(BaseModel):
     image_id: str
     image_ids: list[str] | None = None
-    k: int = Field(default=5, ge=1)
-    aggregation: str
-    media_strategy: str
+    k: int = Field(default=5, ge=1, le=20)
+    aggregation: Literal["weighted", "uni"]
+    media_strategy: Literal["same_media", "all_media"]
 
 
 class RetrievalJobResponse(BaseModel):

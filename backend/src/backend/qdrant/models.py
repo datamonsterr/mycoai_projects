@@ -44,14 +44,14 @@ class QueryByImageRequest(BaseModel):
     image_path: str | None = None
     image_vector: list[float] | None = None
     feature_type: str | None = None
-    k: int = Field(default=11, ge=1, le=100)
+    k: int = Field(default=5, ge=1, le=20)
     filter_spec: FilterSpec | None = None
 
 
 class QueryByIdRequest(BaseModel):
     point_id: int
     feature_type: str | None = None
-    k: int = Field(default=11, ge=1, le=100)
+    k: int = Field(default=5, ge=1, le=20)
     filter_spec: FilterSpec | None = None
     exclude_self: bool = True
     exclude_siblings: bool = True

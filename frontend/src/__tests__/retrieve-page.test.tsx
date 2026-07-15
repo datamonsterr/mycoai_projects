@@ -180,7 +180,7 @@ describe('RetrievePage', () => {
     await userEvent.click(screen.getByRole('button', { name: /Batch processing/i }))
     await userEvent.click(screen.getByRole('button', { name: /^Load Sample$/i }))
     await waitFor(() => expect(imagesModule.uploadImage).toHaveBeenCalledTimes(2))
-    await userEvent.click(screen.getByRole('button', { name: /^Segment All/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Review confirmed boxes/i }))
     await userEvent.click(screen.getByRole('button', { name: /confirm image/i }))
     await userEvent.click(screen.getByRole('button', { name: /^Run Retrieval/i }))
 
@@ -200,7 +200,7 @@ describe('RetrievePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^Load Sample$/i }))
     await waitFor(() => expect(imagesModule.uploadImage).toHaveBeenCalled())
-    await userEvent.click(screen.getByRole('button', { name: /^Segment All/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Review confirmed boxes/i }))
     await userEvent.click(screen.getByRole('button', { name: /confirm image/i }))
     await userEvent.click(screen.getByRole('button', { name: /^Run Retrieval/i }))
     await waitFor(() => screen.getByRole('slider'))
@@ -211,7 +211,7 @@ describe('RetrievePage', () => {
     await waitFor(() => expect(mockStartMutation).toHaveBeenCalledTimes(2))
     const [payload] = mockStartMutation.mock.calls[1] as [{ k: number; aggregation: string }]
     expect(payload.k).toBe(7)
-    expect(payload.aggregation).toBe('freq_strength')
+    expect(payload.aggregation).toBe('weighted')
   })
 
   it('shows batch setup steps like index new data', async () => {
@@ -245,8 +245,8 @@ describe('RetrievePage', () => {
     await userEvent.upload(zipInput, new File(['zip'], 'batch.zip', { type: 'application/zip' }))
 
     expect(await screen.findByText(/1 successful, 1 failed/i)).toBeInTheDocument()
-    expect(screen.getByText('images/strain-a/MEA/a.jpg')).toBeInTheDocument()
-    expect(screen.getByText('images/strain-b/CYA/b.jpg')).toBeInTheDocument()
+    expect(screen.getAllByText('images/strain-a/MEA/a.jpg').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('images/strain-b/CYA/b.jpg').length).toBeGreaterThan(0)
     expect(screen.getByText('failed')).toBeInTheDocument()
     await waitFor(() => expect(imagesModule.getBatchProgress).toHaveBeenCalledWith('batch-1'))
     expect(mockToast.error).toHaveBeenCalled()
@@ -261,11 +261,11 @@ describe('RetrievePage', () => {
 
     const strainTab = await screen.findByRole('button', { name: /strain-a/i })
     expect(strainTab).toBeInTheDocument()
-    expect(screen.getByDisplayValue('images/strain-a/MEA/a.jpg')).toBeInTheDocument()
+    expect(screen.getAllByText('images/strain-a/MEA/a.jpg').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Media').length).toBeGreaterThan(0)
     expect(screen.getByDisplayValue('MEA')).toBeInTheDocument()
     expect(screen.getByText('images/strain-b/CYA/b.jpg')).toBeInTheDocument()
-    expect(screen.getByText('Max')).toBeInTheDocument()
+    expect(screen.getByText('Colonies')).toBeInTheDocument()
   })
 
   it('does not call single-image auto segment for batch zip flow', async () => {
@@ -274,7 +274,7 @@ describe('RetrievePage', () => {
     await userEvent.click(screen.getByRole('button', { name: /batch processing/i }))
     const zipInput = document.querySelector('input[type="file"][accept=".zip"]') as HTMLInputElement
     await userEvent.upload(zipInput, new File(['zip'], 'batch.zip', { type: 'application/zip' }))
-    await userEvent.click(await screen.findByRole('button', { name: /^Segment All$/i }))
+    await userEvent.click(await screen.findByRole('button', { name: /Review confirmed boxes/i }))
 
     expect(imagesModule.autoSegment).not.toHaveBeenCalled()
   })
@@ -346,7 +346,7 @@ describe('RetrievePage', () => {
 
     expect(screen.getByRole('button', { name: /add image/i })).toBeInTheDocument()
     expect(screen.getByText(/Upload 0\/2/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^Segment All/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Review confirmed boxes/i })).toBeInTheDocument()
 
     await act(async () => {
       resolveFirstUpload?.({ image_id: 'img-a', source_url: '/uploaded-a.jpg' })
@@ -357,12 +357,12 @@ describe('RetrievePage', () => {
     })
 
     await waitFor(() => expect(imagesModule.autoSegment).toHaveBeenCalledTimes(2))
-    expect(screen.getByText(/Segmentation Confirmation/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^Run Retrieval/i })).toBeInTheDocument()
+    expect(screen.queryByText(/Segmentation Confirmation/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Review confirmed boxes/i })).toBeInTheDocument()
     expect(screen.queryByText(/Ranked Species Result/i)).not.toBeInTheDocument()
   })
 
-  it('does not advance to segmentation when only one single-strain image segments successfully', async () => {
+  it('stays on upload when single-strain segmentation partially fails', async () => {
     imagesModule.uploadImage
       .mockReset()
       .mockResolvedValueOnce({ image_id: 'img-a', source_url: '/uploaded-a.jpg' })
@@ -390,8 +390,8 @@ describe('RetrievePage', () => {
     )
 
     await waitFor(() => expect(imagesModule.autoSegment).toHaveBeenCalledTimes(2))
-    expect(screen.getByRole('button', { name: /^Run Retrieval/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /^Segment All/i })).toBeInTheDocument()
+    expect(screen.queryByText(/Segmentation Confirmation/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Review confirmed boxes/i })).toBeInTheDocument()
   })
 
   it('hides batch zip ui for non-owner users, shows for owner and dataowner', async () => {
@@ -432,7 +432,7 @@ describe('RetrievePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^Load Sample$/i }))
     await waitFor(() => expect(imagesModule.uploadImage).toHaveBeenCalled())
-    await userEvent.click(screen.getByRole('button', { name: /^Segment All/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Review confirmed boxes/i }))
 
     expect(screen.queryByText(/Feature extraction unavailable/i)).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /extract all/i }))
@@ -450,7 +450,7 @@ describe('RetrievePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^Load Sample$/i }))
     await waitFor(() => expect(imagesModule.uploadImage).toHaveBeenCalled())
-    await userEvent.click(screen.getByRole('button', { name: /^Segment All/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Review confirmed boxes/i }))
     await userEvent.click(screen.getByRole('button', { name: /save boxes/i }))
 
     await waitFor(() => expect(imagesModule.patchImageSegments).toHaveBeenCalledWith('img-a', {
@@ -465,7 +465,7 @@ describe('RetrievePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^Load Sample$/i }))
     await waitFor(() => expect(imagesModule.uploadImage).toHaveBeenCalled())
-    await userEvent.click(screen.getByRole('button', { name: /^Segment All/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Review confirmed boxes/i }))
 
     expect(screen.getByText(/Segmentation Confirmation/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /reindex image/i })).not.toBeInTheDocument()
@@ -473,7 +473,7 @@ describe('RetrievePage', () => {
     await userEvent.click(screen.getByRole('button', { name: /confirm image/i }))
     await waitFor(() => expect(imagesModule.reindexImage).toHaveBeenCalledWith('img-a'))
     expect(mockToast.success).toHaveBeenCalledWith('Confirmed a.jpg')
-    expect(screen.getByText(/Feature extracted/i)).toBeInTheDocument()
+    expect(screen.getByText(/^confirmed$/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Run Retrieval/i })).toBeInTheDocument()
   })
 
@@ -488,7 +488,7 @@ describe('RetrievePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /^Load Sample$/i }))
     await waitFor(() => expect(imagesModule.uploadImage).toHaveBeenCalled())
-    await userEvent.click(screen.getByRole('button', { name: /^Segment All/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Review confirmed boxes/i }))
     await userEvent.click(screen.getByRole('button', { name: /confirm image/i }))
     await userEvent.click(screen.getByRole('button', { name: /^Run Retrieval/i }))
 

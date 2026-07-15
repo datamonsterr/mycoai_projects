@@ -29,7 +29,7 @@ def test_start_query_image_not_found(
         json={
             "image_id": _VALID_UUID,
             "k": 5,
-            "aggregation": "freq_strength",
+            "aggregation": "weighted",
             "media_strategy": "same_media",
         },
         headers=headers,
@@ -55,7 +55,7 @@ def test_query_sync_image_not_found(
         json={
             "image_id": _VALID_UUID,
             "k": 3,
-            "aggregation": "freq_strength",
+            "aggregation": "weighted",
             "media_strategy": "same_media",
         },
         headers=headers,
@@ -88,7 +88,7 @@ def test_query_sync_uses_same_media_filter_and_neighbor_source_url(
     payload = SimpleNamespace(
         image_id=_VALID_UUID,
         k=3,
-        aggregation="freq_strength",
+        aggregation="weighted",
         media_strategy="same_media",
     )
     from backend.qdrant.models import NeighborResult, QueryResult
@@ -246,7 +246,7 @@ def test_start_query_stores_neighbor_fallback_for_segment_path() -> None:
     payload = SimpleNamespace(
         image_id=_VALID_UUID,
         k=3,
-        aggregation="freq_strength",
+        aggregation="weighted",
         media_strategy="same_media",
     )
     from backend.qdrant.models import NeighborResult, QueryResult
@@ -363,7 +363,7 @@ def test_batch_results_use_batch_strain_label() -> None:
         image_id=_VALID_UUID,
         image_ids=[_VALID_UUID, str(uuid.uuid4())],
         k=3,
-        aggregation="freq_strength",
+        aggregation="weighted",
         media_strategy="same_media",
     )
     from backend.qdrant.models import NeighborResult, QueryResult

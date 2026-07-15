@@ -1,9 +1,11 @@
+from uuid import UUID
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models import Image, Media, Species, Strain, SystemState
+from backend.models import Feedback, Image, Media, Species, Strain, SystemState
 
 
 @pytest.fixture(name="user_headers")
@@ -240,8 +242,89 @@ async def test_accept_wrong_prediction_marks_reindex_without_counting(
     )
     await session.refresh(image)
     assert review.status_code == 200
-    assert image.data_update_status == "pending_reindex"
+    assert image.data_update_status == "updated_requires_reindex"
     assert await _images_added(session) == before
+
+
+@pytest.mark.asyncio
+async def test_accept_user_temp_feedback_promotes_image(
+    client: TestClient,
+    session: AsyncSession,
+    owner_headers: dict[str, str],
+    user_headers: dict[str, str],
+) -> None:
+    image = await _seed_image(session, "unknown-species")
+    image.data_update_status = "temporary_query"
+    await session.commit()
+
+    created = client.post(
+        "/api/v1/feedback",
+        json={
+            "feedback_type": "wrong_prediction",
+            "image_id": str(image.id),
+            "predicted_species": "Predicted Species",
+            "suggested_species": "Promoted Species",
+            "description": "promote temp image",
+        },
+        headers=user_headers,
+    )
+    assert created.status_code == 201
+
+    review = client.patch(
+        f"/api/v1/feedback/{created.json()['id']}",
+        json={"status": "accepted"},
+        headers=owner_headers,
+    )
+    assert review.status_code == 200
+
+    await session.refresh(image)
+    promoted_species = await session.scalar(
+        select(Species).where(Species.id == image.species_id)
+    )
+    assert image.data_update_status == "updated_requires_reindex"
+    assert promoted_species is not None
+    assert promoted_species.name == "Promoted Species"
+
+
+@pytest.mark.asyncio
+async def test_reject_user_temp_feedback_deletes_feedback_and_image(
+    client: TestClient,
+    session: AsyncSession,
+    owner_headers: dict[str, str],
+    user_headers: dict[str, str],
+) -> None:
+    image = await _seed_image(session, "unknown-species")
+    image.data_update_status = "temporary_query"
+    image_uuid = image.id
+    image_id = str(image_uuid)
+    await session.commit()
+
+    created = client.post(
+        "/api/v1/feedback",
+        json={
+            "feedback_type": "wrong_prediction",
+            "image_id": image_id,
+            "predicted_species": "Predicted Species",
+            "suggested_species": "Rejected Species",
+            "description": "reject temp image",
+        },
+        headers=user_headers,
+    )
+    assert created.status_code == 201
+    feedback_id = created.json()["id"]
+
+    review = client.patch(
+        f"/api/v1/feedback/{feedback_id}",
+        json={"status": "rejected"},
+        headers=owner_headers,
+    )
+    assert review.status_code == 200
+
+    session.expire_all()
+    assert await session.get(Image, image_uuid) is None
+    assert await session.scalar(
+        select(Feedback).where(Feedback.id == UUID(review.json()["id"]))
+    ) is None
 
 
 def test_batch_feedback(client: TestClient, owner_headers: dict[str, str]) -> None:

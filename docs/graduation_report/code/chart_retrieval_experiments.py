@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-STYLE = {"font.family": "serif", "font.size": 8, "axes.titlesize": 9, "axes.labelsize": 8}
+STYLE = {"font.family": "serif", "font.size": 16, "axes.titlesize": 20, "axes.labelsize": 18, "xtick.labelsize": 16, "ytick.labelsize": 16, "legend.fontsize": 16}
 plt.rcParams.update(STYLE)
 
 PROJECT = Path("/home/dat/dev/mycoai")
@@ -179,21 +179,23 @@ def chart_agg_vs_k_heatmap():
             if a in pivot.index and kv in pivot.columns:
                 mat[i, j] = pivot.loc[a, kv] if not pd.isna(pivot.loc[a, kv]) else 0
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(10, 6.5))
     im = ax.imshow(mat, cmap="YlOrRd", aspect="auto")
     ax.set_xticks(range(len(k_order)))
-    ax.set_xticklabels([f"K={k}" for k in k_order])
+    ax.set_xticklabels([f"K={k}" for k in k_order], fontsize=18)
     ax.set_yticks(range(len(agg_order)))
-    ax.set_yticklabels(agg_order, fontsize=7)
-    ax.set_title("Aggregation Strategy × K (mean across envs & extractors)")
+    ax.set_yticklabels(agg_order, fontsize=18)
+    ax.set_title("Aggregation Strategy × K (mean across envs & extractors)", fontsize=22)
 
     for i in range(len(agg_order)):
         for j in range(len(k_order)):
             v = mat[i, j]
             if v > 0:
-                ax.text(j, i, f"{v:.3f}", ha="center", va="center", fontsize=6,
+                ax.text(j, i, f"{v:.3f}", ha="center", va="center", fontsize=18, fontweight="bold",
                         color="black" if v < 0.65 else "white")
-    plt.colorbar(im, ax=ax, label="Mean Accuracy")
+    cbar = plt.colorbar(im, ax=ax, label="Mean Accuracy")
+    cbar.ax.tick_params(labelsize=16)
+    cbar.set_label("Mean Accuracy", fontsize=18)
     fig.tight_layout()
     save("retrieval_heatmap_agg_vs_k.png", fig)
 

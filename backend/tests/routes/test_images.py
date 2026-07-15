@@ -105,6 +105,46 @@ def test_upload_image_without_auth(client: TestClient) -> None:
     assert resp.status_code == 401, f"Got {resp.status_code}: {resp.text}"
 
 
+def test_user_retrieval_upload_is_hidden_from_dataset_lists(
+    client: TestClient,
+    session,
+    headers: dict[str, str],
+) -> None:
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"email": "user@mycoai.dev", "password": "password123"},
+    )
+    user_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    tmp = Path("/tmp/test_user_temp_upload.png")
+    tmp.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    with open(tmp, "rb") as f:
+        resp = client.post(
+            "/api/v1/images/upload",
+            files={"image": ("test_user_temp_upload.png", f, "image/png")},
+            data={
+                "strain": "DTO 148-D9",
+                "media": "MEA",
+                "species": "unknown-species",
+            },
+            headers=user_headers,
+        )
+    tmp.unlink(missing_ok=True)
+    assert resp.status_code == 201, f"Got {resp.status_code}: {resp.text}"
+    image_id = resp.json()["image_id"]
+
+    listed = client.get("/api/v1/images", headers=headers)
+    assert listed.status_code == 200
+    assert all(item["id"] != image_id for item in listed.json()["items"])
+
+    dashboard = client.get("/api/v1/dashboard/stats", headers=headers)
+    assert dashboard.status_code == 200
+    assert dashboard.json()["total_images"] == 0
+
+    image = asyncio.run(session.get(Image, UUID(image_id)))
+    assert image is not None
+    assert image.data_update_status == "temporary_query"
+
+
 def test_batch_upload(client: TestClient, headers: dict[str, str]) -> None:
     resp = client.post(
         "/api/v1/images/batch",
@@ -328,17 +368,9 @@ def fixture_s3_client(test_session_factory):
 
 
 def _login_s3_test_user(client: TestClient) -> dict[str, str]:
-    client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "s3test@mycoai.dev",
-            "password": "s3testpass",
-            "name": "S3Tester",
-        },
-    )
     login_resp = client.post(
         "/api/v1/auth/login",
-        json={"email": "s3test@mycoai.dev", "password": "s3testpass"},
+        json={"email": "owner@mycoai.dev", "password": "password123"},
     )
     assert login_resp.status_code == 200
     token = login_resp.json()["access_token"]

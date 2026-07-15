@@ -107,8 +107,11 @@ def _load_rows(
 
 
 async def _run_import(features_path: Path, dry_run: bool) -> dict[str, Any]:
+    from sqlalchemy import select
+
     from backend.config import get_qdrant_settings, get_storage_settings
     from backend.database import _get_sessionmaker
+    from backend.models import Segment
     from backend.routes import _create_image
     from backend.services.feature_extraction import index_segment_to_qdrant
     from backend.services.storage import create_storage, storage_artifact_prefix
@@ -201,8 +204,14 @@ async def _run_import(features_path: Path, dry_run: bool) -> dict[str, Any]:
                 )
                 image_obj.angle = angle or None
                 await db.flush()
+                segments_result = await db.execute(
+                    select(Segment)
+                    .where(Segment.image_id == image_obj.id)
+                    .order_by(Segment.segment_index)
+                )
+                segments = segments_result.scalars().all()
                 stats.imported_images += 1
-                for segment in image_obj.segments:
+                for segment in segments:
                     result = await index_segment_to_qdrant(
                         db,
                         segment,

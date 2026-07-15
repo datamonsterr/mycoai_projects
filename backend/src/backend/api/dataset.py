@@ -44,7 +44,7 @@ async def export_yolo(
     stmt = (
         select(Image)
         .options(selectinload(Image.segments), selectinload(Image.species))
-        .where(Image.is_archived.is_(False))
+        .where(Image.is_archived.is_(False), Image.source_type != "temporary_query")
     )
 
     # Exclude archived by default unless status explicitly includes them

@@ -41,7 +41,7 @@ from .image_models import (
     SegmentPatchRequest,
 )
 from .image_models import Segment as SegModel
-from .models import Image, Media, QdrantIndexState, Segment, Species, Strain
+from .models import Feedback, Image, Media, QdrantIndexState, Segment, Species, Strain
 from .qdrant import delete_points, get_qdrant_client
 from .repos.media import _normalize_media_name
 from .schemas import (
@@ -64,6 +64,15 @@ from .services.storage import (
 logger = logging.getLogger(__name__)
 SEGMENT_CONCURRENCY_LIMIT = 2
 _BATCH_PROGRESS: dict[str, BatchProgressResponse] = {}
+TEMPORARY_QUERY_STATUS = "temporary_query"
+TEMPORARY_QUERY_SOURCE = "temporary_query"
+
+
+def _is_temporary_query_image(img: Image) -> bool:
+    return (
+        img.source_type == TEMPORARY_QUERY_SOURCE
+        or img.data_update_status == TEMPORARY_QUERY_STATUS
+    )
 
 
 class BatchImportRequest(BaseModel):
@@ -198,6 +207,7 @@ def create_image_router(
 
         if not include_archived:
             stmt = stmt.where(Image.is_archived.is_(False))
+        stmt = stmt.where(Image.source_type != TEMPORARY_QUERY_SOURCE)
 
         if species_id:
             species_uuids = []
@@ -299,6 +309,7 @@ def create_image_router(
 
         if not include_archived:
             stmt = stmt.where(Image.is_archived.is_(False))
+        stmt = stmt.where(Image.source_type != TEMPORARY_QUERY_SOURCE)
         if species_id:
             species_uuids = [UUID(value) for value in species_id if _is_uuid(value)]
             if species_uuids:
@@ -394,8 +405,23 @@ def create_image_router(
 
         species_obj = await _ensure_species(db, species)
         media_obj = await _ensure_media(db, media)
-        strain_obj = await _ensure_strain(db, strain, species_obj.id)
+        is_temporary_query = getattr(user, "role", "user") not in {
+            "owner",
+            "dataowner",
+        }
+        strain_source = (
+            TEMPORARY_QUERY_SOURCE if is_temporary_query else "user_upload"
+        )
+        strain_obj = await _ensure_strain(
+            db,
+            strain,
+            species_obj.id,
+            source=strain_source,
+        )
         image_obj = await _create_image(db, record, strain_obj, species_obj, media_obj)
+        if is_temporary_query:
+            image_obj.source_type = TEMPORARY_QUERY_SOURCE
+            image_obj.data_update_status = TEMPORARY_QUERY_STATUS
 
         await db.commit()
 
@@ -1369,11 +1395,14 @@ def create_image_router(
         except ValueError as err:
             raise HTTPException(status_code=404, detail="image not found") from err
 
-        result = await db.execute(select(Image).where(Image.id == img_uuid))
-        img = result.scalar_one_or_none()
-        if not img:
-            raise HTTPException(status_code=404, detail="image not found")
-        img.is_archived = True
+        img = await _get_image_for_update(db, image_id)
+        if _is_temporary_query_image(img):
+            await _delete_image_permanently(db, img, storage)
+            await db.commit()
+            return
+        from .repos.image import ImageRepository
+
+        await ImageRepository.archive(db, img_uuid)
         await db.commit()
 
     return router
@@ -1487,6 +1516,34 @@ async def _clear_segment_index_state(db: AsyncSession, segments: list[Segment]) 
     await db.flush()
 
 
+async def _delete_image_permanently(
+    db: AsyncSession,
+    img: Image,
+    storage: ObjectStorage | None,
+) -> None:
+    result = await db.execute(select(Feedback).where(Feedback.image_id == img.id))
+    feedbacks = result.scalars().all()
+    for feedback in feedbacks:
+        await db.delete(feedback)
+    await _clear_segment_index_state(db, img.segments)
+    if storage is not None:
+        upload_root = Path("Dataset/uploads").resolve()
+        for path in [img.file_path, img.prepared_path, img.pipeline_path]:
+            if not path:
+                continue
+            for key in storage_candidates(path, upload_root=upload_root):
+                if storage.object_exists(key):
+                    storage.delete(key)
+                    break
+        for seg in img.segments:
+            for key in storage_candidates(seg.crop_path, upload_root=upload_root):
+                if storage.object_exists(key):
+                    storage.delete(key)
+                    break
+    await db.delete(img)
+    await db.flush()
+
+
 def _sync_record_to_db(img: Image, record: ImageRecord) -> None:
     artifact_dir = storage_artifact_prefix(
         strain=img.strain.name if img.strain else "unknown",
@@ -1578,14 +1635,20 @@ async def _ensure_media(db: AsyncSession, name: str) -> Media:
     return md
 
 
-async def _ensure_strain(db: AsyncSession, name: str, species_id: UUID) -> Strain:
+async def _ensure_strain(
+    db: AsyncSession,
+    name: str,
+    species_id: UUID,
+    *,
+    source: str = "user_upload",
+) -> Strain:
     result = await db.execute(
         select(Strain).where(Strain.name == name, Strain.species_id == species_id)
     )
     st = result.scalar_one_or_none()
     if st:
         return st
-    st = Strain(name=name, species_id=species_id, source="user_upload")
+    st = Strain(name=name, species_id=species_id, source=source)
     db.add(st)
     await db.flush()
     return st

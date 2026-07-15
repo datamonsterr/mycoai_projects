@@ -120,15 +120,14 @@ def _build_neighbor_thumbnail_url(
     segment_path: str | None = None,
 ) -> str:
     packed_segment_path = _unpack_neighbor_segment_path(image_id)
-    if packed_segment_path:
+    resolved_segment_path = packed_segment_path or segment_path
+    if resolved_segment_path:
         return (
             f"/api/v1/retrieval/evidence?segment_path="
-            f"{quote(packed_segment_path, safe='')}"
+            f"{quote(resolved_segment_path, safe='')}"
         )
     if image_id:
         return f"/api/v1/images/{image_id}/source"
-    if segment_path:
-        return f"/api/v1/retrieval/evidence?segment_path={quote(segment_path, safe='')}"
     return ""
 
 

@@ -29,6 +29,16 @@ def dual_save(fig: plt.Figure, name: str) -> None:
     plt.close(fig)
 
 
+plt.rcParams.update({
+    "font.size": 28,
+    "axes.titlesize": 34,
+    "axes.labelsize": 30,
+    "xtick.labelsize": 26,
+    "ytick.labelsize": 26,
+    "legend.fontsize": 26,
+})
+
+
 def dual_copy(src: Path, name: str | None = None) -> None:
     target_name = name or src.name
     for out in [LATEX_FIG_DIR / target_name, REPORT_FIG_DIR / target_name]:

@@ -185,6 +185,9 @@ class Image(Base):
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     prepared_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     pipeline_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    source_type: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="dataset", server_default="dataset"
+    )
     data_update_status: Mapped[str] = mapped_column(
         String(30), nullable=False, default="current", server_default="current"
     )

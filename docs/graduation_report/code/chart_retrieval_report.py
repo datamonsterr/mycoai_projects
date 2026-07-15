@@ -698,7 +698,7 @@ def chart_extractor_family(df: pd.DataFrame):
     ext_stats["extractor_full"] = ext_stats["extractor"].map(EXTRACTOR_FULL).fillna(ext_stats["extractor"])
     ext_stats = ext_stats.sort_values("mean", ascending=True)
 
-    fig, ax = plt.subplots(figsize=(11, 6.5))
+    fig, ax = plt.subplots(figsize=(13.5, 8.5))
     colors = [FT_COLOR if "finetuned" in e else PT_COLOR if e in {"resnet50", "efficientnetb1", "mobilenetv2"}
               else TR_COLOR for e in ext_stats["extractor"]]
     y = np.arange(len(ext_stats))
@@ -708,15 +708,15 @@ def chart_extractor_family(df: pd.DataFrame):
         ax.hlines(yi, min_v, max_v, colors="black", linewidth=1.2, zorder=2)
         ax.vlines(min_v, yi - 0.12, yi + 0.12, colors="black", linewidth=1.0, zorder=2)
     ax.set_yticks(y)
-    ax.set_yticklabels(ext_stats["extractor_full"], fontsize=16)
-    ax.set_xlabel("Accuracy (%)", fontsize=18)
-    ax.set_title("Feature Extractor Summary Across Retrieval Settings", fontsize=20)
+    ax.set_yticklabels(ext_stats["extractor_full"], fontsize=24)
+    ax.set_xlabel("Accuracy (%)", fontsize=28)
+    ax.set_title("Feature Extractor Summary Across Retrieval Settings", fontsize=32)
     ax.set_xlim(0, 100)
 
     for bar, mean_v, min_v, max_v in zip(bars, ext_stats["mean"], ext_stats["min"], ext_stats["max"]):
         ax.text(max_v * 100 + 0.6, bar.get_y() + bar.get_height() / 2,
                 f"mean {mean_v*100:.1f}% | min {min_v*100:.1f}% | max {max_v*100:.1f}%",
-                va="center", fontsize=12)
+                va="center", fontsize=18)
 
     legend_handles = [
         plt.matplotlib.patches.Patch(facecolor=FT_COLOR, label="Fine-tuned"),
@@ -726,7 +726,7 @@ def chart_extractor_family(df: pd.DataFrame):
         plt.matplotlib.lines.Line2D([0], [0], color="black", marker="o", linestyle="None", markersize=4, label="Max"),
         plt.matplotlib.patches.Patch(facecolor="#777777", label="Mean"),
     ]
-    ax.legend(handles=legend_handles, loc="lower right", fontsize=7)
+    ax.legend(handles=legend_handles, loc="lower right", fontsize=16)
     ax.grid(axis="x", alpha=0.3)
     fig.tight_layout()
     _save("retrieval_extractor_family.png", fig)

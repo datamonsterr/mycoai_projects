@@ -9,27 +9,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { sampleStrains } from '@/lib/sample-assets'
 import { downloadTemplateZip } from '@/lib/template'
-import { uploadImage, uploadBatchZip, autoSegment, getBatchProgress, patchImageSegments, updateImageMedia, reindexImage, type BatchProgress } from '@/services/images'
+import { uploadImage, uploadBatchZip, autoSegment, deleteImage, getBatchProgress, listSegments, patchImageSegments, updateImageMedia, reindexImage, type BatchProgress } from '@/services/images'
 import { useMediaList } from '@/hooks/use-taxonomy'
 import { ArrowRight, ChevronRight, Download, FlaskConical, Images, Loader2, Plus, Trash2, FileArchive } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useStartRetrieval, useJobStatus, useJobResults } from '@/hooks/use-retrieval'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/lib/use-auth'
-import type { RetrievalRanking, RetrievalNeighbor, RetrievalQueryImageResult } from '@/services/types'
+import type { RetrievalRanking, RetrievalNeighbor, RetrievalQueryImageResult, UploadWorkflowStatus } from '@/services/types'
 
 type Step = 'upload' | 'segmentation' | 'processing' | 'results'
 
 type RetrievalConfig = {
   k: number
-  aggregation: 'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'
+  aggregation: 'weighted' | 'uni'
 }
 
 type StrainImage = {
   id: string
   fileName: string
   media: string
-  mediaIsNew: boolean
   maxColonies: string
   original?: string
   yoloPreview?: string
@@ -37,7 +36,7 @@ type StrainImage = {
   segments?: Array<{ url: string; bbox: { x: number; y: number; w: number; h: number } }>
   selected?: boolean
   confirmed?: boolean
-  featureStatus?: 'pending' | 'extracting' | 'done' | 'failed'
+  status: UploadWorkflowStatus
 }
 
 type StrainDraft = {
@@ -121,7 +120,7 @@ function fromSampleImage(image: SampleImage): StrainImage {
     id: image.id,
     fileName: image.fileName,
     media: image.media,
-    mediaIsNew: false,
+
     maxColonies: 'default',
     original: image.original,
     yoloPreview: image.yoloPreview,
@@ -129,7 +128,7 @@ function fromSampleImage(image: SampleImage): StrainImage {
     segments: [...image.segments],
     selected: true,
     confirmed: true,
-    featureStatus: 'done',
+    status: 'indexed',
   }
 }
 
@@ -184,63 +183,12 @@ function getNeighbors(currentImage: StrainImage, k = 5) {
   return sameMedia.slice(0, k).map((image, index) => ({ ...image, similarity: Math.max(0.51, 0.94 - index * 0.07) }))
 }
 
-function ImageMetaCard({
-  image,
-  mediaItems,
-  onUpdate,
-  onRemove,
-}: {
-  image: StrainImage
-  mediaItems: Array<{ id: string; name: string; is_archived: boolean }>
-  onUpdate: (field: Partial<StrainImage>) => void
-  onRemove: () => void
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <div className="relative aspect-[4/3] bg-muted">
-        {image.original ? (
-          <img src={image.original} alt={`${image.fileName} plate`} className="h-full w-full object-contain" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Image preview</div>
-        )}
-        <Badge className="absolute left-2 top-2" variant="secondary">{image.media || 'Media'}</Badge>
-        <Button variant="destructive" size="sm" className="absolute right-2 top-2 h-8 px-2" onClick={onRemove}>
-          <Trash2 className="h-3 w-3" />
-        </Button>
-      </div>
-      <CardContent className="p-3">
-        <div className="grid grid-cols-[1fr_96px_96px] gap-2 items-end">
-          <div className="space-y-1">
-            <Label className="text-xs">File</Label>
-            <Input className="h-8 text-xs" value={image.fileName} readOnly />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Media</Label>
-              <Select className="h-8 text-xs" value={image.media} disabled={image.mediaIsNew} onChange={(e) => onUpdate({ media: e.target.value, mediaIsNew: false })}>
-                {mediaOptions(mediaItems)}
-              </Select>
-
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Max</Label>
-            <Select className="h-8 text-xs" value={image.maxColonies} onChange={(e) => onUpdate({ maxColonies: e.target.value })}>
-              <option value="default">Auto</option>
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={String(n)}>{n}</option>)}
-            </Select>
-          </div>
-        </div>
-        <label className="mt-2 flex items-center gap-2 text-xs">
-          <input type="checkbox" checked={image.mediaIsNew} onChange={(e) => onUpdate({ mediaIsNew: e.target.checked, media: e.target.checked ? '' : mediaItems[0]?.name ?? 'Other media' })} />
-          <span>New/other media</span>
-          {image.mediaIsNew && <Input className="h-7 max-w-48 text-xs" placeholder="Media name" value={image.media} onChange={(e) => onUpdate({ media: e.target.value })} />}
-        </label>
-      </CardContent>
-    </Card>
-  )
-}
 
 function SegmentCard({
   image,
+  mediaItems,
+  onUpdateMeta,
+  onRemoveImage,
   onUpdateBbox,
   onAddBbox,
   onRemoveBbox,
@@ -251,6 +199,9 @@ function SegmentCard({
   confirming,
 }: {
   image: StrainImage
+  mediaItems: Array<{ id: string; name: string; is_archived: boolean }>
+  onUpdateMeta: (field: Partial<StrainImage>) => void
+  onRemoveImage: () => void
   onUpdateBbox: (segmentIndex: number, bbox: { x: number; y: number; w: number; h: number }) => void
   onAddBbox: (bbox: { x: number; y: number; w: number; h: number }) => void
   onRemoveBbox: (segmentIndex: number) => void
@@ -364,15 +315,33 @@ function SegmentCard({
   const toPxH = (val: number) => `${Math.max(4, (val / natH) * imgDims.dispH)}px`
 
   return (
-    <Card>
+      <Card>
       <CardHeader className="p-3 pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <CardTitle className="text-sm font-heading">{image.fileName}</CardTitle>
-            <CardDescription className="text-xs">{image.media} · {segments.length} detected segments · YOLO segmentation</CardDescription>
+        <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_140px_140px_auto] lg:items-end">
+          <div className="space-y-1">
+            <Label className="text-xs">Filename</Label>
+            <div className="h-8 rounded-md border border-border bg-muted px-3 py-2 text-xs text-foreground">{image.fileName}</div>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="space-y-1">
+            <Label className="text-xs">Media</Label>
+            <Select className="h-8 text-xs" value={image.media} onChange={(e) => onUpdateMeta({ media: e.target.value })}>
+              {mediaOptions(mediaItems)}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Colonies</Label>
+            <Select className="h-8 text-xs" value={image.maxColonies} onChange={(e) => onUpdateMeta({ maxColonies: e.target.value })}>
+              <option value="default">Auto</option>
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={String(n)}>{n}</option>)}
+            </Select>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="destructive" size="sm" className="h-8 px-2" onClick={onRemoveImage}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 lg:col-span-4">
+            <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
               <input type="checkbox" checked={image.selected ?? false} onChange={(e) => onToggleSelected(e.target.checked)} />
               <span>Select uploaded</span>
             </label>
@@ -382,13 +351,14 @@ function SegmentCard({
             <Button size="sm" onClick={onConfirm} disabled={confirming || !(image.selected ?? false)}>
               {confirming ? <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</> : 'Confirm image'}
             </Button>
-            <Badge variant={image.featureStatus === 'done' ? 'success' : image.featureStatus === 'extracting' ? 'warning' : image.featureStatus === 'failed' ? 'destructive' : image.confirmed ? 'warning' : 'secondary'}>
-              {image.featureStatus === 'done' ? 'Feature extracted' : image.featureStatus === 'extracting' ? 'Extracting' : image.featureStatus === 'failed' ? 'Failed' : image.confirmed ? 'Confirmed' : 'Uploaded'}
+            <Badge variant={image.status === 'indexed' ? 'success' : image.status === 'indexing' || image.status === 'segmenting' ? 'warning' : image.status === 'failed' ? 'destructive' : image.status === 'confirmed' || image.status === 'segmented' ? 'warning' : 'secondary'}>
+              {image.status}
             </Badge>
           </div>
         </div>
       </CardHeader>
       <CardContent className="p-3 pt-0">
+
         <div className="grid gap-3 lg:grid-cols-[minmax(360px,1.15fr)_1fr]">
           <div
             ref={containerRef}
@@ -444,7 +414,7 @@ function SegmentCard({
 }
 
 function getRetrievalReadyImages(strain: StrainDraft | undefined) {
-  return (strain?.images ?? []).filter((image) => !image.mediaIsNew && !!image.id && !!image.confirmed && ((image.yoloBboxes?.length ?? 0) > 0 || (image.segments?.length ?? 0) > 0))
+  return (strain?.images ?? []).filter((image) => !!image.id && !!image.confirmed && ((image.yoloBboxes?.length ?? 0) > 0 || (image.segments?.length ?? 0) > 0))
 }
 
 function getAllRetrievalReadyImages(strains: StrainDraft[]) {
@@ -453,10 +423,6 @@ function getAllRetrievalReadyImages(strains: StrainDraft[]) {
 
 function getConfirmableImages(strain: StrainDraft | undefined) {
   return (strain?.images ?? []).filter((image) => image.selected && ((image.yoloBboxes?.length ?? 0) > 0 || (image.segments?.length ?? 0) > 0))
-}
-
-function hasNewMediaImages(strain: StrainDraft | undefined) {
-  return (strain?.images ?? []).some((image) => image.mediaIsNew)
 }
 
 function getDisplayImageUrl(image?: Pick<StrainImage, 'original'> | null) {
@@ -507,7 +473,7 @@ function ResultDetail({
   strain: string
   images: StrainImage[]
   knnK: number
-  aggMethod: 'weighted' | 'uni' | 'freq_strength' | 'relative' | 'per_species_avg' | 'max_score' | 'perquery_norm_avg'
+  aggMethod: 'weighted' | 'uni'
   rankings?: RetrievalRanking[]
   queriedImages?: RetrievalQueryImageResult[]
   threshold?: import('@/services/types').ThresholdConfidence | null
@@ -634,8 +600,8 @@ export default function RetrievePage() {
   const [isBatch, setIsBatch] = useState(false)
   const [activeStrain, setActiveStrain] = useState(0)
   const [detailStrain, setDetailStrain] = useState(0)
-  const [retrievalConfig, setRetrievalConfig] = useState<RetrievalConfig>({ k: 11, aggregation: 'freq_strength' })
-  const [submittedConfig, setSubmittedConfig] = useState<RetrievalConfig>({ k: 11, aggregation: 'freq_strength' })
+  const [retrievalConfig, setRetrievalConfig] = useState<RetrievalConfig>({ k: 5, aggregation: 'weighted' })
+  const [submittedConfig, setSubmittedConfig] = useState<RetrievalConfig>({ k: 5, aggregation: 'weighted' })
   const [strains, setStrains] = useState<StrainDraft[]>([{ strain: '', images: [] }])
   const toast = useToast()
   const queryClient = useQueryClient()
@@ -690,13 +656,12 @@ export default function RetrievePage() {
           id: image.image_id || `${key}-${image.filename}-${index}`,
           fileName: image.filename,
           media: image.media || mediaFromFilename(image.filename),
-          mediaIsNew: (image.media || mediaFromFilename(image.filename)) === 'Other media',
           maxColonies: 'default',
           original: image.source_url || undefined,
           segments: image.segment_urls?.map((url) => ({ url, bbox: { x: 0, y: 0, w: 1, h: 1 } })) ?? undefined,
-          selected: false,
-          confirmed: image.status === 'indexed',
-          featureStatus: image.status === 'indexed' ? 'done' : image.status === 'extracting' ? 'extracting' : image.status === 'failed' ? 'failed' : image.status === 'segmented' ? 'pending' : 'pending',
+          selected: image.status === 'segmented' || image.status === 'confirmed' || image.status === 'indexed',
+          confirmed: image.status === 'confirmed' || image.status === 'indexed',
+          status: image.status === 'queued' || image.status === 'uploaded' || image.status === 'segmenting' || image.status === 'segmented' || image.status === 'confirmed' || image.status === 'indexing' || image.status === 'indexed' || image.status === 'failed' ? image.status : 'queued',
         })
 
     }
@@ -743,6 +708,39 @@ export default function RetrievePage() {
       if (timer !== undefined) window.clearTimeout(timer)
     }
   }, [batchProgress?.batch_id, isZipUploading, syncBatchStrains, toast])
+
+  useEffect(() => {
+    if (!isBatch) return
+    const missing = strains.flatMap((strain, strainIndex) =>
+      strain.images
+        .filter((image) => image.id && (!image.yoloBboxes?.length) && (!image.segments?.length || image.segments.every((segment) => segment.bbox.w <= 1 && segment.bbox.h <= 1)))
+        .map((image) => ({ strainIndex, imageId: image.id })),
+    )
+    if (!missing.length) return
+    let cancelled = false
+    void Promise.all(missing.map(async ({ strainIndex, imageId }) => {
+      try {
+        const details = await listSegments(imageId)
+        if (cancelled || !details.length) return
+        setStrains((prev) => prev.map((strain, idx) => idx !== strainIndex ? strain : ({
+          ...strain,
+          images: strain.images.map((image) => image.id !== imageId ? image : ({
+            ...image,
+            segments: details.map((segment) => ({
+              url: segment.crop_path,
+              bbox: { x: segment.bbox_x, y: segment.bbox_y, w: segment.bbox_w, h: segment.bbox_h },
+            })),
+            yoloBboxes: details.map((segment) => ({ x: segment.bbox_x, y: segment.bbox_y, w: segment.bbox_w, h: segment.bbox_h })),
+          })),
+        })))
+      } catch {
+        return
+      }
+    }))
+    return () => {
+      cancelled = true
+    }
+  }, [isBatch, strains])
 
   const current = strains[activeStrain]
   const totalImages = imageCount(strains)
@@ -861,7 +859,7 @@ export default function RetrievePage() {
           id: res.image_id,
           fileName: file.name,
           media: detectedMedia,
-          mediaIsNew: false,
+
           maxColonies: 'default',
           original: res.source_url,
           segments: segmentResult.segments.map((seg) => ({
@@ -873,7 +871,7 @@ export default function RetrievePage() {
           })),
           selected: false,
           confirmed: false,
-          featureStatus: 'pending',
+          status: 'segmented',
         }
         uploadedCount += 1
         segmentedCount += 1
@@ -893,7 +891,6 @@ export default function RetrievePage() {
     }
     e.target.value = ''
     setAutoSegmenting(false)
-    if (segmentedCount > 0) setStep('segmentation')
   }
 
   const handleBatchZipUpload = async (file: File) => {
@@ -993,8 +990,8 @@ export default function RetrievePage() {
           }
         }
       }
-      if (attemptedCount > 0 && successCount === attemptedCount) {
-        setStep('segmentation')
+      if (attemptedCount > 0 && successCount > 0) {
+        toast.success(`Auto-detected colonies for ${successCount} image(s)`)
       }
     } catch {
       /* handle silently */
@@ -1107,19 +1104,20 @@ export default function RetrievePage() {
     setConfirmingImageId(imageId)
     setStrains((prev) => prev.map((strain, idx) => ({
       ...strain,
-      images: strain.images.map((item) => idx === strainIndex && item.id === imageId ? { ...item, featureStatus: 'extracting', confirmed: true } : item),
+        images: strain.images.map((item) => idx === strainIndex && item.id === imageId ? { ...item, status: 'confirmed', confirmed: true } : item),
+
     })))
     try {
       await reindexImage(image.id)
       setStrains((prev) => prev.map((strain, idx) => ({
         ...strain,
-        images: strain.images.map((item) => idx === strainIndex && item.id === imageId ? { ...item, featureStatus: 'done', confirmed: true } : item),
+        images: strain.images.map((item) => idx === strainIndex && item.id === imageId ? { ...item, status: 'confirmed', confirmed: true } : item),
       })))
       toast.success(`Confirmed ${image.fileName}`)
     } catch (err) {
       setStrains((prev) => prev.map((strain, idx) => ({
         ...strain,
-        images: strain.images.map((item) => idx === strainIndex && item.id === imageId ? { ...item, featureStatus: 'failed', confirmed: false } : item),
+        images: strain.images.map((item) => idx === strainIndex && item.id === imageId ? { ...item, status: 'failed', confirmed: false } : item),
       })))
       toast.apiError(err, `Failed to confirm ${image.fileName}`)
     } finally {
@@ -1140,7 +1138,7 @@ export default function RetrievePage() {
         setStrains((prev) => prev.map((item, strainIndex) => ({
           ...item,
           images: item.images.map((candidate) => strainIndex === activeStrain && candidate.id === image.id
-            ? { ...candidate, featureStatus: 'extracting' }
+            ? { ...candidate, status: 'indexing' }
             : candidate),
         })))
         try {
@@ -1150,14 +1148,14 @@ export default function RetrievePage() {
           setStrains((prev) => prev.map((item, strainIndex) => ({
             ...item,
             images: item.images.map((candidate) => strainIndex === activeStrain && candidate.id === image.id
-              ? { ...candidate, featureStatus: 'done', confirmed: true }
+              ? { ...candidate, status: 'indexed', confirmed: true }
               : candidate),
           })))
         } catch (err) {
           setStrains((prev) => prev.map((item, strainIndex) => ({
             ...item,
             images: item.images.map((candidate) => strainIndex === activeStrain && candidate.id === image.id
-              ? { ...candidate, featureStatus: 'failed' }
+              ? { ...candidate, status: 'failed' }
               : candidate),
           })))
           toast.apiError(err, `Failed to extract ${image.fileName}`)
@@ -1172,7 +1170,27 @@ export default function RetrievePage() {
 
   const totalSegments = useMemo(() => strains.reduce((sum, strain) => sum + strain.images.reduce((imgSum, image) => imgSum + (image.segments?.length ?? 3), 0), 0), [strains])
   const retrievalReadyImages = isBatch ? getAllRetrievalReadyImages(strains) : getRetrievalReadyImages(strains[0])
-  const singleHasNewMedia = hasNewMediaImages(strains[0])
+
+  const finalizeOwnerQueryImages = useCallback(async (action: 'index' | 'discard') => {
+    const queryImageIds = (jobResults.data?.queried_images ?? []).map((image) => image.image_id)
+    if (queryImageIds.length === 0) return
+    try {
+      if (action === 'index') {
+        for (const imageId of queryImageIds) {
+          await reindexImage(imageId)
+        }
+        toast.success('Query images promoted to dataset and indexed')
+      } else {
+        for (const imageId of queryImageIds) {
+          await deleteImage(imageId)
+        }
+        toast.success('Temporary query images discarded')
+      }
+      queryClient.invalidateQueries({ queryKey: ['images'] })
+    } catch (err) {
+      toast.apiError(err, action === 'index' ? 'Failed to index query images' : 'Failed to discard query images')
+    }
+  }, [jobResults.data?.queried_images, queryClient, toast])
 
   const runRetrieval = useCallback(async (config: RetrievalConfig) => {
     const queryImageId = retrievalReadyImages[0]?.id
@@ -1183,7 +1201,7 @@ export default function RetrievePage() {
       for (const [index, image] of retrievalReadyImages.entries()) {
         setFeatureProgress({ completed: index, total: retrievalReadyImages.length, current: image.fileName })
         if (image.media) await updateImageMedia(image.id, image.media)
-        if (image.featureStatus !== 'done') {
+        if (image.status !== 'indexed') {
           await reindexImage(image.id)
         }
       }
@@ -1458,7 +1476,7 @@ export default function RetrievePage() {
                       {autoSegmenting ? (
                         <><Loader2 className="h-4 w-4 animate-spin" /> Segmenting {segmentProgress?.completed ?? 0}/{segmentProgress?.total ?? 0}</>
                       ) : (
-                        <><Images className="h-4 w-4" /> Upload & segment</>
+                        <><Images className="h-4 w-4" /> Upload images</>
                       )}
                     </Button>
                     {isBatch && <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeStrain(activeStrain)}><Trash2 className="h-4 w-4" /></Button>}
@@ -1471,25 +1489,26 @@ export default function RetrievePage() {
                     <Images className="mb-2 h-8 w-8" /> Add first image for this strain
                   </button>
                  ) : (
-                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                   <div className="space-y-4">
                      {current.images.map((image) => (
-                        <ImageMetaCard
-                          key={image.id}
-                          image={image}
-                          mediaItems={mediaItems}
-                          onUpdate={(field) => updateImage(activeStrain, image.id, field)}
-                          onRemove={() => removeImage(activeStrain, image.id)}
-                        />
-
+                       <SegmentCard
+                         key={image.id}
+                         image={image}
+                         mediaItems={mediaItems}
+                         onUpdateMeta={(field: Partial<StrainImage>) => updateImage(activeStrain, image.id, field)}
+                         onRemoveImage={() => removeImage(activeStrain, image.id)}
+                         onUpdateBbox={(si, bb) => updateYoloBbox(activeStrain, image.id, si, bb)}
+                         onAddBbox={(bb) => addYoloBbox(activeStrain, image.id, bb)}
+                         onRemoveBbox={(si) => removeYoloBbox(activeStrain, image.id, si)}
+                         onSave={() => void persistSegments(activeStrain, image.id)}
+                         onConfirm={() => void confirmImage(activeStrain, image.id)}
+                         onToggleSelected={(selected) => toggleImageSelected(activeStrain, image.id, selected)}
+                         saving={savingImageId === image.id}
+                         confirming={confirmingImageId === image.id}
+                       />
                      ))}
                    </div>
                  )}
-                {singleHasNewMedia && !isBatch && (
-                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm text-foreground">
-                    <Badge variant="warning">New media</Badge>
-                    <p>New/other media images upload and display normally, but retrieval ignores them. Research-verified flow only queries same-media indexed images.</p>
-                  </div>
-                )}
                </CardContent>
              </Card>
 
@@ -1516,7 +1535,7 @@ export default function RetrievePage() {
             <CardHeader className="p-4">
               <CardTitle className="font-heading">Segmentation Confirmation</CardTitle>
               <CardDescription>
-                {isBatch ? `${strains[activeStrain]?.strain || `Strain ${activeStrain + 1}`}` : `${strains[0]?.strain || 'Single strain'}`} · review all images, confirm segments, then feature extraction status updates before results
+                {isBatch ? `${strains[activeStrain]?.strain || `Strain ${activeStrain + 1}`}` : `${strains[0]?.strain || 'Single strain'}`} · fixed boxes only. Use this stage to scan confirmed images, then run retrieval.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 p-4 pt-0">
@@ -1540,6 +1559,9 @@ export default function RetrievePage() {
                     <SegmentCard
                       key={image.id}
                       image={image}
+                      mediaItems={mediaItems}
+                      onUpdateMeta={(field) => updateImage(activeStrain, image.id, field)}
+                      onRemoveImage={() => removeImage(activeStrain, image.id)}
                       onUpdateBbox={(si, bb) => updateYoloBbox(activeStrain, image.id, si, bb)}
                       onAddBbox={(bb) => addYoloBbox(activeStrain, image.id, bb)}
                       onRemoveBbox={(si) => removeYoloBbox(activeStrain, image.id, si)}
@@ -1554,7 +1576,7 @@ export default function RetrievePage() {
               )}
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={runAutoSegment} disabled={autoSegmenting || currentSegments.length === 0}>
-                  Segment All
+                  Re-run auto detect
                 </Button>
                 <Button variant="default" size="sm" onClick={() => void runStrainReindex()} disabled={reindexingStrain || currentSegments.length === 0}>
                   {reindexingStrain ? <><Loader2 className="h-4 w-4 animate-spin" /> Extracting...</> : 'Extract all'}
@@ -1571,6 +1593,16 @@ export default function RetrievePage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-card px-4 py-3">
             <span className="text-sm font-medium">KNN Configuration</span>
+            {isOwner && jobResults.data?.queried_images?.length ? (
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => void finalizeOwnerQueryImages('discard')}>
+                  Discard
+                </Button>
+                <Button size="sm" onClick={() => void finalizeOwnerQueryImages('index')}>
+                  Index to DB
+                </Button>
+              </div>
+            ) : null}
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <label className="text-xs text-muted-foreground whitespace-nowrap">K: {retrievalConfig.k}</label>
               <input
@@ -1586,14 +1618,15 @@ export default function RetrievePage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Aggregation:</span>
-               <button
-                 type="button"
-                 aria-label="freq_strength"
-                 onClick={() => setRetrievalConfig((prev) => ({ ...prev, aggregation: 'freq_strength' }))}
-                 className={`rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${retrievalConfig.aggregation === 'freq_strength' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`}
-               >
-                 freq_strength
-               </button>
+                <button
+                  type="button"
+                  aria-label="uni"
+                  onClick={() => setRetrievalConfig((prev) => ({ ...prev, aggregation: 'uni' }))}
+                  className={`rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${retrievalConfig.aggregation === 'uni' ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:text-foreground'}`}
+                >
+                  uni
+                </button>
+
                <button
                  type="button"
                  aria-label="weighted"
@@ -1641,7 +1674,7 @@ export default function RetrievePage() {
         <Button
           onClick={() => {
             if (step === 'upload') {
-              void runAutoSegment()
+              setStep('segmentation')
               return
             }
             if (step === 'segmentation') {
@@ -1650,7 +1683,7 @@ export default function RetrievePage() {
           }}
           disabled={step === 'results' || step === 'processing' || (step === 'segmentation' && retrievalReadyImages.length === 0)}
         >
-          {step === 'upload' ? 'Segment All' : step === 'processing' ? 'Running...' : 'Run Retrieval'} <ArrowRight className="h-4 w-4" />
+          {step === 'upload' ? 'Review confirmed boxes' : step === 'processing' ? 'Running...' : 'Run Retrieval'} <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
     </div>

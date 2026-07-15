@@ -32,7 +32,7 @@ describe('startQuery', () => {
     const expected = { job_id: 'job-1', status: 'queued', estimated_seconds: 30 }
     mockResponse(expected)
 
-    const result = await startQuery({ image_id: 'img-1', k: 5, aggregation: 'freq_strength', media_strategy: 'same_media' })
+    const result = await startQuery({ image_id: 'img-1', k: 5, aggregation: 'weighted', media_strategy: 'same_media' })
 
     expect(result).toEqual(expected)
     const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
@@ -44,7 +44,7 @@ describe('startQuery', () => {
   it('throws ApiError on non-ok response', async () => {
     mockResponse({ detail: 'Image not found' }, 404)
 
-    await expect(startQuery({ image_id: 'bad-id', k: 5, aggregation: 'freq_strength', media_strategy: 'same_media' }))
+    await expect(startQuery({ image_id: 'bad-id', k: 5, aggregation: 'weighted', media_strategy: 'same_media' }))
       .rejects.toThrow(ApiError)
   })
 })
@@ -92,7 +92,7 @@ describe('querySync', () => {
     }
     mockResponse(expected)
 
-    const result = await querySync({ image_id: 'img-2', k: 3, aggregation: 'freq_strength', media_strategy: 'same_media' })
+    const result = await querySync({ image_id: 'img-2', k: 3, aggregation: 'uni', media_strategy: 'same_media' })
 
     expect(result).toEqual(expected)
     const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]

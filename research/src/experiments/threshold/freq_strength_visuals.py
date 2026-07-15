@@ -185,8 +185,9 @@ def _draw_confusion(rows: list[dict[str, Any]], output_path: Path, title: str) -
     y_true = [canonical_species_label(row["species_label"]) if int(row["is_known"]) == 1 else "UNKNOWN" for row in rows]
     y_pred = [canonical_species_label(row["predicted_species"]) for row in rows]
     labels = sorted({*y_true, *y_pred} - {"UNKNOWN"}) + ["UNKNOWN"]
+    short = [label.replace('Penicillium ', 'P. ') if label != 'UNKNOWN' else 'Unknown' for label in labels]
     cm = confusion_matrix(y_true, y_pred, labels=labels)
-    cm_df = pd.DataFrame(cm, index=labels, columns=labels)
+    cm_df = pd.DataFrame(cm, index=short, columns=short)
     fig, ax = plt.subplots(figsize=(max(16, len(labels) * 0.65), max(13, len(labels) * 0.58)))
     sns.heatmap(cm_df, annot=True, fmt="d", cmap="YlOrRd", linewidths=0.5, linecolor="white", ax=ax, annot_kws={"fontsize": 12, "fontweight": "bold"})
     ax.set_xlabel("Predicted", fontsize=16)

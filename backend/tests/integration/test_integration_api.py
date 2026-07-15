@@ -153,7 +153,7 @@ async def test_api_full_retrieval_flow_mocked(
             "image_id": "fake-image-id",
             "k": 5,
             "aggregation": "weighted",
-            "media_strategy": "E1",
+            "media_strategy": "same_media",
         },
         headers=headers,
     )

@@ -329,7 +329,7 @@ def test_collection_exists_mocked() -> None:
     fake_col = MagicMock()
     fake_col.name = "myco_fungi_features_full_finetuned"
     client.get_collections.return_value.collections = [fake_col]
-    assert collection_exists(client, "qdrant-research_fold0") is True
+    assert collection_exists(client, "myco_fungi_features_full_finetuned") is True
 
 
 def test_get_collection_stats_mocked() -> None:
@@ -408,7 +408,7 @@ def test_aggregate_router(client: TestClient) -> None:
                 ]
             ],
             "strain_to_specy": {},
-            "k": 11,
+            "k": 5,
             "strategy": "weighted",
         },
     )

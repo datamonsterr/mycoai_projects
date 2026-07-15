@@ -22,12 +22,34 @@ async def get_stats(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: CurrentUser,
 ) -> DashboardStats:
-    images = (await db.execute(select(func.count()).select_from(Image))).scalar() or 0
-    strains = (await db.execute(select(func.count()).select_from(Strain))).scalar() or 0
-    species = (
-        await db.execute(select(func.count()).select_from(Species))
+    images = (
+        await db.execute(
+            select(func.count())
+            .select_from(Image)
+            .where(Image.source_type != "temporary_query")
+        )
     ).scalar() or 0
-    media = (await db.execute(select(func.count()).select_from(Media))).scalar() or 0
+    strains = (
+        await db.execute(
+            select(func.count(func.distinct(Image.strain_id))).where(
+                Image.source_type != "temporary_query"
+            )
+        )
+    ).scalar() or 0
+    species = (
+        await db.execute(
+            select(func.count(func.distinct(Image.species_id))).where(
+                Image.source_type != "temporary_query"
+            )
+        )
+    ).scalar() or 0
+    media = (
+        await db.execute(
+            select(func.count(func.distinct(Image.media_id))).where(
+                Image.source_type != "temporary_query"
+            )
+        )
+    ).scalar() or 0
     return DashboardStats(
         total_images=images,
         total_strains=strains,
@@ -46,7 +68,10 @@ async def species_distribution(
 ) -> list[SpeciesDistributionItem]:
     result = await db.execute(
         select(Species.name, func.count(Image.id).label("image_count"))
-        .outerjoin(Image, Image.species_id == Species.id)
+        .outerjoin(
+            Image,
+            (Image.species_id == Species.id) & (Image.source_type != "temporary_query"),
+        )
         .where(Species.is_archived.is_(False))
         .group_by(Species.id, Species.name)
         .order_by(func.count(Image.id).desc())
@@ -68,7 +93,10 @@ async def media_distribution(
 ) -> list[MediaDistributionItem]:
     result = await db.execute(
         select(Media.name, func.count(Image.id).label("image_count"))
-        .outerjoin(Image, Image.media_id == Media.id)
+        .outerjoin(
+            Image,
+            (Image.media_id == Media.id) & (Image.source_type != "temporary_query"),
+        )
         .where(Media.is_archived.is_(False))
         .group_by(Media.id, Media.name)
         .order_by(func.count(Image.id).desc())
@@ -90,7 +118,10 @@ async def strain_distribution(
 ) -> list[StrainDistributionItem]:
     result = await db.execute(
         select(Strain.name, func.count(Image.id).label("image_count"))
-        .outerjoin(Image, Image.strain_id == Strain.id)
+        .outerjoin(
+            Image,
+            (Image.strain_id == Strain.id) & (Image.source_type != "temporary_query"),
+        )
         .where(Strain.is_archived.is_(False))
         .group_by(Strain.id, Strain.name)
         .order_by(func.count(Image.id).desc())

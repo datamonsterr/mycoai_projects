@@ -528,7 +528,7 @@ def test_retrieval_flow(client: TestClient, owner_headers: dict[str, str]) -> No
             "image_id": "00000000-0000-0000-0000-000000000000",
             "k": 3,
             "aggregation": "weighted",
-            "media_strategy": "E1",
+            "media_strategy": "same_media",
         },
         headers=owner_headers,
     )
@@ -555,8 +555,8 @@ def test_retrieval_query_sync(
         json={
             "image_id": "00000000-0000-0000-0000-000000000000",
             "k": 3,
-            "aggregation": "avg",
-            "media_strategy": "E2",
+            "aggregation": "uni",
+            "media_strategy": "all_media",
         },
         headers=owner_headers,
     )

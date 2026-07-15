@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-STYLE = {"font.family": "serif", "font.size": 8, "axes.titlesize": 9, "axes.labelsize": 8}
+STYLE = {"font.family": "serif", "font.size": 32, "axes.titlesize": 40, "axes.labelsize": 36, "xtick.labelsize": 32, "ytick.labelsize": 32, "legend.fontsize": 32}
 plt.rcParams.update(STYLE)
 
 PROJECT = Path("/home/dat/dev/mycoai")
@@ -222,18 +222,20 @@ def chart_cv_heatmaps():
         for j, k in enumerate(k_vals):
             vs = df[(df["agg_strategy"] == a) & (df["k"] == k)]["mean_accuracy"]
             mat2[i, j] = vs.mean() if len(vs) else 0
-    fig, ax = plt.subplots(figsize=(7, 4))
+    fig, ax = plt.subplots(figsize=(14, 8.5))
     im = ax.imshow(mat2, cmap="YlOrRd", aspect="auto")
     ax.set_xticks(range(len(k_vals)))
-    ax.set_xticklabels([f"K={k}" for k in k_vals])
+    ax.set_xticklabels([f"K={k}" for k in k_vals], fontsize=30)
     ax.set_yticks(range(len(agg_vals)))
-    ax.set_yticklabels(agg_vals, fontsize=7)
+    ax.set_yticklabels([name.replace("_", " ") for name in agg_vals], fontsize=28)
     for i in range(len(agg_vals)):
         for j in range(len(k_vals)):
-            ax.text(j, i, f"{mat2[i, j]:.1f}", ha="center", va="center", fontsize=6,
+            ax.text(j, i, f"{mat2[i, j]:.1f}", ha="center", va="center", fontsize=24, fontweight="bold",
                     color="black" if mat2[i, j] < 75 else "white")
-    ax.set_title("CV: Aggregation vs K")
-    plt.colorbar(im, ax=ax, label="Accuracy %")
+    ax.set_title("CV: Aggregation vs K", fontsize=34)
+    cbar = plt.colorbar(im, ax=ax, label="Accuracy %")
+    cbar.ax.tick_params(labelsize=24)
+    cbar.set_label("Accuracy %", fontsize=28)
     fig.tight_layout()
     save("cv_heatmap_agg_vs_k.png", fig, subfolder="05_cross_validation")
 
@@ -354,6 +356,12 @@ def chart_eda_media_distribution():
     """Regenerate media distribution charts using normalized environment labels."""
     import sys
     sys.path.insert(0, str(PROJECT / "research"))
+    from src.analysis.dataset_eda import (
+        HeatmapStyle,
+        build_dataset_eda_report,
+        build_species_environment_matrix,
+        render_species_environment_heatmap,
+    )
     from src.prepare.dataset import (
         load_source_collections,
         iter_source_images,
@@ -403,46 +411,26 @@ def chart_eda_media_distribution():
         save(filename, fig, subfolder="04_eda")
 
     # ── EDA media × species heatmap ──
-    species_env: Counter = Counter()
-    for key in ["curated"]:
-        for image_path in iter_source_images(collections[key]):
-            metadata = parse_curated_metadata(image_path, strain_species_mapping)
-            if (
-                metadata.species != "unknown"
-                and metadata.environment != "unknown"
-            ):
-                species_env[(metadata.species, metadata.environment)] += 1
+    eda_report = build_dataset_eda_report(["curated"])
+    top_names, environments, mat = build_species_environment_matrix(eda_report, max_species=25)
+    render_species_environment_heatmap(
+        top_names,
+        environments,
+        mat,
+        LATEX_DIR / "04_eda" / "eda_media_species_heatmap.png",
+        style=HeatmapStyle(figure_size=(14, 11), title_size=22, axis_label_size=20, tick_label_size=18, annotation_size=18, colorbar_label_size=18, colorbar_tick_size=16),
+    )
+    shutil.copy2(LATEX_DIR / "04_eda" / "eda_media_species_heatmap.png", REPORT_DIR / "04_eda" / "eda_media_species_heatmap.png")
 
-    environments = sorted({e for (_, e) in species_env})
-    species = sorted({s for (s, _) in species_env})
-    n_rows = min(len(species), 25)
-    top_names = sorted(species, key=lambda s: -sum(
-        species_env.get((s, e), 0) for e in environments
-    ))[:n_rows]
-
-    mat = np.zeros((len(top_names), len(environments)))
-    for i, sp in enumerate(top_names):
-        for j, env in enumerate(environments):
-            mat[i, j] = species_env.get((sp, env), 0)
-
-    fig, ax = plt.subplots(figsize=(12, 10))
-    im = ax.imshow(mat, cmap="YlOrRd", aspect="auto")
-    ax.set_xticks(range(len(environments)))
-    ax.set_xticklabels(environments, fontsize=13, rotation=45, ha="right")
-    ax.set_yticks(range(len(top_names)))
-    ax.set_yticklabels([n[:30] for n in top_names], fontsize=12)
-    ax.set_title("Species x Media Distribution (CYA variants normalized)", fontsize=16)
-    for i in range(len(top_names)):
-        for j in range(len(environments)):
-            val = mat[i, j]
-            if val > 0:
-                ax.text(j, i, str(int(val)), ha="center", va="center",
-                        fontsize=11, fontweight="bold",
-                        color="white" if val > mat.max() / 2 else "black")
-    cbar = plt.colorbar(im, ax=ax, label="Images")
-    cbar.ax.tick_params(labelsize=11)
-    fig.tight_layout()
-    save("eda_media_species_heatmap.png", fig, subfolder="04_eda")
+    compact_names, environments, compact = build_species_environment_matrix(eda_report, max_species=8)
+    render_species_environment_heatmap(
+        compact_names,
+        environments,
+        compact,
+        LATEX_DIR / "04_eda" / "eda_media_species_heatmap_compact.png",
+        style=HeatmapStyle(figure_size=(14, 9.5), title_size=34, axis_label_size=30, tick_label_size=28, annotation_size=24, colorbar_label_size=28, colorbar_tick_size=24),
+    )
+    shutil.copy2(LATEX_DIR / "04_eda" / "eda_media_species_heatmap_compact.png", REPORT_DIR / "04_eda" / "eda_media_species_heatmap_compact.png")
 
     # ── EDA media vs other bar ──
     fig, ax = plt.subplots(figsize=(9, 4.5))

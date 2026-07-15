@@ -96,7 +96,7 @@ def e2e_image() -> Path:
     return path
 
 
-def test_full_e2e_upload_segment_extract_retrieve_freq_strength_k5(
+def test_full_e2e_upload_segment_extract_retrieve_weighted_k5(
     e2e_client, headers, e2e_image: Path
 ) -> None:
     client, _fake_storage = e2e_client
@@ -121,7 +121,7 @@ def test_full_e2e_upload_segment_extract_retrieve_freq_strength_k5(
         json={
             "image_id": image_id,
             "k": 5,
-            "aggregation": "freq_strength",
+            "aggregation": "weighted",
             "media_strategy": "same_media",
         },
         headers=headers,

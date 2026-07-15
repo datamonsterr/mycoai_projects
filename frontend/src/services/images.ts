@@ -5,6 +5,7 @@ import type {
   ImageGroupResponse,
   ImageListResponse,
   SegmentDetail,
+  UploadWorkflowStatus,
 } from '@/services/types'
 
 export interface ImageListParams {
@@ -68,7 +69,7 @@ export type BatchImageStatus = {
   strain: string
   media: string
   species: string
-  status: string
+  status: UploadWorkflowStatus | string
   image_id?: string | null
   segments: number
   error?: string | null

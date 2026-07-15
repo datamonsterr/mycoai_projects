@@ -117,12 +117,14 @@ export type ImageGroupResponse = {
   total: number
 }
 
+export type UploadWorkflowStatus = 'queued' | 'uploading' | 'uploaded' | 'segmenting' | 'segmented' | 'confirmed' | 'indexing' | 'indexed' | 'failed'
+
 export interface RetrievalQueryRequest {
   image_id: string
   image_ids?: string[]
   k: number
-  aggregation: string
-  media_strategy: string
+  aggregation: 'weighted' | 'uni'
+  media_strategy: 'same_media' | 'all_media'
 }
 
 export interface RetrievalJobResponse {
